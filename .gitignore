@@ -12,3 +12,6 @@
 *.lvlps
 .cache/
 .vs/
+
+# Build output
+/resource/plugins/lv_icon.lvlibp
