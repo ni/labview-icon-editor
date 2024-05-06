@@ -19,5 +19,4 @@ This will perform the following steps, which you can alternatively perform manua
 3. Open lv_icon_editor.lvproj in LabVIEW.
 4. The top-level VI is in the Project Explorer at __My Computer>resource/plugins>lv_icon.lvlib>lv_icon.vi__.
 
-Complete the following steps to use your modified code as the LabVIEW icon editor:
-1. Copy the __resource__ and __vi.lib__ folders from your development location into your LabVIEW directory. Note: you will need admin permissions.
+
