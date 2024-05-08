@@ -256,6 +256,7 @@
 					<Item Name="Finalize Movement.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Finalize Movement.vi"/>
 					<Item Name="Finalize Text.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Finalize Text.vi"/>
 					<Item Name="Flip color refs.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Flip color refs.vi"/>
+					<Item Name="Get Icon Editor Context.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Icon Editor/Get Icon Editor Context.vi"/>
 					<Item Name="Get Monochrome Icon from Caller.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Get Monochrome Icon from Caller.vi"/>
 					<Item Name="GetComparisonResult4Graphis.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/GetComparisonResult4Graphis.vi"/>
 					<Item Name="IEGlyphFolderConstant.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/IEGlyphFolderConstant.vi"/>
@@ -292,6 +293,7 @@
 					<Item Name="GetLibIconForVIIconOverlayFromVI.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Support/GetLibIconForVIIconOverlayFromVI.vi"/>
 					<Item Name="GetOffsetRWIcon.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Support/GetOffsetRWIcon.vi"/>
 					<Item Name="Icon Editor First Call.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Support/Icon Editor First Call.vi"/>
+					<Item Name="IE_Resolve Symbolic Paths.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Support/IE_Resolve Symbolic Paths.vi"/>
 					<Item Name="Keep ApplyLib in Memory.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Support/Keep ApplyLib in Memory.vi"/>
 					<Item Name="lv_icon.rtm" Type="Document" URL="/&lt;resource&gt;/plugins/NIIconEditor/Support/lv_icon.rtm"/>
 				</Item>
