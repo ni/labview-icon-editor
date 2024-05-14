@@ -21,12 +21,13 @@ This will perform the following steps, which you can alternatively perform manua
 
 
 ## Distribution Guide ##
-Complete the following steps on another machine where you want to install your custom icon editor:
+Complete the following steps to distribute your custom icon editor to another machine.
+
+First, build the __Editor Packed Library__ build specification in the project to create __lv_icon.lvlibp__.
+
+Then, on the machine where you want to install your custom icon editor:
 1. Rename __\<LabVIEW\>\\resource\\plugins\\lv_icon.lvlibp__, the shipping icon editor, to __lv_icon.lvlibp.ship__ to "hide" it.
 2. Archive __\<LabVIEW\>\\vi.lib\\LabVIEW Icon API__ to preserve the shipping copy.  Use your archive program of choice (e.g. 7-Zip).
-3. Copy the files you developed with this project into the \<LabVIEW\> directory:  
-   - \<LabVIEW\>\resource\plugins\lv_icon.vi 
-   - Associated support files such as
-      - \<LabVIEW\>\\resource\\plugins\\lv_IconEditor.lvlib
-      - \<LabVIEW\>\\resource\\plugins\\NIIconEditor\\*
-      - \<LabVIEW\>\\vi.lib\\LabVIEW Icon API\\*
+3. Copy the packed library and support files that you developed with this project into the \<LabVIEW\> directory:  
+   - \<LabVIEW\>\\resource\\plugins\\lv_icon.lvlibp 
+   - \<LabVIEW\>\\vi.lib\\LabVIEW Icon API\\*
