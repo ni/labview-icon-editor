@@ -4,6 +4,7 @@
 	<Property Name="NI.LV.All.SourceOnly" Type="Bool">true</Property>
 	<Property Name="NI.Project.Description" Type="Str"></Property>
 	<Item Name="My Computer" Type="My Computer">
+		<Property Name="NI.SortType" Type="Int">3</Property>
 		<Property Name="server.app.propertiesEnabled" Type="Bool">true</Property>
 		<Property Name="server.control.propertiesEnabled" Type="Bool">true</Property>
 		<Property Name="server.tcp.enabled" Type="Bool">false</Property>
@@ -322,7 +323,11 @@
 				<Item Name="Set LibraryPaths to Include Icon Editor.vi" Type="VI" URL="../Tooling/support/Set LibraryPaths to Include Icon Editor.vi"/>
 			</Item>
 			<Item Name="Unit tests" Type="Folder">
-				<Item Name="Check for missing VIs on LV project.vi" Type="VI" URL="../Tooling/Unit tests/Check for missing VIs on LV project.vi"/>
+				<Item Name="Missing class private data on LV project.vi" Type="VI" URL="../Tooling/Unit tests/Missing class private data on LV project.vi"/>
+				<Item Name="Missing classes on LV project.vi" Type="VI" URL="../Tooling/Unit tests/Missing classes on LV project.vi"/>
+				<Item Name="Missing libraries on LV project.vi" Type="VI" URL="../Tooling/Unit tests/Missing libraries on LV project.vi"/>
+				<Item Name="Missing PPLs on LV project.vi" Type="VI" URL="../Tooling/Unit tests/Missing PPLs on LV project.vi"/>
+				<Item Name="Missing VIs or controls on LV project.vi" Type="VI" URL="../Tooling/Unit tests/Missing VIs or controls on LV project.vi"/>
 			</Item>
 			<Item Name="Force Icon Editor to Unload.vi" Type="VI" URL="../Tooling/Force Icon Editor to Unload.vi"/>
 			<Item Name="Post Build Icon Editor PPL.vi" Type="VI" URL="../Tooling/Post Build Icon Editor PPL.vi"/>
