@@ -323,7 +323,6 @@
 				<Item Name="Set LibraryPaths to Include Icon Editor.vi" Type="VI" URL="../Tooling/support/Set LibraryPaths to Include Icon Editor.vi"/>
 			</Item>
 			<Item Name="Unit tests" Type="Folder">
-				<Item Name="Missing class private data on LV project.vi" Type="VI" URL="../Tooling/Unit tests/Missing class private data on LV project.vi"/>
 				<Item Name="Missing classes on LV project.vi" Type="VI" URL="../Tooling/Unit tests/Missing classes on LV project.vi"/>
 				<Item Name="Missing libraries on LV project.vi" Type="VI" URL="../Tooling/Unit tests/Missing libraries on LV project.vi"/>
 				<Item Name="Missing PPLs on LV project.vi" Type="VI" URL="../Tooling/Unit tests/Missing PPLs on LV project.vi"/>
