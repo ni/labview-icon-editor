@@ -41,8 +41,8 @@ jobs:
         shell: bash
         run: |
           echo "Applying VIPC Starting Display..."
-          init_labview
-          dragon vipm activate --serial-number {{ secrets.VIPM_SERIAL_NUMBER }} --email jim.kring@jki.net --name "Jim Kring" --company JKI --timeout 600
+          init_labview || true
+          dragon vipm activate --serial-number ${{ secrets.VIPM_SERIAL_NUMBER }} --email jim.kring@jki.net --name "Jim Kring" --company JKI --timeout 600
           echo "Refreshing Package List..."
           dragon refresh --vipm          
           echo "Applying VIPC file..."
