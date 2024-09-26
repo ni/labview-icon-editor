@@ -23,12 +23,15 @@ jobs:
           password: ${{ secrets.github_token }}
       
     steps:
+
+      - run: git config --global --add safe.directory /__w/labview-icon-editor/labview-icon-editor
+
       - uses: actions/checkout@v4
         with:
           clean: false
           set-safe-directory: false
           persist-credentials: false
-      
+
       - name: Caraya Tests
         shell: bash
         run: |
