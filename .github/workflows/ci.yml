@@ -1,6 +1,11 @@
 name: ci-checks
 
 on:
+  push:
+    branches:
+      - main
+      - develop
+      - ci-cd
   workflow_dispatch:
 
 env: 
@@ -36,7 +41,7 @@ jobs:
         shell: bash
         run: |
           echo "Applying VIPC Starting Display..."
-          source /usr/bin/start_display
+          init_labview
           echo "Refreshing Package List..."
           dragon refresh --vipm          
           echo "Applying VIPC file..."
