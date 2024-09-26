@@ -16,7 +16,7 @@ jobs:
       - ubuntu-latest
 
     container:
-      image: ghcr.io/vipm-io/actions-runner-labview-2024-linux:main
+      image: ghcr.io/vipm-io/actions-runner-labview-2024-linux:dev
       options: --user root
       credentials:
           username: ${{ github.actor }}
