@@ -46,7 +46,7 @@ jobs:
           echo "Refreshing Package List..."
           dragon refresh --vipm          
           echo "Applying VIPC file..."
-          dragon vipm apply-vipc --labview-version ${{ env.LABVIEW_VERSION }} --labview-bitness ${{ env.LABVIEW_BITNESS }} --timeout 600 ./source/.vipc
+          dragon vipm apply-vipc --labview-version ${{ env.LABVIEW_VERSION }} --labview-bitness ${{ env.LABVIEW_BITNESS }} --timeout 600 ./Tooling/Caraya.vipc
           if [ -f "./Tooling/coverage.vi" ]; then
             echo "Calculating Test Coverage..."
             g-cli --timeout 600000 "./Tooling/coverage.vi"
