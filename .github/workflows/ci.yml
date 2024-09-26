@@ -12,6 +12,7 @@ env:
   LABVIEW_VERSION: 24.0
   LABVIEW_BITNESS: 64
   DOCKER_USER: "runner"
+  USER: "labview"
 
 jobs:
 
