@@ -1,0 +1,114 @@
+== Ants.lvclass
+
+*Responsibility:*
+No description found (add content in lvclass description)
+
+*Version:* 1.0.0.4
+
+[plantuml, format="svg", align="center"]
+....
+@startuml
+set namespaceSeparator :
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassBorderColor #555555
+skinparam ClassFontColor #000000
+skinparam ClassHeaderBackgroundColor #808080
+
+skinparam top to bottom direction
+class "Ants" {
+{field} -Delay TL (ms) : U32
+{field} -Delay Restart TL (ms) : U32
+{field} -Notifier : NoType
+{field} -Ants Line : Array of U8
+{field} -Picture : kLVObjPicture
+{static} {method} +RunningAnts()
+{static} {method} +InsideBoundaries()
+{static} {method} +FireAntsEvent()
+{static} {method} +Ants Initialization()
+{method} +GET_DelayRestartTL()
+{method} +GET_DelayTL()
+{method} +GET_Notifier()
+{method} +GET_AntsLine()
+{method} +GET_Picture()
+
+}
+
+
+
+@enduml
+....
+
+.Functions (non private scope only)
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|RunningAnts
+|image:Ants.lvclass_RunningAnts.vi.png[Ants.lvclass:RunningAnts.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|InsideBoundaries
+|image:Ants.lvclass_InsideBoundaries.vi.png[Ants.lvclass:InsideBoundaries.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|FireAntsEvent
+|image:Ants.lvclass_FireAntsEvent.vi.png[Ants.lvclass:FireAntsEvent.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_DelayRestartTL
+|image:Ants.lvclass_GET_DelayRestartTL.vi.png[Ants.lvclass:GET_DelayRestartTL.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_DelayTL
+|image:Ants.lvclass_GET_DelayTL.vi.png[Ants.lvclass:GET_DelayTL.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_Notifier
+|image:Ants.lvclass_GET_Notifier.vi.png[Ants.lvclass:GET_Notifier.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_AntsLine
+|image:Ants.lvclass_GET_AntsLine.vi.png[Ants.lvclass:GET_AntsLine.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_Picture
+|image:Ants.lvclass_GET_Picture.vi.png[Ants.lvclass:GET_Picture.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Ants Initialization
+|image:Ants.lvclass_Ants_Initialization.vi.png[Ants.lvclass:Ants Initialization.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined

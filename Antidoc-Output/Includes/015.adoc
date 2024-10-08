@@ -1,0 +1,103 @@
+== Glyph.lvclass
+
+*Responsibility:*
+No description found (add content in lvclass description)
+
+*Version:* 1.0.0.3
+
+[plantuml, format="svg", align="center"]
+....
+@startuml
+set namespaceSeparator :
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassBorderColor #555555
+skinparam ClassFontColor #000000
+skinparam ClassHeaderBackgroundColor #808080
+
+skinparam top to bottom direction
+class "Glyph" {
+{field} -Glyphs [] : Array of Cluster
+{field} -Active Glyph : Cluster
+{static} {method} +SearchGlyphs()
+{static} {method} +FilterGlyphs()
+{static} {method} +Filter Graphics by Folder Name()
+{static} {method} +Glyphs Initialization()
+{method} +SET_ActiveGlyph()
+{method} +SET_Glyphs []()
+{method} +GET_ActiveGlyph()
+{method} +GET_Glyphs []()
+
+}
+
+
+
+@enduml
+....
+
+.Functions (non private scope only)
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|SearchGlyphs
+|image:Glyph.lvclass_SearchGlyphs.vi.png[Glyph.lvclass:SearchGlyphs.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|FilterGlyphs
+|image:Glyph.lvclass_FilterGlyphs.vi.png[Glyph.lvclass:FilterGlyphs.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_ActiveGlyph
+|image:Glyph.lvclass_SET_ActiveGlyph.vi.png[Glyph.lvclass:SET_ActiveGlyph.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_Glyphs []
+|image:Glyph.lvclass_SET_Glyphs___.vi.png[Glyph.lvclass:SET_Glyphs [].vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_ActiveGlyph
+|image:Glyph.lvclass_GET_ActiveGlyph.vi.png[Glyph.lvclass:GET_ActiveGlyph.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_Glyphs []
+|image:Glyph.lvclass_GET_Glyphs___.vi.png[Glyph.lvclass:GET_Glyphs [].vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Filter Graphics by Folder Name
+|image:Glyph.lvclass_Filter_Graphics_by_Folder_Name.vi.png[Glyph.lvclass:Filter Graphics by Folder Name.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Glyphs Initialization
+|image:Glyph.lvclass_Glyphs_Initialization.vi.png[Glyph.lvclass:Glyphs Initialization.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined

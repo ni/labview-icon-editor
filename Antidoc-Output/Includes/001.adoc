@@ -1,0 +1,397 @@
+== lv_icon.lvlib
+
+*Responsibility:*
+No description found (add content in lvlib description)
+
+*Version:* 1.0.0.0
+
+.Functions (non private scope only)
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|Adjust temporary rotate and flip rectangle
+|image:lv_icon.lvlib_Adjust_temporary_rotate_and_flip_rectangle.vi.png[lv_icon.lvlib:Adjust temporary rotate and flip rectangle.vi]
+|+++This function fixes coordinate changes in case the glyph is rotated or flipped.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Apply Opacity
+|image:lv_icon.lvlib_Apply_Opacity.vi.png[lv_icon.lvlib:Apply Opacity.vi]
+|+++Merge two glyphs and apply a certain opacity to the Top glyph.s+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Apply Transparency
+|image:lv_icon.lvlib_Apply_Transparency.vi.png[lv_icon.lvlib:Apply Transparency.vi]
+|+++Apply the magic transparent color to the glyph.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|ApplyLVClassIconOverlayToVIIcon
+|image:lv_icon.lvlib_ApplyLVClassIconOverlayToVIIcon.vi.png[lv_icon.lvlib:ApplyLVClassIconOverlayToVIIcon.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Average Grayscale of Line
+|image:lv_icon.lvlib_Average_Grayscale_of_Line.vi.png[lv_icon.lvlib:Average Grayscale of Line.vi]
+|+++Find the average grayscale value along one row of a 24-bit pixmap.  Uses the luminance formula:+++
+
++++Grayscale = 0.2126 R + 0.7152 G + 0.0722 B+++
+
++++Where R, G, and B are the red, green, and blue intensities, respectively.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Calculate Body Text Position
+|image:lv_icon.lvlib_Calculate_Body_Text_Position.vi.png[lv_icon.lvlib:Calculate Body Text Position.vi]
+|+++Calculate the ultimate Body Text position based on certain ruels.+++
+
++++1st: check if Ni_Library is there...+++
++++2nd: if not, check if a template is there...+++
++++3rd: if one of them is found, search for a horizontal line+++
++++3rda: if a black line is found, fine take this one otherwise+++
++++3rdb: search for any horizontal line+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Check Color
+|image:lv_icon.lvlib_Check_Color.vi.png[lv_icon.lvlib:Check Color.vi]
+|+++Check whether or not the color is the magic transparency color constant. If so, return RGB (246, 246, 246).+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Create Color Array
+|image:lv_icon.lvlib_Create_Color_Array.vi.png[lv_icon.lvlib:Create Color Array.vi]
+|+++Create a color array based on an RGB input+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Create default Layer
+|image:lv_icon.lvlib_Create_default_Layer.vi.png[lv_icon.lvlib:Create default Layer.vi]
+|+++Create a default User Layer.+++
++++Black rectangle border.+++
++++100% Opacity+++
++++Empty Layer Name+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Create default LV Icon Data
+|image:lv_icon.lvlib_Create_default_LV_Icon_Data.vi.png[lv_icon.lvlib:Create default LV Icon Data.vi]
+|+++Populate the default LabVIEW Icon Data Cluster.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Create Layer from Image
+|image:lv_icon.lvlib_Create_Layer_from_Image.vi.png[lv_icon.lvlib:Create Layer from Image.vi]
+|+++Create a User Layer from the Image Data+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Deserialize Picture Control Data
+|image:lv_icon.lvlib_Deserialize_Picture_Control_Data.vi.png[lv_icon.lvlib:Deserialize Picture Control Data.vi]
+|+++Every concentenate picture adds more and more data to the picture, therefore+++
++++his process is used to keep the picture memory amount as low as possible.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Draw Layers
+|image:lv_icon.lvlib_Draw_Layers.vi.png[lv_icon.lvlib:Draw Layers.vi]
+|+++Merges all User Layers based on their information (Origin and Type).+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Draw Picture based on Origin
+|image:lv_icon.lvlib_Draw_Picture_based_on_Origin.vi.png[lv_icon.lvlib:Draw Picture based on Origin.vi]
+|+++Apply the Origin information on the Picture.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Extract Data
+|image:lv_icon.lvlib_Extract_Data.vi.png[lv_icon.lvlib:Extract Data.vi]
+|+++Extract the binary data of a LabVIEW Icon.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Fill
+|image:lv_icon.lvlib_Fill.vi.png[lv_icon.lvlib:Fill.vi]
+|+++Run the Fill Algorithm.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|FilterEmptyLayerIcons
+|image:lv_icon.lvlib_FilterEmptyLayerIcons.vi.png[lv_icon.lvlib:FilterEmptyLayerIcons.vi]
+|+++Remove empty (blank) User Layer.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Find BG Color Peak
+|image:lv_icon.lvlib_Find_BG_Color_Peak.vi.png[lv_icon.lvlib:Find BG Color Peak.vi]
+|+++Find the color that is supposely considered as the Background.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Find Neighbours
+|image:lv_icon.lvlib_Find_Neighbours.vi.png[lv_icon.lvlib:Find Neighbours.vi]
+|+++Find neighbour pixels with the same color. +++
++++This algorithm only considers horizontal and vertical pixels.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Find Start and Endpoint Body Text
+|image:lv_icon.lvlib_Find_Start_and_Endpoint_Body_Text.vi.png[lv_icon.lvlib:Find Start and Endpoint Body Text.vi]
+|+++Find the actual start and endpoint of the text to be able to center the Text later on.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Flatten Load & Unload
+|image:lv_icon.lvlib_Flatten_Load_&_Unload.vi.png[lv_icon.lvlib:Flatten Load & Unload.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Flood Glyph
+|image:lv_icon.lvlib_Flood_Glyph.vi.png[lv_icon.lvlib:Flood Glyph.vi]
+|+++This VI is used to get rid of transparency within a shape where it actually should be filled with white.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Grayscale Value
+|image:lv_icon.lvlib_Get_Grayscale_Value.vi.png[lv_icon.lvlib:Get Grayscale Value.vi]
+|+++Determine the gray scale value of a color.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Image Data
+|image:lv_icon.lvlib_Get_Image_Data.vi.png[lv_icon.lvlib:Get Image Data.vi]
+|+++Returns the Image Data Cluster.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get LV Glyph Path
+|image:lv_icon.lvlib_Get_LV_Glyph_Path.vi.png[lv_icon.lvlib:Get LV Glyph Path.vi]
+|+++Get the path to the palettes for Glyphs and Templates.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get SubPicture Coordinate
+|image:lv_icon.lvlib_Get_SubPicture_Coordinate.vi.png[lv_icon.lvlib:Get SubPicture Coordinate.vi]
+|+++Get sub-coordinates to the pixel.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get SubPicture Coordinates
+|image:lv_icon.lvlib_Get_SubPicture_Coordinates.vi.png[lv_icon.lvlib:Get SubPicture Coordinates.vi]
+|+++Get multiple sub-picture coordinates.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get_VI_Icon
+|image:lv_icon.lvlib_Get_VI_Icon.vi.png[lv_icon.lvlib:Get_VI_Icon.vi]
+|+++Get the LabVIEW Icon Data based on the inputs.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Join Layers
+|image:lv_icon.lvlib_Join_Layers.vi.png[lv_icon.lvlib:Join Layers.vi]
+|+++Joins the Template, Text and User Layers in the right order.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|LabVIEW Fonts
+|image:lv_icon.lvlib_LabVIEW_Fonts.vi.png[lv_icon.lvlib:LabVIEW Fonts.vi]
+|+++List of all LabVIEW Fonts.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Magic Transparent Color Constant
+|image:lv_icon.lvlib_Magic_Transparent_Color_Constant.vi.png[lv_icon.lvlib:Magic Transparent Color Constant.vi]
+|+++This is the magic transparent color constant of the Icon Editor.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Remove Duplicates from Color Array
+|image:lv_icon.lvlib_Remove_Duplicates_from_Color_Array.vi.png[lv_icon.lvlib:Remove Duplicates from Color Array.vi]
+|+++Removes duplicates from a color array. That usually happens when the Fill Algorithm visits the same pixel multiple times.s+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Replace Color
+|image:lv_icon.lvlib_Replace_Color.vi.png[lv_icon.lvlib:Replace Color.vi]
+|+++Fill all neightbouring pixels with a certain color based on the incoming start coordinates.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Restore original Coordinates
+|image:lv_icon.lvlib_Restore_original_Coordinates.vi.png[lv_icon.lvlib:Restore original Coordinates.vi]
+|+++Restore the original coordinates after messing with the Image Data.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Return MutationCode Folder
+|image:lv_icon.lvlib_Return_MutationCode_Folder.vi.png[lv_icon.lvlib:Return MutationCode Folder.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Rotate Flip Image
+|image:lv_icon.lvlib_Rotate_Flip_Image.vi.png[lv_icon.lvlib:Rotate Flip Image.vi]
+|+++Rotate or Flip the glyph.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Serialize Icon Data
+|image:lv_icon.lvlib_Serialize_Icon_Data.vi.png[lv_icon.lvlib:Serialize Icon Data.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Text
+|image:lv_icon.lvlib_Text.vi.png[lv_icon.lvlib:Text.vi]
+|+++Add text to a given glyph.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Unflatten Load & Unload
+|image:lv_icon.lvlib_Unflatten_Load_&_Unload.vi.png[lv_icon.lvlib:Unflatten Load & Unload.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Read Icon Data from Library
+|image:lv_icon.lvlib_Read_Icon_Data_from_Library.vi.png[lv_icon.lvlib:Read Icon Data from Library.vi]
+|+++Read LabVIEW Icon Data from a Library.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Read Icon Data from VI
+|image:lv_icon.lvlib_Read_Icon_Data_from_VI.vi.png[lv_icon.lvlib:Read Icon Data from VI.vi]
+|+++Read LabVIEW Icon Data from a VI.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Remove Icon Data from VI
+|image:lv_icon.lvlib_Remove_Icon_Data_from_VI.vi.png[lv_icon.lvlib:Remove Icon Data from VI.vi]
+|+++Remove the LabVIEW Icon Data from a VI.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Write Icon Data to Library
+|image:lv_icon.lvlib_Write_Icon_Data_to_Library.vi.png[lv_icon.lvlib:Write Icon Data to Library.vi]
+|+++Set the LabVIEW Icon Data of a Library.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Write Icon Data to VI
+|image:lv_icon.lvlib_Write_Icon_Data_to_VI.vi.png[lv_icon.lvlib:Write Icon Data to VI.vi]
+|+++Set the LabVIEW Icon Data of a VI.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|lv_icon
+|image:lv_icon.lvlib_lv_icon.vi.png[lv_icon.lvlib:lv_icon.vi]
+|+++<p>Display this dialog box in one of the following ways:</p>+++
+
++++<ul>+++
++++<li>Double-click the <a href="nihelplauncher://docs/csh?context=lvcore_lvconcepts_using_icons">icon</a> in the upper right corner of the front panel window, block diagram window, or <a href="nihelplauncher://docs/csh?context=lvcore_lvconcepts_custom_cont_ind_type">Control Editor</a> window.</li>+++
++++<li>Right-click the icon in the upper right corner of the front panel window, block diagram window, or <strong>Control Editor</strong> window and select <strong>Edit Icon</strong> from the shortcut menu.</li>+++
++++<li>Select  <strong>File<span class="U+187">>></span>VI Properties</strong> or <strong>File<span class="U+187">>></span>Control Properties</strong> to display the <a href="nihelplauncher://docs/csh?context=lvcore_lvdialog_vi_properties_dialog_box">VI Properties</a> dialog box or <strong>Control Properties</strong> dialog box, respectively. Then select <strong>General</strong> from the <strong>Category</strong> pull-down menu and click the <strong>Edit Icon</strong> button.</li>+++
++++<li>Right-click a project library, statechart, class, or XControl item in the <a href="nihelplauncher://docs/csh?context=lvcore_lvconcepts_using_labview_projects">Project Explorer</a> window and select <strong> Properties</strong> from the shortcut menu to display the corresponding <strong>Properties</strong> dialog box. Then click the <strong>Edit</strong> button on the <strong>General Settings</strong> page.</li>+++
++++</ul>+++
+
++++<p>Use this dialog box to <a href="nihelplauncher://docs/csh?context=lvcore_lvhowto_creating_icons">create and edit icons</a>.</p>+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined

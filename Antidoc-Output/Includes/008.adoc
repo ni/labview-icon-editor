@@ -1,0 +1,55 @@
+== NI_Multibyte Utilities.lvlib
+
+*Responsibility:*
+No description found (add content in lvlib description)
+
+*Version:* 1.0.0.0
+
+.Functions (non private scope only)
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|Get Next Character
+|image:NI_Multibyte_Utilities.lvlib_Get_Next_Character.vi.png[NI_Multibyte Utilities.lvlib:Get Next Character.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Is Name Multiplatform_Allow Multibyte
+|image:NI_Multibyte_Utilities.lvlib_Is_Name_Multiplatform_Allow_Multibyte.vi.png[NI_Multibyte Utilities.lvlib:Is Name Multiplatform_Allow Multibyte.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Remove Multibyte Characters
+|image:NI_Multibyte_Utilities.lvlib_Remove_Multibyte_Characters.vi.png[NI_Multibyte Utilities.lvlib:Remove Multibyte Characters.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Replace Specified Characters From Multibyte Array
+|image:NI_Multibyte_Utilities.lvlib_Replace_Specified_Characters_From_Multibyte_Array.vi.png[NI_Multibyte Utilities.lvlib:Replace Specified Characters From Multibyte Array.vi]
+|+++Replace any of the problem multibyte characters found in the multibyte character array with the replacement character (default is hyphen).+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|To Multibyte Char Array
+|image:NI_Multibyte_Utilities.lvlib_To_Multibyte_Char_Array.vi.png[NI_Multibyte Utilities.lvlib:To Multibyte Char Array.vi]
+|+++Given a string, return an array of strings where each array element represents one character in the original string. These strings may be multiple bytes long depending upon the character set definition of the current operating system.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined
