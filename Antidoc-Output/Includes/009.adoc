@@ -1,0 +1,66 @@
+== NI_PackedLibraryUtility.lvlib
+
+*Responsibility:*
+No description found (add content in lvlib description)
+
+*Version:* 1.0.0.0
+
+.Functions (non private scope only)
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|Enable Caching
+|image:NI_PackedLibraryUtility.lvlib_Enable_Caching.vi.png[NI_PackedLibraryUtility.lvlib:Enable Caching.vi]
+|+++Use this VI to enable or disable packed library caching.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Exported File List
+|image:NI_PackedLibraryUtility.lvlib_Get_Exported_File_List.vi.png[NI_PackedLibraryUtility.lvlib:Get Exported File List.vi]
+|+++Returns the qualified names and paths of the exported files in a packed project library.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Exported File Path
+|image:NI_PackedLibraryUtility.lvlib_Get_Exported_File_Path.vi.png[NI_PackedLibraryUtility.lvlib:Get Exported File Path.vi]
+|+++Returns the path of an exported file in a packed project library.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Guid String
+|image:NI_PackedLibraryUtility.lvlib_Get_Guid_String.vi.png[NI_PackedLibraryUtility.lvlib:Get Guid String.vi]
+|+++Returns the path to the LabVIEW project (.lvproj) file this packed library was built from.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Source Project Path
+|image:NI_PackedLibraryUtility.lvlib_Get_Source_Project_Path.vi.png[NI_PackedLibraryUtility.lvlib:Get Source Project Path.vi]
+|+++Returns the path to the LabVIEW project (.lvproj) file this packed library was built from.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Packed Library Path
+|image:NI_PackedLibraryUtility.lvlib_Packed_Library_Path.vi.png[NI_PackedLibraryUtility.lvlib:Packed Library Path.vi]
+|+++Returns the path to a packed project library for the VI you specify in <B>vi reference</B>.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined

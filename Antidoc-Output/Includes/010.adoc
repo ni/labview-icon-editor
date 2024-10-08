@@ -1,0 +1,49 @@
+== NI_Unzip.lvlib
+
+*Responsibility:*
+No description found (add content in lvlib description)
+
+*Version:* 1.0.0.0
+
+.Functions
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|Unzip
+|image:NI_Unzip.lvlib_Unzip.vi.png[NI_Unzip.lvlib:Unzip.vi]
+|+++Unzips the contents of <B>Zip file</B> to the <B>Target directory</B>. Set <B>Preview only?</B> to TRUE to preview the list of files in <B>Zip file</B> before you unzip the zip file. This VI cannot unzip a zip file that is password protected.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Close unZip File
+|image:NI_Unzip.lvlib_Close_unZip_File.vi.png[NI_Unzip.lvlib:Close unZip File.vi]
+|+++Closes the zip file <B>zip file in</B> specifies.+++
+
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Open unZip File
+|image:NI_Unzip.lvlib_Open_unZip_File.vi.png[NI_Unzip.lvlib:Open unZip File.vi]
+|+++Creates a new empty zip file in the path that <B>target</B> specifies. The new file overwrites an existing file or produces a confirmation dialog based on the value of the <B>confirm overwrite?</B> control.+++
+
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Set Unzip File Date Time
+|image:NI_Unzip.lvlib_Set_Unzip_File_Date_Time.vi.png[NI_Unzip.lvlib:Set Unzip File Date Time.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community | image:scope-private.png[] -> Private
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined

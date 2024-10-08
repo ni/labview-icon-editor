@@ -1,0 +1,117 @@
+== Text-Based VI Icon.lvlib
+
+*Responsibility:*
+No description found (add content in lvlib description)
+
+*Version:* 1.0.0.0
+
+.Functions
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|Calculate Number of Text Rows
+|image:Text_Based_VI_Icon.lvlib_Calculate_Number_of_Text_Rows.vi.png[Text-Based VI Icon.lvlib:Calculate Number of Text Rows.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Does the Text Fit
+|image:Text_Based_VI_Icon.lvlib_Does_the_Text_Fit.vi.png[Text-Based VI Icon.lvlib:Does the Text Fit.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Filter Words
+|image:Text_Based_VI_Icon.lvlib_Filter_Words.vi.png[Text-Based VI Icon.lvlib:Filter Words.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Generate Non Text Layer(s)
+|image:Text_Based_VI_Icon.lvlib_Generate_Non_Text_Layer(s).vi.png[Text-Based VI Icon.lvlib:Generate Non Text Layer(s).vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Generate Pretty Icon Text Layer
+|image:Text_Based_VI_Icon.lvlib_Generate_Pretty_Icon_Text_Layer.vi.png[Text-Based VI Icon.lvlib:Generate Pretty Icon Text Layer.vi]
+|+++Generating the LV Icon Text Layer requires the Text cluster.+++
++++In addition to the Text, it is possible to specify the visual appearance of the Text as well as a default Template Layer glyph.+++
+
++++The default value for the visual appearance is:+++
++++Font: Small Fonts+++
++++Alignment: Center+++
++++Size: 8+++
++++Center text vertically: TRUE+++
++++Capitalize text: TRUE+++
++++Color of all four lines: Black+++
+
++++The default value of the Template layer is:+++
++++Size: 32 x 32+++
++++Border Color: Black+++
++++Background Color: White+++
+
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Qualify Library Icon Core
+|image:Text_Based_VI_Icon.lvlib_Qualify_Library_Icon_Core.vi.png[Text-Based VI Icon.lvlib:Qualify Library Icon Core.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Read 2D Strings From Config
+|image:Text_Based_VI_Icon.lvlib_Read_2D_Strings_From_Config.vi.png[Text-Based VI Icon.lvlib:Read 2D Strings From Config.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Split First and Other Strings
+|image:Text_Based_VI_Icon.lvlib_Split_First_and_Other_Strings.vi.png[Text-Based VI Icon.lvlib:Split First and Other Strings.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Split Text Into Words
+|image:Text_Based_VI_Icon.lvlib_Split_Text_Into_Words.vi.png[Text-Based VI Icon.lvlib:Split Text Into Words.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Adjust Text to Fit Rectangle
+|image:Text_Based_VI_Icon.lvlib_Adjust_Text_to_Fit_Rectangle.vi.png[Text-Based VI Icon.lvlib:Adjust Text to Fit Rectangle.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Set Icon
+|image:Text_Based_VI_Icon.lvlib_Set_Icon.vi.png[Text-Based VI Icon.lvlib:Set Icon.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Read 1D Strings From Config
+|image:Text_Based_VI_Icon.lvlib_Read_1D_Strings_From_Config.vi.png[Text-Based VI Icon.lvlib:Read 1D Strings From Config.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community | image:scope-private.png[] -> Private
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined

@@ -1,0 +1,235 @@
+== Classes overview
+
+This project contains 9 classes and 0 interface.
+
+.Classes list
+[cols="", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Classes |Interfaces
+
+|<<Ants.lvclass>>
+|
+
+|<<FakedArray.lvclass>>
+|
+
+|<<Glyph.lvclass>>
+|
+
+|<<Settings.lvclass>>
+|
+
+|<<Tools Paint.lvclass>>
+|
+
+|<<Icon.lvclass>>
+|
+
+|<<Icon Framework.lvclass>>
+|
+
+|<<Layer.lvclass>>
+|
+
+|<<Load & Unload.lvclass>>
+|
+|===
+
+[plantuml, format="svg", align="center"]
+....
+@startuml
+set namespaceSeparator :
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassBorderColor #555555
+skinparam ClassFontColor #000000
+skinparam ClassHeaderBackgroundColor #808080
+
+skinparam top to bottom direction
+class "Ants" {
+{field} -Delay TL (ms) : U32
+{field} -Delay Restart TL (ms) : U32
+{field} -Notifier : NoType
+{field} -Ants Line : Array of U8
+{field} -Picture : kLVObjPicture
+{static} {method} +RunningAnts()
+{static} {method} +InsideBoundaries()
+{static} {method} +FireAntsEvent()
+{static} {method} +Ants Initialization()
+{method} +GET_DelayRestartTL()
+{method} +GET_DelayTL()
+{method} +GET_Notifier()
+{method} +GET_AntsLine()
+{method} +GET_Picture()
+
+}
+
+
+class "FakedArray" {
+{field} -Pointer Absolute Row : I32
+{field} -Pointer Absolute Col : I32
+{field} -Pointer Absolute : I32
+{field} -Highlight Color : U32
+{field} -Cluster Refnum : kLVObjCluster
+{field} -Minimum # of selected Elements : U32
+{field} -Maximum # of selected Elements : U32
+{field} -# Rows : I32
+{field} -# Cols : I32
+{field} -Data : Variant
+{field} -Scrollbar Position : I32
+{field} -ToMoreSpecific : Enum U16
+{field} -Active Data : Variant
+{field} -Old CTL Refnum : kLVObjControl
+{field} -Layer.lvclass : LV Class
+{static} {method} +ResetColor()
+{static} {method} +SetActiveData_LoadedFromVI()
+{static} {method} +Initialize FakedArray()
+{static} {method} +ClusterRef_2_DisplayTemplatesRef()
+{static} {method} +ArrowUpDown()
+{static} {method} +Process Template Graphics()
+{static} {method} +GetReference()
+{static} {method} +UpdateScrollbar()
+{static} {method} +Get Pointer From Label()
+{static} {method} +Templates_Set Active Data BG Color()
+{static} {method} +Layer_Set Active Data BG Color()
+{static} {method} +Get Cluster Label Number()
+{static} {method} +Layer_Get Active Clusters()
+{method} +Ensure Visible()
+{method} +UpdateSelectedData()
+{method} +SetActiveGraphic()
+{method} +UpdateVisibleData()
+{method} +SET_Data()
+{method} +SET_ScrollbarPosition()
+{method} +SET_ActiveData()
+{method} +GET_SupportData()
+{method} +GET_Icon()
+{method} +GET_ActiveData()
+{method} +GET_Scrollbar Position()
+{method} +GET_AllData()
+{method} +GET_RowsCols()
+
+}
+"FakedArray" *-- "Layer"
+
+
+class "Glyph" {
+{field} -Glyphs [] : Array of Cluster
+{field} -Active Glyph : Cluster
+{static} {method} +SearchGlyphs()
+{static} {method} +FilterGlyphs()
+{static} {method} +Filter Graphics by Folder Name()
+{static} {method} +Glyphs Initialization()
+{method} +SET_ActiveGlyph()
+{method} +SET_Glyphs []()
+{method} +GET_ActiveGlyph()
+{method} +GET_Glyphs []()
+
+}
+
+
+class "Settings" {
+{field} -Merge user layers on commit : Boolean
+{field} -3rd party Templates : Cluster
+{field} -Text : Cluster
+{field} -Show Layer Tab? : Boolean
+{field} -Show Terminals? : Boolean
+{static} {method} +Initialize_IconEditorSettings_Tree()
+{static} {method} +GET_Save_Layers_with_VI()
+{static} {method} +Settings Initialization()
+{method} +GET_3rd party Templates()
+{method} +GET_Text()
+{method} +GET_Show()
+{method} +SET_Text()
+{method} +SET_SaveLayersWithVI()
+{method} +SET_Show()
+{method} +SET_3rdPartyTemplates()
+
+}
+
+
+class "Tools Paint" {
+{field} -Active Tool : Enum U32
+{field} -Body Text Spec : Cluster
+{static} {method} +Selection()
+{static} {method} +Move()
+{static} {method} +Dropper()
+{static} {method} +Eraser()
+{static} {method} +Fill()
+{static} {method} +DoubleClick()
+{static} {method} +LayerGraphicManipulation()
+{method} +Pen()
+{method} +Line()
+{method} +Circle()
+{method} +Rectangle()
+{method} +SET_ActiveTool()
+{method} +GET_ActiveTool()
+
+}
+
+
+class "Icon" {
+{field} -User Layer : Array of LV Class
+{field} -Active Layer : I32
+{field} -Layer Locked? : Boolean
+{field} -Icon Text : LV Class
+{field} -Template : LV Class
+{static} {method} +CreateNewLayer()
+{static} {method} +DeleteLayer()
+{static} {method} +Apply Body Text()
+{method} +Get_Active User Layer()
+{method} +GET_All User Layers()
+{method} +GET_UserLayers()
+{method} +GET_LayersLocked_ActiveLayer()
+{method} +GET_IconTextClass()
+{method} +GET_TemplateClass()
+{method} +SET_UserLayers()
+{method} +SET_ActiveLayer()
+{method} +SET_Locked_ActiveLayer()
+{method} +SET_IconTextClass()
+{method} +SET_TemplateClass()
+
+}
+"Icon" *-- "Icon Framework"
+
+"Icon" o-- "Layer"
+
+class "Icon Framework" {
+{field} -Body Text : Cluster
+{field} -Name : String
+{field} -Path : Path
+{static} {method} +SET_Path()
+{static} {method} +GET_Path()
+{static} {method} +CreateBodyText()
+{static} {method} +BodyTextCoordinates()
+{method} +SET_BodyText()
+{method} +GET_BodyText()
+
+}
+"Layer" <|-- "Icon Framework"
+
+
+class "Layer" {
+{field} -Origin : Cluster
+{field} -Data : Cluster
+{field} -Type : Enum U16
+{static} {method} +UpdateLayerData()
+{static} {method} +Substitute Layer()
+{method} +GET_LayerData()
+{method} +GET_Origin()
+{method} +SET_Origin()
+{method} +SET_LayerType()
+{method} +SET_Layer_Data()
+
+}
+
+
+class "Load & Unload" {
+{field} -Data : Cluster
+{method} +SET Data()
+{method} +GET Data()
+
+}
+
+
+
+@enduml
+....
