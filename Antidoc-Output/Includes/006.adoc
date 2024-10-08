@@ -1,0 +1,116 @@
+== NI_FileType.lvlib
+
+*Responsibility:*
+No description found (add content in lvlib description)
+
+*Version:* 1.0.0.0
+
+.Functions (non private scope only)
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|Can File be in LLB
+|image:NI_FileType.lvlib_Can_File_be_in_LLB.vi.png[NI_FileType.lvlib:Can File be in LLB.vi]
+|+++Returns TRUE if this file could be copied into an LLB.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get File Type
+|image:NI_FileType.lvlib_Get_File_Type.vi.png[NI_FileType.lvlib:Get File Type.vi]
+|+++This VI returns the file type of the file specified in "path". It does not load LabVIEW types (ex. VIs) into memory to determine this information. This VI works for LabVIEW types inside of LLBs.+++
+
++++NOTE: This VI will not run in a built executable. An error 53 is returned.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get File Type Icon Image
+|image:NI_FileType.lvlib_Get_File_Type_Icon_Image.vi.png[NI_FileType.lvlib:Get File Type Icon Image.vi]
+|+++Returns TRUE if this file could be loaded with the Open VI Reference function. It includes VIs, Polymorphic VIs, Controls, Templates, and Globals.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Is File a LabVIEW document
+|image:NI_FileType.lvlib_Is_File_a_LabVIEW_document.vi.png[NI_FileType.lvlib:Is File a LabVIEW document.vi]
+|+++Returns TRUE if this file could be opened by LabVIEW. It uses the same criteria as the File >> Open dialog.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Is File a type of library
+|image:NI_FileType.lvlib_Is_File_a_type_of_library.vi.png[NI_FileType.lvlib:Is File a type of library.vi]
+|+++Returns TRUE if this file is a type of library, such as Libraries, XControls, XNodes, and LVClasses.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Is File VI
+|image:NI_FileType.lvlib_Is_File_VI.vi.png[NI_FileType.lvlib:Is File VI.vi]
+|+++Returns TRUE if this file could be loaded with the Open VI Reference function. It includes VIs, Polymorphic VIs, Controls, Templates, and Globals.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Is File an LLB
+|image:NI_FileType.lvlib_Is_File_an_LLB.vi.png[NI_FileType.lvlib:Is File an LLB.vi]
+|+++Returns TRUE if this file is an LLB.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Convert filetype to Is VI
+|image:NI_FileType.lvlib_Convert_filetype_to_Is_VI.vi.png[NI_FileType.lvlib:Convert filetype to Is VI.vi]
+|+++Returns TRUE if this file type could be loaded with the Open VI Reference function. It includes VIs, Polymorphic VIs, Controls, Templates, and Globals.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Convert filetype to Icon Image
+|image:NI_FileType.lvlib_Convert_filetype_to_Icon_Image.vi.png[NI_FileType.lvlib:Convert filetype to Icon Image.vi]
+|+++Returns TRUE if this file type could be loaded with the Open VI Reference function. It includes VIs, Polymorphic VIs, Controls, Templates, and Globals.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Convert filetype to Can be in LLB
+|image:NI_FileType.lvlib_Convert_filetype_to_Can_be_in_LLB.vi.png[NI_FileType.lvlib:Convert filetype to Can be in LLB.vi]
+|+++Returns TRUE if this file type could be copied into an LLB.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Convert filetype to Is library type
+|image:NI_FileType.lvlib_Convert_filetype_to_Is_library_type.vi.png[NI_FileType.lvlib:Convert filetype to Is library type.vi]
+|+++Returns TRUE if this file type is a type of library, such as Libraries, XControls, XNodes, and LVClasses.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Convert filetype to Is LabVIEW document
+|image:NI_FileType.lvlib_Convert_filetype_to_Is_LabVIEW_document.vi.png[NI_FileType.lvlib:Convert filetype to Is LabVIEW document.vi]
+|+++Returns TRUE if this file type could be opened by LabVIEW. It uses the same criteria as the File >> Open dialog.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined

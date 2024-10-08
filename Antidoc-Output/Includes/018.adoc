@@ -1,0 +1,170 @@
+== Icon.lvclass
+
+*Responsibility:*
+No description found (add content in lvclass description)
+
+*Version:* 1.0.0.9
+
+[plantuml, format="svg", align="center"]
+....
+@startuml
+set namespaceSeparator :
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassBorderColor #555555
+skinparam ClassFontColor #000000
+skinparam ClassHeaderBackgroundColor #808080
+
+skinparam top to bottom direction
+class "Icon" {
+{field} -User Layer : Array of LV Class
+{field} -Active Layer : I32
+{field} -Layer Locked? : Boolean
+{field} -Icon Text : LV Class
+{field} -Template : LV Class
+{static} {method} +CreateNewLayer()
+{static} {method} +DeleteLayer()
+{static} {method} +Apply Body Text()
+{method} +Get_Active User Layer()
+{method} +GET_All User Layers()
+{method} +GET_UserLayers()
+{method} +GET_LayersLocked_ActiveLayer()
+{method} +GET_IconTextClass()
+{method} +GET_TemplateClass()
+{method} +SET_UserLayers()
+{method} +SET_ActiveLayer()
+{method} +SET_Locked_ActiveLayer()
+{method} +SET_IconTextClass()
+{method} +SET_TemplateClass()
+
+}
+"Icon" *-- "Icon Framework"
+
+"Icon" o-- "Layer"
+
+
+@enduml
+....
+
+.Functions (non private scope only)
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|Get_Active User Layer
+|image:Icon.lvclass_Get_Active_User_Layer.vi.png[Icon.lvclass:Get_Active User Layer.vi]
+|+++Return the active User Layer+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_All User Layers
+|image:Icon.lvclass_GET_All_User_Layers.vi.png[Icon.lvclass:GET_All User Layers.vi]
+|+++Return all User Layers.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_UserLayers
+|image:Icon.lvclass_GET_UserLayers.vi.png[Icon.lvclass:GET_UserLayers.vi]
+|+++Returns all User Layers, as well as the active User Layer, its index and whether or not it is locked.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_LayersLocked_ActiveLayer
+|image:Icon.lvclass_GET_LayersLocked_ActiveLayer.vi.png[Icon.lvclass:GET_LayersLocked_ActiveLayer.vi]
+|+++Returns the active User Layer and whether or not it is locked.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_IconTextClass
+|image:Icon.lvclass_GET_IconTextClass.vi.png[Icon.lvclass:GET_IconTextClass.vi]
+|+++Returns the Text Layer.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_TemplateClass
+|image:Icon.lvclass_GET_TemplateClass.vi.png[Icon.lvclass:GET_TemplateClass.vi]
+|+++Returns the Template Layer.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_UserLayers
+|image:Icon.lvclass_SET_UserLayers.vi.png[Icon.lvclass:SET_UserLayers.vi]
+|+++Sets all User Layers.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_ActiveLayer
+|image:Icon.lvclass_SET_ActiveLayer.vi.png[Icon.lvclass:SET_ActiveLayer.vi]
+|+++Updates the currently active User Layer. Combine User Layers leaves the user the choice to merge all User Layers into one.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_Locked_ActiveLayer
+|image:Icon.lvclass_SET_Locked_ActiveLayer.vi.png[Icon.lvclass:SET_Locked_ActiveLayer.vi]
+|+++Specifies the active User Layer and wheter or not it is locked.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_IconTextClass
+|image:Icon.lvclass_SET_IconTextClass.vi.png[Icon.lvclass:SET_IconTextClass.vi]
+|+++Specifies the Text Layer class+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_TemplateClass
+|image:Icon.lvclass_SET_TemplateClass.vi.png[Icon.lvclass:SET_TemplateClass.vi]
+|+++Specifies the Template Layer class.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|CreateNewLayer
+|image:Icon.lvclass_CreateNewLayer.vi.png[Icon.lvclass:CreateNewLayer.vi]
+|+++Create a new User Layer+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|DeleteLayer
+|image:Icon.lvclass_DeleteLayer.vi.png[Icon.lvclass:DeleteLayer.vi]
+|+++Delete an existing User Layer+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Apply Body Text
+|image:Icon.lvclass_Apply_Body_Text.vi.png[Icon.lvclass:Apply Body Text.vi]
+|+++Updates the Text of the Text Layer.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined

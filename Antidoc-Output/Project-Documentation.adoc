@@ -1,0 +1,80 @@
+= LabVIEW VI Icon Editor
+Antidoc v2.0.5; Sergio Velderrain <sergio.velderrain@emerson.com>
+:doctype: book
+:toc: left
+:imagesdir: Images
+:sectnums: 
+:toclevels: 2
+:sectanchors: 
+:sectlinks: 
+:chapter-label: Section
+
+include::Includes/000.adoc[leveloffset=+0]
+
+== Libraries
+
+This section describes the libraries contained in the project.
+
+include::Includes/001.adoc[leveloffset=+1]
+
+include::Includes/002.adoc[leveloffset=+1]
+
+include::Includes/003.adoc[leveloffset=+1]
+
+include::Includes/004.adoc[leveloffset=+1]
+
+include::Includes/005.adoc[leveloffset=+1]
+
+include::Includes/006.adoc[leveloffset=+1]
+
+include::Includes/007.adoc[leveloffset=+1]
+
+include::Includes/008.adoc[leveloffset=+1]
+
+include::Includes/009.adoc[leveloffset=+1]
+
+include::Includes/010.adoc[leveloffset=+1]
+
+include::Includes/011.adoc[leveloffset=+1]
+
+== Classes
+
+This section describes the classes contained in the project.
+
+include::Includes/012.adoc[leveloffset=+1]
+
+include::Includes/013.adoc[leveloffset=+1]
+
+include::Includes/014.adoc[leveloffset=+1]
+
+include::Includes/015.adoc[leveloffset=+1]
+
+include::Includes/016.adoc[leveloffset=+1]
+
+include::Includes/017.adoc[leveloffset=+1]
+
+include::Includes/018.adoc[leveloffset=+1]
+
+include::Includes/019.adoc[leveloffset=+1]
+
+include::Includes/020.adoc[leveloffset=+1]
+
+include::Includes/021.adoc[leveloffset=+1]
+
+== Legal Information
+
+=== Document creation
+
+This document has been generated using the following tools.
+
+include::Includes/022.adoc[leveloffset=+2]
+
+include::Includes/023.adoc[leveloffset=+2]
+
+include::Includes/024.adoc[leveloffset=+2]
+
+=== Product used in the project
+
+Antidoc hasn't been able to detect third party products in the project.
+This is the author's responsibility to list any of the missing product used.
+

@@ -1,0 +1,319 @@
+== NI_LVConfig.lvlib
+
+*Responsibility:*
+No description found (add content in lvlib description)
+
+*Version:* 1.0.0.0
+
+.Functions
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|Close Config Data
+|image:NI_LVConfig.lvlib_Close_Config_Data.vi.png[NI_LVConfig.lvlib:Close Config Data.vi]
+|+++Writes data to the platform-independent configuration file identified by <B>refnum</B> and then closes the reference to that file.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Not A Config Data Refnum
+|image:NI_LVConfig.lvlib_Not_A_Config_Data_Refnum.vi.png[NI_LVConfig.lvlib:Not A Config Data Refnum.vi]
+|+++Determines whether a configuration data refnum is valid.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Open Config Data (compatibility)
+|image:NI_LVConfig.lvlib_Open_Config_Data_(compatibility).vi.png[NI_LVConfig.lvlib:Open Config Data (compatibility).vi]
+|+++The Open Config Data VI was rewritten with one new output in LabVIEW 2009 and later. Replace the Open Config Data (compatibility) VI with an Open Config Data VI from the Functions palette to use the new functionality.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Open Config Data
+|image:NI_LVConfig.lvlib_Open_Config_Data.vi.png[NI_LVConfig.lvlib:Open Config Data.vi]
+|+++Opens a reference to the configuration data found in a platform-independent configuration file.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Add Key
+|image:NI_LVConfig.lvlib_Add_Key.vi.png[NI_LVConfig.lvlib:Add Key.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Add Quotes
+|image:NI_LVConfig.lvlib_Add_Quotes.vi.png[NI_LVConfig.lvlib:Add Quotes.vi]
+|+++Adds quote marks (") around a string that contains spaces.+++
+
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Common Path to Specific Path
+|image:NI_LVConfig.lvlib_Common_Path_to_Specific_Path.vi.png[NI_LVConfig.lvlib:Common Path to Specific Path.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Config to String
+|image:NI_LVConfig.lvlib_Config_to_String.vi.png[NI_LVConfig.lvlib:Config to String.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Escape String
+|image:NI_LVConfig.lvlib_Escape_String.vi.png[NI_LVConfig.lvlib:Escape String.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get File Path
+|image:NI_LVConfig.lvlib_Get_File_Path.vi.png[NI_LVConfig.lvlib:Get File Path.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Key
+|image:NI_LVConfig.lvlib_Get_Key.vi.png[NI_LVConfig.lvlib:Get Key.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Section
+|image:NI_LVConfig.lvlib_Get_Section.vi.png[NI_LVConfig.lvlib:Get Section.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Load
+|image:NI_LVConfig.lvlib_Load.vi.png[NI_LVConfig.lvlib:Load.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|New Config to Queue
+|image:NI_LVConfig.lvlib_New_Config_to_Queue.vi.png[NI_LVConfig.lvlib:New Config to Queue.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Parse Config to Queue
+|image:NI_LVConfig.lvlib_Parse_Config_to_Queue.vi.png[NI_LVConfig.lvlib:Parse Config to Queue.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Parse Key Value Pair
+|image:NI_LVConfig.lvlib_Parse_Key_Value_Pair.vi.png[NI_LVConfig.lvlib:Parse Key Value Pair.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Read Value Without Comment
+|image:NI_LVConfig.lvlib_Read_Value_Without_Comment.vi.png[NI_LVConfig.lvlib:Read Value Without Comment.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Remove Quotes
+|image:NI_LVConfig.lvlib_Remove_Quotes.vi.png[NI_LVConfig.lvlib:Remove Quotes.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Save Config File
+|image:NI_LVConfig.lvlib_Save_Config_File.vi.png[NI_LVConfig.lvlib:Save Config File.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Specific Path to Common Path
+|image:NI_LVConfig.lvlib_Specific_Path_to_Common_Path.vi.png[NI_LVConfig.lvlib:Specific Path to Common Path.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|String to Config
+|image:NI_LVConfig.lvlib_String_to_Config.vi.png[NI_LVConfig.lvlib:String to Config.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Typecast Queue to Refnum
+|image:NI_LVConfig.lvlib_Typecast_Queue_to_Refnum.vi.png[NI_LVConfig.lvlib:Typecast Queue to Refnum.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Typecast Refnum to Queue
+|image:NI_LVConfig.lvlib_Typecast_Refnum_to_Queue.vi.png[NI_LVConfig.lvlib:Typecast Refnum to Queue.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Unescape String
+|image:NI_LVConfig.lvlib_Unescape_String.vi.png[NI_LVConfig.lvlib:Unescape String.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Key Names
+|image:NI_LVConfig.lvlib_Get_Key_Names.vi.png[NI_LVConfig.lvlib:Get Key Names.vi]
+|+++Gets the names of all keys in the specified section from the configuration data identified by <B>refnum</B>.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Section Names
+|image:NI_LVConfig.lvlib_Get_Section_Names.vi.png[NI_LVConfig.lvlib:Get Section Names.vi]
+|+++Gets the names of all sections from the configuration data identified by <B>refnum</B>.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Read Key (Boolean)
+|image:NI_LVConfig.lvlib_Read_Key_(Boolean).vi.png[NI_LVConfig.lvlib:Read Key (Boolean).vi]
+|+++Reads a value associated with a key in a specified section from the configuration data identified by <B>refnum</B>. If the key does not exist, the VI returns the default value. This VI supports multibyte characters in strings. Wire data to the <B>default value</B> input to determine the polymorphic instance to use or manually select the instance.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Read Key (Double)
+|image:NI_LVConfig.lvlib_Read_Key_(Double).vi.png[NI_LVConfig.lvlib:Read Key (Double).vi]
+|+++Reads a value associated with a key in a specified section from the configuration data identified by <B>refnum</B>. If the key does not exist, the VI returns the default value. This VI supports multibyte characters in strings. Wire data to the <B>default value</B> input to determine the polymorphic instance to use or manually select the instance.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Read Key (I32)
+|image:NI_LVConfig.lvlib_Read_Key_(I32).vi.png[NI_LVConfig.lvlib:Read Key (I32).vi]
+|+++Reads a value associated with a key in a specified section from the configuration data identified by <B>refnum</B>. If the key does not exist, the VI returns the default value. This VI supports multibyte characters in strings. Wire data to the <B>default value</B> input to determine the polymorphic instance to use or manually select the instance.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Read Key (Path)
+|image:NI_LVConfig.lvlib_Read_Key_(Path).vi.png[NI_LVConfig.lvlib:Read Key (Path).vi]
+|+++Reads a value associated with a key in a specified section from the configuration data identified by <B>refnum</B>. If the key does not exist, the VI returns the default value. This VI supports multibyte characters in strings. Wire data to the <B>default value</B> input to determine the polymorphic instance to use or manually select the instance.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Read Key (String)
+|image:NI_LVConfig.lvlib_Read_Key_(String).vi.png[NI_LVConfig.lvlib:Read Key (String).vi]
+|+++Reads a value associated with a key in a specified section from the configuration data identified by <B>refnum</B>. If the key does not exist, the VI returns the default value. This VI supports multibyte characters in strings. Wire data to the <B>default value</B> input to determine the polymorphic instance to use or manually select the instance.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Read Key (U32)
+|image:NI_LVConfig.lvlib_Read_Key_(U32).vi.png[NI_LVConfig.lvlib:Read Key (U32).vi]
+|+++Reads a value associated with a key in a specified section from the configuration data identified by <B>refnum</B>. If the key does not exist, the VI returns the default value. This VI supports multibyte characters in strings. Wire data to the <B>default value</B> input to determine the polymorphic instance to use or manually select the instance.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Remove Key
+|image:NI_LVConfig.lvlib_Remove_Key.vi.png[NI_LVConfig.lvlib:Remove Key.vi]
+|+++Removes a <B>key</B> in a specified section from the configuration data identified by <B>refnum</B>.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Remove Section
+|image:NI_LVConfig.lvlib_Remove_Section.vi.png[NI_LVConfig.lvlib:Remove Section.vi]
+|+++Removes a section from the configuration data identified by <B>refnum</B>.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Write Key (Boolean)
+|image:NI_LVConfig.lvlib_Write_Key_(Boolean).vi.png[NI_LVConfig.lvlib:Write Key (Boolean).vi]
+|+++Writes a value to a key in a specified section of the configuration data identified by <B>refnum</B>. This VI modifies data in memory. To write data to disk, use the Close Config Data VI. Wire data to the <B>value</B> input to determine the polymorphic instance to use or manually select the instance.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Write Key (Double)
+|image:NI_LVConfig.lvlib_Write_Key_(Double).vi.png[NI_LVConfig.lvlib:Write Key (Double).vi]
+|+++Writes a value to a key in a specified section of the configuration data identified by <B>refnum</B>. This VI modifies data in memory. To write data to disk, use the Close Config Data VI. Wire data to the <B>value</B> input to determine the polymorphic instance to use or manually select the instance.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Write Key (I32)
+|image:NI_LVConfig.lvlib_Write_Key_(I32).vi.png[NI_LVConfig.lvlib:Write Key (I32).vi]
+|+++Writes a value to a key in a specified section of the configuration data identified by <B>refnum</B>. This VI modifies data in memory. To write data to disk, use the Close Config Data VI. Wire data to the <B>value</B> input to determine the polymorphic instance to use or manually select the instance.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Write Key (Path)
+|image:NI_LVConfig.lvlib_Write_Key_(Path).vi.png[NI_LVConfig.lvlib:Write Key (Path).vi]
+|+++Writes a value to a key in a specified section of the configuration data identified by <B>refnum</B>. This VI modifies data in memory. To write data to disk, use the Close Config Data VI. Wire data to the <B>value</B> input to determine the polymorphic instance to use or manually select the instance.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Write Key (String)
+|image:NI_LVConfig.lvlib_Write_Key_(String).vi.png[NI_LVConfig.lvlib:Write Key (String).vi]
+|+++Writes a value to a key in a specified section of the configuration data identified by <B>refnum</B>. This VI modifies data in memory. To write data to disk, use the Close Config Data VI. Wire data to the <B>value</B> input to determine the polymorphic instance to use or manually select the instance.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Write Key (U32)
+|image:NI_LVConfig.lvlib_Write_Key_(U32).vi.png[NI_LVConfig.lvlib:Write Key (U32).vi]
+|+++Writes a value to a key in a specified section of the configuration data identified by <B>refnum</B>. This VI modifies data in memory. To write data to disk, use the Close Config Data VI. Wire data to the <B>value</B> input to determine the polymorphic instance to use or manually select the instance.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community | image:scope-private.png[] -> Private
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined

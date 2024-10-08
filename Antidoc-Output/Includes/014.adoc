@@ -1,0 +1,261 @@
+== FakedArray.lvclass
+
+*Responsibility:*
+No description found (add content in lvclass description)
+
+*Version:* 1.0.0.5
+
+[plantuml, format="svg", align="center"]
+....
+@startuml
+set namespaceSeparator :
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassBorderColor #555555
+skinparam ClassFontColor #000000
+skinparam ClassHeaderBackgroundColor #808080
+
+skinparam top to bottom direction
+class "FakedArray" {
+{field} -Pointer Absolute Row : I32
+{field} -Pointer Absolute Col : I32
+{field} -Pointer Absolute : I32
+{field} -Highlight Color : U32
+{field} -Cluster Refnum : kLVObjCluster
+{field} -Minimum # of selected Elements : U32
+{field} -Maximum # of selected Elements : U32
+{field} -# Rows : I32
+{field} -# Cols : I32
+{field} -Data : Variant
+{field} -Scrollbar Position : I32
+{field} -ToMoreSpecific : Enum U16
+{field} -Active Data : Variant
+{field} -Old CTL Refnum : kLVObjControl
+{field} -Layer.lvclass : LV Class
+{static} {method} +ResetColor()
+{static} {method} +SetActiveData_LoadedFromVI()
+{static} {method} +Initialize FakedArray()
+{static} {method} +ClusterRef_2_DisplayTemplatesRef()
+{static} {method} +ArrowUpDown()
+{static} {method} +Process Template Graphics()
+{static} {method} +GetReference()
+{static} {method} +UpdateScrollbar()
+{static} {method} +Get Pointer From Label()
+{static} {method} +Templates_Set Active Data BG Color()
+{static} {method} +Layer_Set Active Data BG Color()
+{static} {method} +Get Cluster Label Number()
+{static} {method} +Layer_Get Active Clusters()
+{method} +Ensure Visible()
+{method} +UpdateSelectedData()
+{method} +SetActiveGraphic()
+{method} +UpdateVisibleData()
+{method} +SET_Data()
+{method} +SET_ScrollbarPosition()
+{method} +SET_ActiveData()
+{method} +GET_SupportData()
+{method} +GET_Icon()
+{method} +GET_ActiveData()
+{method} +GET_Scrollbar Position()
+{method} +GET_AllData()
+{method} +GET_RowsCols()
+
+}
+"FakedArray" *-- "Layer"
+
+
+
+@enduml
+....
+
+.Functions (non private scope only)
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|ResetColor
+|image:FakedArray.lvclass_ResetColor.vi.png[FakedArray.lvclass:ResetColor.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SetActiveData_LoadedFromVI
+|image:FakedArray.lvclass_SetActiveData_LoadedFromVI.vi.png[FakedArray.lvclass:SetActiveData_LoadedFromVI.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Initialize FakedArray
+|image:FakedArray.lvclass_Initialize_FakedArray.vi.png[FakedArray.lvclass:Initialize FakedArray.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|ClusterRef_2_DisplayTemplatesRef
+|image:FakedArray.lvclass_ClusterRef_2_DisplayTemplatesRef.vi.png[FakedArray.lvclass:ClusterRef_2_DisplayTemplatesRef.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Ensure Visible
+|image:FakedArray.lvclass_Ensure_Visible.vi.png[FakedArray.lvclass:Ensure Visible.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|ArrowUpDown
+|image:FakedArray.lvclass_ArrowUpDown.vi.png[FakedArray.lvclass:ArrowUpDown.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Process Template Graphics
+|image:FakedArray.lvclass_Process_Template_Graphics.vi.png[FakedArray.lvclass:Process Template Graphics.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|UpdateSelectedData
+|image:FakedArray.lvclass_UpdateSelectedData.vi.png[FakedArray.lvclass:UpdateSelectedData.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SetActiveGraphic
+|image:FakedArray.lvclass_SetActiveGraphic.vi.png[FakedArray.lvclass:SetActiveGraphic.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|UpdateVisibleData
+|image:FakedArray.lvclass_UpdateVisibleData.vi.png[FakedArray.lvclass:UpdateVisibleData.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GetReference
+|image:FakedArray.lvclass_GetReference.vi.png[FakedArray.lvclass:GetReference.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|UpdateScrollbar
+|image:FakedArray.lvclass_UpdateScrollbar.vi.png[FakedArray.lvclass:UpdateScrollbar.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_Data
+|image:FakedArray.lvclass_SET_Data.vi.png[FakedArray.lvclass:SET_Data.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_ScrollbarPosition
+|image:FakedArray.lvclass_SET_ScrollbarPosition.vi.png[FakedArray.lvclass:SET_ScrollbarPosition.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_ActiveData
+|image:FakedArray.lvclass_SET_ActiveData.vi.png[FakedArray.lvclass:SET_ActiveData.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_SupportData
+|image:FakedArray.lvclass_GET_SupportData.vi.png[FakedArray.lvclass:GET_SupportData.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_Icon
+|image:FakedArray.lvclass_GET_Icon.vi.png[FakedArray.lvclass:GET_Icon.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_ActiveData
+|image:FakedArray.lvclass_GET_ActiveData.vi.png[FakedArray.lvclass:GET_ActiveData.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_Scrollbar Position
+|image:FakedArray.lvclass_GET_Scrollbar_Position.vi.png[FakedArray.lvclass:GET_Scrollbar Position.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Pointer From Label
+|image:FakedArray.lvclass_Get_Pointer_From_Label.vi.png[FakedArray.lvclass:Get Pointer From Label.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_AllData
+|image:FakedArray.lvclass_GET_AllData.vi.png[FakedArray.lvclass:GET_AllData.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_RowsCols
+|image:FakedArray.lvclass_GET_RowsCols.vi.png[FakedArray.lvclass:GET_RowsCols.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Templates_Set Active Data BG Color
+|image:FakedArray.lvclass_Templates_Set_Active_Data_BG_Color.vi.png[FakedArray.lvclass:Templates_Set Active Data BG Color.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Layer_Set Active Data BG Color
+|image:FakedArray.lvclass_Layer_Set_Active_Data_BG_Color.vi.png[FakedArray.lvclass:Layer_Set Active Data BG Color.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Cluster Label Number
+|image:FakedArray.lvclass_Get_Cluster_Label_Number.vi.png[FakedArray.lvclass:Get Cluster Label Number.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Layer_Get Active Clusters
+|image:FakedArray.lvclass_Layer_Get_Active_Clusters.vi.png[FakedArray.lvclass:Layer_Get Active Clusters.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined
