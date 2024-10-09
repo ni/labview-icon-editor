@@ -11,7 +11,7 @@
 		<Item Name="Text-Based VI Icon Unit Tests.lvlib" Type="Friended Library" URL="../../../../Tooling/Unit tests/Text-Based VI Icon/Text-Based VI Icon Unit Tests.lvlib"/>
 	</Item>
 	<Item Name="Community" Type="Folder">
-		<Property Name="NI.LibItem.Scope" Type="Int">1</Property>
+		<Property Name="NI.LibItem.Scope" Type="Int">4</Property>
 		<Item Name="Split Text Into Words.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/Set Text Icon/Split Text Into Words.vi"/>
 	</Item>
 	<Item Name="Private" Type="Folder">
