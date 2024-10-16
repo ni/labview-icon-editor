@@ -113,8 +113,8 @@
 						<Item Name="PixelValue.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Draw/PixelValue.vi"/>
 					</Item>
 					<Item Name="Font" Type="Folder">
-						<Item Name="Linux.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Font/Linux.vi"/>
-						<Item Name="Mac.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Font/Mac.vi"/>
+						<Item Name="Linux.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Font/Linux.vi"/>
+						<Item Name="Mac.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Font/Mac.vi"/>
 						<Item Name="Populate Font Control.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Font/Populate Font Control.vi"/>
 						<Item Name="Windows.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Font/Windows.vi"/>
 					</Item>
@@ -177,11 +177,11 @@
 						<Item Name="Value Change_Top or Bottom Layer.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Value Change_Top or Bottom Layer.vi"/>
 					</Item>
 					<Item Name="Key Down Up" Type="Folder">
-						<Item Name="Key Down Up Layers.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Key Down Up/Key Down Up Layers.vi"/>
+						<Item Name="Key Down Up Layers.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Key Down Up/Key Down Up Layers.vi"/>
 						<Item Name="KeyDown.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Key Down Up/KeyDown.vi"/>
 						<Item Name="KeyUp.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Key Down Up/KeyUp.vi"/>
 						<Item Name="Move Selected Layers.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Key Down Up/Move Selected Layers.vi"/>
-						<Item Name="Process Active Data Shift Key.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Key Down Up/Process Active Data Shift Key.vi"/>
+						<Item Name="Process Active Data Shift Key.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Key Down Up/Process Active Data Shift Key.vi"/>
 					</Item>
 					<Item Name="Layer" Type="Folder">
 						<Item Name="DeleteLayer.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Layer/DeleteLayer.vi"/>
@@ -518,7 +518,6 @@
 				<Item Name="TagReturnType.ctl" Type="VI" URL="/&lt;vilib&gt;/Utility/error.llb/TagReturnType.ctl"/>
 				<Item Name="Three Button Dialog CORE.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/error.llb/Three Button Dialog CORE.vi"/>
 				<Item Name="Three Button Dialog.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/error.llb/Three Button Dialog.vi"/>
-				<Item Name="Trim Whitespace One-Sided.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/error.llb/Trim Whitespace One-Sided.vi"/>
 				<Item Name="Trim Whitespace.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/error.llb/Trim Whitespace.vi"/>
 				<Item Name="Unflatten Pixmap.vi" Type="VI" URL="/&lt;vilib&gt;/picture/pixmap.llb/Unflatten Pixmap.vi"/>
 				<Item Name="Unset Busy.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/cursorutil.llb/Unset Busy.vi"/>
