@@ -638,6 +638,7 @@
 			<Item Name="LV Config Write String.vi" Type="VI" URL="/&lt;resource&gt;/dialog/lvconfig.llb/LV Config Write String.vi"/>
 			<Item Name="LV Config Write.vi" Type="VI" URL="/&lt;resource&gt;/dialog/lvconfig.llb/LV Config Write.vi"/>
 			<Item Name="Who Invoked Icon Editor.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/IconEditor/Who Invoked Icon Editor.ctl"/>
+			<Item Name="lv_icon.vi" Type="VI" URL="../resource/plugins/lv_icon.vi"/>
 		</Item>
 		<Item Name="Build Specifications" Type="Build">
 			<Item Name="Editor Packed Library" Type="Packed Library">
