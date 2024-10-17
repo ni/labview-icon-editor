@@ -175,6 +175,7 @@
 						<Item Name="UpdateLayerView_ScrollbarChanged.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/UpdateLayerView_ScrollbarChanged.vi"/>
 						<Item Name="Value Change_Body Text.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Value Change_Body Text.vi"/>
 						<Item Name="Value Change_Top or Bottom Layer.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Value Change_Top or Bottom Layer.vi"/>
+						<Item Name="IE Default UI.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/IE Default UI.vi"/>
 					</Item>
 					<Item Name="Key Down Up" Type="Folder">
 						<Item Name="Key Down Up Layers.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Key Down Up/Key Down Up Layers.vi"/>
