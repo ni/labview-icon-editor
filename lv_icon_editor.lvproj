@@ -154,6 +154,7 @@
 						<Item Name="Icon Editor Properties Help.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Icon Editor/Icon Editor Properties Help.vi"/>
 						<Item Name="Icon Initialization.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Icon Initialization.vi"/>
 						<Item Name="IE Save dialog build path.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/IE Save dialog build path.vi"/>
+						<Item Name="IE Default UI.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/IE Default UI.vi"/>
 						<Item Name="Keep IE in Memory.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Icon Editor/Keep IE in Memory.vi"/>
 						<Item Name="LayerCluster_ValueChange.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/LayerCluster_ValueChange.vi"/>
 						<Item Name="MenuSelection(User).vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/MenuSelection(User).vi"/>
@@ -175,7 +176,6 @@
 						<Item Name="UpdateLayerView_ScrollbarChanged.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/UpdateLayerView_ScrollbarChanged.vi"/>
 						<Item Name="Value Change_Body Text.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Value Change_Body Text.vi"/>
 						<Item Name="Value Change_Top or Bottom Layer.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Value Change_Top or Bottom Layer.vi"/>
-						<Item Name="IE Default UI.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/IE Default UI.vi"/>
 					</Item>
 					<Item Name="Key Down Up" Type="Folder">
 						<Item Name="Key Down Up Layers.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Key Down Up/Key Down Up Layers.vi"/>
