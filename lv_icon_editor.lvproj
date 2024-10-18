@@ -43,6 +43,7 @@
 					<Item Name="Circle.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/Circle.ctl"/>
 					<Item Name="Class Pool.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/Class Pool.ctl"/>
 					<Item Name="ColorChange.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/ColorChange.ctl"/>
+					<Item Name="CustomIconEditorTypeSpecifierVIRefnum.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/CustomIconEditorTypeSpecifierVIRefnum.ctl"/>
 					<Item Name="DeleteLayer.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/DeleteLayer.ctl"/>
 					<Item Name="DownloadFileType.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/DownloadFileType.ctl"/>
 					<Item Name="Draw.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/Draw.ctl"/>
@@ -310,7 +311,9 @@
 				<Item Name="Launch Icon Editor From String.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Launch Icon Editor From String.vi"/>
 			</Item>
 			<Item Name="lv_icon.lvlib" Type="Library" URL="../vi.lib/LabVIEW Icon API/lv_icon/lv_icon.lvlib"/>
+			<Item Name="SAMPLE_lv_icon_custom.vi" Type="VI" URL="/&lt;resource&gt;/plugins/SAMPLE_lv_icon_custom.vi"/>
 			<Item Name="lv_icon.vit" Type="VI" URL="/&lt;resource&gt;/plugins/lv_icon.vit"/>
+			<Item Name="lv_icon_custom.vit" Type="VI" URL="/&lt;resource&gt;/plugins/lv_icon_custom.vit"/>
 			<Item Name="lv_IconEditor.lvlib" Type="Library" URL="../resource/plugins/lv_IconEditor.lvlib"/>
 			<Item Name="SAMPLE_lv_icon.vi" Type="VI" URL="/&lt;resource&gt;/plugins/SAMPLE_lv_icon.vi"/>
 		</Item>
@@ -653,7 +656,7 @@
 				<Property Name="Bld_modifyLibraryFile" Type="Bool">true</Property>
 				<Property Name="Bld_preActionVIID" Type="Ref">/My Computer/Tooling/Pre Build Icon Editor PPL.vi</Property>
 				<Property Name="Bld_previewCacheID" Type="Str">{C699D48A-6A0A-4A55-BF6A-D6FC254001CD}</Property>
-				<Property Name="Bld_version.build" Type="Int">14</Property>
+				<Property Name="Bld_version.build" Type="Int">20</Property>
 				<Property Name="Bld_version.major" Type="Int">1</Property>
 				<Property Name="Destination[0].destName" Type="Str">lv_icon.lvlibp</Property>
 				<Property Name="Destination[0].path" Type="Path">../resource/plugins/lv_icon.lvlibp</Property>
@@ -665,7 +668,7 @@
 				<Property Name="Destination[1].path.type" Type="Str">relativeToProject</Property>
 				<Property Name="DestinationCount" Type="Int">2</Property>
 				<Property Name="PackedLib_callersAdapt" Type="Bool">true</Property>
-				<Property Name="Source[0].itemID" Type="Str">{DF18F03D-AB3A-4A60-8CAC-2585657B8F29}</Property>
+				<Property Name="Source[0].itemID" Type="Str">{2C86D990-C8C9-4810-9691-C0C3889462FD}</Property>
 				<Property Name="Source[0].type" Type="Str">Container</Property>
 				<Property Name="Source[1].destinationIndex" Type="Int">0</Property>
 				<Property Name="Source[1].itemID" Type="Ref">/My Computer/resource\/plugins/lv_icon.lvlib</Property>
@@ -705,6 +708,10 @@
 				<Property Name="Source[16].itemID" Type="Ref">/My Computer/vi.lib\/LabVIEW Icon API/LabVIEW Icon API.lvlib/Controls</Property>
 				<Property Name="Source[16].sourceInclusion" Type="Str">Include</Property>
 				<Property Name="Source[16].type" Type="Str">Container</Property>
+				<Property Name="Source[17].destinationIndex" Type="Int">0</Property>
+				<Property Name="Source[17].itemID" Type="Ref">/My Computer/resource\/plugins/NIIconEditor/Miscellaneous/Icon Editor/IE Default UI.vi</Property>
+				<Property Name="Source[17].sourceInclusion" Type="Str">Include</Property>
+				<Property Name="Source[17].type" Type="Str">VI</Property>
 				<Property Name="Source[2].destinationIndex" Type="Int">0</Property>
 				<Property Name="Source[2].itemID" Type="Ref">/My Computer/vi.lib\/LabVIEW Icon API/LabVIEW Icon API.lvlib</Property>
 				<Property Name="Source[2].Library.allowMissingMembers" Type="Bool">true</Property>
@@ -738,7 +745,7 @@
 				<Property Name="Source[9].itemID" Type="Ref">/My Computer/vi.lib\/LabVIEW Icon API/LabVIEW Icon API.lvlib/Set VI Icon.vi</Property>
 				<Property Name="Source[9].sourceInclusion" Type="Str">Include</Property>
 				<Property Name="Source[9].type" Type="Str">VI</Property>
-				<Property Name="SourceCount" Type="Int">17</Property>
+				<Property Name="SourceCount" Type="Int">18</Property>
 				<Property Name="TgtF_companyName" Type="Str">National Instruments</Property>
 				<Property Name="TgtF_fileDescription" Type="Str">Icon Editor Packed Library</Property>
 				<Property Name="TgtF_internalName" Type="Str">Icon Editor Packed Library</Property>
