@@ -43,7 +43,7 @@
 					<Item Name="Circle.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/Circle.ctl"/>
 					<Item Name="Class Pool.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/Class Pool.ctl"/>
 					<Item Name="ColorChange.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/ColorChange.ctl"/>
-					<Item Name="CustomIconEditorTypeSpecifierVIRefnum.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/CustomIconEditorTypeSpecifierVIRefnum.ctl"/>
+					<Item Name="CustomIETypeSpecifierVIRef.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/CustomIETypeSpecifierVIRef.ctl"/>
 					<Item Name="DeleteLayer.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/DeleteLayer.ctl"/>
 					<Item Name="DownloadFileType.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/DownloadFileType.ctl"/>
 					<Item Name="Draw.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/Draw.ctl"/>
@@ -311,11 +311,9 @@
 				<Item Name="Launch Icon Editor From String.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Launch Icon Editor From String.vi"/>
 			</Item>
 			<Item Name="lv_icon.lvlib" Type="Library" URL="../vi.lib/LabVIEW Icon API/lv_icon/lv_icon.lvlib"/>
-			<Item Name="SAMPLE_lv_icon_custom.vi" Type="VI" URL="/&lt;resource&gt;/plugins/SAMPLE_lv_icon_custom.vi"/>
 			<Item Name="lv_icon.vit" Type="VI" URL="/&lt;resource&gt;/plugins/lv_icon.vit"/>
-			<Item Name="lv_icon_custom.vit" Type="VI" URL="/&lt;resource&gt;/plugins/lv_icon_custom.vit"/>
 			<Item Name="lv_IconEditor.lvlib" Type="Library" URL="../resource/plugins/lv_IconEditor.lvlib"/>
-			<Item Name="SAMPLE_lv_icon.vi" Type="VI" URL="/&lt;resource&gt;/plugins/SAMPLE_lv_icon.vi"/>
+			<Item Name="SAMPLE_lv_icon.vi" Type="VI" URL="../resource/plugins/SAMPLE_lv_icon.vi"/>
 		</Item>
 		<Item Name="Tooling" Type="Folder">
 			<Item Name="support" Type="Folder">
@@ -656,7 +654,7 @@
 				<Property Name="Bld_modifyLibraryFile" Type="Bool">true</Property>
 				<Property Name="Bld_preActionVIID" Type="Ref">/My Computer/Tooling/Pre Build Icon Editor PPL.vi</Property>
 				<Property Name="Bld_previewCacheID" Type="Str">{C699D48A-6A0A-4A55-BF6A-D6FC254001CD}</Property>
-				<Property Name="Bld_version.build" Type="Int">20</Property>
+				<Property Name="Bld_version.build" Type="Int">21</Property>
 				<Property Name="Bld_version.major" Type="Int">1</Property>
 				<Property Name="Destination[0].destName" Type="Str">lv_icon.lvlibp</Property>
 				<Property Name="Destination[0].path" Type="Path">../resource/plugins/lv_icon.lvlibp</Property>
