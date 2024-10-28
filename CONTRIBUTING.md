@@ -18,7 +18,7 @@ The things we need the most help for the library and its community are:
 
 **💬 Answering questions and provide feedback**: New features begin by creating a discussion on our [board](https://github.com/ni/labview-icon-editor/discussions/new?category=ideas), you can provide feedback to the new features that are planned to be added to the icon editor. This is an [example](https://github.com/ni/labview-icon-editor/discussions/55) of a discussion for a new feature request. 
 
-🎬 **Work on "Good first issue" items**: You can right now assign yourself action items to finish or test a feature. Check out the issues section and look for any issue labeled as "Good first problem" if you want to passively contribute to the repo, or if you are feeling adventurous you can always assign problems not labeled as "Good first issue".
+🎬 **Work on ["Good first issue"**](https://github.com/ni/labview-icon-editor/labels/good%20first%20issue) items: You can right now assign yourself action items to finish or test a feature. Check out the [issues](https://github.com/ni/labview-icon-editor/issues) section and look for any issue labeled as [Good first issue](https://github.com/ni/labview-icon-editor/labels/good%20first%20issue).
 
 **✏️ Edit our [Docs](https://labview-icon-editor.dev/docs/introduction/)**: Make changes in the [labview-icon-editor-docs repo](https://github.com/ni/labview-icon-editor-docs), or click the "edit this page” button that lives on every doc site.
 
