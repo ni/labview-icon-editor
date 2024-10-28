@@ -1,6 +1,6 @@
 # The Open Source LabVIEW Icon Editor
 
-Just recently, the LabVIEW Icon Editor has been made open source to encourage collaboration between NI and the LabVIEW Community. Every new build of LabVIEW will grab the icon editor that has been pushed into the main branch from this repo.
+Just recently, the LabVIEW Icon Editor has been made open source to encourage collaboration between NI and the LabVIEW Community. Every new build of LabVIEW will grab the icon editor that has been pushed into the `main` branch from this repo.
 
 The direction of the LabVIEW Icon Editor and which new features are added, and which are left out, is decided by the core team, which includes NI staff and LabVIEW community volunteers (sometimes referred to as a “cathedral” style of development).
 
@@ -16,7 +16,7 @@ The things we need the most help for the library and its community are:
 
 **🐛 Bug reports:** We simply can’t catch them all. Check [existing issues](https://github.com/ni/labview-icon-editor/issues/new/choose) and discussion first, then [create a new issue](https://github.com/ni/labview-icon-editor/issues/new/choose) to tell us what’s up.
 
-**💬 Answering questions and provide feedback**: New features begin by creating a discussion on our board, you can provide feedback to the new features that are planned to be added to the icon editor.
+**💬 Answering questions and provide feedback**: New features begin by creating a discussion on our [board](https://github.com/ni/labview-icon-editor/discussions/new?category=ideas), you can provide feedback to the new features that are planned to be added to the icon editor. This is an [example](https://github.com/ni/labview-icon-editor/discussions/55) of a discussion for a new feature request. 
 
 🎬 **Work on "Good first issue" items**: You can right now assign yourself action items to finish or test a feature. Check out the issues section and look for any issue labeled as "Good first problem" if you want to passively contribute to the repo, or if you are feeling adventurous you can always assign problems not labeled as "Good first issue".
 
