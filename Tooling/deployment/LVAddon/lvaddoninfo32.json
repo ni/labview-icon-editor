@@ -1,0 +1,6 @@
+{
+    "AddonName": "niiconeditor32",
+    "ApiVersion": "v1",
+    "MinimumSupportedLVVersion": "23.0",
+    "SupportedBitness": "32"
+}
