@@ -4,16 +4,49 @@
 # https://aka.ms/yaml
 
 trigger:
-- main
+- users/svelderrain/deployment-experiment
 
-pool:
-  vmImage: ubuntu-latest
+name: $(Build.BuildID)
 
-steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+pool: 
+  name: "Default"
+  demands: "iconeditor -equals true"
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+variables:
+  build_id: $(Build.BuildID)
+  build_revision: $[counter('buildCounter',1)]
+  build_version: '1.0.$(Build.BuildID).$(build_revision)'
+
+stages:
+- stage: Build_LVAddon_x86
+  jobs:
+  - template: pipeline\templates\Build_Icon_Editor_Packages.yml
+    parameters:
+     LVVersion: '2021'
+     SupportedBitness: '32'
+     ApiVersion: 'v1'
+     MinimumSupportedLVVersion: '23.0'
+     AddonName: 'niiconeditor32'
+     RelativePath: $(Build.Repository.LocalPath)
+     BuildSpec: 'Editor Packed Library'
+     NIPB_Path: '$(Build.Repository.LocalPath)\Tooling\deployment\NIPackage\IconEditorDeployment_x32.pbs'
+     Project: '$(Build.Repository.LocalPath)\lv_icon_editor.lvproj'
+     PackedProjectLibraryVersion: '1.2.3.1'
+     poolName: 'Default'
+     projectDemands: 'iconeditor -equals true'
+- stage: Build_LVAddon_x64
+  jobs:
+  - template: pipeline\templates\Build_Icon_Editor_Packages.yml
+    parameters:
+     LVVersion: '2021'
+     SupportedBitness: '64'
+     ApiVersion: 'v1'
+     MinimumSupportedLVVersion: '23.0'
+     AddonName: 'niiconeditor64'
+     RelativePath: $(Build.Repository.LocalPath)
+     BuildSpec: 'Editor Packed Library'
+     NIPB_Path: '$(Build.Repository.LocalPath)\Tooling\deployment\NIPackage\IconEditorDeployment_x64.pbs'
+     Project: '$(Build.Repository.LocalPath)\lv_icon_editor.lvproj'
+     PackedProjectLibraryVersion: '1.3.3.1'
+     poolName: 'Default'
+     projectDemands: 'iconeditor -equals true'

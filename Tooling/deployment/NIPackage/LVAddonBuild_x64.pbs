@@ -1,0 +1,154 @@
+﻿<Solution xmlns:i="http://www.w3.org/2001/XMLSchema-instance" z:Id="i1" xmlns:z="http://schemas.microsoft.com/2003/10/Serialization/" xmlns="http://schemas.datacontract.org/2004/07/NationalInstruments.PackageBuilder.Engine">
+    <Name>LVAddonIE_x64</Name>
+    <SourceItems>
+        <SourceItem z:Id="i2">
+            <PluginConfigurationOptions />
+            <RelativePath>..\..\..\builds\lv_icon_editor\ni-iconeditor-x64_1.0.0.1_windows_x64.nipkg</RelativePath>
+            <DependentItems />
+            <IsDiscoverable>true</IsDiscoverable>
+        </SourceItem>
+    </SourceItems>
+    <InputSourceItems>
+        <SourceItem z:Ref="i2" />
+    </InputSourceItems>
+    <Distributions>
+        <Distribution z:Id="i3" i:type="Package">
+            <DistributionItems />
+            <Name>LVAddon build x64</Name>
+            <OutputDirectory>..\..\..\builds\lv_icon_editor</OutputDirectory>
+            <PluginConfigurationOptions />
+            <PrebuildAnalysisEnabled>true</PrebuildAnalysisEnabled>
+            <Architecture>windows_x64</Architecture>
+            <AutoIncrementVersion>Build</AutoIncrementVersion>
+            <BuildStatus z:Id="i4">
+                <FileName />
+                <Version>none</Version>
+            </BuildStatus>
+            <CompanyName>MyCompany</CompanyName>
+            <CustomExecutes>
+                <CustomExecute z:Id="i5">
+                    <Arguments>/c LabVIEWCLI -OperationName RunVI -VIPath "C:\labview-icon-editor\Tooling\deployment\NIPackage\ModifyProjectDeployLVAddons.vi" "C:\labview-icon-editor\lv_icon_editor.lvproj" "Editor Packed Library" -LabVIEWPath "C:\Program Files\National Instruments\LabVIEW 2021\LabVIEW.exe" -PortNumber 3370 -LogFilePath "C:\Users\Public\CLIlog1.txt" -Verbosity Diagnostic -LogToConsole TRUE</Arguments>
+                    <ExeName>cmd.exe</ExeName>
+                    <HideConsoleWindow>false</HideConsoleWindow>
+                    <IgnoreErrors>false</IgnoreErrors>
+                    <RootLogicalName>[System (64-bit)]</RootLogicalName>
+                    <Schedule>Pre</Schedule>
+                    <Step>Install</Step>
+                    <Wait>true</Wait>
+                </CustomExecute>
+                <CustomExecute z:Id="i6">
+                    <Arguments>/c LabVIEWCLI -OperationName ExecuteBuildSpec -ProjectPath "C:\labview-icon-editor\lv_icon_editor.lvproj" -LabVIEWPath "C:\Program Files\National Instruments\LabVIEW 2021\LabVIEW.exe" -PortNumber 3370 -LogFilePath "C:\Users\Public\CLIlog2.txt" -Verbosity Detailed -LogToConsole TRUE -TargetName "My Computer" -BuildSpecName "Editor Packed Library"</Arguments>
+                    <ExeName>cmd.exe</ExeName>
+                    <HideConsoleWindow>false</HideConsoleWindow>
+                    <IgnoreErrors>false</IgnoreErrors>
+                    <RootLogicalName>[System (64-bit)]</RootLogicalName>
+                    <Schedule>Pre</Schedule>
+                    <Step>Install</Step>
+                    <Wait>true</Wait>
+                </CustomExecute>
+                <CustomExecute z:Id="i7">
+                    <Arguments>/c LabVIEWCLI -OperationName RunVI -VIPath "C:\labview-icon-editor\Tooling\deployment\NIPackage\CreateLVAddonJSONFile.vi" -LabVIEWPath "C:\Program Files\National Instruments\LabVIEW 2021\LabVIEW.exe" -PortNumber 3370 -LogFilePath "C:\Users\Public\CLIlog3.txt" -Verbosity Detailed -LogToConsole TRUE</Arguments>
+                    <ExeName>cmd.exe</ExeName>
+                    <HideConsoleWindow>false</HideConsoleWindow>
+                    <IgnoreErrors>false</IgnoreErrors>
+                    <RootLogicalName>[System (64-bit)]</RootLogicalName>
+                    <Schedule>Pre</Schedule>
+                    <Step>Install</Step>
+                    <Wait>true</Wait>
+                </CustomExecute>
+                <CustomExecute z:Id="i8">
+                    <Arguments>/c "C:\labview-icon-editor\Tooling\deployment\Build NI Package.bat"</Arguments>
+                    <ExeName>cmd.exe</ExeName>
+                    <HideConsoleWindow>false</HideConsoleWindow>
+                    <IgnoreErrors>false</IgnoreErrors>
+                    <RootLogicalName>[System (64-bit)]</RootLogicalName>
+                    <Schedule>Pre</Schedule>
+                    <Step>Install</Step>
+                    <Wait>true</Wait>
+                </CustomExecute>
+            </CustomExecutes>
+            <Description>Deploys lv_icon.lvlibp to LVAddons</Description>
+            <DisplayName>LVAddon build x64</DisplayName>
+            <FileName>ni-iconeditor-x64_1.0.0.6_windows_x64.nipkg</FileName>
+            <MaintainerEmail>support@ni.com</MaintainerEmail>
+            <MaintainerName>NI</MaintainerName>
+            <Messages xmlns:d4p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+            <PackageName>ni-iconeditor-x64</PackageName>
+            <PackageRelationships />
+            <ProductName>MyProduct</ProductName>
+            <Section>Add-Ons</Section>
+            <Synopsis>ni-iconeditor-x64</Synopsis>
+            <Version>1.0.0.6</Version>
+        </Distribution>
+    </Distributions>
+    <Feeds />
+    <DistributionGroups>
+        <DistributionGroup z:Id="i9">
+            <Distributions>
+                <Distribution z:Ref="i3" />
+            </Distributions>
+            <Name>Distribution Group</Name>
+            <PrebuildAnalysisEnabled>true</PrebuildAnalysisEnabled>
+            <StageDirectory>ProcessingStage</StageDirectory>
+        </DistributionGroup>
+    </DistributionGroups>
+    <TestStandMode>true</TestStandMode>
+    <PluginConfigurationOptions>
+        <ConfigurationOption z:Id="i10">
+            <Definition z:Id="i11">
+                <Description i:nil="true" />
+                <Name>TestStand Options</Name>
+            </Definition>
+            <HasDefaultValues>true</HasDefaultValues>
+            <Value z:Id="i12" i:type="DialogConfigurationOptionValue">
+                <Values>
+                    <ConfigurationOptionValue z:Id="i13" i:type="BooleanConfigurationOptionValue" />
+                    <ConfigurationOptionValue z:Id="i14" i:type="BooleanConfigurationOptionValue" />
+                    <ConfigurationOptionValue z:Id="i15" i:type="BooleanConfigurationOptionValue" />
+                    <ConfigurationOptionValue z:Id="i16" i:type="StringConfigurationOptionValue">
+                        <Value />
+                    </ConfigurationOptionValue>
+                    <ConfigurationOptionValue z:Id="i17" i:type="StringConfigurationOptionValue">
+                        <Value>SupportVIs</Value>
+                    </ConfigurationOptionValue>
+                    <ConfigurationOptionValue z:Id="i18" i:type="BooleanConfigurationOptionValue" />
+                    <ConfigurationOptionValue z:Id="i19" i:type="StringConfigurationOptionValue">
+                        <Value />
+                    </ConfigurationOptionValue>
+                    <ConfigurationOptionValue z:Id="i20" i:type="BooleanConfigurationOptionValue" />
+                    <ConfigurationOptionValue z:Id="i21" i:type="BooleanConfigurationOptionValue" />
+                    <ConfigurationOptionValue z:Id="i22" i:type="BooleanConfigurationOptionValue" />
+                    <ConfigurationOptionValue z:Id="i23" i:type="BooleanConfigurationOptionValue">
+                        <Value>true</Value>
+                    </ConfigurationOptionValue>
+                    <ConfigurationOptionValue z:Id="i24" i:type="BooleanConfigurationOptionValue">
+                        <Value>true</Value>
+                    </ConfigurationOptionValue>
+                    <ConfigurationOptionValue z:Id="i25" i:type="BooleanConfigurationOptionValue" />
+                    <ConfigurationOptionValue z:Id="i26" i:type="BooleanConfigurationOptionValue" />
+                    <ConfigurationOptionValue z:Id="i27" i:type="PathConfigurationOptionValue">
+                        <RelativePath />
+                    </ConfigurationOptionValue>
+                    <ConfigurationOptionValue z:Id="i28" i:type="BooleanConfigurationOptionValue" />
+                    <ConfigurationOptionValue z:Id="i29" i:type="BooleanConfigurationOptionValue" />
+                    <ConfigurationOptionValue z:Id="i30" i:type="StringConfigurationOptionValue">
+                        <Value>[BootVolume]</Value>
+                    </ConfigurationOptionValue>
+                    <ConfigurationOptionValue z:Id="i31" i:type="StringConfigurationOptionValue">
+                        <Value />
+                    </ConfigurationOptionValue>
+                    <ConfigurationOptionValue z:Id="i32" i:type="StringConfigurationOptionValue">
+                        <Value />
+                    </ConfigurationOptionValue>
+                    <ConfigurationOptionValue z:Id="i33" i:type="StringConfigurationOptionValue">
+                        <Value />
+                    </ConfigurationOptionValue>
+                    <ConfigurationOptionValue z:Id="i34" i:type="BooleanConfigurationOptionValue" />
+                    <ConfigurationOptionValue z:Id="i35" i:type="BooleanConfigurationOptionValue" />
+                    <ConfigurationOptionValue z:Id="i36" i:type="BooleanConfigurationOptionValue" />
+                    <ConfigurationOptionValue z:Id="i37" i:type="BooleanConfigurationOptionValue" />
+                </Values>
+            </Value>
+        </ConfigurationOption>
+    </PluginConfigurationOptions>
+</Solution>
