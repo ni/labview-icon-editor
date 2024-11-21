@@ -64,29 +64,12 @@ jobs:
 
   - task: CmdLine@2
     inputs:
-     script: call g-cli --lv-ver ${{parameters.LVVersion}} --arch ${{parameters.SupportedBitness}} -v "$(Build.Repository.LocalPath)\Tooling\deployment\NIPackage\ModifyProjectDeployLVAddons.vi" -- "${{parameters.Project}}" "${{parameters.BuildSpec}}" "${{parameters.AddonName}}" "${{parameters.ApiVersion}}" "${{parameters.MinimumSupportedLVVersion}}" "${{parameters.SupportedBitness}}" 
-    displayName: Modifies project to deploy to LV Addons
-  
-  - task: CmdLine@2
-    inputs:
      script: call g-cli --lv-ver ${{parameters.LVVersion}} --arch ${{parameters.SupportedBitness}} lvbuildspec -- -v ${{parameters.PackedProjectLibraryVersion}} -p "${{parameters.Project}}" -b "${{parameters.BuildSpec}}"
     displayName: Build the PPL
-  
-  - task: CmdLine@2
-    inputs:
-     script: call g-cli --lv-ver ${{parameters.LVVersion}} --arch ${{parameters.SupportedBitness}} -v "$(Build.Repository.LocalPath)\Tooling\deployment\NIPackage\CreateLVAddonJSONfile.vi" -- "niiconeditor${{parameters.SupportedBitness}}" "${{parameters.ApiVersion}}" "${{parameters.MinimumSupportedLVVersion}}" "${{parameters.SupportedBitness}}" 
-    displayName: Create JSON file on LVAddon
   - task: CmdLine@2
     inputs:
      script: call g-cli --lv-ver 2021 --arch ${{parameters.SupportedBitness}} -v vipb -- -av -b "$(Build.Repository.LocalPath)\Tooling\deployment\VIPackage\NI Icon editor.vipb"
     displayName: Build VI Package
-  - task: CmdLine@2
-    inputs:
-     script: |
-      cd /d C:\Program Files\National Instruments\Package Builder 
-      call nipbcli -o=${{parameters.NIPB_Path}} -b=packages -save
-    displayName: Build NI Package
-      
   - task: CmdLine@2
     inputs:
      script: call g-cli --lv-ver ${{parameters.LVVersion}} --arch ${{parameters.SupportedBitness}} -v "$(Build.Repository.LocalPath)\Tooling\deployment\NIPackage\DestroyLVINILocalHostKey.vi"

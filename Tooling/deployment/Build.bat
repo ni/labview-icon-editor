@@ -12,7 +12,7 @@ set "NIPB_Path=%RelativePath%\Tooling\deployment\NIPackage\IconEditorDeployment_
 set "Project=%RelativePath%\lv_icon_editor.lvproj"
 set "PackedProjectLibraryVersion=1.0.1.0"
 REM Change the variable below to build VI Packages in other versions, or add additional lines to the batch file the build other versions to avoid having to build multiple times the PPL.
-set "VIPackageLabVIEWVersion=2021"
+set "VIPackageLabVIEWVersion=2024"
 
 REM Delete any previously built LV Addons
 cd /d C:\Program Files\NI\LVAddons
@@ -27,8 +27,6 @@ REM Quit LabVIEW
 call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% QuitLabVIEW
 REM Build the PPL
 call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% lvbuildspec -- -v %PackedProjectLibraryVersion% -p "%Project%" -b "%BuildSpec%"
-REM Create JSON file on LVAddon
-call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% -v "%RelativePath%\Tooling\deployment\NIPackage\CreateLVAddonJSONfile.vi" -- "niiconeditor%SupportedBitness%" "%ApiVersion%" "%MinimumSupportedLVVersion%" "%SupportedBitness%" 
 REM Build VI Package
 call g-cli --lv-ver %VIPackageLabVIEWVersion% --arch %SupportedBitness% -v vipb -- -av -b "%RelativePath%\Tooling\deployment\VIPackage\NI Icon editor.vipb"
 REM Build NI Package
