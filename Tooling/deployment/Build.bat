@@ -12,7 +12,7 @@ set "NIPB_Path=%RelativePath%\Tooling\deployment\NIPackage\IconEditorDeployment_
 set "Project=%RelativePath%\lv_icon_editor.lvproj"
 set "PackedProjectLibraryVersion=1.0.1.0"
 REM Change the variable below to build VI Packages in other versions, or add additional lines to the batch file the build other versions to avoid having to build multiple times the PPL.
-set "VIPackageLabVIEWVersion=2024"
+set "VIPackageLabVIEWVersion=2021"
 
 REM Delete any previously built LV Addons
 cd /d C:\Program Files\NI\LVAddons
