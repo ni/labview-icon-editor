@@ -10,6 +10,7 @@ set "BuildSpec=Editor Packed Library"
 set "NIPB_Path=%RelativePath%\Tooling\deployment\NIPackage\IconEditorDeployment_x%SupportedBitness%.pbs"
 set "Project=%RelativePath%\lv_icon_editor.lvproj"
 set "PackedProjectLibraryVersion=1.0.1.0"
+set "VIPackageLabVIEWVersion=2021"
 
 REM Delete any previously built LV Addons
 cd /d C:\Program Files\NI\LVAddons
@@ -20,8 +21,6 @@ REM Quit LabVIEW
 call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% QuitLabVIEW
 REM Zips and moves lv_icon.lvlibp as well as LabVIEW Icon API from VI Lib to a different location
 call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% -v "%RelativePath%\Tooling\PrepareIESource.vi" -- "%Project%" "Editor Packed Library"
-REM Modifies project to deploy to LV Addons
-call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% -v "%RelativePath%\Tooling\deployment\NIPackage\ModifyProjectDeployLVAddons.vi" -- "%Project%" "%BuildSpec%" "%AddonName%" "%ApiVersion%" "%MinimumSupportedLVVersion%" "%SupportedBitness%" 
 REM Quit LabVIEW
 call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% QuitLabVIEW
 REM Build the PPL
@@ -29,12 +28,12 @@ call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% lvbuildspec -- -v %Pac
 REM Create JSON file on LVAddon
 call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% -v "%RelativePath%\Tooling\deployment\NIPackage\CreateLVAddonJSONfile.vi" -- "niiconeditor%SupportedBitness%" "%ApiVersion%" "%MinimumSupportedLVVersion%" "%SupportedBitness%" 
 REM Build VI Package
-call g-cli --lv-ver 2021 --arch %SupportedBitness% -v vipb -- -av -b "%RelativePath%\Tooling\deployment\VIPackage\NI Icon editorx%SupportedBitness%.vipb"
+call g-cli --lv-ver %VIPackageLabVIEWVersion% --arch %SupportedBitness% -v vipb -- -av -b "%RelativePath%\Tooling\deployment\VIPackage\NI Icon editor.vipb"
 REM Removes token LocalHost.LibraryPaths from LabVIEW.ini
 REM Build NI Package
-cd /d C:\Program Files\National Instruments\Package Builder
-call nipbcli -o="%NIPB_Path%" -b=packages -save
-call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% -v "%RelativePath%\Tooling\deployment\NIPackage\DestroyLVINILocalHostKey.vi"
+REM cd /d C:\Program Files\National Instruments\Package Builder
+REM call nipbcli -o="%NIPB_Path%" -b=packages -save
+REM call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% -v "%RelativePath%\Tooling\deployment\NIPackage\DestroyLVINILocalHostKey.vi"
 REM Quit LabVIEW
 call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% QuitLabVIEW
 pause
