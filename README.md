@@ -31,3 +31,23 @@ Then, on the machine where you want to install your custom icon editor:
 3. Copy the packed library and support files that you developed with this project into the \<LabVIEW\> directory:  
    - \<LabVIEW\>\\resource\\plugins\\lv_icon.lvlibp 
    - \<LabVIEW\>\\vi.lib\\LabVIEW Icon API\\*
+  
+## Creating a VI Package ##
+A .bat file located on *\Tooling\deployment\Build.bat* automates the process described by the *Editing Guide* and *Distribution guide*. 
+
+azure_pipeline.yml can also automate the process. 
+
+**Prerequisites:** 
+ 
+  * LV2021 
+  * Latest VI Package Builder
+  * Latest VIPM 
+  * Manually Applying dependencies located on *Tooling\deployment\Dependencies.vipc*
+  * (Other LabVIEW versions you want to build the package on, LV2021 is mandatory since the PPL gets built on 2021)
+ 
+**Process:**
+
+  1. Edit variables *VIPackageLabVIEWVersion* and *SupportedBitness* on .bat file *\Tooling\deployment\Build.bat*.
+  2. Run the .bat file with admin rights
+  3. A VI package named *ni_icon_editor-x.x.x.x* will be built on *C:\build\niiconeditor_plugin*.
+
