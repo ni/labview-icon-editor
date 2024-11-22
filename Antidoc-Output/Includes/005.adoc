@@ -1,0 +1,228 @@
+== LabVIEWHTTPClient.lvlib
+
+*Responsibility:*
+No description found (add content in lvlib description)
+
+*Version:* 2.0.0.0
+
+.Functions
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|AddHeader
+|image:LabVIEWHTTPClient.lvlib_AddHeader.vi.png[LabVIEWHTTPClient.lvlib:AddHeader.vi]
+|+++Adds a header field line to all Web requests associated with the <B>client handle</B>. Headers define attributes of the data exchanged between the client and server.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|RemoveHeader
+|image:LabVIEWHTTPClient.lvlib_RemoveHeader.vi.png[LabVIEWHTTPClient.lvlib:RemoveHeader.vi]
+|+++Removes a header field line from all Web requests associated with the <B>client handle</B>. Headers define attributes of the data exchanged between the client and server. Client handles save header values across multiple Web requests. Use the Open Handle VI to create a <B>client handle</B>. Refer to the World Wide Web Consortium website at www.w3.org for more information about header field definitions including example headers, descriptions, and syntax.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|GetHeader
+|image:LabVIEWHTTPClient.lvlib_GetHeader.vi.png[LabVIEWHTTPClient.lvlib:GetHeader.vi]
+|+++Returns the value assigned to the <B>header</B>  of the <B>client handle</B>. Headers define attributes of the data exchanged between the client and server. Client handles save header values across multiple Web requests. Use the Open Handle VI to create a <B>client handle</B>. Refer to the World Wide Web Consortium website at www.w3.org for more information about header field definitions including example headers, descriptions, and syntax.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|HeaderExists
+|image:LabVIEWHTTPClient.lvlib_HeaderExists.vi.png[LabVIEWHTTPClient.lvlib:HeaderExists.vi]
+|+++Determines if the <B>header</B> is associated with the <B>client handle</B>. Headers define attributes of the data exchanged between the client and server. Client handles save header values across multiple Web requests. Use the Open Handle VI to create a <B>client handle</B>. Refer to the World Wide Web Consortium website at www.w3.org for more information about header field definitions including example headers, descriptions, and syntax.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|ListHeaders
+|image:LabVIEWHTTPClient.lvlib_ListHeaders.vi.png[LabVIEWHTTPClient.lvlib:ListHeaders.vi]
+|+++Lists the <B>headers</B>  associated with the <B>client handle</B>. Headers define attributes of the data exchanged between the client and server. Client handles save header values across multiple Web requests. Use the Open Handle VI to create a <B>client handle</B>. Refer to the World Wide Web Consortium website at www.w3.org for more information about header field definitions including example headers, descriptions, and syntax.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|Base64Decode
+|image:LabVIEWHTTPClient.lvlib_Base64Decode.vi.png[LabVIEWHTTPClient.lvlib:Base64Decode.vi]
+|+++Decode a Base64 buffer.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Base64Encode
+|image:LabVIEWHTTPClient.lvlib_Base64Encode.vi.png[LabVIEWHTTPClient.lvlib:Base64Encode.vi]
+|+++Encode a buffer as Base64.+++
+
++++This is useful for transmitting binary data over an ascii protocol such as SMTP.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|CheckForSuccess
+|image:LabVIEWHTTPClient.lvlib_CheckForSuccess.vi.png[LabVIEWHTTPClient.lvlib:CheckForSuccess.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|CloseHandle
+|image:LabVIEWHTTPClient.lvlib_CloseHandle.vi.png[LabVIEWHTTPClient.lvlib:CloseHandle.vi]
+|+++Closes the <B>client handle</B> and deletes all stored cookies, authentication credentials, and HTTP headers associated with the client handle. This VI also terminates all HTTP connections and logs out of any authentication, if applicable.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|ConfigKey
+|image:LabVIEWHTTPClient.lvlib_ConfigKey.vi.png[LabVIEWHTTPClient.lvlib:ConfigKey.vi]
+|+++Negotiates a key with the <B>host</B> and adds the key to the <B>client handle</B>. Use this key with the Encrypt and Decrypt VIs to encrypt and decrypt data. This functionality only works with NI Web servers. Use the OpenHandle VI to open a <B>client handle</B>.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|ConfigSSL
+|image:LabVIEWHTTPClient.lvlib_ConfigSSL.vi.png[LabVIEWHTTPClient.lvlib:ConfigSSL.vi]
+|+++Provides Transport Layer Security (TLS), previously known as Secure Sockets Layer (SSL), authentication for Web requests associated with the <B>client handle</B>. Use TLS/SSL authentication with other HTTP Client VIs to send Web requests to a server, Web page, or Web service using TLS/SSL.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Decrypt
+|image:LabVIEWHTTPClient.lvlib_Decrypt.vi.png[LabVIEWHTTPClient.lvlib:Decrypt.vi]
+|+++Decrypts data using the key associated with the <B>client handle</B>. Associate a key with a <B>client handle</B> using the ConfigKey VI. This functionality only works with NI Web servers. Use the OpenHandle VI to open a <B>client handle</B>.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|DELETE
+|image:LabVIEWHTTPClient.lvlib_DELETE.vi.png[LabVIEWHTTPClient.lvlib:DELETE.vi]
+|+++Sends a Web request to delete resources on a server, Web page, or Web service. This VI uses the DELETE HTTP method. The server accepting the request from the DELETE VI must be setup to delete resources solely based upon receiving a DELETE Web request at the specified URL.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|Encrypt
+|image:LabVIEWHTTPClient.lvlib_Encrypt.vi.png[LabVIEWHTTPClient.lvlib:Encrypt.vi]
+|+++Encrypts data using the key associated with the <B>client handle</B>. Associate a key with a <B>client handle</B> using the ConfigKey VI. This functionality only works with NI Web servers. Use the OpenHandle VI to open a <B>client handle</B>.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|GET
+|image:LabVIEWHTTPClient.lvlib_GET.vi.png[LabVIEWHTTPClient.lvlib:GET.vi]
+|+++Sends a Web request that returns <B>headers</B> and <B>body</B> data from a server, Web page, or Web service. This VI uses the GET HTTP method and does not submit any data to the server. You also can save the <B>body</B> data to an output file.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|HEAD
+|image:LabVIEWHTTPClient.lvlib_HEAD.vi.png[LabVIEWHTTPClient.lvlib:HEAD.vi]
+|+++Sends a Web request that returns <B>headers</B> from a server, Web page, or Web service. This VI uses the HEAD HTTP method. This VI does not submit any data to the server or receive body data. The minimal data exchange makes the HEAD VI useful for testing the validity of a URL.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|OpenHandle
+|image:LabVIEWHTTPClient.lvlib_OpenHandle.vi.png[LabVIEWHTTPClient.lvlib:OpenHandle.vi]
+|+++Opens a client handle. Use client handles to wire together multiple HTTP Client VIs while preserving authentication credentials, HTTP headers, and cookies. You can specify a <B>username</B> and <B>password</B>, if necessary, to send Web requests to a server that requires authentication. You also can create a cookie file that stores data across multiple Web requests.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|ParseHeaders
+|image:LabVIEWHTTPClient.lvlib_ParseHeaders.vi.png[LabVIEWHTTPClient.lvlib:ParseHeaders.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|POSTBuffer
+|image:LabVIEWHTTPClient.lvlib_POSTBuffer.vi.png[LabVIEWHTTPClient.lvlib:POSTBuffer.vi]
+|+++Sends a Web request that submits data or a file to a server, Web page, or Web service. This VI uses the POST HTTP method.  Refer to the World Wide Web Consortium website at www.w3.org for more information about HTTP method definitions, including the POST method. Use the POSTMultipart VI to send POST requests using the multipart/form-data MIME type.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|POSTFile
+|image:LabVIEWHTTPClient.lvlib_POSTFile.vi.png[LabVIEWHTTPClient.lvlib:POSTFile.vi]
+|+++Sends a Web request that submits data or a file to a server, Web page, or Web service. This VI uses the POST HTTP method.  Refer to the World Wide Web Consortium website at www.w3.org for more information about HTTP method definitions, including the POST method. Use the POSTMultipart VI to send POST requests using the multipart/form-data MIME type.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|POSTMultipart
+|image:LabVIEWHTTPClient.lvlib_POSTMultipart.vi.png[LabVIEWHTTPClient.lvlib:POSTMultipart.vi]
+|+++Sends a Web request that submits multiple sets of data or files to a server, Web page, or Web service. This VI uses the POST HTTP method and multipart/form-data MIME type.+++
+
+
+
++++The POSTMultipart VI submits multiple sets of data, represented by an array of <B>postdata</B> clusters. Use the <B>postdata</B> control descriptions to configure the submitted data as one of the four available combinations. For example, the VI can accept a buffer data string from the client and send that data as a file to the server.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|PUTBuffer
+|image:LabVIEWHTTPClient.lvlib_PUTBuffer.vi.png[LabVIEWHTTPClient.lvlib:PUTBuffer.vi]
+|+++Sends a Web request that submits data or a file to a server, Web page, or Web service. This VI uses the PUT HTTP method. Refer to the World Wide Web Consortium website at www.w3.org for more information about HTTP method definitions, including the PUT method.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|PUTFile
+|image:LabVIEWHTTPClient.lvlib_PUTFile.vi.png[LabVIEWHTTPClient.lvlib:PUTFile.vi]
+|+++Sends a Web request that submits data or a file to a server, Web page, or Web service. This VI uses the PUT HTTP method. Refer to the World Wide Web Consortium website at www.w3.org for more information about HTTP method definitions, including the PUT method.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|SetAPIKey
+|image:LabVIEWHTTPClient.lvlib_SetAPIKey.vi.png[LabVIEWHTTPClient.lvlib:SetAPIKey.vi]
+|+++Provides API Key authentication credentials for Web requests associated with the <B>client handle</B>. API key security is one available option to protect LabVIEW Web services. Client handles save the credentials across multiple Web requests. Use the Open Handle VI to open a <B>client handle</B>.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-preallocated.png[reentrancy-preallocated.png]
+|image:empty.png[empty.png]
+
+|SmartPathToString
+|image:LabVIEWHTTPClient.lvlib_SmartPathToString.vi.png[LabVIEWHTTPClient.lvlib:SmartPathToString.vi]
+|No description found (add content in vi description)
+|image:scope-community.png[scope-community.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Lib
+|image:LabVIEWHTTPClient.lvlib_Get_Lib.vi.png[LabVIEWHTTPClient.lvlib:Get Lib.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community | image:scope-private.png[] -> Private
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined

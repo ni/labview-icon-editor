@@ -1,0 +1,96 @@
+== Icon Framework.lvclass
+
+*Responsibility:*
+No description found (add content in lvclass description)
+
+*Version:* 1.0.0.12
+
+[plantuml, format="svg", align="center"]
+....
+@startuml
+set namespaceSeparator :
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassBorderColor #555555
+skinparam ClassFontColor #000000
+skinparam ClassHeaderBackgroundColor #808080
+
+skinparam top to bottom direction
+class "Icon Framework" {
+{field} -Body Text : Cluster
+{field} -Name : String
+{field} -Path : Path
+{static} {method} +SET_Path()
+{static} {method} +GET_Path()
+{static} {method} +CreateBodyText()
+{static} {method} +BodyTextCoordinates()
+{method} +SET_BodyText()
+{method} +GET_BodyText()
+
+}
+"Layer" <|-- "Icon Framework"
+
+
+
+@enduml
+....
+
+.Functions (non private scope only)
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|SET_BodyText
+|image:Icon_Framework.lvclass_SET_BodyText.vi.png[Icon Framework.lvclass:SET_BodyText.vi]
+|+++Specifies the Body Text.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_Path
+|image:Icon_Framework.lvclass_SET_Path.vi.png[Icon Framework.lvclass:SET_Path.vi]
+|+++Specify the path to the Template Layer glyph. Always pass in the fully qualified path to the glyph.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_BodyText
+|image:Icon_Framework.lvclass_GET_BodyText.vi.png[Icon Framework.lvclass:GET_BodyText.vi]
+|+++Returns the current Body Text as well as the Cleaned Body Text.+++
++++The Cleaned Body Text doesn't contain any text information, but it has the style and alignment data.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_Path
+|image:Icon_Framework.lvclass_GET_Path.vi.png[Icon Framework.lvclass:GET_Path.vi]
+|+++Returns the path to the used Template Layer glyph.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|CreateBodyText
+|image:Icon_Framework.lvclass_CreateBodyText.vi.png[Icon Framework.lvclass:CreateBodyText.vi]
+|+++The incoming style information and actual text is used to actually create a picture.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|BodyTextCoordinates
+|image:Icon_Framework.lvclass_BodyTextCoordinates.vi.png[Icon Framework.lvclass:BodyTextCoordinates.vi]
+|+++Determines the position of each line of the body text.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined

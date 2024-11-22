@@ -1,0 +1,137 @@
+== NI_XML.lvlib
+
+*Responsibility:*
+No description found (add content in lvlib description)
+
+*Version:* 6.1.0.0
+
+.Functions
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|Generate Error Cluster
+|image:NI_XML.lvlib_Generate_Error_Cluster.vi.png[NI_XML.lvlib:Generate Error Cluster.vi]
+|No description found (add content in vi description)
+|image:scope-private.png[scope-private.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Close Reference(Node)
+|image:NI_XML.lvlib_Close_Reference(Node).vi.png[NI_XML.lvlib:Close Reference(Node).vi]
+|+++Closes a reference for all XML parser classes. You can use this polymorphic VI to close refnums from the NamedNodeMap class, the NodeList class, the Implementation class, or the Node class. The Node class encompasses all other XML classes.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Close Reference(NNMap)
+|image:NI_XML.lvlib_Close_Reference(NNMap).vi.png[NI_XML.lvlib:Close Reference(NNMap).vi]
+|+++Closes a reference for all XML parser classes. You can use this polymorphic VI to close refnums from the NamedNodeMap class, the NodeList class, the Implementation class, or the Node class. The Node class encompasses all other XML classes.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Close Reference(NdList)
+|image:NI_XML.lvlib_Close_Reference(NdList).vi.png[NI_XML.lvlib:Close Reference(NdList).vi]
+|+++Closes a reference for all XML parser classes. You can use this polymorphic VI to close refnums from the NamedNodeMap class, the NodeList class, the Implementation class, or the Node class. The Node class encompasses all other XML classes.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Close Reference(Impl)
+|image:NI_XML.lvlib_Close_Reference(Impl).vi.png[NI_XML.lvlib:Close Reference(Impl).vi]
+|+++Closes a reference for all XML parser classes. You can use this polymorphic VI to close refnums from the NamedNodeMap class, the NodeList class, the Implementation class, or the Node class. The Node class encompasses all other XML classes.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Load XML File
+|image:NI_XML.lvlib_Load_XML_File.vi.png[NI_XML.lvlib:Load XML File.vi]
+|+++Opens an XML file and allows you to configure the XML parser to validate the file against a schema or Document Type Definition (DTD).+++
+
+
+
++++National Instruments recommends that you use the Close VI to close all the references after using the XML parser classes.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Load XML String
+|image:NI_XML.lvlib_Load_XML_String.vi.png[NI_XML.lvlib:Load XML String.vi]
+|+++Opens an XML file and allows you to configure the XML parser to validate the file against a schema or Document Type Definition (DTD).+++
+
+
+
++++National Instruments recommends that you use the Close VI to close all the references after using the XML parser classes.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|New
+|image:NI_XML.lvlib_New.vi.png[NI_XML.lvlib:New.vi]
+|+++Returns an XML parser session in LabVIEW. Use this VI each time you create a new XML parser session.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Save
+|image:NI_XML.lvlib_Save.vi.png[NI_XML.lvlib:Save.vi]
+|+++Saves an XML document.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Next Non-Text Sibling
+|image:NI_XML.lvlib_Get_Next_Non_Text_Sibling.vi.png[NI_XML.lvlib:Get Next Non-Text Sibling.vi]
+|+++Returns the first sibling of the <B>node in</B> that is not of type <B>Text_Node</B>.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get First Non-Text Child
+|image:NI_XML.lvlib_Get_First_Non_Text_Child.vi.png[NI_XML.lvlib:Get First Non-Text Child.vi]
+|+++Returns the first child of the <B>node in</B> that is not of type <B>Text_Node</B>.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Node Text Content
+|image:NI_XML.lvlib_Get_Node_Text_Content.vi.png[NI_XML.lvlib:Get Node Text Content.vi]
+|+++Returns the combined values of <B>Text_Node</B> children that the <B>node in</B> node owns.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get All Matched Nodes
+|image:NI_XML.lvlib_Get_All_Matched_Nodes.vi.png[NI_XML.lvlib:Get All Matched Nodes.vi]
+|+++Returns all the nodes within <B>node in</B> that match the <B>XPath expression</B>.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get First Matched Node
+|image:NI_XML.lvlib_Get_First_Matched_Node.vi.png[NI_XML.lvlib:Get First Matched Node.vi]
+|+++Returns the first node within <B>node in</B> that matches the <B>XPath expression</B>. If this VI does not find a match, <B>node result</B> is not a valid refnum.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community | image:scope-private.png[] -> Private
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined

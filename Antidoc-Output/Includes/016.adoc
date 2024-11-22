@@ -1,0 +1,122 @@
+== Settings.lvclass
+
+*Responsibility:*
+No description found (add content in lvclass description)
+
+*Version:* 1.0.0.14
+
+[plantuml, format="svg", align="center"]
+....
+@startuml
+set namespaceSeparator :
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassBorderColor #555555
+skinparam ClassFontColor #000000
+skinparam ClassHeaderBackgroundColor #808080
+
+skinparam top to bottom direction
+class "Settings" {
+{field} -Merge user layers on commit : Boolean
+{field} -3rd party Templates : Cluster
+{field} -Text : Cluster
+{field} -Show Layer Tab? : Boolean
+{field} -Show Terminals? : Boolean
+{static} {method} +Initialize_IconEditorSettings_Tree()
+{static} {method} +GET_Save_Layers_with_VI()
+{static} {method} +Settings Initialization()
+{method} +GET_3rd party Templates()
+{method} +GET_Text()
+{method} +GET_Show()
+{method} +SET_Text()
+{method} +SET_SaveLayersWithVI()
+{method} +SET_Show()
+{method} +SET_3rdPartyTemplates()
+
+}
+
+
+
+@enduml
+....
+
+.Functions (non private scope only)
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|Initialize_IconEditorSettings_Tree
+|image:Settings.lvclass_Initialize_IconEditorSettings_Tree.vi.png[Settings.lvclass:Initialize_IconEditorSettings_Tree.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_Save_Layers_with_VI
+|image:Settings.lvclass_GET_Save_Layers_with_VI.vi.png[Settings.lvclass:GET_Save_Layers_with_VI.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_3rd party Templates
+|image:Settings.lvclass_GET_3rd_party_Templates.vi.png[Settings.lvclass:GET_3rd party Templates.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_Text
+|image:Settings.lvclass_GET_Text.vi.png[Settings.lvclass:GET_Text.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|GET_Show
+|image:Settings.lvclass_GET_Show.vi.png[Settings.lvclass:GET_Show.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_Text
+|image:Settings.lvclass_SET_Text.vi.png[Settings.lvclass:SET_Text.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_SaveLayersWithVI
+|image:Settings.lvclass_SET_SaveLayersWithVI.vi.png[Settings.lvclass:SET_SaveLayersWithVI.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_Show
+|image:Settings.lvclass_SET_Show.vi.png[Settings.lvclass:SET_Show.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_3rdPartyTemplates
+|image:Settings.lvclass_SET_3rdPartyTemplates.vi.png[Settings.lvclass:SET_3rdPartyTemplates.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Settings Initialization
+|image:Settings.lvclass_Settings_Initialization.vi.png[Settings.lvclass:Settings Initialization.vi]
+|No description found (add content in vi description)
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined

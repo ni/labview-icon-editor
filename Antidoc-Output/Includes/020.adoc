@@ -1,0 +1,104 @@
+== Layer.lvclass
+
+*Responsibility:*
+No description found (add content in lvclass description)
+
+*Version:* 1.0.0.7
+
+[plantuml, format="svg", align="center"]
+....
+@startuml
+set namespaceSeparator :
+skinparam ClassBackgroundColor #FFFFFF
+skinparam ClassBorderColor #555555
+skinparam ClassFontColor #000000
+skinparam ClassHeaderBackgroundColor #808080
+
+skinparam top to bottom direction
+class "Layer" {
+{field} -Origin : Cluster
+{field} -Data : Cluster
+{field} -Type : Enum U16
+{static} {method} +UpdateLayerData()
+{static} {method} +Substitute Layer()
+{method} +GET_LayerData()
+{method} +GET_Origin()
+{method} +SET_Origin()
+{method} +SET_LayerType()
+{method} +SET_Layer_Data()
+
+}
+
+
+
+@enduml
+....
+
+.Functions (non private scope only)
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|GET_LayerData
+|image:Layer.lvclass_GET_LayerData.vi.png[Layer.lvclass:GET_LayerData.vi]
+|+++Returns the User Layer Data, as well as the Type of the User Layer and the Origin.+++
+
+|image:empty.png[empty.png]
+|image:reentrancy-shared.png[reentrancy-shared.png]
+|image:empty.png[empty.png]
+
+|GET_Origin
+|image:Layer.lvclass_GET_Origin.vi.png[Layer.lvclass:GET_Origin.vi]
+|+++Returns the Original coordinates of the User Layer.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_Origin
+|image:Layer.lvclass_SET_Origin.vi.png[Layer.lvclass:SET_Origin.vi]
+|+++Specify the Origin of the User Layer.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_LayerType
+|image:Layer.lvclass_SET_LayerType.vi.png[Layer.lvclass:SET_LayerType.vi]
+|+++Specify the User Layer Type.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|SET_Layer_Data
+|image:Layer.lvclass_SET_Layer_Data.vi.png[Layer.lvclass:SET_Layer_Data.vi]
+|+++Sets the User Layer data. This VI preserves the data for Origina and Type.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|UpdateLayerData
+|image:Layer.lvclass_UpdateLayerData.vi.png[Layer.lvclass:UpdateLayerData.vi]
+|+++If the flag Overwrite is true, the incoming Glyph is merged with the already existing User Layer data.  +++
++++The new Layer Name is only applied if the Active User Layer is not called 'NI_Library".+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Substitute Layer
+|image:Layer.lvclass_Substitute_Layer.vi.png[Layer.lvclass:Substitute Layer.vi]
+|+++Substiture a User Layer by Name. If All User Layers in contains a matching Layer Name, it will get substituted with the Substitute User Layer.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined

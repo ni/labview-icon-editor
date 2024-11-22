@@ -1,0 +1,246 @@
+== LabVIEW Icon API.lvlib
+
+*Responsibility:*
+No description found (add content in lvlib description)
+
+*Version:* 1.0.0.0
+
+.Functions (non private scope only)
+[cols="<.<4d,<.<8a,<.<12d,<.<1a,<.<1a,<.<1a", %autowidth, frame=all, grid=all, stripes=none]
+|===
+|Name |Connector pane |Description |S. |R. |I.
+
+|Advanced Generate LV Icon
+|image:LabVIEW_Icon_API.lvlib_Advanced_Generate_LV_Icon.vi.png[LabVIEW Icon API.lvlib:Advanced Generate LV Icon.vi]
+|+++This example shows an advanced way of using the LabVIEW Icon API.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Basic Generate LV Icon Template Layer
+|image:LabVIEW_Icon_API.lvlib_Basic_Generate_LV_Icon_Template_Layer.vi.png[LabVIEW Icon API.lvlib:Basic Generate LV Icon Template Layer.vi]
+|+++Basic example that shows how to set the Template Layer.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Basic Generate LV Icon Text Layer
+|image:LabVIEW_Icon_API.lvlib_Basic_Generate_LV_Icon_Text_Layer.vi.png[LabVIEW Icon API.lvlib:Basic Generate LV Icon Text Layer.vi]
+|+++Basic example that shows how to set the Text Layer+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Modify VI Icon Template Layer
+|image:LabVIEW_Icon_API.lvlib_Modify_VI_Icon_Template_Layer.vi.png[LabVIEW Icon API.lvlib:Modify VI Icon Template Layer.vi]
+|+++This example reads the current icon of a VI and updates it with an entirely new icon which primarily focuses on the Template Layer.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Modify VI Icon Text Layer
+|image:LabVIEW_Icon_API.lvlib_Modify_VI_Icon_Text_Layer.vi.png[LabVIEW Icon API.lvlib:Modify VI Icon Text Layer.vi]
+|+++This example reads the current icon of a VI and updates it with an entirely new icon which primarily focuses on the Text Layer.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Apply Transparency
+|image:LabVIEW_Icon_API.lvlib_Apply_Transparency.vi.png[LabVIEW Icon API.lvlib:Apply Transparency.vi]
+|+++Apply transparency on a glyph.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Generate Border User Layer
+|image:LabVIEW_Icon_API.lvlib_Generate_Border_User_Layer.vi.png[LabVIEW Icon API.lvlib:Generate Border User Layer.vi]
+|+++Generate a default Border Image Data glyph.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Flattened Image
+|image:LabVIEW_Icon_API.lvlib_Get_Flattened_Image.vi.png[LabVIEW Icon API.lvlib:Get Flattened Image.vi]
+|+++Takes the information that is stored in the Icon class and creates the corresponding Color and BW icon.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Create Icon Framework
+|image:LabVIEW_Icon_API.lvlib_Create_Icon_Framework.vi.png[LabVIEW Icon API.lvlib:Create Icon Framework.vi]
+|+++Create the Icon Framework (Template or Text class) class.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Create Icon Layer
+|image:LabVIEW_Icon_API.lvlib_Create_Icon_Layer.vi.png[LabVIEW Icon API.lvlib:Create Icon Layer.vi]
+|+++Create an Icon Layer with the given data from the LabVIEW Icon Data.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Draw Template Glyph
+|image:LabVIEW_Icon_API.lvlib_Draw_Template_Glyph.vi.png[LabVIEW Icon API.lvlib:Draw Template Glyph.vi]
+|+++Draw a rectangle based on the passed in data.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Extract Default Icon Data
+|image:LabVIEW_Icon_API.lvlib_Extract_Default_Icon_Data.vi.png[LabVIEW Icon API.lvlib:Extract Default Icon Data.vi]
+|+++Extract the default Icon Data.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Extract Icon Data
+|image:LabVIEW_Icon_API.lvlib_Extract_Icon_Data.vi.png[LabVIEW Icon API.lvlib:Extract Icon Data.vi]
+|+++Extract the actual LabVIEW Icon Data.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Data from Icon Class
+|image:LabVIEW_Icon_API.lvlib_Get_Data_from_Icon_Class.vi.png[LabVIEW Icon API.lvlib:Get Data from Icon Class.vi]
+|+++Extract data from the Icon class.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Icon Class from Data
+|image:LabVIEW_Icon_API.lvlib_Get_Icon_Class_from_Data.vi.png[LabVIEW Icon API.lvlib:Get Icon Class from Data.vi]
+|+++Generate Icon class from the passed in data.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Populate Body Text Data
+|image:LabVIEW_Icon_API.lvlib_Populate_Body_Text_Data.vi.png[LabVIEW Icon API.lvlib:Populate Body Text Data.vi]
+|+++Transform the Body Text data into a new cluster.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Rotate Flip Layer
+|image:LabVIEW_Icon_API.lvlib_Rotate_Flip_Layer.vi.png[LabVIEW Icon API.lvlib:Rotate Flip Layer.vi]
+|+++Rotate or Flip the User Layer glyph.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Generate LV Icon Template Layer
+|image:LabVIEW_Icon_API.lvlib_Generate_LV_Icon_Template_Layer.vi.png[LabVIEW Icon API.lvlib:Generate LV Icon Template Layer.vi]
+|+++Generating the LV Icon Template Layer requires the Template path to the glyph. This path has to be a fully qualified path.+++
++++In addition to the path, it is possible to specify the Text as well as the visual appearance of the text.+++
+
++++The default value of Text is an empty string for all four lines.+++
++++The default value for the visual appearance is:+++
++++Font: Small Fonts+++
++++Alignment: Center+++
++++Size: 8+++
++++Center text vertically: TRUE+++
++++Capitalize text: TRUE+++
++++Color of all four lines: Black+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Generate LV Icon Text Layer
+|image:LabVIEW_Icon_API.lvlib_Generate_LV_Icon_Text_Layer.vi.png[LabVIEW Icon API.lvlib:Generate LV Icon Text Layer.vi]
+|+++Generating the LV Icon Text Layer requires the Text cluster.+++
++++In addition to the Text, it is possible to specify the visual appearance of the Text as well as a default Template Layer glyph.+++
+
++++The default value for the visual appearance is:+++
++++Font: Small Fonts+++
++++Alignment: Center+++
++++Size: 8+++
++++Center text vertically: TRUE+++
++++Capitalize text: TRUE+++
++++Color of all four lines: Black+++
+
++++The default value of the Template layer is:+++
++++Size: 32 x 32+++
++++Border Color: Black+++
++++Background Color: White+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Generate LV Icon User Layers
+|image:LabVIEW_Icon_API.lvlib_Generate_LV_Icon_User_Layers.vi.png[LabVIEW Icon API.lvlib:Generate LV Icon User Layers.vi]
+|+++Generate LV Icon User Layers overwrites all existing User Layers in the Icon class.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get Library Icon
+|image:LabVIEW_Icon_API.lvlib_Get_Library_Icon.vi.png[LabVIEW Icon API.lvlib:Get Library Icon.vi]
+|+++Returns the LabVIEW Icon class of the Library.+++
++++If the Library doesn't have any stored data, the default LabVIEW Icon class is returned instead.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Get VI Icon
+|image:LabVIEW_Icon_API.lvlib_Get_VI_Icon.vi.png[LabVIEW Icon API.lvlib:Get VI Icon.vi]
+|+++Returns the LabVIEW Icon class of the VI.+++
++++If the VI doesn't have any stored data, the default LabVIEW Icon class is returned instead.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Launch Icon Editor
+|image:LabVIEW_Icon_API.lvlib_Launch_Icon_Editor.vi.png[LabVIEW Icon API.lvlib:Launch Icon Editor.vi]
+|+++Launches programmatically the Icon Editor. +++
++++The LabVIEW Icon class data is fully restored in the Icon Editor. When the user clicks on OK, the updated LabVIEW Icon class data is returned.+++
++++If the user cancels the Icon Editor dialog, the original LabVIEW Icon data is returned.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Set Library Icon
+|image:LabVIEW_Icon_API.lvlib_Set_Library_Icon.vi.png[LabVIEW Icon API.lvlib:Set Library Icon.vi]
+|+++Specifies the LabVIEW Icon class of a Library.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+
+|Set VI Icon
+|image:LabVIEW_Icon_API.lvlib_Set_VI_Icon.vi.png[LabVIEW Icon API.lvlib:Set VI Icon.vi]
+|+++Specifies the LabVIEW Icon class of a VI.+++
+
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|image:empty.png[empty.png]
+|===
+
+**S**cope: image:scope-protected.png[] -> Protected | image:scope-community.png[] -> Community
+
+**R**eentrancy: image:reentrancy-preallocated.png[] -> Preallocated reentrancy | image:reentrancy-shared.png[] -> Shared reentrancy
+
+**I**nlining: image:inlined.png[] -> Inlined
