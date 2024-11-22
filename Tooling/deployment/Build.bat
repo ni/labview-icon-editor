@@ -12,7 +12,7 @@ set "NIPB_Path=%RelativePath%\Tooling\deployment\NIPackage\IconEditorDeployment_
 set "Project=%RelativePath%\lv_icon_editor.lvproj"
 set "PackedProjectLibraryVersion=1.0.1.0"
 REM Change the variable below to build VI Packages in other versions, or add additional lines to the batch file the build other versions to avoid having to build multiple times the PPL.
-set "VIPackageLabVIEWVersion=2021"
+set "VIPackageLabVIEWVersion=2024"
 
 REM Delete any previously built LV Addons
 cd /d C:\Program Files\NI\LVAddons
@@ -29,18 +29,23 @@ IF %ERRORLEVEL% NEQ 0 goto end
 REM Quit LabVIEW
 call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% QuitLabVIEW
 IF %ERRORLEVEL% NEQ 0 goto end
+REM Run Unit tests
+call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% -v "%RelativePath%\Tooling\Run all tests CLI.vi" -- "
+IF %ERRORLEVEL% NEQ 0 goto end
 REM Build the PPL
 call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% lvbuildspec -- -v %PackedProjectLibraryVersion% -p "%Project%" -b "%BuildSpec%"
 IF %ERRORLEVEL% NEQ 0 goto end
 REM Build VI Package
 call g-cli --lv-ver %VIPackageLabVIEWVersion% --arch %SupportedBitness% -v vipb -- -av -b "%RelativePath%\Tooling\deployment\VIPackage\NI Icon editor.vipb"
-IF %ERRORLEVEL% NEQ 0 goto end
+IF %ERRORLEVEL% NEQ 0 goto
+REM Quit LabVIEW
+IF %LVVersion% NEQ %VIPackageLabVIEWVersion% call g-cli --lv-ver %VIPackageLabVIEWVersion% --arch %SupportedBitness% QuitLabVIEW 
 REM Build NI Package
 REM cd /d C:\Program Files\National Instruments\Package Builder
 REM call nipbcli -o="%NIPB_Path%" -b=packages -save
 REM IF %ERRORLEVEL% NEQ 0 goto end
 REM Removes token LocalHost.LibraryPaths from LabVIEW.ini
-call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% -v "%RelativePath%\Tooling\deploymefnt\NIPackage\DestroyLVINILocalHostKey.vi"
+call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% -v "%RelativePath%\Tooling\deployment\NIPackage\DestroyLVINILocalHostKey.vi"
 IF %ERRORLEVEL% NEQ 0 goto end
 REM Quit LabVIEW
 call g-cli --lv-ver %LVVersion% --arch %SupportedBitness% QuitLabVIEW
