@@ -1,10 +1,10 @@
-<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2024-11-20 20:21:39" Creator="svelderr" Comments="" ID="3c6e4af139ae7d5170fa3a49ff684719">
+<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2024-11-23 12:32:54" Creator="svelderr" Comments="" ID="14b23bb26b7a32d8102ebed19badcc4c">
   <Library_General_Settings>
     <Package_File_Name>NI_Icon_editor</Package_File_Name>
     <Library_Version>1.0.0.56</Library_Version>
     <Auto_Increment_Version>false</Auto_Increment_Version>
     <Library_Source_Folder>..\..\..\resource\plugins</Library_Source_Folder>
-    <Library_Output_Folder>..\..\..\..\build\niiconeditor_plugin</Library_Output_Folder>
+    <Library_Output_Folder>..\..\builds\VI Package</Library_Output_Folder>
     <Company_Name>NI</Company_Name>
     <Library_Summary/>
     <Library_License>MIT</Library_License>
@@ -25,7 +25,7 @@
       <Pre-Uninstall_VI/>
       <Post-Uninstall_VI>Install Support_Post-Uninstall Custom Action.vi</Post-Uninstall_VI>
     </Custom_Action_VIs>
-    <VI_Package_Configuration_File>NI Icon editor x32 resource.vipc</VI_Package_Configuration_File>
+    <VI_Package_Configuration_File>NI Icon editor.vipc</VI_Package_Configuration_File>
     <Description>
       <One_Line_Description_Summary/>
       <Description/>
@@ -113,12 +113,6 @@
         <Additional_Destination>true</Additional_Destination>
         <Additional_Destination_Index>1</Additional_Destination_Index>
       </Destination_Overrides>
-      <Destination_Overrides>
-        <Path>lv_icon.lvlibp</Path>
-        <Destination>0</Destination>
-        <Additional_Destination>true</Additional_Destination>
-        <Additional_Destination_Index>1</Additional_Destination_Index>
-      </Destination_Overrides>
       <Password_Overrides>
         <Path>.</Path>
         <Password/>
@@ -129,21 +123,6 @@
         <Namespace_Type>Prefix</Namespace_Type>
         <Namespace/>
       </Namespace_Overrides>
-      <Exclusions>
-        <Path>lv_icon.vi</Path>
-      </Exclusions>
-      <Exclusions>
-        <Path>lv_icon.vit</Path>
-      </Exclusions>
-      <Exclusions>
-        <Path>lv_IconEditor.lvlib</Path>
-      </Exclusions>
-      <Exclusions>
-        <Path>SAMPLE_lv_icon.vi</Path>
-      </Exclusions>
-      <Exclusions>
-        <Path>NIIconEditor</Path>
-      </Exclusions>
       <Compile_Exclusions>
         <Path>.</Path>
       </Compile_Exclusions>
