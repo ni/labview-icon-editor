@@ -1,9 +1,9 @@
-<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2024-11-23 12:32:54" Creator="svelderr" Comments="" ID="14b23bb26b7a32d8102ebed19badcc4c">
+<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2024-11-23 20:28:50" Creator="svelderr" Comments="" ID="f51bc8b1fc88634d6e687771af26cf20">
   <Library_General_Settings>
     <Package_File_Name>NI_Icon_editor</Package_File_Name>
-    <Library_Version>1.0.0.56</Library_Version>
+    <Library_Version>1.0.0.58</Library_Version>
     <Auto_Increment_Version>false</Auto_Increment_Version>
-    <Library_Source_Folder>..\..\..\resource\plugins</Library_Source_Folder>
+    <Library_Source_Folder>..\..\resource\plugins</Library_Source_Folder>
     <Library_Output_Folder>..\..\builds\VI Package</Library_Output_Folder>
     <Company_Name>NI</Company_Name>
     <Library_Summary/>
@@ -20,10 +20,10 @@
     <Custom_Action_VIs>
       <Pre-Build_VI/>
       <Post-Build_VI/>
-      <Pre-Install_VI>Pre-Install Custom Action.vi</Pre-Install_VI>
+      <Pre-Install_VI>..\VIP_Pre-Install Custom Action.vi</Pre-Install_VI>
       <Post-Install_VI/>
       <Pre-Uninstall_VI/>
-      <Post-Uninstall_VI>Install Support_Post-Uninstall Custom Action.vi</Post-Uninstall_VI>
+      <Post-Uninstall_VI>..\VIP_Post-Uninstall Custom Action.vi</Post-Uninstall_VI>
     </Custom_Action_VIs>
     <VI_Package_Configuration_File>NI Icon editor.vipc</VI_Package_Configuration_File>
     <Description>
@@ -100,10 +100,10 @@
         <Path>&lt;OS Application Files&gt;\NI\LVAddons\niiconeditor32</Path>
       </Additional_Destination>
       <Additional_Destination>
-        <Name>Temp</Name>
+        <Name>OS User Temporary</Name>
         <LLB>false</LLB>
         <Preserve_Hierarchy>true</Preserve_Hierarchy>
-        <Path>&lt;OS Boot Volume Root&gt;\temp</Path>
+        <Path>&lt;OS User Temporary&gt;</Path>
       </Additional_Destination>
     </Destinations>
     <Source_Files>
@@ -123,6 +123,21 @@
         <Namespace_Type>Prefix</Namespace_Type>
         <Namespace/>
       </Namespace_Overrides>
+      <Exclusions>
+        <Path>NIIconEditor</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>lv_icon.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>lv_icon.vit</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>lv_IconEditor.lvlib</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>SAMPLE_lv_icon.vi</Path>
+      </Exclusions>
       <Compile_Exclusions>
         <Path>.</Path>
       </Compile_Exclusions>
