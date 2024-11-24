@@ -1,7 +1,7 @@
-<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2024-11-23 20:28:50" Creator="svelderr" Comments="" ID="f51bc8b1fc88634d6e687771af26cf20">
+<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2024-11-24 10:54:15" Creator="svelderr" Comments="" ID="38da1b66c88ce8b67b6bbd31e58e36a3">
   <Library_General_Settings>
     <Package_File_Name>NI_Icon_editor</Package_File_Name>
-    <Library_Version>1.0.0.58</Library_Version>
+    <Library_Version>1.0.0.61</Library_Version>
     <Auto_Increment_Version>false</Auto_Increment_Version>
     <Library_Source_Folder>..\..\resource\plugins</Library_Source_Folder>
     <Library_Output_Folder>..\..\builds\VI Package</Library_Output_Folder>
@@ -21,7 +21,7 @@
       <Pre-Build_VI/>
       <Post-Build_VI/>
       <Pre-Install_VI>..\VIP_Pre-Install Custom Action.vi</Pre-Install_VI>
-      <Post-Install_VI/>
+      <Post-Install_VI>..\VIP_Post-Install Custom Action.vi</Post-Install_VI>
       <Pre-Uninstall_VI/>
       <Post-Uninstall_VI>..\VIP_Post-Uninstall Custom Action.vi</Post-Uninstall_VI>
     </Custom_Action_VIs>
