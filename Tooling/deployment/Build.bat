@@ -2,7 +2,7 @@ REM  Run this batch file in admin mode since C:\Program Files\NI\LVAddon require
 @echo on
 REM DO NOT CHANGE LVVersion, since we need the PPL to be built on LabVIEW 2021
 set "PPL_LVVersion=2021" 
-set "SupportedBitness=32"
+set "SupportedBitness=64"
 set "ApiVersion=v1"
 set "MinimumSupportedLVVersion=23.0"
 set "AddonName=niiconeditor%SupportedBitness%"
@@ -13,7 +13,7 @@ set "Project=%RelativePath%\lv_icon_editor.lvproj"
 set "PackedProjectLibraryVersion=1.0.1.0"
 REM Change the variable below to build VI Packages in other versions, or add additional lines to the batch file the build other versions to avoid having to build multiple times the PPL.
 REM set "VIP_LVVersion_B="24.3"
-set "VIP_LVVersion_B=21.0"
+set "VIP_LVVersion_B=21.0 (64-bit)"
 set "VIP_LVVersion_A=2021"
 
 REM Removes token LocalHost.LibraryPaths from LabVIEW.ini
