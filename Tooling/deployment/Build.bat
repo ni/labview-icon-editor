@@ -72,7 +72,7 @@ call g-cli --lv-ver %MinimumSupportedLVVersion% --arch %SupportedBitness% QuitLa
 IF %ERRORLEVEL% NEQ 0 goto end
 
 REM Build VI Package
-call g-cli --lv-ver %VIP_LVVersion% --arch %SupportedBitness% -v vipb -- -av -b "%RelativePath%\Tooling\deployment\NI Icon editor.vipb"
+call g-cli --lv-ver %VIP_LVVersion% --arch %SupportedBitness% -v vipb -- -av -b "%RelativePath%\Tooling\deployment\NI Icon editor.vipb" -v %PackedProjectLibraryVersion%
 IF %ERRORLEVEL% NEQ 0 goto end
 
 REM Quit LabVIEW
