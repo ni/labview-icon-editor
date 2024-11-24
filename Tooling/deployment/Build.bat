@@ -6,13 +6,13 @@ set "MinimumSupportedLVVersion=2021"
 set "VIP_LVVersion=2024" 
 set "SupportedBitness=64"
 set "RelativePath=C:\labview-icon-editor"
-REM ABOVE ARE THE ONLY VARIABLES YOU NEED TO MODIFY
+REM ABOVE ARE THE ONLY 4 VARIABLES YOU NEED TO MODIFY
 
 set "AddonName=niiconeditor%SupportedBitness%"
 set "BuildSpec=Editor Packed Library"
 set "NIPB_Path=%RelativePath%\Tooling\deployment\IconEditorDeployment_x%SupportedBitness%.pbs"
 set "Project=%RelativePath%\lv_icon_editor.lvproj"
-set "PackedProjectLibraryVersion=1.0.1.0"
+set "PackedProjectLibraryVersion=1.0.0.1"
 
 IF %VIP_LVVersion%==2021 IF %SupportedBitness%==64 set "VIP_LVVersion_A=21.0 (64-bit)"
 IF %VIP_LVVersion%==2021 IF %SupportedBitness%==32 set "VIP_LVVersion_A=21.0"
