@@ -15,3 +15,5 @@
 
 # Build output
 /resource/plugins/lv_icon.lvlibp
+*.vip
+*.xml
