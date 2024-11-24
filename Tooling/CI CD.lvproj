@@ -17,9 +17,11 @@
 			<Item Name="Create_LV_INI_Token.vi" Type="VI" URL="../deployment/Create_LV_INI_Token.vi"/>
 			<Item Name="CreateLVAddonJSONfile.vi" Type="VI" URL="../deployment/CreateLVAddonJSONfile.vi"/>
 			<Item Name="Destroy_LV_INI_Token.vi" Type="VI" URL="../deployment/Destroy_LV_INI_Token.vi"/>
+			<Item Name="Modify_VIPB_LabVIEW_Version.vi" Type="VI" URL="../deployment/Modify_VIPB_LabVIEW_Version.vi"/>
 			<Item Name="ModifyProjectBuildOutput.vi" Type="VI" URL="../deployment/ModifyProjectBuildOutput.vi"/>
 			<Item Name="PrepareIESource.vi" Type="VI" URL="../PrepareIESource.vi"/>
 			<Item Name="Run all tests CLI.vi" Type="VI" URL="../Run all tests CLI.vi"/>
+			<Item Name="Switch_VIPM_Target.vi" Type="VI" URL="../deployment/Switch_VIPM_Target.vi"/>
 		</Item>
 		<Item Name="NI Package install support" Type="Folder">
 			<Item Name="NIP Post uninstall.vi" Type="VI" URL="../deployment/NIP Post uninstall.vi"/>
@@ -45,13 +47,7 @@
 			<Item Name="license.txt" Type="Document" URL="/&lt;vilib&gt;/JKI/VIPM API/license.txt"/>
 			<Item Name="VIPM API_vipm_api.lvlib" Type="Library" URL="/&lt;vilib&gt;/JKI/VIPM API/VIPM API_vipm_api.lvlib"/>
 		</Item>
-		<Item Name="ClearCache.vi" Type="VI" URL="/&lt;vilib&gt;/G CLI Tools/ClearCache.vi"/>
-		<Item Name="Echo.vi" Type="VI" URL="/&lt;vilib&gt;/G CLI Tools/Echo.vi"/>
-		<Item Name="Modify_VIPB_LabVIEW_Version.vi" Type="VI" URL="../deployment/Modify_VIPB_LabVIEW_Version.vi"/>
-		<Item Name="QuitLabVIEW.vi" Type="VI" URL="/&lt;vilib&gt;/G CLI Tools/QuitLabVIEW.vi"/>
 		<Item Name="Run all tests.vi" Type="VI" URL="../Run all tests.vi"/>
-		<Item Name="Switch_VIPM_Target.vi" Type="VI" URL="../deployment/Switch_VIPM_Target.vi"/>
-		<Item Name="vipb.vi" Type="VI" URL="/&lt;vilib&gt;/G CLI Tools/vipb.vi"/>
 		<Item Name="Dependencies" Type="Dependencies">
 			<Item Name="user.lib" Type="Folder">
 				<Item Name="openg_array.lvlib" Type="Library" URL="/&lt;userlib&gt;/_OpenG.lib/array/array.llb/openg_array.lvlib"/>
@@ -223,7 +219,6 @@
 				<Item Name="Open URL in Default Browser (string).vi" Type="VI" URL="/&lt;vilib&gt;/Platform/browser.llb/Open URL in Default Browser (string).vi"/>
 				<Item Name="Open URL in Default Browser core.vi" Type="VI" URL="/&lt;vilib&gt;/Platform/browser.llb/Open URL in Default Browser core.vi"/>
 				<Item Name="Open URL in Default Browser.vi" Type="VI" URL="/&lt;vilib&gt;/Platform/browser.llb/Open URL in Default Browser.vi"/>
-				<Item Name="Option Parser.lvlib" Type="Library" URL="/&lt;vilib&gt;/Wiresmith Technology/G CLI/Argument Parser/Option Parser.lvlib"/>
 				<Item Name="Parse State Queue__jki_lib_state_machine.vi" Type="VI" URL="/&lt;vilib&gt;/addons/_JKI Toolkits/State Machine/_JKI_lib_State_Machine.llb/Parse State Queue__jki_lib_state_machine.vi"/>
 				<Item Name="Parse State Queue__jki_lib_state_machineDDA31ED5A732916949AA00FDC27B02BA.vi" Type="VI" URL="/&lt;vilib&gt;/JKI/_VIPM API_internal_deps/Parse State Queue__jki_lib_state_machineDDA31ED5A732916949AA00FDC27B02BA.vi"/>
 				<Item Name="Parse String with TDs__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi" Type="VI" URL="/&lt;vilib&gt;/JKI/_VIPM API_internal_deps/Parse String with TDs__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi"/>
@@ -253,7 +248,6 @@
 				<Item Name="Simple Error Handler.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/error.llb/Simple Error Handler.vi"/>
 				<Item Name="Space Constant.vi" Type="VI" URL="/&lt;vilib&gt;/dlg_ctls.llb/Space Constant.vi"/>
 				<Item Name="Split Cluster TD__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi" Type="VI" URL="/&lt;vilib&gt;/JKI/_VIPM API_internal_deps/Split Cluster TD__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi"/>
-				<Item Name="Stall Data Flow.vim" Type="VI" URL="/&lt;vilib&gt;/Utility/Stall Data Flow.vim"/>
 				<Item Name="String to 1D Array__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi" Type="VI" URL="/&lt;vilib&gt;/JKI/_VIPM API_internal_deps/String to 1D Array__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi"/>
 				<Item Name="Strip Path - Traditional__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi" Type="VI" URL="/&lt;vilib&gt;/JKI/_VIPM API_internal_deps/Strip Path - Traditional__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi"/>
 				<Item Name="Strip Units__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi" Type="VI" URL="/&lt;vilib&gt;/JKI/_VIPM API_internal_deps/Strip Units__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi"/>
@@ -272,7 +266,6 @@
 				<Item Name="TRef Traverse for References.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/traverseref.llb/TRef Traverse for References.vi"/>
 				<Item Name="TRef Traverse.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/traverseref.llb/TRef Traverse.vi"/>
 				<Item Name="TRef TravTarget.ctl" Type="VI" URL="/&lt;vilib&gt;/Utility/traverseref.llb/TRef TravTarget.ctl"/>
-				<Item Name="Trim Whitespace One-Sided.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/error.llb/Trim Whitespace One-Sided.vi"/>
 				<Item Name="Trim Whitespace.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/error.llb/Trim Whitespace.vi"/>
 				<Item Name="Type Descriptor I16 Array.ctl" Type="VI" URL="/&lt;vilib&gt;/Utility/GetType.llb/Type Descriptor I16 Array.ctl"/>
 				<Item Name="Type Descriptor I16.ctl" Type="VI" URL="/&lt;vilib&gt;/Utility/GetType.llb/Type Descriptor I16.ctl"/>
