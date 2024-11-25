@@ -2,6 +2,8 @@
 This repo contains the source files for the LabVIEW icon editor.
 You can use this code as a starting point for creating a custom icon editor. Refer to the [CONTRIBUTING](CONTRIBUTING.md) document for information about submitting changes for inclusion with future versions of LabVIEW.
 
+This repo contains tooling to distribute the icon editor as a VI package, which runs the CI layer using the unit tests contained on tooling\unit tests.
+
 ## Minimum Compatible LabVIEW Version
 LabVIEW source is saved in 21.0 (__LabVIEW 2021__) format.
 
@@ -37,6 +39,9 @@ A .bat file located on *\Tooling\deployment\Build.bat* automates the process des
 
 azure_pipeline.yml can also automate the process. 
 
+*LabVIEW 2021 and 2022:* lv_icon.lvlibp will replace lv_icon.lvlibp from resources/plugin (normal process).
+*LabVIEW > 2022:* lv_icon.lvlibp will be installed on C:\Program Files\NI\LVAddons\niiconeditor(bitness)
+
 **Prerequisites:** 
  
   * LV2021 
@@ -47,7 +52,15 @@ azure_pipeline.yml can also automate the process.
  
 **Process:**
 
-  1. Edit variables *VIPackageLabVIEWVersion* and *SupportedBitness* on .bat file *\Tooling\deployment\Build.bat*.
-  2. Run the .bat file with admin rights
-  3. A VI package named *ni_icon_editor-x.x.x.x* will be built on *C:\build\niiconeditor_plugin*.
+  1. Edit variables on .bat file *\Tooling\deployment\Build.bat*.
+     Example: Batch file variables for lv_icon.lvlibp built on LV2021 x64, on a VI Package for LabVIEW 2024 x64
+
+     set "MinimumSupportedLVVersion=2021"
+     
+     set "VIP_LVVersion=2024"
+     
+     set "SupportedBitness=64"
+        
+  3. Run the .bat file with admin rights (inspect it first).
+  4. A VI package named *ni_icon_editor-x.x.x.x* will be built on *builds\VI Package*.
 
