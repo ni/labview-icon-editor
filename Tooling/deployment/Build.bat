@@ -4,7 +4,7 @@ REM  !!!!@@@@Run this batch file in admin mode. Some operations require admin ri
 REM ONLY MODIFY THE 4 VARIABLES BELOW (MinimumSupportedLVVersion, VIP_LVVersion, SupportedBitness, RelativePath)
 set "MinimumSupportedLVVersion=2021"
 set "VIP_LVVersion=2024" 
-set "SupportedBitness=64"
+set "SupportedBitness=32"
 set "RelativePath=C:\labview-icon-editor"
 REM ABOVE ARE THE ONLY 4 VARIABLES YOU NEED TO MODIFY
 
@@ -12,14 +12,14 @@ set "AddonName=niiconeditor%SupportedBitness%"
 set "BuildSpec=Editor Packed Library"
 set "NIPB_Path=%RelativePath%\Tooling\deployment\IconEditorDeployment_x%SupportedBitness%.pbs"
 set "Project=%RelativePath%\lv_icon_editor.lvproj"
-set "PackedProjectLibraryVersion=1.0.0.1"
+set "PackedProjectLibraryVersion=1.0.0.2"
 
 IF %VIP_LVVersion%==2021 IF %SupportedBitness%==64 set "VIP_LVVersion_A=21.0 (64-bit)"
 IF %VIP_LVVersion%==2021 IF %SupportedBitness%==32 set "VIP_LVVersion_A=21.0"
-IF %VIP_LVVersion%==2022 IF %SupportedBitness%==64 set "VIP_LVVersion_A=22.0 (64-bit)"
-IF %VIP_LVVersion%==2022 IF %SupportedBitness%==32 set "VIP_LVVersion_A=22.0"
-IF %VIP_LVVersion%==2023 IF %SupportedBitness%==64 set "VIP_LVVersion_A=23.0 (64-bit)"
-IF %VIP_LVVersion%==2023 IF %SupportedBitness%==32 set "VIP_LVVersion_A=23.0"
+IF %VIP_LVVersion%==2022 IF %SupportedBitness%==64 set "VIP_LVVersion_A=22.3 (64-bit)"
+IF %VIP_LVVersion%==2022 IF %SupportedBitness%==32 set "VIP_LVVersion_A=22.3"
+IF %VIP_LVVersion%==2023 IF %SupportedBitness%==64 set "VIP_LVVersion_A=23.3 (64-bit)"
+IF %VIP_LVVersion%==2023 IF %SupportedBitness%==32 set "VIP_LVVersion_A=23.3"
 IF %VIP_LVVersion%==2024 IF %SupportedBitness%==64 set "VIP_LVVersion_A=24.3 (64-bit)"
 IF %VIP_LVVersion%==2024 IF %SupportedBitness%==32 set "VIP_LVVersion_A=24.3"
 
@@ -86,5 +86,3 @@ REM IF %ERRORLEVEL% NEQ 0 goto end
 
 :end 
 IF %ERRORLEVEL% NEQ 0 pause
-
-pause
