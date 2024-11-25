@@ -1,11 +1,11 @@
 # Icon Editor for LabVIEW
-This repo contains the source files for the LabVIEW icon editor.
+This repo contains the source files and build tools for the LabVIEW icon editor.
 You can use this code as a starting point for creating a custom icon editor. Refer to the [CONTRIBUTING](CONTRIBUTING.md) document for information about submitting changes for inclusion with future versions of LabVIEW.
-
-This repo contains tooling to distribute the icon editor as a VI package, which runs the CI layer using the unit tests contained on tooling\unit tests.
 
 ## Minimum Compatible LabVIEW Version
 LabVIEW source is saved in 21.0 (__LabVIEW 2021__) format.
+
+The packed project library has to be built on __LabVIEW 2021__, the VI Package can be be built for any version using the packed project library built on __LabVIEW 2021__
 
 ## Editing Guide ##
 Because the icon editor is part of the LabVIEW development environment, you need to make changes to installed files before editing this project.
@@ -38,6 +38,8 @@ Then, on the machine where you want to install your custom icon editor:
 A .bat file located on *\Tooling\deployment\Build.bat* automates the process described by the *Editing Guide* and *Distribution guide*. 
 
 azure_pipeline.yml can also automate the process. 
+
+Running the .bat file will run the unit tests contained on tooling\unit tests
 
 *LabVIEW 2021 and 2022:* lv_icon.lvlibp will replace lv_icon.lvlibp from resources/plugin (normal process).
 *LabVIEW > 2022:* lv_icon.lvlibp will be installed on C:\Program Files\NI\LVAddons\niiconeditor(bitness)
