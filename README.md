@@ -41,28 +41,29 @@ azure_pipeline.yml can also automate the process.
 
 Running the .bat file will run the unit tests contained on tooling\unit tests
 
-*LabVIEW 2021 and 2022:* lv_icon.lvlibp will replace lv_icon.lvlibp from resources/plugin (normal process).
-*LabVIEW > 2022:* lv_icon.lvlibp will be installed on C:\Program Files\NI\LVAddons\niiconeditor(bitness)
+__LabVIEW 2021__ and __LabVIEW 2022__ : *lv_icon.lvlibp* will replace *lv_icon.lvlibp* from *resources/plugin* (normal process).
+__LabVIEW > 2022__ : *lv_icon.lvlibp* will be installed on *C:\Program Files\NI\LVAddons\niiconeditor(bitness)*
 
 **Prerequisites:** 
  
-  * LV2021 
-  * Latest VI Package Builder
-  * Latest VIPM 
+  * LabVIEW 2021 
+  * Latest *VI Package Builder*
+  * Latest *VIPM* 
   * Manually Applying dependencies located on *Tooling\deployment\Dependencies.vipc*
-  * (Other LabVIEW versions you want to build the package on, LV2021 is mandatory since the PPL gets built on 2021)
+  * (Other *LabVIEW* versions you want to build the package on, *LabVIEW 2021* is mandatory since the PPL gets built on 2021)
  
 **Process:**
 
   1. Edit variables on .bat file *\Tooling\deployment\Build.bat*.
-     Example: Batch file variables for lv_icon.lvlibp built on LV2021 x64, on a VI Package for LabVIEW 2024 x64
 
-     set "MinimumSupportedLVVersion=2021"
+     Example: Batch file variables for *lv_icon.lvlibp* built on *LabVIEW 2021 x64*, on a VI Package for *LabVIEW 2024 x64*
+
+     *set "MinimumSupportedLVVersion=2021"*
      
-     set "VIP_LVVersion=2024"
+     *set "VIP_LVVersion=2024"*
      
-     set "SupportedBitness=64"
+     *set "SupportedBitness=64"*
         
-  3. Run the .bat file with admin rights (inspect it first).
+  3. Run *\Tooling\deployment\Build.bat* with admin rights.
   4. A VI package named *ni_icon_editor-x.x.x.x* will be built on *builds\VI Package*.
 
