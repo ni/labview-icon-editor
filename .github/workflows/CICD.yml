@@ -1,0 +1,21 @@
+name: Trigger CI CD
+
+on:
+  workflow_call:
+    secrets:
+      AZURE_DEVOPS_TOKEN:
+        required: true
+  workflow_dispatch:
+
+jobs:
+  trigger_azdo_ci:
+    name: Trigger Main CI
+    runs-on: self-hosted
+    steps:
+    - name: Trigger Main CI
+      uses: Azure/pipelines@v1.2
+      with:
+        azure-devops-project-url: 'https://dev.azure.com/sergiovelderrain/sergiovelderrain'
+        azure-pipeline-name: 'Build_Icon_Editor'
+        azure-devops-token: '${{ secrets.AZURE_DEVOPS_TOKEN }}'
+        azure-pipeline-variables: '{"workflow_run_id": "${{ github.run_id }}", "is_release": "true"}'
