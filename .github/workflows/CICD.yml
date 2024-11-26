@@ -1,6 +1,10 @@
 name: Trigger CI CD
 
 on:
+  workflow_call:
+    secrets:
+      AZURE_DEVOPS_TOKEN:
+        required: true
   workflow_dispatch:
 
 jobs:
