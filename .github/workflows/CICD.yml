@@ -18,4 +18,4 @@ jobs:
         azure-devops-project-url: 'https://dev.azure.com/sergiovelderrain/sergiovelderrain'
         azure-pipeline-name: 'Build_Icon_Editor'
         azure-devops-token: '${{ secrets.AZURE_DEVOPS_TOKEN }}'
-        azure-pipeline-variables: '{"workflow_run_id": "${{ github.run_id }}", "is_release": "true"}'
+        azure-pipeline-variables: '{"workflow_run_id": "${{ github.run_id }}", "is_release": "false"}'
