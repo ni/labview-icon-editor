@@ -1,0 +1,62 @@
+name: Build icon editor VIPs
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  Build_VI_Packages:
+    name: Build VI Packages
+    runs-on: self-hosted
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v1.0.0
+    - name: Add token to LabVIEW ${{ vars.MinimumSupportedLVVersion }} (64-bit) ini file
+      run: |
+        g-cli --lv-ver ${{ vars.MinimumSupportedLVVersion }} --arch 64 -v "${{ vars.RelativePath }}\Tooling\deployment\Create_LV_INI_Token.vi" -- LabVIEW Localhost.LibraryPaths "${{ vars.RelativePath }}"
+    - name: Modify VIPB to use LabVIEW ${{ vars.VIP_LVVersion }} (64-bit)
+      run: |
+        g-cli --lv-ver ${{ vars.MinimumSupportedLVVersion }} --arch 64 -v "${{ vars.RelativePath }}\Tooling\deployment\Modify_VIPB_LabVIEW_Version.vi" -- "${{ vars.RelativePath }}\Tooling\deployment\NI Icon editor.vipb" "${{ vars.VIP_LVVersion_A }} (64-bit)"
+    - name: Run Unit tests LabVIEW ${{ vars.MinimumSupportedLVVersion }} (64-bit)
+      run: |
+        g-cli --lv-ver ${{ vars.MinimumSupportedLVVersion }} --arch 64 -v "${{ vars.RelativePath }}\Tooling\Run all tests CLI.vi"
+    - name: Build lv_icon.lvlibp for LabVIEW ${{ vars.MinimumSupportedLVVersion }} (64-bit)
+      run: |
+        g-cli --lv-ver ${{ vars.MinimumSupportedLVVersion }} --arch 64 lvbuildspec -- -av -p "${{ vars.RelativePath }}\lv_icon_editor.lvproj" -b "Editor Packed Library"
+    - name: Switch VIPM target to LabVIEW ${{ vars.VIP_LVVersion }} (64-bit)
+      run: |
+        g-cli --lv-ver ${{ vars.MinimumSupportedLVVersion }} --arch 64 -v "${{ vars.RelativePath }}\Tooling\Deployment\Switch_VIPM_Target.vi" -- "${{ vars.VIP_LVVersion_A }} (64-bit)"
+    - name: Close LabVIEW ${{ vars.MinimumSupportedLVVersion }} (64-bit)
+      run: |
+        g-cli --lv-ver ${{ vars.MinimumSupportedLVVersion }} --arch 64 QuitLabVIEW   
+    - name: Build LabVIEW ${{ vars.VIP_LVVersion }} (64-bit) VI Package
+      run: |
+        g-cli --lv-ver ${{ vars.VIP_LVVersion }} --arch 64 -v vipb -- -av -b "${{ vars.RelativePath }}\Tooling\deployment\NI Icon editor.vipb" -av
+    - name: Close LabVIEW ${{ vars.VIP_LVVersion }} (64-bit)
+      run: |
+        g-cli --lv-ver ${{ vars.VIP_LVVersion }} --arch 64 QuitLabVIEW
+    - name: Add token to LabVIEW ${{ vars.MinimumSupportedLVVersion }} (64-bit) ini file
+      run: |
+        g-cli --lv-ver ${{ vars.MinimumSupportedLVVersion }} --arch 32 -v "${{ vars.RelativePath }}\Tooling\deployment\Create_LV_INI_Token.vi" -- LabVIEW Localhost.LibraryPaths "${{ vars.RelativePath }}"
+    - name: Modify VIPB to use LabVIEW ${{ vars.VIP_LVVersion }} (32-bit)
+      run: |
+        g-cli --lv-ver ${{ vars.MinimumSupportedLVVersion }} --arch 32 -v "${{ vars.RelativePath }}\Tooling\deployment\Modify_VIPB_LabVIEW_Version.vi" -- "${{ vars.RelativePath }}\Tooling\deployment\NI Icon editor.vipb" "${{ vars.VIP_LVVersion_A }}"
+    - name: Run Unit tests LabVIEW ${{ vars.MinimumSupportedLVVersion }} (32-bit)
+      run: |
+        g-cli --lv-ver ${{ vars.MinimumSupportedLVVersion }} --arch 32 -v "${{ vars.RelativePath }}\Tooling\Run all tests CLI.vi"
+    - name: Build lv_icon.lvlibp for LabVIEW ${{ vars.MinimumSupportedLVVersion }} (32-bit)
+      run: |
+        g-cli --lv-ver ${{ vars.MinimumSupportedLVVersion }} --arch 32 lvbuildspec -- -av -p "${{ vars.RelativePath }}\lv_icon_editor.lvproj" -b "Editor Packed Library"
+    - name: Switch VIPM target to LabVIEW ${{ vars.VIP_LVVersion }} (32-bit)
+      run: |
+        g-cli --lv-ver ${{ vars.MinimumSupportedLVVersion }} --arch 32 -v "${{ vars.RelativePath }}\Tooling\Deployment\Switch_VIPM_Target.vi" -- "${{ vars.VIP_LVVersion_A }}"
+    - name: Close LabVIEW ${{ vars.MinimumSupportedLVVersion }} (32-bit)
+      run: |
+        g-cli --lv-ver ${{ vars.MinimumSupportedLVVersion }} --arch 32 QuitLabVIEW   
+    - name: Build LabVIEW ${{ vars.VIP_LVVersion }} (32-bit) VI Package
+      run: |
+        g-cli --lv-ver ${{ vars.VIP_LVVersion }} --arch 32 -v vipb -- -av -b "${{ vars.RelativePath }}\Tooling\deployment\NI Icon editor.vipb" -av
+    - name: Close LabVIEW ${{ vars.VIP_LVVersion }} (32-bit)
+      run: |
+        g-cli --lv-ver ${{ vars.VIP_LVVersion }} --arch 32 QuitLabVIEW
