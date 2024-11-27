@@ -1,6 +1,9 @@
 name: Build icon editor VIPs
 
 on:
+  pull_request:
+    branches:
+      - 'feature/*'
   workflow_call:
   workflow_dispatch:
 
