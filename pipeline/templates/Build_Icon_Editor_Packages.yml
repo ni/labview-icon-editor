@@ -77,7 +77,7 @@ jobs:
         inputs:
           script: |
             call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} -v "${{ parameters.RelativePath }}\Tooling\Deployment\Switch_VIPM_Target.vi" -- "${{ parameters.VIP_LVVersion_A }} (${{ parameters.MinimumSupportedLVVersion }}-bit)"
-        displayName: Switch VIPM target to LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit)
+        displayName: Switch VIPM target to LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.SupportedBitness }}-bit)
 
       - task: CmdLine@2
         inputs:
