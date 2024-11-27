@@ -4,7 +4,7 @@
 # https://aka.ms/yaml
 
 trigger:
-- users/svelderrain/deployment-experiment
+- workflow_dispatch
 
 name: $(Build.BuildID)
 
