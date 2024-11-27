@@ -32,7 +32,7 @@ stages:
      VIP_LVVersion_A: '24.3'
      SupportedBitness: '32'
      ApiVersion: 'v1'
-     MinimumSupportedLVVersion: '21.0'
+     MinimumSupportedLVVersion: '2021'
      MinimumSupportedLVVersionLVAddon: '23.0'
      AddonName: 'niiconeditor64'
      RelativePath: $(Build.Repository.LocalPath)
@@ -51,7 +51,7 @@ stages:
      VIP_LVVersion_A: '24.3 (64-bit)'
      SupportedBitness: '64'
      ApiVersion: 'v1'
-     MinimumSupportedLVVersion: '21.0'
+     MinimumSupportedLVVersion: '2021'
      MinimumSupportedLVVersionLVAddon: '23.0'
      AddonName: 'niiconeditor64'
      RelativePath: $(Build.Repository.LocalPath)
