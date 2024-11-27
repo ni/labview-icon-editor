@@ -52,47 +52,47 @@ jobs:
       - task: CmdLine@2
         inputs:
           script: |
-            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} -v "${{ parameters.RelativePath }}\Tooling\deployment\Create_LV_INI_Token.vi" -- LabVIEW Localhost.LibraryPaths "${{ parameters.RelativePath }}"
+            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} -v "${{ parameters.RelativePath }}\Tooling\deployment\Create_LV_INI_Token.vi" -- LabVIEW Localhost.LibraryPaths "${{ parameters.RelativePath }}"
         displayName: Add token to LabVIEW ${{ parameters.MinimumSupportedLVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit) ini file
 
       - task: CmdLine@2
         inputs:
           script: |
-            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} -v "${{ parameters.RelativePath }}\Tooling\deployment\Modify_VIPB_LabVIEW_Version.vi" -- "${{ parameters.RelativePath }}\Tooling\deployment\NI Icon editor.vipb" "${{ parameters.VIP_LVVersion_A }} (${{ parameters.MinimumSupportedLVVersion }}-bit)"
+            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} -v "${{ parameters.RelativePath }}\Tooling\deployment\Modify_VIPB_LabVIEW_Version.vi" -- "${{ parameters.RelativePath }}\Tooling\deployment\NI Icon editor.vipb" "${{ parameters.VIP_LVVersion_A }} (${{ parameters.MinimumSupportedLVVersion }}-bit)"
         displayName: Modify VIPB to use LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit)
 
       - task: CmdLine@2
         inputs:
           script: |
-            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} -v "${{ parameters.RelativePath }}\Tooling\Run all tests CLI.vi"
+            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} -v "${{ parameters.RelativePath }}\Tooling\Run all tests CLI.vi"
         displayName: Run Unit tests LabVIEW ${{ parameters.MinimumSupportedLVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit)
 
       - task: CmdLine@2
         inputs:
           script: |
-            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} lvbuildspec -- -av -p "${{ parameters.RelativePath }}\lv_icon_editor.lvproj" -b "Editor Packed Library"
+            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} lvbuildspec -- -av -p "${{ parameters.RelativePath }}\lv_icon_editor.lvproj" -b "Editor Packed Library"
         displayName: Build lv_icon.lvlibp for LabVIEW ${{ parameters.MinimumSupportedLVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit)
 
       - task: CmdLine@2
         inputs:
           script: |
-            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} -v "${{ parameters.RelativePath }}\Tooling\Deployment\Switch_VIPM_Target.vi" -- "${{ parameters.VIP_LVVersion_A }} (${{ parameters.MinimumSupportedLVVersion }}-bit)"
+            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} -v "${{ parameters.RelativePath }}\Tooling\Deployment\Switch_VIPM_Target.vi" -- "${{ parameters.VIP_LVVersion_A }} (${{ parameters.MinimumSupportedLVVersion }}-bit)"
         displayName: Switch VIPM target to LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit)
 
       - task: CmdLine@2
         inputs:
           script: |
-            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} QuitLabVIEW
+            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} QuitLabVIEW
         displayName: Close LabVIEW ${{ parameters.MinimumSupportedLVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit)
 
       - task: CmdLine@2
         inputs:
           script: |
-            call g-cli --lv-ver ${{ parameters.VIP_LVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} -v vipb -- -av -b "${{ parameters.RelativePath }}\Tooling\deployment\NI Icon editor.vipb" -av
+            call g-cli --lv-ver ${{ parameters.VIP_LVVersion }} --arch ${{ parameters.SupportedBitness }} -v vipb -- -av -b "${{ parameters.RelativePath }}\Tooling\deployment\NI Icon editor.vipb" -av
         displayName: Build LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit) VI Package
 
       - task: CmdLine@2
         inputs:
           script: |
-            call g-cli --lv-ver ${{ parameters.VIP_LVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} QuitLabVIEW
+            call g-cli --lv-ver ${{ parameters.VIP_LVVersion }} --arch ${{ parameters.SupportedBitness }} QuitLabVIEW
         displayName: Close LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit)
