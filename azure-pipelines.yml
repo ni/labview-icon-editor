@@ -4,8 +4,14 @@
 # https://aka.ms/yaml
 
 trigger:
-- users/svelderrain/deployment-experiment
-
+  branches:
+    exclude:
+      - "*"
+pr:
+  branches:
+    include:
+      - main
+      
 name: $(Build.BuildID)
 
 pool: 
