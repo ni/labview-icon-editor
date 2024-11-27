@@ -6,10 +6,12 @@
 # More details in http://www.ni.com/documentation/en/ni-package-builder/latest/manual/cli/
 #The path to the files contained in an NI package is relative to the PBS file. This can be seen by opening the .PBS as a text file
 parameters:
- LVVersion: ''
+ VIP_LVVersion: ''
+ VIP_LVVersion_A: ''
  SupportedBitness: ''
  ApiVersion: ''
  MinimumSupportedLVVersion: ''
+ MinimumSupportedLVVersionLVAddon: ''
  AddonName: ''
  RelativePath: ''
  BuildSpec: ''
@@ -45,43 +47,44 @@ jobs:
 
     #-----Path To Dump Built Package-----#
     builtPackagePath: '${{parameters.builtPackagePath}}' 
-    
-  steps:
+ 
   - task: CmdLine@2
     inputs:
-     script: call g-cli --lv-ver ${{parameters.LVVersion}} --arch ${{parameters.SupportedBitness}} -v "$(Build.Repository.LocalPath)\Tooling\deployment\NIPackage\CreateLVINILocalHostKey.vi" -- $(Build.Repository.LocalPath)
-    displayName: Add localhost flag to LabVIEW INI
+     script: call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} -v "${{ parameters.RelativePath }}\Tooling\deployment\Create_LV_INI_Token.vi" -- LabVIEW Localhost.LibraryPaths "${{ parameters.RelativePath }}"
+    displayName: Add token to LabVIEW ${{ parameters.MinimumSupportedLVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit) ini file
 
   - task: CmdLine@2
     inputs:
-     script: call g-cli --lv-ver ${{parameters.LVVersion}} --arch ${{parameters.SupportedBitness}} QuitLabVIEW
-    displayName: Quit LabVIEW
-    
+     script: call -cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} -v "${{ parameters.RelativePath }}\Tooling\deployment\Modify_VIPB_LabVIEW_Version.vi" -- "${{ parameters.RelativePath }}\Tooling\deployment\NI Icon editor.vipb" "${{ parameters.VIP_LVVersion_A }} (${{ parameters.MinimumSupportedLVVersion }}-bit)"
+    displayName: Modify VIPB to use LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit)
+
   - task: CmdLine@2
+    inputs:
+     script: call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} -v "${{ parameters.RelativePath }}\Tooling\Run all tests CLI.vi"
+    displayName: Run Unit tests LabVIEW ${{ parameters.MinimumSupportedLVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit)
+ 
+  - task: CmdLine@2
+    inputs:
+     script: call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} lvbuildspec -- -av -p "${{ parameters.RelativePath }}\lv_icon_editor.lvproj" -b "Editor Packed Library"
+    displayName: Build lv_icon.lvlibp for LabVIEW ${{ parameters.MinimumSupportedLVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit)
+
+  - task: CmdLine@2
+    inputs:
+     script: call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} -v "${{ parameters.RelativePath }}\Tooling\Deployment\Switch_VIPM_Target.vi" -- "${{ parameters.VIP_LVVersion_A }} (${{ parameters.MinimumSupportedLVVersion }}-bit)"
+    displayName: Switch VIPM target to LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit)
+ - task: CmdLine@2
+    inputs:
+     script: call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} QuitLabVIEW   
+    displayName: Close LabVIEW ${{ parameters.MinimumSupportedLVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit)
+ - task: CmdLine@2
+    inputs:
+     script: call g-cli --lv-ver ${{ parameters.VIP_LVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} -v vipb -- -av -b "${{ parameters.RelativePath }}\Tooling\deployment\NI Icon editor.vipb" -av
+    displayName: Build LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit) VI Package 
+ - task: CmdLine@2
     inputs:    
-     script: call g-cli --lv-ver ${{parameters.LVVersion}} --arch ${{parameters.SupportedBitness}} -v "$(Build.Repository.LocalPath)\Tooling\PrepareIESource.vi" -- "${{parameters.Project}}" "Editor Packed Library"
-    displayName: Zips and moves lv_icon.lvlibp as well as LabVIEW Icon API from VI Lib to a different location
-
-  - task: CmdLine@2
-    inputs:
-     script: call g-cli --lv-ver ${{parameters.LVVersion}} --arch ${{parameters.SupportedBitness}} lvbuildspec -- -v ${{parameters.PackedProjectLibraryVersion}} -p "${{parameters.Project}}" -b "${{parameters.BuildSpec}}"
-    displayName: Build the PPL
-  - task: CmdLine@2
-    inputs:
-     script: call g-cli --lv-ver 2021 --arch ${{parameters.SupportedBitness}} -v vipb -- -av -b "$(Build.Repository.LocalPath)\Tooling\deployment\VIPackage\NI Icon editor.vipb"
-    displayName: Build VI Package
-  - task: CmdLine@2
-    inputs:
-     script: call g-cli --lv-ver ${{parameters.LVVersion}} --arch ${{parameters.SupportedBitness}} -v "$(Build.Repository.LocalPath)\Tooling\deployment\NIPackage\DestroyLVINILocalHostKey.vi"
-    displayName: Removes token LocalHost.LibraryPaths from LabVIEW.ini
-  
-  - task: CmdLine@2
-    inputs:
-     script: call g-cli --lv-ver ${{parameters.LVVersion}} --arch ${{parameters.SupportedBitness}} QuitLabVIEW
-    displayName: Quit LabVIEW
-
-
-  
+     script: call g-cli --lv-ver ${{ parameters.VIP_LVVersion }} --arch ${{ parameters.MinimumSupportedLVVersion }} QuitLabVIEW
+    displayName: Close LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.MinimumSupportedLVVersion }}-bit)
+     
   
   
     
