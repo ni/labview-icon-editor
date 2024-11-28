@@ -14,6 +14,7 @@
 		<Property Name="server.vi.propertiesEnabled" Type="Bool">true</Property>
 		<Property Name="specify.custom.address" Type="Bool">false</Property>
 		<Item Name="G-CLI" Type="Folder">
+			<Item Name="ApplyVIPC.vi" Type="VI" URL="../deployment/ApplyVIPC.vi"/>
 			<Item Name="Create_LV_INI_Token.vi" Type="VI" URL="../deployment/Create_LV_INI_Token.vi"/>
 			<Item Name="CreateLVAddonJSONfile.vi" Type="VI" URL="../deployment/CreateLVAddonJSONfile.vi"/>
 			<Item Name="Destroy_LV_INI_Token.vi" Type="VI" URL="../deployment/Destroy_LV_INI_Token.vi"/>
@@ -48,7 +49,6 @@
 			<Item Name="license.txt" Type="Document" URL="/&lt;vilib&gt;/JKI/VIPM API/license.txt"/>
 			<Item Name="VIPM API_vipm_api.lvlib" Type="Library" URL="/&lt;vilib&gt;/JKI/VIPM API/VIPM API_vipm_api.lvlib"/>
 		</Item>
-		<Item Name="ApplyVIPC.vi" Type="VI" URL="../deployment/ApplyVIPC.vi"/>
 		<Item Name="Run all tests.vi" Type="VI" URL="../Run all tests.vi"/>
 		<Item Name="Dependencies" Type="Dependencies">
 			<Item Name="user.lib" Type="Folder">

@@ -6,14 +6,17 @@ param(
     [string]$RelativePath,
     [string]$LabVIEW_Project,
     [string]$VIPBPath,
-    [string]$VIP_LVVersion
+    [string]$VIP_LVVersion,
+	[string]$VIPCPath
 )
 
 # Construct the command
 $script = @"
+.\Applyvipc.ps1 -MinimumSupportedLVVersion "$MinimumSupportedLVVersion" -SupportedBitness "$SupportedBitness" -RelativePath "$RelativePath" -VIPCPath "Tooling\deployment\Dependencies.vipc" -VIP_LVVersion "$VIP_LVVersion"
 .\RunUnitTests.ps1 -MinimumSupportedLVVersion "$MinimumSupportedLVVersion" -SupportedBitness "$SupportedBitness" -RelativePath "$RelativePath"
 .\Build_lvlibp.ps1 -MinimumSupportedLVVersion "$MinimumSupportedLVVersion" -SupportedBitness "$SupportedBitness" -RelativePath "$RelativePath"
 .\Build_vip.ps1 -MinimumSupportedLVVersion "$MinimumSupportedLVVersion" -SupportedBitness "$SupportedBitness" -RelativePath "$RelativePath" -LabVIEW_Project "$LabVIEW_Project" -VIPBPath "$VIPBPath" -VIP_LVVersion "$VIP_LVVersion"
+
 
 "@
 

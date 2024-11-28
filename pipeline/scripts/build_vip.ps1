@@ -1,5 +1,5 @@
 # Example usage:
-# .\build_vip.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "C:\labview-icon-editor" -LabVIEW_Project "lv_icon_editor" -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -VIP_LVVersion "2024"
+# .\build_vip.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "C:\labview-icon-editor" -LabVIEW_Project "lv_icon_editor" -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -VIP_LVVersion "2024" -VIPCPath "Tooling\deployment\Dependencies.vipc"
 
 param (
     [string]$MinimumSupportedLVVersion,
