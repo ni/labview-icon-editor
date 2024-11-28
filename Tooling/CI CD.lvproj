@@ -48,6 +48,7 @@
 			<Item Name="license.txt" Type="Document" URL="/&lt;vilib&gt;/JKI/VIPM API/license.txt"/>
 			<Item Name="VIPM API_vipm_api.lvlib" Type="Library" URL="/&lt;vilib&gt;/JKI/VIPM API/VIPM API_vipm_api.lvlib"/>
 		</Item>
+		<Item Name="ApplyVIPC.vi" Type="VI" URL="../deployment/ApplyVIPC.vi"/>
 		<Item Name="Run all tests.vi" Type="VI" URL="../Run all tests.vi"/>
 		<Item Name="Dependencies" Type="Dependencies">
 			<Item Name="user.lib" Type="Folder">
