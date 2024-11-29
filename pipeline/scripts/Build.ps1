@@ -1,5 +1,5 @@
 # Example usage:
-# .\build.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "C:\labview-icon-editor" -LabVIEW_Project "lv_icon_editor" -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -VIP_LVVersion "2024"
+# .\build.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "C:\labview-icon-editor" -LabVIEW_Project "lv_icon_editor" -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -VIP_LVVersion "2021" -VIPCPath "Tooling\deployment\Dependencies.vipc"
 param(
     [string]$MinimumSupportedLVVersion,
     [string]$SupportedBitness,
@@ -9,14 +9,43 @@ param(
     [string]$VIP_LVVersion,
 	[string]$VIPCPath
 )
-
 # Construct the command
 $script = @"
-.\Applyvipc.ps1 -MinimumSupportedLVVersion "$MinimumSupportedLVVersion" -SupportedBitness "$SupportedBitness" -RelativePath "$RelativePath" -VIPCPath "Tooling\deployment\Dependencies.vipc" -VIP_LVVersion "$VIP_LVVersion"
-.\RunUnitTests.ps1 -MinimumSupportedLVVersion "$MinimumSupportedLVVersion" -SupportedBitness "$SupportedBitness" -RelativePath "$RelativePath"
-.\Build_lvlibp.ps1 -MinimumSupportedLVVersion "$MinimumSupportedLVVersion" -SupportedBitness "$SupportedBitness" -RelativePath "$RelativePath"
-.\Build_vip.ps1 -MinimumSupportedLVVersion "$MinimumSupportedLVVersion" -SupportedBitness "$SupportedBitness" -RelativePath "$RelativePath" -LabVIEW_Project "$LabVIEW_Project" -VIPBPath "$VIPBPath" -VIP_LVVersion "$VIP_LVVersion"
+#############################
+#   Apply dependenciesx86   #
+#############################
+.\Applyvipc.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$RelativePath" -VIPCPath "Tooling\deployment\Dependencies.vipc" -VIP_LVVersion "$VIP_LVVersion"
+#############################
+#		Build 32 bit        #
+#############################
+.\RunUnitTests.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$RelativePath"
 
+.\Build_lvlibp.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$RelativePath"
+
+.\Close_LabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "32"
+
+.\Rename-File.ps1 -CurrentFilename $RelativePath\resource\plugins\lv_icon.lvlibp -NewFilename lv_icon_x86.lvlibp
+
+#############################
+#   Apply dependenciesx64   #
+#############################
+.\Applyvipc.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$RelativePath" -VIPCPath "Tooling\deployment\Dependencies.vipc" -VIP_LVVersion 2021
+#############################
+#		Build 64 bit        #
+#############################
+
+.\RunUnitTests.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$RelativePath"
+
+.\Build_lvlibp.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$RelativePath"
+
+.\Close_LabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "32"
+
+.\Rename-File.ps1 -CurrentFilename $RelativePath\resource\plugins\lv_icon.lvlibp -NewFilename lv_icon_x64.lvlibp
+
+#############################
+# Build VI Package
+#############################
+.\build_vip.ps1 -SupportedBitness 64 -RelativePath "$RelativePath" -VIPBPath "$VIPBPath" -VIP_LVVersion 2021  -MinimumSupportedLVVersion "2021"
 
 "@
 

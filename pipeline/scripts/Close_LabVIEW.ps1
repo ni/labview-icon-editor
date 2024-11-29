@@ -1,4 +1,4 @@
-#Example: .\Close_LabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" QuitLabVIEW
+#Example: .\Close_LabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64"
 param(
     [string]$MinimumSupportedLVVersion,
     [string]$SupportedBitness,
