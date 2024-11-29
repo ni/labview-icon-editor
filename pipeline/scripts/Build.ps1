@@ -38,7 +38,7 @@ $script = @"
 
 .\Build_lvlibp.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$RelativePath"
 
-.\Close_LabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "32"
+.\Close_LabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64"
 
 .\Rename-File.ps1 -CurrentFilename $RelativePath\resource\plugins\lv_icon.lvlibp -NewFilename lv_icon_x64.lvlibp
 
