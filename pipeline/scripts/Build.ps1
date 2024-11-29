@@ -11,50 +11,157 @@ param(
 )
 # Construct the command
 $script = @"
-#############################
-#   Apply dependenciesx86   #
-#############################
+
 .\Applyvipc.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$RelativePath" -VIPCPath "Tooling\deployment\Dependencies.vipc" -VIP_LVVersion "$VIP_LVVersion"
-#############################
-#		Build 32 bit        #
-#############################
+
+"@
+
+try {
+    Invoke-Expression $script
+    Write-Host "Build finished successfully."
+} catch {
+    Write-Error "An error occurred while executing the command."
+    exit 1
+}
+
+$script = @"
+
 .\RunUnitTests.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$RelativePath"
+
+"@
+
+try {
+    Invoke-Expression $script
+    Write-Host "Build finished successfully."
+} catch {
+    Write-Error "An error occurred while executing the command."
+    exit 1
+}
+
+$script = @"
 
 .\Build_lvlibp.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$RelativePath"
 
+"@
+
+try {
+    Invoke-Expression $script
+    Write-Host "Build finished successfully."
+} catch {
+    Write-Error "An error occurred while executing the command."
+    exit 1
+}
+
+$script = @"
+
 .\Close_LabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "32"
+
+"@
+
+try {
+    Invoke-Expression $script
+    Write-Host "Build finished successfully."
+} catch {
+    Write-Error "An error occurred while executing the command."
+    exit 1
+}
+
+$script = @"
 
 .\Rename-File.ps1 -CurrentFilename $RelativePath\resource\plugins\lv_icon.lvlibp -NewFilename lv_icon_x86.lvlibp
 
-#############################
-#   Apply dependenciesx64   #
-#############################
+"@
+
+try {
+    Invoke-Expression $script
+    Write-Host "Build finished successfully."
+} catch {
+    Write-Error "An error occurred while executing the command."
+    exit 1
+}
+
+$script = @"
+
 .\Applyvipc.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$RelativePath" -VIPCPath "Tooling\deployment\Dependencies.vipc" -VIP_LVVersion 2021
-#############################
-#		Build 64 bit        #
-#############################
+
+
+"@
+
+try {
+    Invoke-Expression $script
+    Write-Host "Build finished successfully."
+} catch {
+    Write-Error "An error occurred while executing the command."
+    exit 1
+}
+
+$script = @"
 
 .\RunUnitTests.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$RelativePath"
 
+"@
+
+try {
+    Invoke-Expression $script
+    Write-Host "Build finished successfully."
+} catch {
+    Write-Error "An error occurred while executing the command."
+    exit 1
+}
+
+
+$script = @"
+
 .\Build_lvlibp.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$RelativePath"
+
+"@
+
+try {
+    Invoke-Expression $script
+    Write-Host "Build finished successfully."
+} catch {
+    Write-Error "An error occurred while executing the command."
+    exit 1
+}
+
+$script = @"
 
 .\Close_LabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64"
 
+"@
+
+try {
+    Invoke-Expression $script
+    Write-Host "Build finished successfully."
+} catch {
+    Write-Error "An error occurred while executing the command."
+    exit 1
+}
+
+$script = @"
+
 .\Rename-File.ps1 -CurrentFilename $RelativePath\resource\plugins\lv_icon.lvlibp -NewFilename lv_icon_x64.lvlibp
 
-#############################
-# Build VI Package
-#############################
+"@
+
+try {
+    Invoke-Expression $script
+    Write-Host "Build finished successfully."
+} catch {
+    Write-Error "An error occurred while executing the command."
+    exit 1
+}
+
+$script = @"
+
 .\build_vip.ps1 -SupportedBitness 64 -RelativePath "$RelativePath" -VIPBPath "$VIPBPath" -VIP_LVVersion 2021  -MinimumSupportedLVVersion "2021"
 
 "@
 
-Write-Output "Executing the following command:"
-Write-Output $script
-
-# Execute the command
-Invoke-Expression $script
-
-
-Write-Host " Build finished."
-
+try {
+    Invoke-Expression $script
+    Write-Host "Build finished successfully."
+} catch {
+    Write-Error "An error occurred while executing the command."
+    exit 1
+}

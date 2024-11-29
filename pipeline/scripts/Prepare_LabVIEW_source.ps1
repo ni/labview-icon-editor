@@ -14,8 +14,17 @@ g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v "$Relative
 
 Write-Output "Executing the following command:"
 Write-Output $script
-            
-# Execute the command
-Invoke-Expression $script
 
-Write-Host "Build finished."
+# Execute the command and check for errors
+try {
+    Invoke-Expression $script
+
+    # Check the exit code of the executed command
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Build failed with exit code $LASTEXITCODE."
+        exit $LASTEXITCODE
+    }
+} catch {
+    Write-Error "An error occurred while executing the build process."
+    exit 1
+}

@@ -13,7 +13,18 @@ g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v "$Relative
 Write-Output "Executing the following command:"
 Write-Output $script
 
-# Execute the command
-Invoke-Expression $script
+# Execute the command and check for errors
+try {
+    Invoke-Expression $script
 
-Write-Host "Unit tests finished."
+    # Check the exit code of the executed command
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Unit tests failed with exit code $LASTEXITCODE."
+        exit $LASTEXITCODE
+    }
+} catch {
+    Write-Error "An error occurred while executing the unit tests."
+    exit 1
+}
+
+Write-Host "Unit tests finished successfully."
