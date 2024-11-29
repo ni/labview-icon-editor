@@ -27,9 +27,6 @@
 		<Item Name="NI Package install actions" Type="Folder">
 			<Item Name="NIP Post uninstall.vi" Type="VI" URL="../deployment/NIP Post uninstall.vi"/>
 		</Item>
-		<Item Name="Support" Type="Folder">
-			<Item Name="CheckForAdminRights.vi" Type="VI" URL="/&lt;vilib&gt;/JKI/VIPM API/command-line/CheckForAdminRights.vi"/>
-		</Item>
 		<Item Name="VI Package install actions" Type="Folder">
 			<Property Name="NI.SortType" Type="Int">3</Property>
 			<Item Name="VIP_Pre-Uninstall Custom Action.vi" Type="VI" URL="../deployment/VIP_Pre-Uninstall Custom Action.vi"/>
