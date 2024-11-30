@@ -69,22 +69,10 @@
 				<Item Name="FILE Delete (UTF8)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Delete (UTF8)__ogtk.vi"/>
 				<Item Name="FILE Delete (Wide Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Delete (Wide Path)__ogtk.vi"/>
 				<Item Name="FILE Delete__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/FILE Delete__ogtk.vi"/>
-				<Item Name="FILE Get Directory Content (Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Get Directory Content (Path)__ogtk.vi"/>
-				<Item Name="FILE Get Directory Content (UTF8)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Get Directory Content (UTF8)__ogtk.vi"/>
-				<Item Name="FILE Get Directory Content (Wide Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Get Directory Content (Wide Path)__ogtk.vi"/>
-				<Item Name="FILE Get Directory Content__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/FILE Get Directory Content__ogtk.vi"/>
-				<Item Name="FILE Get Size__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/FILE Get Size__ogtk.vi"/>
 				<Item Name="FILE Get Type (Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Get Type (Path)__ogtk.vi"/>
 				<Item Name="FILE Get Type (UTF8)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Get Type (UTF8)__ogtk.vi"/>
 				<Item Name="FILE Get Type (Wide Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Get Type (Wide Path)__ogtk.vi"/>
 				<Item Name="FILE Get Type__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/FILE Get Type__ogtk.vi"/>
-				<Item Name="FILE Is A File__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Is A File__ogtk.vi"/>
-				<Item Name="FILE List Directory Recursive (Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE List Directory Recursive (Path)__ogtk.vi"/>
-				<Item Name="FILE List Directory Recursive (UTF8)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE List Directory Recursive (UTF8)__ogtk.vi"/>
-				<Item Name="FILE List Directory Recursive (Wide Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE List Directory Recursive (Wide Path)__ogtk.vi"/>
-				<Item Name="FILE List Directory Recursive__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/FILE List Directory Recursive__ogtk.vi"/>
-				<Item Name="FILE Match Pattern Case Sensitivize__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Match Pattern Case Sensitivize__ogtk.vi"/>
-				<Item Name="FILE Match Wildcard__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Match Wildcard__ogtk.vi"/>
 				<Item Name="FILE Open File Refnum (Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Open File Refnum (Path)__ogtk.vi"/>
 				<Item Name="FILE Open File Refnum (UTF8)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Open File Refnum (UTF8)__ogtk.vi"/>
 				<Item Name="FILE Open File Refnum (Wide Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Open File Refnum (Wide Path)__ogtk.vi"/>
@@ -93,15 +81,11 @@
 				<Item Name="FILE Parent Path (UTF8)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Parent Path (UTF8)__ogtk.vi"/>
 				<Item Name="FILE Parent Path (Wide Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Parent Path (Wide Path)__ogtk.vi"/>
 				<Item Name="FILE Parent Path__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/FILE Parent Path__ogtk.vi"/>
-				<Item Name="FILE Read Link Target (Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Read Link Target (Path)__ogtk.vi"/>
-				<Item Name="FILE Read Link Target (UTF8)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Read Link Target (UTF8)__ogtk.vi"/>
-				<Item Name="FILE Read Link Target (Wide Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Read Link Target (Wide Path)__ogtk.vi"/>
-				<Item Name="FILE Read Link Target__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/FILE Read Link Target__ogtk.vi"/>
-				<Item Name="FILE Read Stream__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/FILE Read Stream__ogtk.vi"/>
 				<Item Name="FILE Refnum__ogtk.ctl" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/FILE Refnum__ogtk.ctl"/>
-				<Item Name="FILE Resize Refnum Array__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Resize Refnum Array__ogtk.vi"/>
-				<Item Name="FILE Type and Flags__ogtk.ctl" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/FILE Type and Flags__ogtk.ctl"/>
-				<Item Name="FILE Wildcard to Match Pattern__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Wildcard to Match Pattern__ogtk.vi"/>
+				<Item Name="FILE Rename (Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Rename (Path)__ogtk.vi"/>
+				<Item Name="FILE Rename (UTF8)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Rename (UTF8)__ogtk.vi"/>
+				<Item Name="FILE Rename (Wide Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/FILE Rename (Wide Path)__ogtk.vi"/>
+				<Item Name="FILE Rename__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/FILE Rename__ogtk.vi"/>
 				<Item Name="FILE Write Stream__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/FILE Write Stream__ogtk.vi"/>
 				<Item Name="lvzlib64.dll" Type="Document" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzlib64.dll"/>
 				<Item Name="openg_array.lvlib" Type="Library" URL="/&lt;userlib&gt;/_OpenG.lib/array/array.llb/openg_array.lvlib"/>
@@ -110,62 +94,34 @@
 				<Item Name="PATH Refnum__ogtk.ctl" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/PATH Refnum__ogtk.ctl"/>
 				<Item Name="PATH Type__ogtk.ctl" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/PATH Type__ogtk.ctl"/>
 				<Item Name="STRUTIL Convert String__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/stringutil.llb/STRUTIL Convert String__ogtk.vi"/>
-				<Item Name="STRUTIL Has Extended Characters__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/stringutil.llb/STRUTIL Has Extended Characters__ogtk.vi"/>
 				<Item Name="UTIL Is Little Endian__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/fileutil.llb/subVIs/UTIL Is Little Endian__ogtk.vi"/>
-				<Item Name="ZLIB Append Path__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/ZLIB Append Path__ogtk.vi"/>
 				<Item Name="ZLIB Block Size__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Block Size__ogtk.vi"/>
-				<Item Name="ZLIB Build Extra Field Data__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Build Extra Field Data__ogtk.vi"/>
 				<Item Name="ZLIB Close Read File__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Close Read File__ogtk.vi"/>
 				<Item Name="ZLIB Close Unzip Archive__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/ZLIB Close Unzip Archive__ogtk.vi"/>
-				<Item Name="ZLIB Close Write File__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Close Write File__ogtk.vi"/>
-				<Item Name="ZLIB Close Zip Archive__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/ZLIB Close Zip Archive__ogtk.vi"/>
 				<Item Name="ZLIB Common Path to Specific Path (String)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Common Path to Specific Path (String)__ogtk.vi"/>
-				<Item Name="ZLIB Compress Directory (Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Compress Directory (Path)__ogtk.vi"/>
-				<Item Name="ZLIB Compress Directory (Wide Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Compress Directory (Wide Path)__ogtk.vi"/>
-				<Item Name="ZLIB Compress Directory__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/ZLIB Compress Directory__ogtk.vi"/>
-				<Item Name="ZLIB Compress File Info__ogtk.ctl" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Compress File Info__ogtk.ctl"/>
 				<Item Name="ZLIB Convert File Info__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Convert File Info__ogtk.vi"/>
-				<Item Name="ZLIB CRC32__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/ZLIB CRC32__ogtk.vi"/>
 				<Item Name="ZLIB Entry Type__ogtk.ctl" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Entry Type__ogtk.ctl"/>
 				<Item Name="ZLIB Extract All Files To Dir (Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Extract All Files To Dir (Path)__ogtk.vi"/>
 				<Item Name="ZLIB Extract All Files To Dir (Wide Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Extract All Files To Dir (Wide Path)__ogtk.vi"/>
 				<Item Name="ZLIB Extract All Files To Dir__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/ZLIB Extract All Files To Dir__ogtk.vi"/>
 				<Item Name="ZLIB Extract Timestamps__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Extract Timestamps__ogtk.vi"/>
 				<Item Name="ZLIB File Info__ogtk.ctl" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/ZLIB File Info__ogtk.ctl"/>
-				<Item Name="ZLIB File Information__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB File Information__ogtk.vi"/>
-				<Item Name="ZLIB File Transfer Info__ogtk.ctl" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB File Transfer Info__ogtk.ctl"/>
 				<Item Name="ZLIB Fixup File Attributes__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Fixup File Attributes__ogtk.vi"/>
-				<Item Name="ZLIB Get File CRC32__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Get File CRC32__ogtk.vi"/>
 				<Item Name="ZLIB Get File__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Get File__ogtk.vi"/>
 				<Item Name="ZLIB Get Global Info__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/ZLIB Get Global Info__ogtk.vi"/>
 				<Item Name="ZLIB Go To File Low Level__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Go To File Low Level__ogtk.vi"/>
-				<Item Name="ZLIB Method and Level__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Method and Level__ogtk.vi"/>
 				<Item Name="ZLIB Open Read File__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Open Read File__ogtk.vi"/>
 				<Item Name="ZLIB Open Unzip Archive (Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Open Unzip Archive (Path)__ogtk.vi"/>
 				<Item Name="ZLIB Open Unzip Archive (Wide Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Open Unzip Archive (Wide Path)__ogtk.vi"/>
 				<Item Name="ZLIB Open Unzip Stream__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/ZLIB Open Unzip Stream__ogtk.vi"/>
 				<Item Name="ZLIB Open Unzip__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/ZLIB Open Unzip__ogtk.vi"/>
-				<Item Name="ZLIB Open Write File__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Open Write File__ogtk.vi"/>
-				<Item Name="ZLIB Open Zip Archive (Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Open Zip Archive (Path)__ogtk.vi"/>
-				<Item Name="ZLIB Open Zip Archive (Wide Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Open Zip Archive (Wide Path)__ogtk.vi"/>
-				<Item Name="ZLIB Open Zip Archive__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/ZLIB Open Zip Archive__ogtk.vi"/>
-				<Item Name="ZLIB Open ZIP Mode__ogtk.ctl" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/ZLIB Open ZIP Mode__ogtk.ctl"/>
 				<Item Name="ZLIB Parse Extra Field Data__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Parse Extra Field Data__ogtk.vi"/>
 				<Item Name="ZLIB Read Compressed File__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Read Compressed File__ogtk.vi"/>
 				<Item Name="ZLIB Read Compressed Stream__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Read Compressed Stream__ogtk.vi"/>
 				<Item Name="ZLIB Read Local Extra Data__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Read Local Extra Data__ogtk.vi"/>
-				<Item Name="ZLIB Store File (Wide Path)__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Store File (Wide Path)__ogtk.vi"/>
-				<Item Name="ZLIB Store File First__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Store File First__ogtk.vi"/>
-				<Item Name="ZLIB Store File Next__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Store File Next__ogtk.vi"/>
-				<Item Name="ZLIB Store Link__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Store Link__ogtk.vi"/>
-				<Item Name="ZLIB Store Options__ogtk.ctl" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/ZLIB Store Options__ogtk.ctl"/>
 				<Item Name="ZLIB Uncompress File Info__ogtk.ctl" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Uncompress File Info__ogtk.ctl"/>
-				<Item Name="ZLIB Unicode Type__ogtk.ctl" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Unicode Type__ogtk.ctl"/>
 				<Item Name="ZLIB Unzip Handle__ogtk.ctl" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/ZLIB Unzip Handle__ogtk.ctl"/>
 				<Item Name="ZLIB Update File Attributes__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Update File Attributes__ogtk.vi"/>
-				<Item Name="ZLIB Write File__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Write File__ogtk.vi"/>
-				<Item Name="ZLIB Write Stream__ogtk.vi" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/subVI/ZLIB Write Stream__ogtk.vi"/>
-				<Item Name="ZLIB Zip Handle__ogtk.ctl" Type="VI" URL="/&lt;userlib&gt;/_OpenG.lib/lvzip/lvzip.llb/ZLIB Zip Handle__ogtk.ctl"/>
 			</Item>
 			<Item Name="vi.lib" Type="Folder">
 				<Item Name="1D Array to String__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi" Type="VI" URL="/&lt;vilib&gt;/JKI/_VIPM API_internal_deps/1D Array to String__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi"/>
@@ -247,7 +203,6 @@
 				<Item Name="Cluster to Array of VData__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi" Type="VI" URL="/&lt;vilib&gt;/JKI/_VIPM API_internal_deps/Cluster to Array of VData__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi"/>
 				<Item Name="Compare Two Paths.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Compare Two Paths.vi"/>
 				<Item Name="Convert property node font to graphics font.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/error.llb/Convert property node font to graphics font.vi"/>
-				<Item Name="Copy In Or Out Of VI Library.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Copy In Or Out Of VI Library.vi"/>
 				<Item Name="Create Directory Recursive.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Create Directory Recursive.vi"/>
 				<Item Name="Delimited String to 1D String Array.vi" Type="VI" URL="/&lt;vilib&gt;/AdvancedString/Delimited String to 1D String Array.vi"/>
 				<Item Name="Details Display Dialog.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/error.llb/Details Display Dialog.vi"/>
@@ -297,12 +252,10 @@
 				<Item Name="Has LLB Extension.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Has LLB Extension.vi"/>
 				<Item Name="imagedata.ctl" Type="VI" URL="/&lt;vilib&gt;/picture/picture.llb/imagedata.ctl"/>
 				<Item Name="Is Path and Not Empty.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/file.llb/Is Path and Not Empty.vi"/>
-				<Item Name="Librarian Delete Dialog.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Librarian Delete Dialog.vi"/>
 				<Item Name="Librarian File Info In.ctl" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Librarian File Info In.ctl"/>
 				<Item Name="Librarian File Info Out.ctl" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Librarian File Info Out.ctl"/>
 				<Item Name="Librarian File List.ctl" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Librarian File List.ctl"/>
 				<Item Name="Librarian Get Info.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Librarian Get Info.vi"/>
-				<Item Name="Librarian OK to Delete.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Librarian OK to Delete.vi"/>
 				<Item Name="Librarian Path Location.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Librarian Path Location.vi"/>
 				<Item Name="Librarian Set Info.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Librarian Set Info.vi"/>
 				<Item Name="Librarian.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Librarian.vi"/>
@@ -329,7 +282,6 @@
 				<Item Name="Path to URL inner.vi" Type="VI" URL="/&lt;vilib&gt;/printing/PathToURL.llb/Path to URL inner.vi"/>
 				<Item Name="Path to URL.vi" Type="VI" URL="/&lt;vilib&gt;/printing/PathToURL.llb/Path to URL.vi"/>
 				<Item Name="PathToUNIXPathString.vi" Type="VI" URL="/&lt;vilib&gt;/Platform/CFURL.llb/PathToUNIXPathString.vi"/>
-				<Item Name="Prepare VI Library for Copy.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Prepare VI Library for Copy.vi"/>
 				<Item Name="Read INI Cluster__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi" Type="VI" URL="/&lt;vilib&gt;/JKI/_VIPM API_internal_deps/Read INI Cluster__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi"/>
 				<Item Name="Read Key (Variant)__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi" Type="VI" URL="/&lt;vilib&gt;/JKI/_VIPM API_internal_deps/Read Key (Variant)__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi"/>
 				<Item Name="Read Section Cluster__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi" Type="VI" URL="/&lt;vilib&gt;/JKI/_VIPM API_internal_deps/Read Section Cluster__ogtkDDA31ED5A732916949AA00FDC27B02BA.vi"/>
@@ -360,9 +312,6 @@
 				<Item Name="TCP_NoDelay_Windows.vi" Type="VI" URL="/&lt;vilib&gt;/Wiresmith Technology/G CLI/Dependencies/TCP_NoDelay_Windows.vi"/>
 				<Item Name="TD_Get MDT Information.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/GetType.llb/TD_Get MDT Information.vi"/>
 				<Item Name="TD_MDTFlavor.ctl" Type="VI" URL="/&lt;vilib&gt;/Utility/GetType.llb/TD_MDTFlavor.ctl"/>
-				<Item Name="Temp Backup File.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Temp Backup File.vi"/>
-				<Item Name="Temp Filename.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Temp Filename.vi"/>
-				<Item Name="Temp Restore File.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/libraryn.llb/Temp Restore File.vi"/>
 				<Item Name="Three Button Dialog CORE.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/error.llb/Three Button Dialog CORE.vi"/>
 				<Item Name="Three Button Dialog.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/error.llb/Three Button Dialog.vi"/>
 				<Item Name="TRef Traverse for References.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/traverseref.llb/TRef Traverse for References.vi"/>
