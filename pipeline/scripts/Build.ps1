@@ -12,8 +12,14 @@ param(
 # Construct the command
 $script = @"
 
-.\Applyvipc.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$RelativePath" -VIPCPath "Tooling\deployment\Dependencies.vipc" -VIP_LVVersion "$VIP_LVVersion"
 
+
+
+.\Applyvipc.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$RelativePath" -VIPCPath "Tooling\deployment\Dependencies.vipc" -VIP_LVVersion "$VIP_LVVersion"
+.\AddTokenToLabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "32" -RelativePath "$RelativePath"
+.\Close_LabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "32"
+.\Prepare_LabVIEW_source.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "32" -RelativePath "$RelativePath" -LabVIEW_Project "$RelativePath" -Build_Spec "Editor Packed Library"
+.\Close_LabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "32"
 "@
 
 try {
@@ -53,7 +59,7 @@ try {
 }
 
 $script = @"
-
+.\RestoreSetupLVSource.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "32" -RelativePath "$RelativePath" -LabVIEW_Project "$RelativePath" -Build_Spec "Editor Packed Library"
 .\Close_LabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "32"
 
 "@
@@ -82,8 +88,11 @@ try {
 
 $script = @"
 
-.\Applyvipc.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$RelativePath" -VIPCPath "Tooling\deployment\Dependencies.vipc" -VIP_LVVersion 2021
-
+.\Applyvipc.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$RelativePath" -VIPCPath "Tooling\deployment\Dependencies.vipc" -VIP_LVVersion "$VIP_LVVersion"
+.\AddTokenToLabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "$RelativePath"
+.\Close_LabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64"
+.\Prepare_LabVIEW_source.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "$RelativePath" -LabVIEW_Project "$RelativePath" -Build_Spec "Editor Packed Library"
+.\Close_LabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64"
 
 "@
 
@@ -153,7 +162,7 @@ try {
 }
 
 $script = @"
-
+.\RestoreSetupLVSource.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "$RelativePath" -LabVIEW_Project "$RelativePath" -Build_Spec "Editor Packed Library"
 .\build_vip.ps1 -SupportedBitness 64 -RelativePath "$RelativePath" -VIPBPath "$VIPBPath" -VIP_LVVersion 2021  -MinimumSupportedLVVersion "2021"
 
 "@

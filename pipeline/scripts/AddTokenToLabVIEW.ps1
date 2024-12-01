@@ -1,4 +1,4 @@
-#Example: .\AddTokenToLabVIEW.ps1 -MinimumSupportedLVVersion "2023" -SupportedBitness "64" -RelativePath "C:\labview-icon-editor"
+#Example: .\AddTokenToLabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "C:\labview-icon-editor"
 param(
     [string]$MinimumSupportedLVVersion,
     [string]$SupportedBitness,
