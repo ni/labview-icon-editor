@@ -20,10 +20,11 @@ try {
     Invoke-Expression $script
 
     # Check the exit code of the executed command
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "Zip and delete vi.lib\LabVIEW Icon API from LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)" -ForegroundColor Green
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Build failed with exit code $LASTEXITCODE."
+        exit $LASTEXITCODE
     }
 } catch {
-    Write-Host "Prepare LabVIEW source"
-    exit 0
+    Write-Error "An error occurred while executing the build process."
+    exit 1
 }

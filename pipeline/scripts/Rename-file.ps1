@@ -20,7 +20,7 @@ function Rename-File {
     # Attempt to rename the file
     try {
         Rename-Item -Path $CurrentFilename -NewName $NewFilename
-        Write-Host "Rename the packed project library to '$NewFilename'." -ForegroundColor Green
+        Write-Host "File renamed successfully from '$CurrentFilename' to '$NewFilename'." -ForegroundColor Green
     } catch {
         Write-Host "Error: Could not rename the file. $_" -ForegroundColor Red
     }

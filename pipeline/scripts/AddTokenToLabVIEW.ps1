@@ -1,4 +1,4 @@
-#Example: .\AddTokenToLabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "C:\labview-icon-editor"
+#Example: .\AddTokenToLabVIEW.ps1 -MinimumSupportedLVVersion "2023" -SupportedBitness "64" -RelativePath "C:\labview-icon-editor"
 param(
     [string]$MinimumSupportedLVVersion,
     [string]$SupportedBitness,
@@ -26,4 +26,5 @@ try {
     Write-Error "An error occurred while adding the token to LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit) INI file."
     exit 1
 }
-Write-Host "Add localhost.librarypaths token to LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit) ini file." -ForegroundColor Green
+
+Write-Host "Token successfully added to LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit) INI file."

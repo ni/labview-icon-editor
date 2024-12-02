@@ -46,7 +46,7 @@ Write-Output $script
 # Execute the script
 try {
     Invoke-Expression $script
-    Write-Host "Build $RelativePath\Tooling\deployment\NI Icon editor.vipb" -ForegroundColor Green
+    Write-Host "Build finished successfully."
 } catch {
     Write-Error "An error occurred while executing the command."
     exit 1
