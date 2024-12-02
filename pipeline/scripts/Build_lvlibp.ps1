@@ -16,4 +16,4 @@ Write-Output $script
 # Execute the command
 Invoke-Expression $script
 
-Write-Host "Build finished."
+Write-Host "Build Editor Packed Library for LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)" -ForegroundColor Green
