@@ -21,6 +21,11 @@ This will perform the following steps, which you can alternatively perform manua
 3. Open lv_icon_editor.lvproj in LabVIEW.
 4. The top-level VI is in the Project Explorer at __My Computer &#x00BB; resource/plugins &#x00BB; lv_icon.lvlib &#x00BB; lv_icon.vi__.
 
+Complete the following steps to automate __step 2__ from above:
+1. Open powershell in *Admin* mode and navigate to pipeline\scripts from your github repo
+2. Modify the following command to point to your github repo .\DevelopmentMode.ps1 -RelativePath "C:\labview-icon-editor" and run it.
+
+
 
 ## Distribution Guide ##
 Complete the following steps to distribute your custom icon editor to another machine.
@@ -34,36 +39,44 @@ Then, on the machine where you want to install your custom icon editor:
    - \<LabVIEW\>\\resource\\plugins\\lv_icon.lvlibp 
    - \<LabVIEW\>\\vi.lib\\LabVIEW Icon API\\*
   
-## Creating a VI Package ##
-A .bat file located on *\Tooling\deployment\Build.bat* automates the process described by the *Editing Guide* and *Distribution guide*. 
+## Build automation ##
 
-azure_pipeline.yml can also automate the process. 
+# Release Notes: Icon Editor Build Tools for LabVIEW
 
-Running the .bat file will run the unit tests contained on tooling\unit tests
+This release introduces tools for building and deploying custom LabVIEW Icon Editors, enabling streamlined distribution through automated pipelines. These tools provide support for both 32-bit and 64-bit environments, packaged into a VI package for easy restoration and deployment.
 
-__LabVIEW 2021__ and __LabVIEW 2022__ : *lv_icon.lvlibp* will replace *lv_icon.lvlibp* from *resources/plugin* (normal process).
-__LabVIEW > 2022__ : *lv_icon.lvlibp* will be installed on *C:\Program Files\NI\LVAddons\niiconeditor(bitness)*
+## Key Features
 
-**Prerequisites:** 
- 
-  * LabVIEW 2021 
-  * Latest *VI Package Builder*
-  * Latest *VIPM* 
-  * Manually Applying dependencies located on *Tooling\deployment\Dependencies.vipc*
-  * (Other *LabVIEW* versions you want to build the package on, *LabVIEW 2021* is mandatory since the PPL gets built on 2021)
- 
-**Process:**
+### Restore Point Functionality
+- The VI package serves as a restore point for the LabVIEW Icon Editor. Installing or uninstalling the package reverts the editor to its original state.
 
-  1. Edit variables on .bat file *\Tooling\deployment\Build.bat*.
+### Automation Options
+- Three automation tools are available:
+  - Azure DevOps pipeline
+  - GitHub Action
+  - PowerShell script
 
-     Example: Batch file variables for *lv_icon.lvlibp* built on *LabVIEW 2021 x64*, on a VI Package for *LabVIEW 2024 x64*
+### Flexible Deployment
+- **For LabVIEW 2021 and 2022**: Replaces `lv_icon.lvlibp` in the `resource/plugins` folder.
+- **For LabVIEW 2023 and later**: Installs the library to `C:\Program Files\NI\LVAddons\niiconeditor(bitness)`.
 
-     *set "MinimumSupportedLVVersion=2021"*
-     
-     *set "VIP_LVVersion=2024"*
-     
-     *set "SupportedBitness=64"*
-        
-  3. Run *\Tooling\deployment\Build.bat* with admin rights.
-  4. A VI package named *ni_icon_editor-x.x.x.x* will be built on *builds\VI Package*.
+## Prerequisites
+- LabVIEW 2021 (32-bit and 64-bit)
+- Latest VIPM version
+- Dependencies located in `Tooling\deployment\Dependencies.vipc` (to be applied manually for both 32-bit and 64-bit LabVIEW)
 
+Before following this process, create a backup of the following files and folder:
+   - \<LabVIEW\>\\resource\\plugins\\lv_icon.lvlibp 
+   - \<LabVIEW\>\\vi.lib\\LabVIEW Icon API\\*
+
+**Process (Powershell):**
+
+Complete the following steps to build a VI package
+
+1. Open powershell in *Admin* mode and navigate to .pipeline\scripts from your github repo
+2. Modify the following command to point to your github repo .\DevelopmentMode.ps1 -RelativePath "C:\labview-icon-editor" and run it.
+3. A VI package named *ni_icon_editor-x.x.x.x* will be built on *builds\VI Package*.
+
+Complete the following steps to build an NI package
+
+Soon :)
