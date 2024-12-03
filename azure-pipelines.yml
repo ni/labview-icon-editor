@@ -73,6 +73,7 @@ stages:
 
     - task: PowerShell@2
       displayName: Restore LabVIEW Source Setup (32-bit)
+      continueOnError: true
       inputs:
         targetType: 'inline'
         script: |
@@ -136,6 +137,7 @@ stages:
 
     - task: PowerShell@2
       displayName: Restore LabVIEW Source Setup (64-bit)
+      continueOnError: true
       inputs:
         targetType: 'inline'
         script: |
