@@ -18,7 +18,7 @@ variables:
   build_id: $(Build.BuildID)
   build_revision: $[counter('buildCounter',1)]
   build_version: '1.0.$(Build.BuildID).$(build_revision)'
-  RelativePath: 'C:\labview-icon-editor'
+  RelativePath: '$(Build.Repository.LocalPath)'
 
 stages:
 - stage: BuildAndTest
