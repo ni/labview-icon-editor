@@ -1,7 +1,8 @@
 trigger:
   branches:
     include:
-      - users/svelderr/ci-cd
+      - main
+      - develop
 
 name: $(Build.BuildID)
 
