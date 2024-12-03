@@ -28,58 +28,11 @@ stages:
     displayName: Execute PowerShell Scripts
     steps:
     - task: PowerShell@2
-      displayName: Apply VIPC 32-bit
+      displayName: Run Unit tests and build
       inputs:
         targetType: 'filePath'
-        filePath: '$(Build.Repository.LocalPath)\pipeline\scripts\Applyvipc.ps1'
-        arguments: '-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$(RelativePath)" -VIPCPath "Tooling\deployment\Dependencies.vipc" -VIP_LVVersion "2021"'
-
-    - task: PowerShell@2
-      displayName: Add Token to LabVIEW 32-bit
-      inputs:
-        targetType: 'filePath'
-        filePath: '$(Build.Repository.LocalPath)\pipeline\scripts\AddTokenToLabVIEW.ps1'
-        arguments: '-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$(RelativePath)"'
-
-    # Continue adding PowerShell tasks for each script step
-    # For example:
-    - task: PowerShell@2
-      displayName: Close LabVIEW 32-bit
-      inputs:
-        targetType: 'filePath'
-        filePath: '$(Build.Repository.LocalPath)\pipeline\scripts\Close_LabVIEW.ps1'
-        arguments: '-MinimumSupportedLVVersion 2021 -SupportedBitness 32'
-
-    - task: PowerShell@2
-      displayName: Prepare LabVIEW Source 32-bit
-      inputs:
-        targetType: 'filePath'
-        filePath: '$(Build.Repository.LocalPath)\pipeline\scripts\Prepare_LabVIEW_source.ps1'
-        arguments: '-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$(RelativePath)" -LabVIEW_Project "lv_icon_editor" -Build_Spec "Editor Packed Library"'
-
-    # Repeat for other commands, ensuring `SupportedBitness` switches between 32 and 64 as needed
-    - task: PowerShell@2
-      displayName: Rename 32-bit Library
-      inputs:
-        targetType: 'filePath'
-        filePath: '$(Build.Repository.LocalPath)\pipeline\scripts\Rename-File.ps1'
-        arguments: '-CurrentFilename "$(RelativePath)\resource\plugins\lv_icon.lvlibp" -NewFilename "lv_icon_x86.lvlibp"'
-
-    # 64-bit related steps
-    - task: PowerShell@2
-      displayName: Apply VIPC 64-bit
-      inputs:
-        targetType: 'filePath'
-        filePath: '$(Build.Repository.LocalPath)\pipeline\scripts\Applyvipc.ps1'
-        arguments: '-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$(RelativePath)" -VIPCPath "Tooling\deployment\Dependencies.vipc" -VIP_LVVersion "2021"'
-
-    # Continue with similar structure for 64-bit tasks
-    - task: PowerShell@2
-      displayName: Build VIP
-      inputs:
-        targetType: 'filePath'
-        filePath: '$(Build.Repository.LocalPath)\pipeline\scripts\build_vip.ps1'
-        arguments: '-SupportedBitness 64 -RelativePath "$(RelativePath)" -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -VIP_LVVersion 2021 -MinimumSupportedLVVersion 2021'
+        filePath: '$(Build.Repository.LocalPath)\pipeline\scripts\Build.ps1'
+        arguments: '-RelativePath "$(RelativePath)"'
 
     - script: echo "All scripts executed successfully."
       displayName: Completion Message
