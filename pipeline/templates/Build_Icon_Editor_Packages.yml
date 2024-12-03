@@ -58,7 +58,7 @@ jobs:
       - task: CmdLine@2
         inputs:
           script: |
-            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} -v "${{ parameters.RelativePath }}\Tooling\deployment\Modify_VIPB_LabVIEW_Version.vi" -- "${{ parameters.RelativePath }}\Tooling\deployment\NI Icon editor.vipb" "${{ parameters.VIP_LVVersion_A }} (${{ parameters.SupportedBitness }}-bit)"
+            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} -v "${{ parameters.RelativePath }}\Tooling\deployment\Modify_VIPB_LabVIEW_Version.vi" -- "${{ parameters.RelativePath }}\Tooling\deployment\NI Icon editor.vipb" "${{ parameters.VIP_LVVersion_A }}"
         displayName: Modify VIPB to use LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.SupportedBitness }}-bit)
 
       - task: CmdLine@2
@@ -76,7 +76,7 @@ jobs:
       - task: CmdLine@2
         inputs:
           script: |
-            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} -v "${{ parameters.RelativePath }}\Tooling\Deployment\Switch_VIPM_Target.vi" -- "${{ parameters.VIP_LVVersion_A }} (${{ parameters.SupportedBitness }}-bit)"
+            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} -v "${{ parameters.RelativePath }}\Tooling\Deployment\Switch_VIPM_Target.vi" -- "${{ parameters.VIP_LVVersion_A }}"
         displayName: Switch VIPM target to LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.SupportedBitness }}-bit)
 
       - task: CmdLine@2
