@@ -32,28 +32,28 @@ stages:
       inputs:
         targetType: 'inline'
         script: |
-          $(Build.Repository.LocalPath)\Applyvipc.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$(RelativePath)" -VIPCPath 'Tooling\deployment\Dependencies.vipc' -VIP_LVVersion '2021'
+          '$(Build.Repository.LocalPath)\Applyvipc.ps1' -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$(RelativePath)" -VIPCPath 'Tooling\deployment\Dependencies.vipc' -VIP_LVVersion '2021'
 
     - task: PowerShell@2
       displayName: Add Token to LabVIEW (32-bit)
       inputs:
         targetType: 'inline'
         script: |
-          $(Build.Repository.LocalPath)\AddTokenToLabVIEW.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$(RelativePath)"
+          '$(Build.Repository.LocalPath)\AddTokenToLabVIEW.ps1' -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$(RelativePath)"
 
     - task: PowerShell@2
       displayName: Close LabVIEW (32-bit)
       inputs:
         targetType: 'inline'
         script: |
-          $(Build.Repository.LocalPath)\Close_LabVIEW.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32
+          '$(Build.Repository.LocalPath)\Close_LabVIEW.ps1' -MinimumSupportedLVVersion 2021 -SupportedBitness 32
 
     - task: PowerShell@2
       displayName: Prepare LabVIEW Source (32-bit)
       inputs:
         targetType: 'inline'
         script: |
-          $(Build.Repository.LocalPath)\Prepare_LabVIEW_source.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$(RelativePath)" -LabVIEW_Project 'lv_icon_editor' -Build_Spec 'Editor Packed Library'
+          '$(Build.Repository.LocalPath)\Prepare_LabVIEW_source.ps1' -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$(RelativePath)" -LabVIEW_Project 'lv_icon_editor' -Build_Spec 'Editor Packed Library'
 
     - task: PowerShell@2
       displayName: Close LabVIEW After Preparation (32-bit)
