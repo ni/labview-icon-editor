@@ -4,8 +4,14 @@
 # https://aka.ms/yaml
 
 trigger:
-- users/svelderrain/deployment-experiment
-
+  branches:
+    exclude:
+      - "*"
+pr:
+  branches:
+    include:
+      - main
+      
 name: $(Build.BuildID)
 
 pool: 
@@ -22,31 +28,36 @@ stages:
   jobs:
   - template: pipeline\templates\Build_Icon_Editor_Packages.yml
     parameters:
-     LVVersion: '2021'
+     VIP_LVVersion: '2024'
+     VIP_LVVersion_A: '24.3'
      SupportedBitness: '32'
      ApiVersion: 'v1'
-     MinimumSupportedLVVersion: '23.0'
-     AddonName: 'niiconeditor32'
+     MinimumSupportedLVVersion: '2021'
+     MinimumSupportedLVVersionLVAddon: '23.0'
+     AddonName: 'niiconeditor64'
      RelativePath: $(Build.Repository.LocalPath)
      BuildSpec: 'Editor Packed Library'
-     NIPB_Path: '$(Build.Repository.LocalPath)\Tooling\deployment\NIPackage\IconEditorDeployment_x32.pbs'
+     NIPB_Path: '$(Build.Repository.LocalPath)\Tooling\deployment\NIPackage\IconEditorDeployment_x86.pbs'
      Project: '$(Build.Repository.LocalPath)\lv_icon_editor.lvproj'
-     PackedProjectLibraryVersion: '1.2.3.1'
+     PackedProjectLibraryVersion: '1.0.0.1'
      poolName: 'Default'
      projectDemands: 'iconeditor -equals true'
+     
 - stage: Build_LVAddon_x64
   jobs:
   - template: pipeline\templates\Build_Icon_Editor_Packages.yml
     parameters:
-     LVVersion: '2021'
+     VIP_LVVersion: '2024'
+     VIP_LVVersion_A: '24.3 (64-bit)'
      SupportedBitness: '64'
      ApiVersion: 'v1'
-     MinimumSupportedLVVersion: '23.0'
+     MinimumSupportedLVVersion: '2021'
+     MinimumSupportedLVVersionLVAddon: '23.0'
      AddonName: 'niiconeditor64'
      RelativePath: $(Build.Repository.LocalPath)
      BuildSpec: 'Editor Packed Library'
      NIPB_Path: '$(Build.Repository.LocalPath)\Tooling\deployment\NIPackage\IconEditorDeployment_x64.pbs'
      Project: '$(Build.Repository.LocalPath)\lv_icon_editor.lvproj'
-     PackedProjectLibraryVersion: '1.3.3.1'
+     PackedProjectLibraryVersion: '1.0.0.1'
      poolName: 'Default'
      projectDemands: 'iconeditor -equals true'
