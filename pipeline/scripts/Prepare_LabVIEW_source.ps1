@@ -9,7 +9,7 @@ param(
 
 # Construct the command
 $script = @"
-g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v "$RelativePath\Tooling\PrepareIESource.vi" -- "$RelativePath\$LabVIEW_Project.lvproj" "$Build_Spec"
+g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness "$RelativePath\Tooling\PrepareIESource.vi" -- "$RelativePath\$LabVIEW_Project.lvproj" "$Build_Spec"
 "@
 
 Write-Output "Executing the following command:"
@@ -21,7 +21,7 @@ try {
 
     # Check the exit code of the executed command
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "Zip and delete vi.lib\LabVIEW Icon API from LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)" -ForegroundColor Green
+        Write-Host "Zip and delete vi.lib\LabVIEW Icon API from LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)" .ps1
     }
 } catch {
     Write-Host "Prepare LabVIEW source"

@@ -83,4 +83,4 @@ if ($VIP_LVVersion -ne $MinimumSupportedLVVersion) {
 $command4 = "g-cli --lv-ver $VIP_LVVersion --arch $SupportedBitness -v QuitLabVIEW"
 Execute-GCLICommand -Command $command4
 
-Write-Host "Apply dependencies to LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)" -ForegroundColor Green
+Write-Host "Apply dependencies to LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)"

@@ -30,8 +30,8 @@ try {
     Execute-Script ".\Close_LabVIEW.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64" 
 
 } catch {
-    Write-Error "An unexpected error occurred during script execution: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Error "An unexpected error occurred during script execution: $($_.Exception.Message)"
     exit 1
 }
 
-Write-Host "All scripts executed successfully." -ForegroundColor Green
+Write-Host "All scripts executed successfully." .ps1

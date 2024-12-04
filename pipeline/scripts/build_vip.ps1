@@ -33,9 +33,9 @@ if ($MinimumSupportedLVVersion -eq "2021" -and $SupportedBitness -eq "64") {
 # Construct the script for execution
 $script = @"
 
-g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v "$RelativePath\Tooling\deployment\Modify_VIPB_LabVIEW_Version.vi" -- "$RelativePath\Tooling\deployment\NI Icon editor.vipb" "$VIP_LVVersion_A"
-g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v "$RelativePath\Tooling\deployment\BuildVIP.vi" -- "$RelativePath\Tooling\deployment\NI Icon editor.vipb" "$VIP_LVVersion_A"
-g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v QuitLabVIEW
+g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness "$RelativePath\Tooling\deployment\Modify_VIPB_LabVIEW_Version.vi" -- "$RelativePath\Tooling\deployment\NI Icon editor.vipb" "$VIP_LVVersion_A"
+g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness "$RelativePath\Tooling\deployment\BuildVIP.vi" -- "$RelativePath\Tooling\deployment\NI Icon editor.vipb" "$VIP_LVVersion_A"
+g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness QuitLabVIEW
 
 "@
 
@@ -46,7 +46,7 @@ Write-Output $script
 # Execute the script
 try {
     Invoke-Expression $script
-    Write-Host "Build $RelativePath\Tooling\deployment\NI Icon editor.vipb" -ForegroundColor Green
+    Write-Host "Build $RelativePath\Tooling\deployment\NI Icon editor.vipb" .ps1
 } catch {
     Write-Error "An error occurred while executing the command."
     exit 1

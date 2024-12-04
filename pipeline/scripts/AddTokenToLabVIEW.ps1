@@ -26,4 +26,4 @@ try {
     Write-Error "An error occurred while adding the token to LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit) INI file."
     exit 1
 }
-Write-Host "Add localhost.librarypaths token to LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit) ini file." -ForegroundColor Green
+Write-Host "Add localhost.librarypaths token to LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit) ini file."
