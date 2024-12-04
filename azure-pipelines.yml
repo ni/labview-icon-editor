@@ -7,7 +7,7 @@ trigger:
 
 name: $(Build.BuildID)
 
-pool:
+pool: 
   name: "Default"
   demands: "iconeditor -equals true"
 
@@ -23,8 +23,8 @@ stages:
   displayName: Build and Test LabVIEW Project
   jobs:
   - job: ExecuteScripts
-    displayName: Execute Build.ps1 via PowerShell
+    displayName: Execute Build.ps1 via powershell
     steps:
     - script: |
-        powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . `"$([System.IO.Path]::Combine('$(RelativePathScripts)', 'Build.ps1'))`" -RelativePath `"`$(RelativePath)`" -RelativePathScripts `"`$(RelativePathScripts)`" }"
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . \"$(Build.Repository.LocalPath)\pipeline\scripts\Build.ps1\" -RelativePath \"$(RelativePath)\" -RelativePathScripts \"$(RelativePathScripts)\" }"
       displayName: Test and build the icon editor
