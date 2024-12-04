@@ -1,7 +1,8 @@
 trigger:
   branches:
     include:
-      - users/svelderr/ci-cd
+      - main
+      - develop
 
 name: $(Build.BuildID)
 
@@ -14,145 +15,15 @@ variables:
   build_revision: $[counter('buildCounter',1)]
   build_version: '1.0.$(Build.BuildID).$(build_revision)'
   RelativePath: '$(Build.Repository.LocalPath)'
+  RelativePathScripts: '$(Build.Repository.LocalPath)\pipeline\scripts'  # Consistently using backslashes
 
 stages:
 - stage: BuildAndTest
   displayName: Build and Test LabVIEW Project
   jobs:
   - job: ExecuteScripts
-    displayName: Execute Sequential PowerShell Scripts
+    displayName: Execute Build.ps1 via powershell
     steps:
-    - task: PowerShell@2
-      displayName: Apply VIPC (32-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\Applyvipc.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$(RelativePath)" -VIPCPath "Tooling\deployment\Dependencies.vipc" -VIP_LVVersion "2021"
-
-    - task: PowerShell@2
-      displayName: Add Token to LabVIEW (32-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\AddTokenToLabVIEW.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$(RelativePath)"
-
-    - task: PowerShell@2
-      displayName: Close LabVIEW (32-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\Close_LabVIEW.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 32
-
-    - task: PowerShell@2
-      displayName: Prepare LabVIEW Source (32-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\Prepare_LabVIEW_source.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$(RelativePath)" -LabVIEW_Project "lv_icon_editor" -Build_Spec "Editor Packed Library"
-
-    - task: PowerShell@2
-      displayName: Close LabVIEW After Preparation (32-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\Close_LabVIEW.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 32
-
-    - task: PowerShell@2
-      displayName: Run Unit Tests (32-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\RunUnitTests.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$(RelativePath)"
-
-    - task: PowerShell@2
-      displayName: Build Packed Library (32-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\Build_lvlibp.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$(RelativePath)"
-
-    - task: PowerShell@2
-      displayName: Restore LabVIEW Source Setup (32-bit)
-      continueOnError: true
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\RestoreSetupLVSource.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath "$(RelativePath)" -LabVIEW_Project "lv_icon_editor" -Build_Spec "Editor Packed Library"
-
-    - task: PowerShell@2
-      displayName: Rename File (32-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\Rename-File.ps1" -CurrentFilename "$(RelativePath)\resource\plugins\lv_icon.lvlibp" -NewFilename "lv_icon_x86.lvlibp"
-
-    - task: PowerShell@2
-      displayName: Apply VIPC (64-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\Applyvipc.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$(RelativePath)" -VIPCPath "Tooling\deployment\Dependencies.vipc" -VIP_LVVersion "2021"
-
-    - task: PowerShell@2
-      displayName: Add Token to LabVIEW (64-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\AddTokenToLabVIEW.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$(RelativePath)"
-
-    - task: PowerShell@2
-      displayName: Close LabVIEW (64-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\Close_LabVIEW.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 64
-
-    - task: PowerShell@2
-      displayName: Prepare LabVIEW Source (64-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\Prepare_LabVIEW_source.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$(RelativePath)" -LabVIEW_Project "lv_icon_editor" -Build_Spec "Editor Packed Library"
-
-    - task: PowerShell@2
-      displayName: Close LabVIEW After Preparation (64-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\Close_LabVIEW.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 64
-
-    - task: PowerShell@2
-      displayName: Run Unit Tests (64-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\RunUnitTests.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$(RelativePath)"
-
-    - task: PowerShell@2
-      displayName: Build Packed Library (64-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\Build_lvlibp.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$(RelativePath)"
-
-    - task: PowerShell@2
-      displayName: Restore LabVIEW Source Setup (64-bit)
-      continueOnError: true
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\RestoreSetupLVSource.ps1" -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath "$(RelativePath)" -LabVIEW_Project "lv_icon_editor" -Build_Spec "Editor Packed Library"
-
-    - task: PowerShell@2
-      displayName: Rename File (64-bit)
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\Rename-File.ps1" -CurrentFilename "$(RelativePath)\resource\plugins\lv_icon.lvlibp" -NewFilename "lv_icon_x64.lvlibp"
-
-    - task: PowerShell@2
-      displayName: Build VIP Package
-      inputs:
-        targetType: 'inline'
-        script: |
-          & "$(RelativePath)\pipeline\scripts\build_vip.ps1" -SupportedBitness 64 -RelativePath "$(RelativePath)" -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -VIP_LVVersion 2021 -MinimumSupportedLVVersion 2021
+    - script: |
+        powershell -NoProfile -ExecutionPolicy Bypass -File "$(Build.Repository.LocalPath)\pipeline\scripts\Build.ps1" -RelativePath "$(RelativePath)" -RelativePathScripts "$(RelativePathScripts)"
+      displayName: Test and build the icon editor

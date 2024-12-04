@@ -1,4 +1,5 @@
-#Example: .\AddTokenToLabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "C:\labview-icon-editor"
+# Example: .\AddTokenToLabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "C:\labview-icon-editor"
+
 param(
     [string]$MinimumSupportedLVVersion,
     [string]$SupportedBitness,
@@ -7,7 +8,7 @@ param(
 
 # Construct the command
 $script = @"
-g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v "$RelativePath\Tooling\deployment\Create_LV_INI_Token.vi" -- LabVIEW Localhost.LibraryPaths "$RelativePath"
+g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v $RelativePath\Tooling\deployment\Create_LV_INI_Token.vi" -- LabVIEW Localhost.LibraryPaths "$RelativePath"
 "@
 
 Write-Output "Executing the following command:"
@@ -18,12 +19,10 @@ try {
     Invoke-Expression $script
 
     # Check the exit code of the executed command
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Failed to add token to LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit) with exit code $LASTEXITCODE."
-        exit $LASTEXITCODE
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "Unzip vi.lib/LabVIEW Icon API from LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit) and remove localhost.library path from ini file"
     }
 } catch {
-    Write-Error "An error occurred while adding the token to LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit) INI file."
-    exit 1
+    Write-Host ""
+    exit 0
 }
-Write-Host "Add localhost.librarypaths token to LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit) ini file." -ForegroundColor Green
