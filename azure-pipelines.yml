@@ -7,7 +7,7 @@ trigger:
 
 name: $(Build.BuildID)
 
-pool: 
+pool:
   name: "Default"
   demands: "iconeditor -equals true"
 
@@ -16,15 +16,15 @@ variables:
   build_revision: $[counter('buildCounter',1)]
   build_version: '1.0.$(Build.BuildID).$(build_revision)'
   RelativePath: '$(Build.Repository.LocalPath)'
-  RelativePathScripts: '$(Build.Repository.LocalPath)\pipeline\scripts'  # Consistently using backslashes
+  RelativePathScripts: '$(Build.Repository.LocalPath)\pipeline\scripts'
 
 stages:
 - stage: BuildAndTest
   displayName: Build and Test LabVIEW Project
   jobs:
   - job: ExecuteScripts
-    displayName: Execute Build.ps1 via powershell
+    displayName: Execute Build.ps1 via PowerShell
     steps:
     - script: |
-        powershell -NoProfile -ExecutionPolicy Bypass -File "$(Build.Repository.LocalPath)\pipeline\scripts\Build.ps1" -RelativePath "$(RelativePath)" -RelativePathScripts "$(RelativePathScripts)"
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "& { . `"$([System.IO.Path]::Combine('$(RelativePathScripts)', 'Build.ps1'))`" -RelativePath `"`$(RelativePath)`" -RelativePathScripts `"`$(RelativePathScripts)`" }"
       displayName: Test and build the icon editor
