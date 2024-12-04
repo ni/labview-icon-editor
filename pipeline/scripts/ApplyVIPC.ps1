@@ -1,5 +1,6 @@
 # Example Usage:
 # .\Applyvipc.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "C:\labview-icon-editor" -VIPCPath "Tooling\deployment\Dependencies.vipc" -VIP_LVVersion "2021"
+
 param (
     [string]$MinimumSupportedLVVersion,
     [string]$VIP_LVVersion,
