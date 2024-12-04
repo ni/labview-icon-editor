@@ -98,7 +98,50 @@ try {
     # Rename the file after build
     Execute-Script "$($RelativePathScripts)\Rename-File.ps1" `
         "-CurrentFilename `"$RelativePath\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x86.lvlibp'"
+	
+# Apply dependencies for LV 2021
+    Execute-Script "$($RelativePathScripts)\Applyvipc.ps1" `
+        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`" -VIPCPath `"Tooling\deployment\Dependencies.vipc`" -VIP_LVVersion 2021"
 
+    # Add token to LabVIEW
+    Execute-Script "$($RelativePathScripts)\AddTokenToLabVIEW.ps1" `
+        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`""
+
+    # Close LabVIEW
+    Execute-Script "$($RelativePathScripts)\Close_LabVIEW.ps1" `
+        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64"
+
+    # Prepare LabVIEW source
+    Execute-Script "$($RelativePathScripts)\Prepare_LabVIEW_source.ps1" `
+        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`" -LabVIEW_Project lv_icon_editor -Build_Spec `"Editor Packed Library`""
+
+    # Close LabVIEW again
+    Execute-Script "$($RelativePathScripts)\Close_LabVIEW.ps1" `
+        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64"
+
+    # Run Unit Tests
+    Execute-Script "$($RelativePathScripts)\RunUnitTests.ps1" `
+        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`""
+
+    # Build LV Library
+    Execute-Script "$($RelativePathScripts)\Build_lvlibp.ps1" `
+        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`""
+
+    # Restore LabVIEW source setup
+    Execute-Script "$($RelativePathScripts)\RestoreSetupLVSource.ps1" `
+        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`" -LabVIEW_Project 'lv_icon_editor' -Build_Spec 'Editor Packed Library'"
+
+    # Close LabVIEW
+    Execute-Script "$($RelativePathScripts)\Close_LabVIEW.ps1" `
+        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64"
+
+    # Rename the file after build
+    Execute-Script "$($RelativePathScripts)\Rename-File.ps1" `
+        "-CurrentFilename `"$RelativePath\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x64.lvlibp'"
+
+    # Build VI Package
+    Execute-Script "$($RelativePathScripts)\build_vip.ps1" `
+		"-SupportedBitness 64 -RelativePath `"$RelativePath`" -VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" -VIP_LVVersion 2021 -MinimumSupportedLVVersion 2021"
     # Success message
     Write-Host "All scripts executed successfully!" -ForegroundColor Green
 } catch {
