@@ -14,20 +14,42 @@ function Execute-Script {
     )
     Write-Host "Executing: $ScriptPath $Arguments" -ForegroundColor Cyan
     try {
-        # Use ExecutionPolicy Bypass to run the script
         $Command = "powershell -ExecutionPolicy Bypass -File `"$ScriptPath`" $Arguments"
-        Invoke-Expression $Command -ErrorAction Stop
+        Invoke-Expression "`"$Command`"" -ErrorAction Stop
     } catch {
-        Write-Error "Error occurred while executing: $ScriptPath. Exiting." -ForegroundColor Red
+        Write-Host "Error occurred while executing: $ScriptPath with arguments: $Arguments. Exiting." -ForegroundColor Red
+        exit 1
+    }
+}
+
+# Helper function to check for file or directory existence
+function Assert-PathExists {
+    param(
+        [string]$Path,
+        [string]$Description
+    )
+    if (-Not (Test-Path -Path $Path)) {
+        Write-Host "The $Description does not exist: $Path" -ForegroundColor Red
         exit 1
     }
 }
 
 # Main script logic
 try {
+    # Validate required paths
+    Assert-PathExists $RelativePath "RelativePath"
+    Assert-PathExists "$RelativePath\resource\plugins" "Plugins folder"
+    Assert-PathExists $RelativePathScripts "Scripts folder"
+
     # Clean up .lvlibp files in the plugins folder
     Write-Host "Cleaning up old .lvlibp files in plugins folder..." -ForegroundColor Yellow
-    Execute-Script "Get-ChildItem" "-Path `"$($RelativePath)\resource\plugins`" -Filter '*.lvlibp' | Remove-Item -Force"
+    $PluginFiles = Get-ChildItem -Path "$RelativePath\resource\plugins" -Filter '*.lvlibp' -ErrorAction SilentlyContinue
+    if ($PluginFiles) {
+        $PluginFiles | Remove-Item -Force
+        Write-Host "Deleted .lvlibp files from plugins folder." -ForegroundColor Green
+    } else {
+        Write-Host "No .lvlibp files found to delete." -ForegroundColor Cyan
+    }
 
     # Apply dependencies for LV 2021
     Write-Host "Applying dependencies for LabVIEW 2021..." -ForegroundColor Yellow
@@ -72,6 +94,6 @@ try {
     # Success message
     Write-Host "All scripts executed successfully!" -ForegroundColor Green
 } catch {
-    Write-Error "An unexpected error occurred during script execution: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "An unexpected error occurred during script execution: $($_.Exception.Message)" -ForegroundColor Red
     exit 1
 }
