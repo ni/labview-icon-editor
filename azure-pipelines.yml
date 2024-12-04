@@ -26,5 +26,5 @@ stages:
     displayName: Execute Build.ps1 via powershell
     steps:
     - script: |
-        powershell -NoProfile -ExecutionPolicy Bypass -File "$(Build.Repository.LocalPath)\pipeline\scripts\Build.ps1" -RelativePath "$(RelativePath)" -RelativePathScripts "$(RelativePathScripts)"
+        powershell -NoProfile -ExecutionPolicy Bypass -File "$(Build.Repository.LocalPath)\pipeline\scripts\Build.ps1" -RelativePath "$(RelativePath)" -RelativePathScripts "$RelativePathScripts"
       displayName: Test and build the icon editor
