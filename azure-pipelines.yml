@@ -15,8 +15,7 @@ variables:
   build_revision: $[counter('buildCounter',1)]
   build_version: '1.0.$(Build.BuildID).$(build_revision)'
   RelativePath: '$(Build.Repository.LocalPath)'
-  RelativePathScripts: '$(Build.Repository.LocalPath)\pipeline\scripts'
-
+  RelativePathScripts: '$(Build.Repository.LocalPath)/pipeline/scripts'  
 
 stages:
 - stage: BuildAndTest
@@ -26,5 +25,5 @@ stages:
     displayName: Execute Build.ps1 via powershell
     steps:
     - script: |
-        powershell -NoProfile -ExecutionPolicy Bypass -File "$(Build.Repository.LocalPath)\pipeline\scripts\Build.ps1" -RelativePath "$(RelativePath)" -RelativePathScripts "$RelativePathScripts"
+        powershell -NoProfile -ExecutionPolicy Bypass -File "$(Build.Repository.LocalPath)/pipeline/scripts/Build.ps1" -RelativePath "$(RelativePath)" -RelativePathScripts "$(RelativePathScripts)"  # Changed backslashes to forward slashes
       displayName: Test and build the icon editor
