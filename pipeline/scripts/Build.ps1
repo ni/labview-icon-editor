@@ -6,22 +6,6 @@ param(
     [string]$RelativePathScripts
 )
 
-# Helper function to execute scripts with PowerShell Execution Policy Bypass
-function Execute-Script {
-    param(
-        [string]$ScriptPath,
-        [string]$Arguments
-    )
-    Write-Host "Executing: $ScriptPath $Arguments" -ForegroundColor Cyan
-    try {
-        $Command = "powershell -ExecutionPolicy Bypass -File `"$ScriptPath`" $Arguments"
-        Invoke-Expression "`"$Command`"" -ErrorAction Stop
-    } catch {
-        Write-Host "Error occurred while executing: $ScriptPath with arguments: $Arguments. Exiting." -ForegroundColor Red
-        exit 1
-    }
-}
-
 # Helper function to check for file or directory existence
 function Assert-PathExists {
     param(
@@ -43,7 +27,7 @@ try {
 
     # Clean up .lvlibp files in the plugins folder
     Write-Host "Cleaning up old .lvlibp files in plugins folder..." -ForegroundColor Yellow
-    $PluginFiles = Get-ChildItem -Path "$RelativePath\resource\plugins" -Filter '*.lvlibp' -ErrorAction SilentlyContinue
+    $PluginFiles = Get-ChildItem -Path "`"$RelativePath\resource\plugins`"" -Filter '*.lvlibp' -ErrorAction SilentlyContinue
     if ($PluginFiles) {
         $PluginFiles | Remove-Item -Force
         Write-Host "Deleted .lvlibp files from plugins folder." -ForegroundColor Green
@@ -53,44 +37,44 @@ try {
 
     # Apply dependencies for LV 2021
     Write-Host "Applying dependencies for LabVIEW 2021..." -ForegroundColor Yellow
-    Execute-Script "$($RelativePathScripts)\Applyvipc.ps1" "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`" -VIPCPath `"$($RelativePath)\Tooling\deployment\Dependencies.vipc`" -VIP_LVVersion 2021"
-    
+    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$RelativePathScripts\Applyvipc.ps1`" -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`" -VIPCPath `"Tooling\deployment\Dependencies.vipc`" -VIP_LVVersion 2021" -NoNewWindow -Wait
+
     # Add token to LabVIEW
     Write-Host "Adding token to LabVIEW..." -ForegroundColor Yellow
-    Execute-Script "$($RelativePathScripts)\AddTokenToLabVIEW.ps1" "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`""
-    
+    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$RelativePathScripts\AddTokenToLabVIEW.ps1`" -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`"" -NoNewWindow -Wait
+
     # Close LabVIEW
     Write-Host "Closing LabVIEW..." -ForegroundColor Yellow
-    Execute-Script "$($RelativePathScripts)\Close_LabVIEW.ps1" "-MinimumSupportedLVVersion 2021 -SupportedBitness 32"
-    
+    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$RelativePathScripts\Close_LabVIEW.ps1`" -MinimumSupportedLVVersion 2021 -SupportedBitness 32" -NoNewWindow -Wait
+
     # Prepare LabVIEW source
     Write-Host "Preparing LabVIEW source..." -ForegroundColor Yellow
-    Execute-Script "$($RelativePathScripts)\Prepare_LabVIEW_source.ps1" "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`" -LabVIEW_Project 'lv_icon_editor' -Build_Spec 'Editor Packed Library'"
-    
+    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$RelativePathScripts\Prepare_LabVIEW_source.ps1`" -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`" -LabVIEW_Project 'lv_icon_editor' -Build_Spec 'Editor Packed Library'" -NoNewWindow -Wait
+
     # Close LabVIEW again
     Write-Host "Closing LabVIEW again..." -ForegroundColor Yellow
-    Execute-Script "$($RelativePathScripts)\Close_LabVIEW.ps1" "-MinimumSupportedLVVersion 2021 -SupportedBitness 32"
-    
+    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$RelativePathScripts\Close_LabVIEW.ps1`" -MinimumSupportedLVVersion 2021 -SupportedBitness 32" -NoNewWindow -Wait
+
     # Run Unit Tests
     Write-Host "Running unit tests..." -ForegroundColor Yellow
-    Execute-Script "$($RelativePathScripts)\RunUnitTests.ps1" "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`""
-    
+    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$RelativePathScripts\RunUnitTests.ps1`" -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`"" -NoNewWindow -Wait
+
     # Build LV Library
     Write-Host "Building LabVIEW library (.lvlibp)..." -ForegroundColor Yellow
-    Execute-Script "$($RelativePathScripts)\Build_lvlibp.ps1" "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`""
-    
+    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$RelativePathScripts\Build_lvlibp.ps1`" -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`"" -NoNewWindow -Wait
+
     # Restore LabVIEW source setup
     Write-Host "Restoring LabVIEW source setup..." -ForegroundColor Yellow
-    Execute-Script "$($RelativePathScripts)\RestoreSetupLVSource.ps1" "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`" -LabVIEW_Project 'lv_icon_editor' -Build_Spec 'Editor Packed Library'"
-    
+    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$RelativePathScripts\RestoreSetupLVSource.ps1`" -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`" -LabVIEW_Project 'lv_icon_editor' -Build_Spec 'Editor Packed Library'" -NoNewWindow -Wait
+
     # Close LabVIEW
     Write-Host "Finalizing by closing LabVIEW..." -ForegroundColor Yellow
-    Execute-Script "$($RelativePathScripts)\Close_LabVIEW.ps1" "-MinimumSupportedLVVersion 2021 -SupportedBitness 32"
-    
+    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$RelativePathScripts\Close_LabVIEW.ps1`" -MinimumSupportedLVVersion 2021 -SupportedBitness 32" -NoNewWindow -Wait
+
     # Rename the file after build
     Write-Host "Renaming built library file..." -ForegroundColor Yellow
-    Execute-Script "$($RelativePathScripts)\Rename-File.ps1" "-CurrentFilename `"$($RelativePath)\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x86.lvlibp'"
-    
+    Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -File `"$RelativePathScripts\Rename-File.ps1`" -CurrentFilename `"$RelativePath\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x86.lvlibp'" -NoNewWindow -Wait
+
     # Success message
     Write-Host "All scripts executed successfully!" -ForegroundColor Green
 } catch {
