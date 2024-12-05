@@ -2,7 +2,7 @@ name: Trigger Azure DevOps Pipeline and Show Progress
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, users/svelderrain/ci-cd ]
   workflow_dispatch:
     inputs:
       branch:
