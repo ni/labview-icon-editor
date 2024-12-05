@@ -1,6 +1,6 @@
 
 # Example usage:
-# .\Set_Development_Mode.ps1 -RelativePath "C:\labview-icon-editor"
+# .\DevelopmentMode.ps1 -RelativePath "C:\labview-icon-editor"
 
 param(
     [string]$RelativePath
@@ -21,7 +21,7 @@ function Execute-Script {
 }
 # Sequential script execution with error handling
 try {
-	Execute-Script "Get-ChildItem -Path '$RelativePath\resource\plugins' -Filter '*.lvlibp' | Remove-Item -Force" 
+	Execute-Script "Get-ChildItem -Path 'C:\labview-icon-editor\resource\plugins' -Filter '*.lvlibp' | Remove-Item -Force" 
     Execute-Script ".\AddTokenToLabVIEW.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath '$RelativePath'"
     Execute-Script ".\Prepare_LabVIEW_source.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath '$RelativePath' -LabVIEW_Project 'lv_icon_editor' -Build_Spec 'Editor Packed Library'" 
     Execute-Script ".\Close_LabVIEW.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32" 
@@ -34,4 +34,4 @@ try {
     exit 1
 }
 
-Write-Host "All scripts executed successfully."
+Write-Host "All scripts executed successfully." .ps1

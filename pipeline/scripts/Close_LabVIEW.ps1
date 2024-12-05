@@ -26,4 +26,4 @@ try {
     exit 1
 }
 
-Write-Host "Close LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)"
+Write-Host "Close LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)" .ps1

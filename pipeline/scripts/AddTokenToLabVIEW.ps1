@@ -8,7 +8,7 @@ param(
 
 # Construct the command
 $script = @"
-g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v "$RelativePath\Tooling\deployment\Create_LV_INI_Token.vi" -- "LabVIEW" "Localhost.LibraryPaths" "$RelativePath"
+g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v $RelativePath\Tooling\deployment\Create_LV_INI_Token.vi" -- LabVIEW Localhost.LibraryPaths "$RelativePath"
 "@
 
 Write-Output "Executing the following command:"
@@ -20,7 +20,7 @@ try {
 
     # Check the exit code of the executed command
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "Create localhost.library path from ini file"
+        Write-Host "Unzip vi.lib/LabVIEW Icon API from LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit) and remove localhost.library path from ini file"
     }
 } catch {
     Write-Host ""
