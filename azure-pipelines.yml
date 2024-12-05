@@ -1,9 +1,9 @@
-trigger:
-  branches:
-    include:
-      - main
-      - develop
-      - users/svelderrain/ci-cd  # Use forward slashes for branch names
+# Removed trigger so pipeline runs only when requested via API
+# trigger:
+#   branches:
+#     include:
+#       - main
+#       - develop
 
 name: $(Build.BuildID)
 
