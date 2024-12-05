@@ -59,8 +59,6 @@ try {
         Write-Host "No .lvlibp files found to delete." -ForegroundColor Cyan
     }
 	# Set development mode
-    Execute-Script "$($AbsolutePathScripts)\Set_Development_Mode.ps1" `
-        "-RelativePath `"$RelativePath`""
 
     # Apply dependencies for LV 2021
     Execute-Script "$($AbsolutePathScripts)\Applyvipc.ps1" `
@@ -103,10 +101,6 @@ try {
     Execute-Script "$($AbsolutePathScripts)\build_vip.ps1" `
 		"-SupportedBitness 64 -RelativePath `"$RelativePath`" -VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" -VIP_LVVersion 2021 -MinimumSupportedLVVersion 2021"
     # Success message
-
-	# Revert development mode
-    Execute-Script "$($AbsolutePathScripts)\RevertDevelopmentMode.ps1" `
-        "-RelativePath `"$RelativePath`""
 	
     Write-Host "All scripts executed successfully!" -ForegroundColor Green
 } catch {

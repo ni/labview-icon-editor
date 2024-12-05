@@ -1,6 +1,6 @@
 
 # Example usage:
-# .\Set_DevelopmentMode_Mode.ps1 -RelativePath "C:\labview-icon-editor"
+# .\Set_Development_Mode.ps1 -RelativePath "C:\labview-icon-editor"
 
 param(
     [string]$RelativePath
