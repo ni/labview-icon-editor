@@ -16,7 +16,7 @@ variables:
   build_revision: $[counter('buildCounter',1)]
   build_version: '1.0.$(Build.BuildID).$(build_revision)'
   RelativePath: '$(Build.SourcesDirectory)'
-  RelativePathScripts: '$(Build.SourcesDirectory)\pipeline\scripts'
+  AbsolutePathScripts: '$(Build.SourcesDirectory)\pipeline\scripts'
 
 stages:
 - stage: BuildAndTest
@@ -31,5 +31,5 @@ stages:
         filePath: '$(Build.SourcesDirectory)\pipeline\scripts\Build.ps1'
         arguments: >
           -RelativePath "$(RelativePath)"
-          -RelativePathScripts "$(RelativePathScripts)"
+          -AbsolutePathScripts "$(AbsolutePathScripts)"
         failOnStderr: true
