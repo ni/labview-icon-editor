@@ -100,7 +100,10 @@ try {
     # Build VI Package
     Execute-Script "$($AbsolutePathScripts)\build_vip.ps1" `
 		"-SupportedBitness 64 -RelativePath `"$RelativePath`" -VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" -VIP_LVVersion 2021 -MinimumSupportedLVVersion 2021"
-    # Success message
+
+	# Close LabVIEW
+    Execute-Script "$($AbsolutePathScripts)\Close_LabVIEW.ps1" `
+        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64"
 	
     Write-Host "All scripts executed successfully!" -ForegroundColor Green
 } catch {
