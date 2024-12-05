@@ -27,4 +27,4 @@ try {
     exit 1
 }
 
-Write-Host "Run unit tests for LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)" -ForegroundColor Green
+Write-Host "Run unit tests for LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)"

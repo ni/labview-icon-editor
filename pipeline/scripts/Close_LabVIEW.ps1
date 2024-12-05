@@ -26,4 +26,4 @@ try {
     exit 1
 }
 
-Write-Host "Close LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)" -ForegroundColor Green
+Write-Host "Close LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)"
