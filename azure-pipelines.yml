@@ -1,9 +1,9 @@
-trigger:
-  branches:
-    include:
-      - main
-      - develop
-      - users/svelderrain/ci-cd  # Use forward slashes for branch names
+# Removed trigger so pipeline runs only when requested via API
+# trigger:
+#   branches:
+#     include:
+#       - main
+#       - develop
 
 name: $(Build.BuildID)
 
@@ -23,13 +23,24 @@ stages:
   displayName: Build and Test LabVIEW Project
   jobs:
   - job: ExecuteScripts
-    displayName: Execute Build.ps1 via PowerShell
+    displayName: Execute Scripts
     steps:
     - task: PowerShell@2
-      displayName: 'Test and build the icon editor'
+      displayName: 'Set agent into development mode'
       inputs:
-        filePath: '$(Build.SourcesDirectory)\pipeline\scripts\Build.ps1'
+        filePath: '$(RelativePathScripts)\Set_Development_Mode.ps1'
+        arguments: '-RelativePath "$(RelativePath)"'
+        workingDirectory: '$(RelativePathScripts)'
+        failOnStderr: true
+        errorActionPreference: 'Stop'
+
+    - task: PowerShell@2
+      displayName: 'Test and Build the Icon Editor'
+      inputs:
+        filePath: '$(RelativePathScripts)\Build.ps1'
         arguments: >
           -RelativePath "$(RelativePath)"
-          -RelativePathScripts "$(RelativePathScripts)"
+          -AbsolutePathScripts "$(RelativePathScripts)"
+        workingDirectory: '$(RelativePathScripts)'
         failOnStderr: true
+        errorActionPreference: 'Stop'

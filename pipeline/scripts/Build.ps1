@@ -1,10 +1,10 @@
-# Build.ps1 -RelativePath "C:\labview-icon-editor" -RelativePathScripts "C:\labview-icon-editor\pipeline\scripts"
+# .\Build.ps1 -RelativePath "C:\labview-icon-editor" -AbsolutePathScripts "C:\labview-icon-editor\pipeline\scripts"
 param(
     [Parameter(Mandatory = $true)]
     [string]$RelativePath,
     
     [Parameter(Mandatory = $true)]
-    [string]$RelativePathScripts
+    [string]$AbsolutePathScripts
 )
 
 # Helper function to check for file or directory existence
@@ -47,7 +47,7 @@ try {
     # Validate required paths
     Assert-PathExists $RelativePath "RelativePath"
     Assert-PathExists "$RelativePath\resource\plugins" "Plugins folder"
-    Assert-PathExists $RelativePathScripts "Scripts folder"
+    Assert-PathExists $AbsolutePathScripts "Scripts folder"
 
     # Clean up .lvlibp files in the plugins folder
     Write-Host "Cleaning up old .lvlibp files in plugins folder..." -ForegroundColor Yellow
@@ -58,91 +58,53 @@ try {
     } else {
         Write-Host "No .lvlibp files found to delete." -ForegroundColor Cyan
     }
+	# Set development mode
 
     # Apply dependencies for LV 2021
-    Execute-Script "$($RelativePathScripts)\Applyvipc.ps1" `
+    Execute-Script "$($AbsolutePathScripts)\Applyvipc.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`" -VIPCPath `"Tooling\deployment\Dependencies.vipc`" -VIP_LVVersion 2021"
 
-    # Add token to LabVIEW
-    Execute-Script "$($RelativePathScripts)\AddTokenToLabVIEW.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`""
-
-    # Close LabVIEW
-    Execute-Script "$($RelativePathScripts)\Close_LabVIEW.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 32"
-
-    # Prepare LabVIEW source
-    Execute-Script "$($RelativePathScripts)\Prepare_LabVIEW_source.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`" -LabVIEW_Project lv_icon_editor -Build_Spec `"Editor Packed Library`""
-
-    # Close LabVIEW again
-    Execute-Script "$($RelativePathScripts)\Close_LabVIEW.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 32"
-
     # Run Unit Tests
-    Execute-Script "$($RelativePathScripts)\RunUnitTests.ps1" `
+    Execute-Script "$($AbsolutePathScripts)\RunUnitTests.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`""
 
     # Build LV Library
-    Execute-Script "$($RelativePathScripts)\Build_lvlibp.ps1" `
+    Execute-Script "$($AbsolutePathScripts)\Build_lvlibp.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`""
 
-    # Restore LabVIEW source setup
-    Execute-Script "$($RelativePathScripts)\RestoreSetupLVSource.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`" -LabVIEW_Project 'lv_icon_editor' -Build_Spec 'Editor Packed Library'"
 
     # Close LabVIEW
-    Execute-Script "$($RelativePathScripts)\Close_LabVIEW.ps1" `
+    Execute-Script "$($AbsolutePathScripts)\Close_LabVIEW.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 32"
 
     # Rename the file after build
-    Execute-Script "$($RelativePathScripts)\Rename-File.ps1" `
+    Execute-Script "$($AbsolutePathScripts)\Rename-File.ps1" `
         "-CurrentFilename `"$RelativePath\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x86.lvlibp'"
 	
-# Apply dependencies for LV 2021
-    Execute-Script "$($RelativePathScripts)\Applyvipc.ps1" `
+	# Apply dependencies for LV 2021
+    Execute-Script "$($AbsolutePathScripts)\Applyvipc.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`" -VIPCPath `"Tooling\deployment\Dependencies.vipc`" -VIP_LVVersion 2021"
 
-    # Add token to LabVIEW
-    Execute-Script "$($RelativePathScripts)\AddTokenToLabVIEW.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`""
-
-    # Close LabVIEW
-    Execute-Script "$($RelativePathScripts)\Close_LabVIEW.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64"
-
-    # Prepare LabVIEW source
-    Execute-Script "$($RelativePathScripts)\Prepare_LabVIEW_source.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`" -LabVIEW_Project lv_icon_editor -Build_Spec `"Editor Packed Library`""
-
-    # Close LabVIEW again
-    Execute-Script "$($RelativePathScripts)\Close_LabVIEW.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64"
-
     # Run Unit Tests
-    Execute-Script "$($RelativePathScripts)\RunUnitTests.ps1" `
+    Execute-Script "$($AbsolutePathScripts)\RunUnitTests.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`""
 
     # Build LV Library
-    Execute-Script "$($RelativePathScripts)\Build_lvlibp.ps1" `
+    Execute-Script "$($AbsolutePathScripts)\Build_lvlibp.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`""
 
-    # Restore LabVIEW source setup
-    Execute-Script "$($RelativePathScripts)\RestoreSetupLVSource.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`" -LabVIEW_Project 'lv_icon_editor' -Build_Spec 'Editor Packed Library'"
-
-    # Close LabVIEW
-    Execute-Script "$($RelativePathScripts)\Close_LabVIEW.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64"
-
     # Rename the file after build
-    Execute-Script "$($RelativePathScripts)\Rename-File.ps1" `
+    Execute-Script "$($AbsolutePathScripts)\Rename-File.ps1" `
         "-CurrentFilename `"$RelativePath\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x64.lvlibp'"
 
     # Build VI Package
-    Execute-Script "$($RelativePathScripts)\build_vip.ps1" `
+    Execute-Script "$($AbsolutePathScripts)\build_vip.ps1" `
 		"-SupportedBitness 64 -RelativePath `"$RelativePath`" -VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" -VIP_LVVersion 2021 -MinimumSupportedLVVersion 2021"
-    # Success message
+
+	# Close LabVIEW
+    Execute-Script "$($AbsolutePathScripts)\Close_LabVIEW.ps1" `
+        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64"
+	
     Write-Host "All scripts executed successfully!" -ForegroundColor Green
 } catch {
     Write-Host "An unexpected error occurred during script execution: $($_.Exception.Message)" -ForegroundColor Red
