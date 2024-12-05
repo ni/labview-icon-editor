@@ -1,38 +1,114 @@
-name: Trigger Azure DevOps Pipeline
+name: Trigger Azure DevOps Pipeline and Show Progress
 
 on:
   push:
     branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to run the pipeline against"
+        required: false
+        default: "main"
 
 jobs:
-  trigger-azure-pipeline:
+  trigger-and-monitor-azure-pipeline:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Azure DevOps Pipeline
+      - name: Determine Branch
+        id: determine_branch
         run: |
-          PAT="${{ secrets.AZURE_DEVOPS_PAT }}"    # Azure DevOps Personal Access Token
-          ORG="sergiovelderrain"                             # Replace with your Azure DevOps org name
-          PROJECT="sergiovelderrain"                     # Replace with your project name
-          PIPELINE_ID="1"                        # Replace with your pipeline ID
-          API_VERSION="6.0-preview.1"
+          # If triggered by workflow_dispatch, use input branch, otherwise use GITHUB_REF
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            BRANCH="${{ github.event.inputs.branch }}"
+          else
+            BRANCH="${GITHUB_REF##*/}"
+          fi
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
 
-          # Create base64 encoded auth header value
+      - name: Trigger Azure DevOps Pipeline
+        id: trigger
+        run: |
+          PAT="${{ secrets.AZURE_DEVOPS_PAT }}"
+          ORG="sergiovelderrain"
+          PROJECT="sergiovelderrain"
+          PIPELINE_ID="1"
+          API_VERSION="6.0-preview.1"
+          
+          # Encode PAT for Basic Auth
           AUTH=$(echo -n ":$PAT" | base64)
 
-          # JSON body to specify branch or other resources (adjust as needed)
+          BRANCH_NAME="${{ steps.determine_branch.outputs.branch }}"
+
           JSON_BODY='{
             "resources": {
               "repositories": {
                 "self": {
-                  "refName": "refs/heads/'"${GITHUB_REF##*/}"'"
+                  "refName": "refs/heads/'"${BRANCH_NAME}"'"
                 }
               }
             }
           }'
 
-          # Trigger Azure DevOps pipeline run
-          curl -X POST \
+          RESPONSE=$(curl -s -X POST \
                -H "Authorization: Basic $AUTH" \
                -H "Content-Type: application/json" \
                -d "$JSON_BODY" \
-               "https://dev.azure.com/$ORG/$PROJECT/_apis/pipelines/$PIPELINE_ID/runs?api-version=$API_VERSION"
+               "https://dev.azure.com/$ORG/$PROJECT/_apis/pipelines/$PIPELINE_ID/runs?api-version=$API_VERSION")
+
+          echo "$RESPONSE"
+          
+          # Extract the runId from response
+          RUN_ID=$(echo "$RESPONSE" | jq -r '.id')
+          
+          if [ "$RUN_ID" = "null" ] || [ -z "$RUN_ID" ]; then
+            echo "Failed to trigger pipeline. Response:"
+            echo "$RESPONSE"
+            exit 1
+          fi
+          
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+      
+      - name: Monitor Azure DevOps Pipeline
+        run: |
+          PAT="${{ secrets.AZURE_DEVOPS_PAT }}"
+          ORG="myorg"
+          PROJECT="myproject"
+          API_VERSION="6.0-preview.1"
+          RUN_ID="${{ steps.trigger.outputs.run_id }}"
+          
+          AUTH=$(echo -n ":$PAT" | base64)
+          
+          # Poll until completed or timeout
+          MAX_ATTEMPTS=30
+          SLEEP=20
+
+          ATTEMPT=0
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            RESPONSE=$(curl -s -X GET \
+              -H "Authorization: Basic $AUTH" \
+              -H "Content-Type: application/json" \
+              "https://dev.azure.com/$ORG/$PROJECT/_apis/pipelines/$RUN_ID?api-version=$API_VERSION")
+
+            STATUS=$(echo "$RESPONSE" | jq -r '.state')
+            RESULT=$(echo "$RESPONSE" | jq -r '.result')
+
+            echo "Pipeline run ID: $RUN_ID, Status: $STATUS, Result: $RESULT"
+
+            if [ "$STATUS" = "completed" ]; then
+              # Pipeline is done, check result
+              if [ "$RESULT" = "succeeded" ]; then
+                echo "Azure DevOps pipeline succeeded!"
+                exit 0
+              else
+                echo "Azure DevOps pipeline failed with result: $RESULT"
+                exit 1
+              fi
+            fi
+
+            # If not completed, wait and try again
+            ATTEMPT=$((ATTEMPT+1))
+            sleep $SLEEP
+          done
+
+          echo "Pipeline did not complete within the expected time."
+          exit 1
