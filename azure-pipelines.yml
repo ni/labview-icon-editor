@@ -44,12 +44,3 @@ stages:
         workingDirectory: '$(RelativePathScripts)'
         failOnStderr: true
         errorActionPreference: 'Stop'
-
-    - task: PowerShell@2
-      displayName: 'Restore agent from development mode'
-      inputs:
-        filePath: '$(RelativePathScripts)\RevertDevelopmentMode.ps1'
-        arguments: '-RelativePath "$(RelativePath)"'
-        workingDirectory: '$(RelativePathScripts)'
-        failOnStderr: true
-        errorActionPreference: 'Stop'
