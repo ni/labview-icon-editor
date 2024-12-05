@@ -1,6 +1,6 @@
 
 # Example usage:
-# .\DevelopmentMode.ps1 -RelativePath "C:\labview-icon-editor"
+# .\Set_DevelopmentMode_Mode.ps1 -RelativePath "C:\labview-icon-editor"
 
 param(
     [string]$RelativePath
@@ -34,4 +34,4 @@ try {
     exit 1
 }
 
-Write-Host "All scripts executed successfully." .ps1
+Write-Host "All scripts executed successfully."
