@@ -26,7 +26,7 @@ stages:
     displayName: Execute Scripts
     steps:
     - task: PowerShell@2
-      displayName: 'Set Development Mode'
+      displayName: 'Set agent into development mode'
       inputs:
         filePath: '$(RelativePathScripts)\Set_Development_Mode.ps1'
         arguments: '-RelativePath "$(RelativePath)"'
@@ -41,6 +41,15 @@ stages:
         arguments: >
           -RelativePath "$(RelativePath)"
           -AbsolutePathScripts "$(RelativePathScripts)"
+        workingDirectory: '$(RelativePathScripts)'
+        failOnStderr: true
+        errorActionPreference: 'Stop'
+
+    - task: PowerShell@2
+      displayName: 'Restore agent from development mode'
+      inputs:
+        filePath: '$(RelativePathScripts)\RevertDevelopmentMode.ps1'
+        arguments: '-RelativePath "$(RelativePath)"'
         workingDirectory: '$(RelativePathScripts)'
         failOnStderr: true
         errorActionPreference: 'Stop'
