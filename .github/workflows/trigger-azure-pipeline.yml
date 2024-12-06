@@ -8,7 +8,7 @@ on:
 jobs:
   trigger-azure-pipeline:
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.base.ref, 'main') # optional: trigger only if PR is into main
+    if: contains(github.event.pull_request.base.ref, 'develop') # optional: trigger only if PR is into main
     steps:
       - name: Check if authorized to run tests
         id: check
@@ -23,9 +23,9 @@ jobs:
         if: steps.check.outputs.ok == 'true'
         run: |
           PAT="${{ secrets.AZURE_DEVOPS_PAT }}"
-          ORG="myorg"
-          PROJECT="myproject"
-          PIPELINE_ID="12"
+          ORG="sergiovelderrain"
+          PROJECT="sergiovelderrain"
+          PIPELINE_ID="1"
           API_VERSION="6.0-preview.1"
 
           AUTH=$(echo -n ":$PAT" | base64)
