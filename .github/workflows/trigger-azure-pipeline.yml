@@ -1,37 +1,54 @@
-name: Trigger Azure DevOps Pipeline
+name: PR Triggered Tests
 
 on:
-  push:
-    branches: [ main, users\svelderrain\ci-cd ]
+  # Using pull_request_target so we can access secrets
+  pull_request_target:
+    types: [opened, synchronize, reopened]
 
 jobs:
   trigger-azure-pipeline:
     runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.base.ref, 'main') # optional: trigger only if PR is into main
     steps:
-      - name: Trigger Azure DevOps Pipeline
+      - name: Check if authorized to run tests
+        id: check
         run: |
-          PAT="${{ secrets.AZURE_DEVOPS_PAT }}"    # Azure DevOps Personal Access Token
-          ORG="sergiovelderrain"                             # Replace with your Azure DevOps org name
-          PROJECT="sergiovelderrain"                     # Replace with your project name
-          PIPELINE_ID="1"                        # Replace with your pipeline ID
+          # Implement your logic here. For example, check PR labels using GitHub CLI:
+          # gh pr view ${{ github.event.pull_request.number }} --json labels
+          # if no label or unauthorized contributor, exit
+          # For simplicity, we just say we always trigger. In reality, add conditions.
+          echo "ok=true" >> $GITHUB_OUTPUT
+
+      - name: Trigger Azure DevOps Pipeline
+        if: steps.check.outputs.ok == 'true'
+        run: |
+          PAT="${{ secrets.AZURE_DEVOPS_PAT }}"
+          ORG="myorg"
+          PROJECT="myproject"
+          PIPELINE_ID="12"
           API_VERSION="6.0-preview.1"
 
-          # Create base64 encoded auth header value
           AUTH=$(echo -n ":$PAT" | base64)
 
-          # JSON body to specify branch or other resources (adjust as needed)
+          # We can specify a branch or a commit ref from the PR. Usually you'd run tests against the PR's branch.
+          # Since we're using pull_request_target, be careful with checking out code from PR. 
+          # It's safer to just run pipeline against the PR's head commit reference retrieved from the event payload.
+          PR_HEAD_REF="${{ github.event.pull_request.head.ref }}"
+          REPO_NAME="${{ github.event.pull_request.head.repo.name }}"
+          # If your Azure DevOps pipeline is configured to use the same repo, specify it here:
+          # Ensure that your pipeline definition knows how to handle arbitrary refs.
+
           JSON_BODY='{
             "resources": {
               "repositories": {
                 "self": {
-                  "refName": "refs/heads/'"${GITHUB_REF##*/}"'"
+                  "refName": "refs/heads/'"${PR_HEAD_REF}"'"
                 }
               }
             }
           }'
 
-          # Trigger Azure DevOps pipeline run
-          curl -X POST \
+          curl -s -X POST \
                -H "Authorization: Basic $AUTH" \
                -H "Content-Type: application/json" \
                -d "$JSON_BODY" \
