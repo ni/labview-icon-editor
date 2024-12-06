@@ -8,7 +8,7 @@ on:
 jobs:
   trigger-azure-pipeline:
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.base.ref, 'main') # optional: trigger only if PR is into main
+    if: contains(github.event.pull_request.base.ref, 'develop') # optional: trigger only if PR is into main
     steps:
       - name: Check if authorized to run tests
         id: check
