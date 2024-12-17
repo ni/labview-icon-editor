@@ -16,8 +16,8 @@ jobs:
       build_id: ${{ github.run_number }}
       build_revision: ${{ steps.get_revision.outputs.build_revision }}
       build_version: 1.0.${{ env.build_id }}.${{ env.build_revision }}
-      RelativePath: ${{ vars.AgentRelativePath }}
-      RelativePathScripts: ${{ github.workspace }}/pipeline/scripts
+      RelativePath: ${{ vars.AgentWorkingFolder }}
+      RelativePathScripts: ${{ vars.AgentWorkingFolder }}/pipeline/scripts
 
     steps:
     - name: Checkout code
