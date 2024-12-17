@@ -16,7 +16,7 @@ jobs:
       build_id: ${{ github.run_number }}
       build_revision: ${{ steps.get_revision.outputs.build_revision }}
       build_version: 1.0.${{ env.build_id }}.${{ env.build_revision }}
-      RelativePath: ${{ github.workspace }}
+      RelativePath: ${{ vars.AgentRelativePath }}
       RelativePathScripts: ${{ github.workspace }}/pipeline/scripts
 
     steps:
