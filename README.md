@@ -52,9 +52,12 @@ This automated build process will follow these steps:
 build the icon editor packed project library
 
 1. Open powershell in *Admin* mode and navigate to *.pipeline\scripts* from your github repo.
-2. Modify the following command to point to your github repo and run it: *.\build.ps1 -RelativePath "C:\labview-icon-editor"*
-3. A VI package named *ni_icon_editor-x.x.x.x* will be built on *builds\VI Package*.
-4. You can now install this VI package on any LabVIEW version after 2020. 
+2. Modify the following command to point to your github repo and run it:
+   ```bach
+   .\build.ps1 -RelativePath "C:\labview-icon-editor"*
+   ```
+4. A VI package named *ni_icon_editor-x.x.x.x* will be built on *builds\VI Package*.
+5. You can now install this VI package on any LabVIEW version after 2020. 
 
 *NOTE: The VI package makes no backup of your current lv_icon.lvlibp because the VI Package itself contains a zip file with all combinations of lv_icon.lvlibp for all LabVIEW versions and bitnesses, which gets deployed to your LabVIEW application files on uninstall. This ensures that a user doesnt get locked out of his icon editor and having to copy it from another LabVIEW installation if somehow he deletes the backup he did manually.*
 
