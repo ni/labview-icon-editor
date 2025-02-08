@@ -1,22 +1,18 @@
 name: PR Triggered Tests
 
 on:
-  # Using pull_request_target so we can access secrets
   pull_request_target:
     types: [opened, synchronize, reopened]
 
 jobs:
   trigger-azure-pipeline:
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.base.ref, 'develop') # optional: trigger only if PR is into main
+    if: contains(github.event.pull_request.base.ref, 'develop')
     steps:
       - name: Check if authorized to run tests
         id: check
         run: |
-          # Implement your logic here. For example, check PR labels using GitHub CLI:
-          # gh pr view ${{ github.event.pull_request.number }} --json labels
-          # if no label or unauthorized contributor, exit
-          # For simplicity, we just say we always trigger. In reality, add conditions.
+          # Add any conditions if necessary. For now, always allow.
           echo "ok=true" >> $GITHUB_OUTPUT
 
       - name: Trigger Azure DevOps Pipeline
@@ -28,16 +24,17 @@ jobs:
           PIPELINE_ID="1"
           API_VERSION="6.0-preview.1"
 
+          # Ensure PAT is not empty
+          if [ -z "$PAT" ]; then
+            echo "AZURE_DEVOPS_PAT is not set or empty!"
+            exit 1
+          fi
+
+          # Base64 encode credentials
           AUTH=$(echo -n ":$PAT" | base64)
 
-          # We can specify a branch or a commit ref from the PR. Usually you'd run tests against the PR's branch.
-          # Since we're using pull_request_target, be careful with checking out code from PR. 
-          # It's safer to just run pipeline against the PR's head commit reference retrieved from the event payload.
+          # Use the PR's head ref for the pipeline branch
           PR_HEAD_REF="${{ github.event.pull_request.head.ref }}"
-          REPO_NAME="${{ github.event.pull_request.head.repo.name }}"
-          # If your Azure DevOps pipeline is configured to use the same repo, specify it here:
-          # Ensure that your pipeline definition knows how to handle arbitrary refs.
-
           JSON_BODY='{
             "resources": {
               "repositories": {
@@ -48,7 +45,11 @@ jobs:
             }
           }'
 
-          curl -s -X POST \
+          echo "Triggering Azure DevOps pipeline with the following JSON:"
+          echo "$JSON_BODY"
+
+          # Use --http1.1 to avoid HTTP/2 related issues, remove -s for verbosity
+          curl --http1.1 -v -X POST \
                -H "Authorization: Basic $AUTH" \
                -H "Content-Type: application/json" \
                -d "$JSON_BODY" \
