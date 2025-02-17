@@ -29,8 +29,9 @@ Steering committees are non-NI employees with triage roles to the repo that can 
 <a name="collaboratewithni" />
 
 # Collaborate with the community and NI!
+Ready to level up your game?. Collaborate with people from different backgrounds and proficiency levels.
 
-See below the list of activities (order by effort level) of how you can contribute:
+See below the different ways to collaborate
 
 | Contribution type | Effort level(1-10) |
 |-------------------|--------------|
@@ -71,7 +72,7 @@ Found an issue? [raise a new GitHub issue](https://github.com/ni/labview-icon-ed
 
 ## Develop features and bugfixes with NI and the LabVIEW community
 
-Ready to level up your game?. Collaborate with people from different backgrounds and proficiency levels. You can do this by becoming a contributor.
+ You can do this by becoming a contributor.
 
 Contributions for bug resolution and feature development have certain guidelines and processes not covered on this document. More information can be found [here](https://github.com/ni/labview-icon-editor/wiki).
 
@@ -94,12 +95,6 @@ If you have an idea or suggestion for an enhancement to the LabVIEW Icon Editor 
 Talking to us first via the discussions section about the enhancement you want to build will be the most likely way to get your pull request into the library (see Our Contributing Philosophy above). We would hate to see you write code you’re proud of, just to learn that we’ve already been working on the same thing, or that we feel doesn’t fit into the core library.
 
 Once your idea has been selected for the next release of LabVIEW, a branch will be created that you can submit your pull request to.
-
-<a name="discussionnewfeature" />
-
-# Creating a discussion for a new feature
-
-The first step to start an enhancement to the icon editor is to create a discussion on the [New Features](https://github.com/ni/labview-icon-editor/discussions/categories/new-features) discussion board. You must describe the problem that made you want to have this enhancement.
 
 <a name="reportingissues" />
 
