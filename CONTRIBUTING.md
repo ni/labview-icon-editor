@@ -46,7 +46,7 @@ See below the different ways to collaborate
 
 ## Comment on GitHub issues
 
-Go to the [issues](https://github.com/ni/labview-icon-editor/issues) section of the repo and voice your opinion on issues that other people are having. Did you found a workaround to any of the GitHub issues? we want to hear about it! 
+Go to the [issues](https://github.com/ni/labview-icon-editor/issues) section of the repo and voice your opinion on issues that other people are having. Did you find a workaround to any of the GitHub issues? We want to hear about it! 
 
 <a name="commentgithubdiscussions" />
 
