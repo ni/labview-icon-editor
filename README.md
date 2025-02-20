@@ -71,13 +71,3 @@ Then, on the machine where you want to install your custom icon editor:
 3. Copy the packed library and support files that you developed with this project into the \<LabVIEW\> directory:  
    - \<LabVIEW\>\\resource\\plugins\\lv_icon.lvlibp 
    - \<LabVIEW\>\\vi.lib\\LabVIEW Icon API\\*
-
-## CI using an Azure DevOps pipeline
-
-An Azure Devops pipeline is used as an additional check to approve pull requests from *feature* to *development* branches. This pipeline runs the unit tests, builds the packed project libraries for both 32 and 64 bit LabVIEW, and builds the VI Package.
-
-## CI using github actions
-
-An example of a github action that can manually trigger a CI/CD workflow is located at "C:\labview-icon-editor\.github\workflows\Build VI packages.yml"
-
-
