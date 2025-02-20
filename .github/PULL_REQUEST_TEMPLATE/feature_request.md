@@ -20,12 +20,12 @@
 - [ ] 🙅 no documentation needed
 ## [optional] Are there any post-deployment tasks we need to perform?
 
-## Where you able to checkout the feature branch on your fork and create your own branch to mount your changes?
+## Were you able to checkout the feature branch on your fork and create your own branch to mount your changes?
 - [ ] 👍 yes
 - [ ] 🙅 no
 - [ ] 🙋 I dont know, and i need help
 
-## Before submitting this PR, did you merged the latest changes from the latest upstream develop, into your downstream feature branch?
+## Before submitting this PR, did you merge the latest changes from the latest upstream develop, into your downstream feature branch?
 - [ ] 👍 yes
 - [ ] 🙅 no
 - [ ] 🙋 I dont know, and i need help
