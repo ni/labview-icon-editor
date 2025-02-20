@@ -1,51 +1,43 @@
-## What type of PR is this? (check all applicable)
-- [ ] 🍕 New Feature
-- [ ] 🎨 Enhancement Feature
+# Feature Addition PR Template
 
-## Created Unit tests, etc?
-- [ ] 👍 yes
-- [ ] 🙅 no, because they aren't needed
-- [ ] 🙋 no, because I need help
-## List the unit tests you created
+## Summary
 
-## Did you perform any manual tests on your new feature?
-- [ ] 👍 yes
-- [ ] 🙅 no, because they aren't needed
-- [ ] 🙋 no, because I need help
-## Describe the manual steps that you followed in order to test your feature
+Briefly describe the feature being introduced.
 
-## Added to documentation?
-- [ ] 📜 README.md
-- [ ] 📕 wiki
-- [ ] 🙅 no documentation needed
-## [optional] Are there any post-deployment tasks we need to perform?
+## Rationale
 
-## Were you able to checkout the feature branch on your fork and create your own branch to mount your changes?
-- [ ] 👍 yes
-- [ ] 🙅 no
-- [ ] 🙋 I dont know, and i need help
+Explain the reasoning behind this feature and its benefits to the project.
 
-## Before submitting this PR, did you merge the latest changes from the latest upstream develop, into your downstream feature branch?
-- [ ] 👍 yes
-- [ ] 🙅 no
-- [ ] 🙋 I dont know, and i need help
+## Design Documentation
 
-## Summary of the changes and the related issue. 
-<!-- 
-Please do not leave this blank  
--->
-## Relevant motivation and context. 
-<!-- 
-Please do not leave this blank 
-This PR [adds/removes/fixes/replaces] the [feature/bug/etc]. 
--->
-## Are you introducing a new dependency to the project?
-<!-- 
-Please do not leave this blank 
--->
-## Related Feature & Documents
-<!-- 
-Please use this format link issue numbers: Fixes #123
--->
-## Screenshots/Recordings Links
-<!-- Visual changes require screenshots -->
+Link to any design documents or diagrams relevant to this feature.
+
+## Changes
+
+List the major changes made in this pull request.
+
+## Impact
+
+Discuss any potential impacts this feature may have on existing functionalities.
+
+## Testing
+
+Describe how the feature has been tested, including both automated and manual testing strategies.
+
+## Screenshots/Video
+
+Include screenshots or video demonstrating the new feature, if applicable.
+
+## Checklist
+
+- [ ] Code follows the project's coding standards
+
+- [ ] Unit tests covering the new feature have been added
+
+- [ ] All existing tests pass
+
+- [ ] The documentation has been updated to reflect the new feature
+
+## Additional Notes
+
+Any additional information or context relevant to this PR.
