@@ -8,7 +8,7 @@
 - [ ] 🙋 no, because I need help
 ## List the unit tests you created
 
-## Did you performed any manual tests on your new feature?
+## Did you perform any manual tests on your new feature?
 - [ ] 👍 yes
 - [ ] 🙅 no, because they aren't needed
 - [ ] 🙋 no, because I need help
