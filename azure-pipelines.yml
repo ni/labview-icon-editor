@@ -1,0 +1,46 @@
+# Removed trigger so pipeline runs only when requested via API
+# trigger:
+#   branches:
+#     include:
+#       - main
+#       - develop
+
+name: $(Build.BuildID)
+
+pool:
+  name: "Default"
+  demands: "iconeditor -equals true"
+
+variables:
+  build_id: $(Build.BuildID)
+  build_revision: $[counter('buildCounter',1)]
+  build_version: '1.0.$(Build.BuildID).$(build_revision)'
+  RelativePath: '$(Build.SourcesDirectory)'
+  RelativePathScripts: '$(Build.SourcesDirectory)\pipeline\scripts'
+
+stages:
+- stage: BuildAndTest
+  displayName: Build and Test LabVIEW Project
+  jobs:
+  - job: ExecuteScripts
+    displayName: Execute Scripts
+    steps:
+    - task: PowerShell@2
+      displayName: 'Set agent into development mode'
+      inputs:
+        filePath: '$(RelativePathScripts)\Set_Development_Mode.ps1'
+        arguments: '-RelativePath "$(RelativePath)"'
+        workingDirectory: '$(RelativePathScripts)'
+        failOnStderr: true
+        errorActionPreference: 'Stop'
+
+    - task: PowerShell@2
+      displayName: 'Test and Build the Icon Editor'
+      inputs:
+        filePath: '$(RelativePathScripts)\Build.ps1'
+        arguments: >
+          -RelativePath "$(RelativePath)"
+          -AbsolutePathScripts "$(RelativePathScripts)"
+        workingDirectory: '$(RelativePathScripts)'
+        failOnStderr: true
+        errorActionPreference: 'Stop'
