@@ -80,7 +80,6 @@ try {
     Execute-Script "$($AbsolutePathScripts)\Build_lvlibp.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`""
 
-
     # Close LabVIEW
     Execute-Script "$($AbsolutePathScripts)\Close_LabVIEW.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 32"
