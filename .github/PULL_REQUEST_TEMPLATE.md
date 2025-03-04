@@ -9,7 +9,7 @@ List any GitHub discussion links related to this PR
 Completing these checklists ensures that your PR meets our build server requirements on the first attempt. If you're unable to complete any of the following checks, please submit your PR as a draft to the best of your ability. We will provide any clarification you may need after posting it.
 
 - [ ] I do not require assistance from NI to complete any of the following checks.
-- [ ] I was able to checkout the feature branch associated with this issue and i pushed it into my fork
+- [ ] I was able to checkout the feature branch associated with this issue and I pushed it into my fork
 - [ ] I am making the pull request from the feature branch from my fork, onto the feature branch from NI's repo
 - [ ] I built a VI Package using the [Powershell build tool](https://github.com/ni/labview-icon-editor/wiki/automation#pwsh).
 - [ ] I installed the VI Package produced by the Powershell build tool and tested my change.
