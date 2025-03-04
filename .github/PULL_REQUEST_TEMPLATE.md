@@ -39,7 +39,3 @@ This section describes the automated and manual tests performed for this bugfix/
 ## Manual Tests
 
 Describe any manual tests conducted.
-
-## Unit Tests
-
-List the names of the new unit test files.
