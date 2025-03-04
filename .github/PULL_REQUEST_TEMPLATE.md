@@ -18,7 +18,7 @@ Completing these checklists ensures that your PR meets our build server requirem
 
 # Summary of Changes
 
-Provide a concise overview of what is being added, modified, or fixed in this pull request.
+Provide a concise overview of what is being added, modified, or fixed in this pull request. Make an emphasis on whas was not captured on the GitHub issue, or discussion associated with this PR.
 
 # Reason for Change
 
