@@ -322,11 +322,8 @@
 				<Item Name="Set LibraryPaths to Include Icon Editor.vi" Type="VI" URL="../Tooling/support/Set LibraryPaths to Include Icon Editor.vi"/>
 			</Item>
 			<Item Name="Unit tests" Type="Folder">
-				<Item Name="Text-Based VI Icon Unit Tests" Type="Folder">
-					<Item Name="Text-Based VI Icon Unit Tests.lvlib" Type="Library" URL="../Tooling/Unit tests/Text-Based VI Icon/Text-Based VI Icon Unit Tests.lvlib"/>
-				</Item>
-				<Item Name="Missing VIs or controls on LV project.vi" Type="VI" URL="../Tooling/Unit tests/Missing VIs or controls on LV project.vi"/>
 				<Item Name="Missing in Project.lvclass" Type="LVClass" URL="../Tooling/Unit tests/Missing in Project/Missing in Project.lvclass"/>
+				<Item Name="Text-Based VI Icon Tests.lvclass" Type="LVClass" URL="../Tooling/Unit tests/Text-Based VI Icon Tests/Text-Based VI Icon Tests.lvclass"/>
 			</Item>
 			<Item Name="Force Icon Editor to Unload.vi" Type="VI" URL="../Tooling/Force Icon Editor to Unload.vi"/>
 			<Item Name="Post Build Icon Editor PPL.vi" Type="VI" URL="../Tooling/Post Build Icon Editor PPL.vi"/>
