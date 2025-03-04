@@ -1,0 +1,98 @@
+# Need to update PBS versions before building packages
+
+# Ni Package Builder Template
+# This Template Builds a NI Package Builder pbs files. 
+# Make sure the relative paths to the PBS file stay the same in the machine you create the pbs file and the build machine
+# More details in http://www.ni.com/documentation/en/ni-package-builder/latest/manual/cli/
+# The path to the files contained in an NI package is relative to the PBS file. This can be seen by opening the .PBS as a text file
+
+parameters:
+  VIP_LVVersion: ''
+  VIP_LVVersion_A: ''
+  SupportedBitness: ''
+  ApiVersion: ''
+  MinimumSupportedLVVersion: ''
+  MinimumSupportedLVVersionLVAddon: ''
+  AddonName: ''
+  RelativePath: ''
+  BuildSpec: ''
+  NIPB_Path: ''
+  Project: ''
+  PackedProjectLibraryVersion: ''
+  poolName: 'Default'
+  projectDemands: 'iconeditor -equals true'
+
+jobs:
+  - job: ${{ parameters.jobName }}
+    timeoutInMinutes: 0
+    continueOnError: true
+    pool:
+      name: ${{ parameters.poolName }}
+      demands: ${{ parameters.projectDemands }}
+    variables:
+      templateFolderStructurePath: '$(Build.Repository.LocalPath)\pipeline\NI_Package\Template_Folder_Structure'
+      #----attributes to change-----#
+      PackageName: ${{ parameters.packageName }}
+      DisplayName: ${{ parameters.displayName }}
+      Version: ${{ parameters.packageVersion }}
+      Maintainer: ${{ parameters.packageMaintainer }}
+      Synopsis: ${{ parameters.packageSynopsis }}
+      Description: ${{ parameters.packageDescription }}
+
+      #-----nipkg Files to add to package----#
+      pkgFolder: ${{ parameters.pkgFolder }}
+
+      #-----ExtensionFilter-----#
+      ExtensionFilter: ${{ parameters.extensionFilter }}
+
+      #-----Path To Dump Built Package-----#
+      builtPackagePath: '${{ parameters.builtPackagePath }}'
+
+    steps:
+      - task: CmdLine@2
+        inputs:
+          script: |
+            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} -v "${{ parameters.RelativePath }}\Tooling\deployment\Create_LV_INI_Token.vi" -- LabVIEW Localhost.LibraryPaths "${{ parameters.RelativePath }}"
+        displayName: Add token to LabVIEW ${{ parameters.MinimumSupportedLVVersion }} (${{ parameters.SupportedBitness }}-bit) ini file
+
+      - task: CmdLine@2
+        inputs:
+          script: |
+            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} -v "${{ parameters.RelativePath }}\Tooling\deployment\Modify_VIPB_LabVIEW_Version.vi" -- "${{ parameters.RelativePath }}\Tooling\deployment\NI Icon editor.vipb" "${{ parameters.VIP_LVVersion_A }}"
+        displayName: Modify VIPB to use LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.SupportedBitness }}-bit)
+
+      - task: CmdLine@2
+        inputs:
+          script: |
+            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} -v "${{ parameters.RelativePath }}\Tooling\Run all tests CLI.vi"
+        displayName: Run Unit tests LabVIEW ${{ parameters.MinimumSupportedLVVersion }} (${{ parameters.SupportedBitness }}-bit)
+
+      - task: CmdLine@2
+        inputs:
+          script: |
+            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} lvbuildspec -- -av -p "${{ parameters.RelativePath }}\lv_icon_editor.lvproj" -b "Editor Packed Library"
+        displayName: Build lv_icon.lvlibp for LabVIEW ${{ parameters.MinimumSupportedLVVersion }} (${{ parameters.SupportedBitness }}-bit)
+
+      - task: CmdLine@2
+        inputs:
+          script: |
+            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} -v "${{ parameters.RelativePath }}\Tooling\Deployment\Switch_VIPM_Target.vi" -- "${{ parameters.VIP_LVVersion_A }}"
+        displayName: Switch VIPM target to LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.SupportedBitness }}-bit)
+
+      - task: CmdLine@2
+        inputs:
+          script: |
+            call g-cli --lv-ver ${{ parameters.MinimumSupportedLVVersion }} --arch ${{ parameters.SupportedBitness }} QuitLabVIEW
+        displayName: Close LabVIEW ${{ parameters.MinimumSupportedLVVersion }} (${{ parameters.SupportedBitness }}-bit)
+
+      - task: CmdLine@2
+        inputs:
+          script: |
+            call g-cli --lv-ver ${{ parameters.VIP_LVVersion }} --arch ${{ parameters.SupportedBitness }} -v vipb -- -av -b "${{ parameters.RelativePath }}\Tooling\deployment\NI Icon editor.vipb" -av
+        displayName: Build LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.SupportedBitness }}-bit) VI Package
+
+      - task: CmdLine@2
+        inputs:
+          script: |
+            call g-cli --lv-ver ${{ parameters.VIP_LVVersion }} --arch ${{ parameters.SupportedBitness }} QuitLabVIEW
+        displayName: Close LabVIEW ${{ parameters.VIP_LVVersion }} (${{ parameters.SupportedBitness }}-bit)
