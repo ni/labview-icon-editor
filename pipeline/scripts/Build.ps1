@@ -108,6 +108,10 @@ try {
     Execute-Script "$($AbsolutePathScripts)\Close_LabVIEW.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 64"
 	
+	# Revert development mode
+    Execute-Script "$($AbsolutePathScripts)\RevertDevelopmentMode.ps1" `
+        "-RelativePath `"$RelativePath`""
+		
     Write-Host "All scripts executed successfully!" -ForegroundColor Green
 } catch {
     Write-Host "An unexpected error occurred during script execution: $($_.Exception.Message)" -ForegroundColor Red
