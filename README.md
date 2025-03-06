@@ -1,7 +1,7 @@
 # Icon Editor for LabVIEW #
 
 This repo contains the source files and automated build tools for the LabVIEW icon editor.
-You can use this code as a starting point for creating a custom icon editor. Refer to the [CONTRIBUTING](CONTRIBUTING.md) document for information about submitting changes for inclusion with future versions of LabVIEW.
+You can use this code as a starting point for creating a custom icon editor. Refer to the [CONTRIBUTING](CONTRIBUTING.md) document for information about submitting changes for inclusion with future versions  of LabVIEW.
 
 ## Compatible LabVIEW Versions
 
