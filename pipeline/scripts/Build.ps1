@@ -61,12 +61,12 @@ try {
 	# Set development mode
 
     # Apply dependencies for LV 2021
-    Execute-Script "$($AbsolutePathScripts)\Applyvipc.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`" -VIPCPath `"Tooling\deployment\dependencies.vipc`" -VIP_LVVersion 2021"
+#    Execute-Script "$($AbsolutePathScripts)\Applyvipc.ps1" `
+#        "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`" -VIPCPath `"Tooling\deployment\dependencies.vipc`" -VIP_LVVersion 2021"
 	
-	# Apply dependencies for LV 2021 x64
-    Execute-Script "$($AbsolutePathScripts)\Applyvipc.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`" -VIPCPath `"Tooling\deployment\dependencies.vipc`" -VIP_LVVersion 2021"
+#	# Apply dependencies for LV 2021 x64
+#    Execute-Script "$($AbsolutePathScripts)\Applyvipc.ps1" `
+#        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`" -VIPCPath `"Tooling\deployment\dependencies.vipc`" -VIP_LVVersion 2021"
     
 	# Set development mode
     Execute-Script "$($AbsolutePathScripts)\Set_Development_Mode.ps1" `
