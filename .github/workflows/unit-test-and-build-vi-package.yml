@@ -59,6 +59,7 @@ jobs:
       - name: Set agent into development mode
         shell: pwsh
         working-directory: ${{ env.RelativePathScripts }}
+        continue-on-error: true
         run: |
           .\Set_Development_Mode.ps1 -RelativePath "${{ env.RelativePath }}"
 
