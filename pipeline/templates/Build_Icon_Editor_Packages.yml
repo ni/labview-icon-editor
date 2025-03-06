@@ -2,7 +2,7 @@
 
 # Ni Package Builder Template
 # This Template Builds a NI Package Builder pbs files. 
-# Make sure the relative paths to the PBS file stay the same in the machine you create the pbs file and the build machine
+# Make sure the relative paths to the PBS file stay the same in the machine you create the pbs rfile and the build machine
 # More details in http://www.ni.com/documentation/en/ni-package-builder/latest/manual/cli/
 # The path to the files contained in an NI package is relative to the PBS file. This can be seen by opening the .PBS as a text file
 
