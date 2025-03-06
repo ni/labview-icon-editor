@@ -59,11 +59,10 @@ Then, on the machine where you want to install your custom icon editor:
 
 First step before modifying the icon editor source, is to ensure that your build tools work, since those same tools are the ones that will run on the build agent.
 
-See a video on how to do it from scratch following the process described below
 
-[Installation and verification process](https://github.com/user-attachments/assets/873a4e56-2183-4866-8271-6b82fb093856)
 
 Follow these steps to ensure your system is ready to edit the source.
+
 
 Step 1: Apply dependencies
 
@@ -85,6 +84,12 @@ Step 3: Open latest pwsh (Powershell) in admin mode, and navigate to
 Step 4: Copy the following command into Powershell: 
 
    ```bach
+.\Set_Development_Mode.ps1 -RelativePath "C:\labview-icon-editor"
+   ```
+
+Followed by
+
+   ```bach
 .\Build.ps1 -RelativePath "C:\labview-icon-editor" -AbsolutePathScripts "C:\labview-icon-editor\pipeline\scripts"
    ```
 Note: Before pressing enter, make sure that you closed LabVIEW and VI Package manager.
@@ -92,11 +97,12 @@ Note: Before pressing enter, make sure that you closed LabVIEW and VI Package ma
 A VI package will be created on the builds folder. Please note that you need to open VI Package manager on Admin mode in order to install the package. A VI package named *ni_icon_editor-x.x.x.x* will be built on *builds\VI Package*.
 You can now install this VI package on any LabVIEW version after 2020. 
 
-Step 5: Now that you have a working set of build tools, you can run the script that enables you to edit the source 
+Once you are done with your change, run Build.ps1 from step 4 again to make a new VI package.
+
+To revert your system back to normal, run the following command:
+(you will need to do this in order to install the VI package)
 
    ```bach
-.\Set_Development_Mode.ps1 -RelativePath "C:\labview-icon-editor"
+.\RevertDevelopmentMode.ps1 -RelativePath "C:\labview-icon-editor"
    ```
-
-Once you are done with your change, run the build tools from step 4 again and install the VI package in order to verify that your change was effective.
-   
+After running the command, you can install the VI package and will have the updated copy of the icon editor.
