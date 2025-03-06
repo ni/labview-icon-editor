@@ -36,7 +36,7 @@ Clone the repo into C:\, and apply the dependencies located on *Tooling\deployme
 2. Modify the following command to point to your github repo and run it: 
 
 ```bach
-.\DevelopmentMode.ps1 -RelativePath "C:\labview-icon-editor"
+.\Set_Development_Mode.ps1 -RelativePath "C:\labview-icon-editor"
 ```
    
 3. Open lv_icon_editor.lvproj in LabVIEW.
