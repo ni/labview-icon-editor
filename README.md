@@ -9,7 +9,7 @@ LabVIEW source is saved in (__LabVIEW 2021 SP1__) format. Either LabVIEW 2021 or
 
 ## Editing Guide (Manual)
 
-Because the icon editor is part of the LabVIEW development environment, you need to make changes to installed files before editing this project.
+Because the Icon Editor is part of the LabVIEW development environment, you need to make changes to installed files before editing this project.
 
 Complete the following steps to edit this project:
 1. Clone this repo into a development location (e.g., C:\dev).
