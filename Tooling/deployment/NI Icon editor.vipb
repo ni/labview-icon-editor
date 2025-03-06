@@ -143,6 +143,18 @@
         <Additional_Destination_Index>2</Additional_Destination_Index>
       </Destination_Overrides>
       <Destination_Overrides>
+        <Path>resource/plugins/lv_icon_x86.lvlibp</Path>
+        <Destination>0</Destination>
+        <Additional_Destination>true</Additional_Destination>
+        <Additional_Destination_Index>3</Additional_Destination_Index>
+      </Destination_Overrides>
+      <Destination_Overrides>
+        <Path>resource/plugins/lv_icon_x64.lvlibp</Path>
+        <Destination>0</Destination>
+        <Additional_Destination>true</Additional_Destination>
+        <Additional_Destination_Index>3</Additional_Destination_Index>
+      </Destination_Overrides>
+      <Destination_Overrides>
         <Path>resource/plugins</Path>
         <Destination>0</Destination>
         <Additional_Destination>true</Additional_Destination>
