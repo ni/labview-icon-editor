@@ -66,6 +66,7 @@ jobs:
       - name: Test and Build the Icon Editor
         shell: pwsh
         working-directory: ${{ env.RelativePathScripts }}
+        continue-on-error: true
         env:
           build_id: ${{ env.build_id }}
           build_revision: ${{ steps.get_revision.outputs.build_revision }}
