@@ -1,3 +1,5 @@
+[![Build the icon editor](https://github.com/ni/labview-icon-editor/actions/workflows/unit-test-and-build-vi-package.yml/badge.svg)](https://github.com/ni/labview-icon-editor/actions/workflows/unit-test-and-build-vi-package.yml)
+
 # Icon Editor for LabVIEW #
 
 This repo contains the source files and automated build tools for the LabVIEW icon editor.
@@ -65,12 +67,12 @@ See a video on how to do it from scratch following the process described below
 
 Follow these steps to ensure your system is ready to edit the source.
 
-Step 1: Apply dependencies
+### Step 1: Apply dependencies
 
 - Open VIPM, switch to 2021 32-bit and apply \Tooling\deployment\dependencies.vipc
 - Switch VIPM to LabVIEW 2021 64-bit and apply the VIPC again
 
-Step 2: Disable security warnings for "Run When Opened" VIs
+### Step 2: Disable security warnings for "Run When Opened" VIs
 
 The alternative to this step is to wait for the popup to occurr, and acknowledge it, this way it gets added to the list of "allowed" VIs. Although this would require you to manually acknowledge the process initially for the VIs to be added to the AllowedList.
 
@@ -78,25 +80,36 @@ In order to disable the warning, enable the following option on both 32 and 64-b
 
 Tools/Options/Security/Run VI without warning 
 
-Step 3: Open latest pwsh (Powershell) in admin mode, and navigate to
+<img width="607" alt="image" src="https://github.com/user-attachments/assets/5a2429c6-aca6-412a-8998-1e19876548dd" />
+
+
+### Step 3: Open latest pwsh (Powershell) in admin mode, and navigate to
 
 \labview-icon-editor\pipeline\scripts\
 
-Step 4: Copy the following command into Powershell: 
+<img width="617" alt="image" src="https://github.com/user-attachments/assets/b55b323f-ed2d-4e62-8b04-110ef7929ad1" />
+
+
+### Step 4: Copy the following command into Powershell: 
 
    ```bach
 .\Build.ps1 -RelativePath "C:\labview-icon-editor" -AbsolutePathScripts "C:\labview-icon-editor\pipeline\scripts"
    ```
+
+<img width="619" alt="image" src="https://github.com/user-attachments/assets/976df4de-b253-4046-8ca1-2469265fd487" />
+
 Note: Before pressing enter, make sure that you closed LabVIEW and VI Package manager.
 
-A VI package will be created on the builds folder. Please note that you need to open VI Package manager on Admin mode in order to install the package. A VI package named *ni_icon_editor-x.x.x.x* will be built on *builds\VI Package*.
-You can now install this VI package on any LabVIEW version after 2020. 
+A VI package named *ni_icon_editor-x.x.x.x* will be built on *builds\VI Package*. You will need to open VI Package manager on admin mode for it to work since it creates an LVAddon folder, therefore needing admin rights.
 
-Step 5: Now that you have a working set of build tools, you can run the script that enables you to edit the source 
+### Step 5: Now that you have a working set of build tools, you can now edit the source.
+
+Once you are done with your change, run the build tools from step 4 again and install the VI package in order to verify that your change was effective. *VI Package Manager needs to be run on admin mode to install the VI Package produced by the build script*
+   
+### Step 6: Revert your system back to its original state once you are finished.
+
+Use the following command to remove the LabVIEW token (localhost.librarypaths) and restore the VI Icon API.
 
    ```bach
-.\Set_Development_Mode.ps1 -RelativePath "C:\labview-icon-editor"
+.\RevertDevelopmentMode.ps1 -RelativePath "C:\labview-icon-editor"
    ```
-
-Once you are done with your change, run the build tools from step 4 again and install the VI package in order to verify that your change was effective.
-   
