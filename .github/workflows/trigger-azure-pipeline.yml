@@ -1,0 +1,56 @@
+name: PR Triggered Tests
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  trigger-azure-pipeline:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.base.ref, 'develop')
+    steps:
+      - name: Check if authorized to run tests
+        id: check
+        run: |
+          # Add any conditions if necessary. For now, always allow.
+          echo "ok=true" >> $GITHUB_OUTPUT
+
+      - name: Trigger Azure DevOps Pipeline
+        if: steps.check.outputs.ok == 'true'
+        run: |
+          PAT="${{ secrets.AZURE_DEVOPS_PAT }}"
+          ORG="sergiovelderrain"
+          PROJECT="sergiovelderrain"
+          PIPELINE_ID="1"
+          API_VERSION="6.0-preview.1"
+
+          # Ensure PAT is not empty
+          if [ -z "$PAT" ]; then
+            echo "AZURE_DEVOPS_PAT is not set or empty!"
+            exit 1
+          fi
+
+          # Base64 encode credentials
+          AUTH=$(echo -n ":$PAT" | base64)
+
+          # Use the PR's head ref for the pipeline branch
+          PR_HEAD_REF="${{ github.event.pull_request.head.ref }}"
+          JSON_BODY='{
+            "resources": {
+              "repositories": {
+                "self": {
+                  "refName": "refs/heads/'"${PR_HEAD_REF}"'"
+                }
+              }
+            }
+          }'
+
+          echo "Triggering Azure DevOps pipeline with the following JSON:"
+          echo "$JSON_BODY"
+
+          # Use --http1.1 to avoid HTTP/2 related issues, remove -s for verbosity
+          curl --http1.1 -v -X POST \
+               -H "Authorization: Basic $AUTH" \
+               -H "Content-Type: application/json" \
+               -d "$JSON_BODY" \
+               "https://dev.azure.com/$ORG/$PROJECT/_apis/pipelines/$PIPELINE_ID/runs?api-version=$API_VERSION"

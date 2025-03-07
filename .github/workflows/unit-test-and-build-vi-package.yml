@@ -56,17 +56,15 @@ jobs:
           Get-ChildItem "$env:GITHUB_WORKSPACE/.github"
           Get-Content $COUNTER_FILE
 
-      - name: Set agent into development mode
-        shell: pwsh
-        working-directory: ${{ env.RelativePathScripts }}
-        continue-on-error: true
-        run: |
-          .\Set_Development_Mode.ps1 -RelativePath "${{ env.RelativePath }}"
+#      - name: Set agent into development mode
+#        shell: pwsh
+#        working-directory: ${{ env.RelativePathScripts }}
+#        run: |
+#          .\Set_Development_Mode.ps1 -RelativePath "${{ env.RelativePath }}"
 
       - name: Test and Build the Icon Editor
         shell: pwsh
         working-directory: ${{ env.RelativePathScripts }}
-        continue-on-error: true
         env:
           build_id: ${{ env.build_id }}
           build_revision: ${{ steps.get_revision.outputs.build_revision }}
@@ -74,11 +72,11 @@ jobs:
         run: |
           .\Build.ps1 -RelativePath "${{ env.RelativePath }}" -AbsolutePathScripts "${{ env.RelativePathScripts }}"
 
-      - name: Restore agent from development mode
-        shell: pwsh
-        working-directory: ${{ env.RelativePathScripts }}
-        run: |
-          .\RevertDevelopmentMode.ps1 -RelativePath "${{ env.RelativePath }}"
+#      - name: Restore agent from development mode
+#        shell: pwsh
+#        working-directory: ${{ env.RelativePathScripts }}
+#        run: |
+#          .\RevertDevelopmentMode.ps1 -RelativePath "${{ env.RelativePath }}"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
