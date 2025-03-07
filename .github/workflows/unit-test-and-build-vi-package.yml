@@ -56,11 +56,11 @@ jobs:
           Get-ChildItem "$env:GITHUB_WORKSPACE/.github"
           Get-Content $COUNTER_FILE
 
-      - name: Set agent into development mode
-        shell: pwsh
-        working-directory: ${{ env.RelativePathScripts }}
-        run: |
-          .\Set_Development_Mode.ps1 -RelativePath "${{ env.RelativePath }}"
+#      - name: Set agent into development mode
+#        shell: pwsh
+#        working-directory: ${{ env.RelativePathScripts }}
+#        run: |
+#          .\Set_Development_Mode.ps1 -RelativePath "${{ env.RelativePath }}"
 
       - name: Test and Build the Icon Editor
         shell: pwsh
