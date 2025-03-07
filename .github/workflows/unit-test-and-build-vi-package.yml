@@ -1,94 +1,61 @@
-name: Build the icon editor
+# .github/workflows/build-and-test.yml
+
+name: Build and Test LabVIEW Project
 
 on:
-  pull_request:
+  push:
     branches:
-      - 'feature/*'
-      - 'develop'
-    types: [opened, synchronize, reopened]
-
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+      - develop
 
 jobs:
   build-and-test:
-    name: Build the icon editor
+    name: Build and Test the Icon Editor
     runs-on: [self-hosted, iconeditor]
 
     env:
       build_id: ${{ github.run_number }}
+      build_revision: ${{ steps.get_revision.outputs.build_revision }}
+      build_version: 1.0.${{ env.build_id }}.${{ env.build_revision }}
       RelativePath: ${{ vars.AgentWorkingFolder }}
-      RelativePathScripts: ${{ vars.AgentWorkingFolder }}\pipeline\scripts
+      RelativePathScripts: ${{ vars.AgentWorkingFolder }}/pipeline/scripts
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v1
 
-      - name: Get Build Revision
-        id: get_revision
-        shell: pwsh
-        run: |
-          # Path to store the build revision counter
-          $COUNTER_FILE = "$env:GITHUB_WORKSPACE/.github/buildCounter.txt"
-          Write-Host "Counter file path: $COUNTER_FILE"
+    - name: Get Build Revision
+      id: get_revision
+      shell: bash
+      run: |
+        # Path to store the build revision counter
+        COUNTER_FILE="${GITHUB_WORKSPACE}/.github/buildCounter.txt"
+        echo "Counter file path: $COUNTER_FILE"
 
-          # Initialize the counter file if it doesn't exist
-          if (-Not (Test-Path $COUNTER_FILE)) {
-            Write-Host "Counter file not found. Initializing to 1."
-            "1" | Out-File $COUNTER_FILE
-          }
+        # Initialize the counter file if it doesn't exist
+        if [ ! -f "$COUNTER_FILE" ]; then
+          echo "Counter file not found. Initializing to 1."
+          echo "1" > "$COUNTER_FILE"
+        fi
 
-          # Read the current value
-          $build_revision = Get-Content $COUNTER_FILE
-          Write-Host "Current build_revision: $build_revision"
+        # Read the current value
+        build_revision=$(cat "$COUNTER_FILE")
+        echo "Current build_revision: $build_revision"
 
-          # Increment the counter
-          $new_build_revision = [int]$build_revision + 1
-          Write-Host "New build_revision: $new_build_revision"
+        # Increment the counter
+        new_build_revision=$((build_revision + 1))
+        echo "New build_revision: $new_build_revision"
 
-          # Save the new value to the file
-          $new_build_revision | Out-File $COUNTER_FILE
+        # Save the new value back to the file
+        echo "$new_build_revision" > "$COUNTER_FILE"
 
-          # Set the output variable for GitHub Actions
-          echo "build_revision=$new_build_revision" >> $env:GITHUB_OUTPUT
+        # Set the output variable
+        echo "::set-output name=build_revision::$build_revision"
 
-          # Optional debugging
-          Get-ChildItem "$env:GITHUB_WORKSPACE/.github"
-          Get-Content $COUNTER_FILE
+        # For debugging
+        ls -la "${GITHUB_WORKSPACE}/.github"
+        cat "$COUNTER_FILE"
 
-#      - name: Set agent into development mode
-#        shell: pwsh
-#        working-directory: ${{ env.RelativePathScripts }}
-#        run: |
-#          .\Set_Development_Mode.ps1 -RelativePath "${{ env.RelativePath }}"
-
-      - name: Test and Build the Icon Editor
-        shell: pwsh
-        working-directory: ${{ env.RelativePathScripts }}
-        env:
-          build_id: ${{ env.build_id }}
-          build_revision: ${{ steps.get_revision.outputs.build_revision }}
-          build_version: 1.0.${{ env.build_id }}.${{ steps.get_revision.outputs.build_revision }}
-        run: |
-          .\Build.ps1 -RelativePath "${{ env.RelativePath }}" -AbsolutePathScripts "${{ env.RelativePathScripts }}"
-
-#      - name: Restore agent from development mode
-#        shell: pwsh
-#        working-directory: ${{ env.RelativePathScripts }}
-#        run: |
-#          .\RevertDevelopmentMode.ps1 -RelativePath "${{ env.RelativePath }}"
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: vi-package
-          # Since your workflow base directory is $GITHUB_WORKSPACE,
-          # simply reference the relative path. Use quotes because of the space.
-          path: 'builds/VI Package'
-
-#      - name: Commit and Push Build Counter
-#        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-#        uses: stefanzweifel/git-auto-commit-action@v4
-#        with:
-#          commit_message: 'Increment build revision to ${{ steps.get_revision.outputs.build_revision }}'
-#          file_pattern: '.github/buildCounter.txt'
+    - name: create-file
+      shell: pwsh
+      run: |
+        echo hello > "$((Get-Date).ToString().Replace(":","_").Replace("/","_")).txt"; ls
