@@ -1,4 +1,4 @@
-[![Build the icon editor](https://github.com/ni/labview-icon-editor/actions/workflows/unit-test-and-build-vi-package.yml/badge.svg)](https://github.com/ni/labview-icon-editor/actions/workflows/unit-test-and-build-vi-package.yml)
+[![Build VI Package](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml/badge.svg?event=status)](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml)
 
 # Icon Editor for LabVIEW #
 
