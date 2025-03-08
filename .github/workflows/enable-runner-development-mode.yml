@@ -1,19 +1,18 @@
-name: Build the icon editor
+name: Enable runner development mode
 
 on:
-  pull_request:
-    branches:
-      - 'feature/*'
-      - 'develop'
-    types: [opened, synchronize, reopened]
-
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
-  build-and-test:
-    name: Build the icon editor
+  enable-runner-development-mode:
+    environment: GlobalBuildEnv 
+    name: Enable runner to edit the icon editor
     runs-on: [self-hosted, iconeditor]
+    permissions:
+      # Make sure 'actions: write' or 'repository' scopes are included
+      actions: write
+      contents: write
 
     env:
       build_id: ${{ github.run_number }}
@@ -55,14 +54,8 @@ jobs:
           # Optional debugging
           Get-ChildItem "$env:GITHUB_WORKSPACE/.github"
           Get-Content $COUNTER_FILE
-
-#      - name: Set agent into development mode
-#        shell: pwsh
-#        working-directory: ${{ env.RelativePathScripts }}
-#        run: |
-#          .\Set_Development_Mode.ps1 -RelativePath "${{ env.RelativePath }}"
-
-      - name: Test and Build the Icon Editor
+          
+      - name: Enable runner development mode
         shell: pwsh
         working-directory: ${{ env.RelativePathScripts }}
         env:
@@ -70,25 +63,4 @@ jobs:
           build_revision: ${{ steps.get_revision.outputs.build_revision }}
           build_version: 1.0.${{ env.build_id }}.${{ steps.get_revision.outputs.build_revision }}
         run: |
-          .\Build.ps1 -RelativePath "${{ env.RelativePath }}" -AbsolutePathScripts "${{ env.RelativePathScripts }}"
-
-#      - name: Restore agent from development mode
-#        shell: pwsh
-#        working-directory: ${{ env.RelativePathScripts }}
-#        run: |
-#          .\RevertDevelopmentMode.ps1 -RelativePath "${{ env.RelativePath }}"
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: vi-package
-          # Since your workflow base directory is $GITHUB_WORKSPACE,
-          # simply reference the relative path. Use quotes because of the space.
-          path: 'builds/VI Package'
-
-#      - name: Commit and Push Build Counter
-#        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-#        uses: stefanzweifel/git-auto-commit-action@v4
-#        with:
-#          commit_message: 'Increment build revision to ${{ steps.get_revision.outputs.build_revision }}'
-#          file_pattern: '.github/buildCounter.txt'
+          .\Set_Development_Mode.ps1 -RelativePath "${{ env.RelativePath }}" -AbsolutePathScripts "${{ env.RelativePathScripts }}"

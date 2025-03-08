@@ -58,51 +58,18 @@ try {
     } else {
         Write-Host "No .lvlibp files found to delete." -ForegroundColor Cyan
     }
-	# Set development mode
-
-    # Apply dependencies for LV 2021
-#    Execute-Script "$($AbsolutePathScripts)\Applyvipc.ps1" `
-#        "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`" -VIPCPath `"Tooling\deployment\dependencies.vipc`" -VIP_LVVersion 2021"
-	
-#	# Apply dependencies for LV 2021 x64
-#    Execute-Script "$($AbsolutePathScripts)\Applyvipc.ps1" `
-#        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`" -VIPCPath `"Tooling\deployment\dependencies.vipc`" -VIP_LVVersion 2021"
     
-	# Set development mode
-    Execute-Script "$($AbsolutePathScripts)\Set_Development_Mode.ps1" `
-        "-RelativePath `"$RelativePath`""
-
     # Run Unit Tests
     Execute-Script "$($AbsolutePathScripts)\RunUnitTests.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`""
-
-    # Build LV Library
-    Execute-Script "$($AbsolutePathScripts)\Build_lvlibp.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`""
 
     # Close LabVIEW
     Execute-Script "$($AbsolutePathScripts)\Close_LabVIEW.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 32"
 
-    # Rename the file after build
-    Execute-Script "$($AbsolutePathScripts)\Rename-File.ps1" `
-        "-CurrentFilename `"$RelativePath\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x86.lvlibp'"
-
     # Run Unit Tests
     Execute-Script "$($AbsolutePathScripts)\RunUnitTests.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`""
-
-    # Build LV Library
-    Execute-Script "$($AbsolutePathScripts)\Build_lvlibp.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`""
-
-    # Rename the file after build
-    Execute-Script "$($AbsolutePathScripts)\Rename-File.ps1" `
-        "-CurrentFilename `"$RelativePath\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x64.lvlibp'"
-
-    # Build VI Package
-    Execute-Script "$($AbsolutePathScripts)\build_vip.ps1" `
-		"-SupportedBitness 64 -RelativePath `"$RelativePath`" -VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" -VIP_LVVersion 2021 -MinimumSupportedLVVersion 2021"
 
 	# Close LabVIEW
     Execute-Script "$($AbsolutePathScripts)\Close_LabVIEW.ps1" `
