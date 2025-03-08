@@ -1,0 +1,99 @@
+name: Build VI Package
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+      - release/*
+      - hotfix/*
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+  push:
+    branches:
+      - main
+      - develop
+      - release/*
+      - hotfix/*
+
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true  # Automatically cancel previous runs if a new one starts
+
+jobs:
+  build-vi-package:
+    environment: GlobalBuildEnv 
+    name: Build VI Package
+    runs-on: [self-hosted, iconeditor]
+    permissions:
+      # Make sure 'actions: write' or 'repository' scopes are included
+      actions: write
+      contents: write
+
+    env:
+      build_id: ${{ github.run_number }}
+      RelativePath: ${{ vars.AgentWorkingFolder }}
+      RelativePathScripts: ${{ vars.AgentWorkingFolder }}\pipeline\scripts
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Get Build Revision
+        id: get_revision
+        shell: pwsh
+        run: |
+          # Path to store the build revision counter
+          $COUNTER_FILE = "$env:GITHUB_WORKSPACE/.github/buildCounter.txt"
+          Write-Host "Counter file path: $COUNTER_FILE"
+
+          # Initialize the counter file if it doesn't exist
+          if (-Not (Test-Path $COUNTER_FILE)) {
+            Write-Host "Counter file not found. Initializing to 1."
+            "1" | Out-File $COUNTER_FILE
+          }
+
+          # Read the current value
+          $build_revision = Get-Content $COUNTER_FILE
+          Write-Host "Current build_revision: $build_revision"
+
+          # Increment the counter
+          $new_build_revision = [int]$build_revision + 1
+          Write-Host "New build_revision: $new_build_revision"
+
+          # Save the new value to the file
+          $new_build_revision | Out-File $COUNTER_FILE
+
+          # Set the output variable for GitHub Actions
+          echo "build_revision=$new_build_revision" >> $env:GITHUB_OUTPUT
+
+          # Optional debugging
+          Get-ChildItem "$env:GITHUB_WORKSPACE/.github"
+          Get-Content $COUNTER_FILE
+          
+
+      - name: Build the icon editor VI package
+        shell: pwsh
+        working-directory: ${{ env.RelativePathScripts }}
+        env:
+          build_id: ${{ env.build_id }}
+          build_revision: ${{ steps.get_revision.outputs.build_revision }}
+          build_version: 1.0.${{ env.build_id }}.${{ steps.get_revision.outputs.build_revision }}
+        run: |
+          .\Build_all.ps1 -RelativePath "${{ env.RelativePath }}" -AbsolutePathScripts "${{ env.RelativePathScripts }}"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-package
+          # Since your workflow base directory is $GITHUB_WORKSPACE,
+          # simply reference the relative path. Use quotes because of the space.
+          path: 'builds/VI Package'

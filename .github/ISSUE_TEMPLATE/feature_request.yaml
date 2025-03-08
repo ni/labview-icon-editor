@@ -1,0 +1,58 @@
+name: Feature request
+description: Tell us about a new feature
+title: ""
+labels: "Enhancement"
+body: 
+
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this feature request
+
+  - type: textarea
+    attributes:
+      label: Summary / Description
+      description: A short explanation of the feature you’re requesting. Focus on what the feature is and the problem it addresses.
+      placeholder:
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Motivation / Use Case
+      description: Explain why you need this feature or how it will be used. Describe the specific scenario(s) or challenge(s) the feature would help address.
+      placeholder:
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Proposed Solution / Feature Details
+      description: Provide details on how you envision the feature working. Mention any interface elements, workflows, or technical details that might be relevant.
+      placeholder:
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Alternatives / Workarounds
+      description: Describe any other solutions or workarounds you’ve tried or considered, and why they aren’t sufficient or optimal.
+      placeholder:
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Possible Implementation (optional)
+      description: If you’ve done some research or prototyping, share how the feature could be developed. Include code snippets or technical details if relevant.
+      placeholder:
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Additional Context (optional)
+      description: Anything else relevant to this feature request—links to related issues, references, screenshots, mockups, or other resources that help illustrate your idea.
+      placeholder:
+    validations:
+      required: false
