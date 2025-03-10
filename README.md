@@ -1,5 +1,5 @@
 ## Latest Pull Request
-See [Pull Request #152](./pull/152) for details on the new CI workflows and dev mode changes.
+See [Pull Request #152](https://github.com/ni/labview-icon-editor/pull/152) for details on the new CI workflows and dev mode changes.
 
 # LabVIEW Icon Editor
 
