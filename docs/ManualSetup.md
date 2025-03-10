@@ -69,9 +69,9 @@ Use the provided scripts to **automate** the same setup steps across both 32-bit
 
 5. **Run** the development mode script:
 
-        ```bach
+        
        .\Set_Development_Mode.ps1 -RelativePath "C:\labview-icon-editor"
-        ```
+        
         
    This will:
    - Remove the default `lv_icon.lvlibp` and Icon API  
@@ -106,7 +106,7 @@ Use this process to **manually distribute** the custom icon editor:
      
          <LabVIEW>\vi.lib\LabVIEW Icon API
 
-   - **Copy** your **custom** `lv_icon.lvlibp` and the new `vi.lib\LabVIEW Icon API\*` into the target machine’s LabVIEW directory.
+   - **Copy** your **custom** `lv_icon.lvlibp` and the new `vi.lib\LabVIEW Icon API\*` into the target machine
 
 ---
 
