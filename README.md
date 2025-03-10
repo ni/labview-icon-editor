@@ -15,8 +15,8 @@ This repository contains:
 - PowerShell Tooling: Scripts for automating development mode toggles, building VI packages, and running unit tests.
 - Local CI/CD Examples: References and YAML workflows (GitHub Actions) for self-hosted runners, including:
   - [Development Mode Toggle](docs/actions/development-mode-toggle.md)
-  - Build VI Package
-  - Run Unit Tests
+  - [Build VI Package](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml)
+  - [Run Unit Tests](https://github.com/ni/labview-icon-editor/actions/workflows/run-unit-tests.yml)
 
 ---
 
