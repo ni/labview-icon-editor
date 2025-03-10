@@ -1,5 +1,3 @@
-docs/CIWorkflows.md
-===================
 # Local CI/CD Workflows
 
 This document explains how to automate build, test, and distribution steps for the Icon Editor using a CI system like GitHub Actions.
@@ -54,7 +52,7 @@ Prerequisites: LabVIEW 2021 SP1, PowerShell 7+, Git for Windows
 
 Below are the key GitHub Actions for this repository:
 
-1. Development Mode Toggle
+1. [Development Mode Toggle](./docs/actions/development-mode-toggle.md)
    - Toggles LabVIEW to dev mode (Set_Development_Mode.ps1) or reverts it (RevertDevelopmentMode.ps1).
    - Usually triggered via workflow_dispatch so a user can manually enable/disable.
 2. Build VI Package
