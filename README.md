@@ -29,7 +29,7 @@ This repository contains:
 ## Quick Links
 
 - [CONTRIBUTING](CONTRIBUTING.md) – Guidelines for submitting changes.
-- [LICENSE](LICENSE.md) – License information (if applicable).
+- [LICENSE](LICENSE) – License information (if applicable).
 
 ---
 
