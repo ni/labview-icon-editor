@@ -5,13 +5,13 @@ This document explains how to use and customize the **Development Mode Toggle** 
 ## 1. Overview
 
 ### What Is “Development Mode”?
-In LabVIEW-centric projects, “development mode” usually refers to a runner state that enables additional debugging or specialized project setup. For instance, you might need to install a specific set of dependencies before running your workflow. Turning “dev mode” on/off allows you to toggle these specialized settings quickly.
+In LabVIEW-centric projects, “development mode” usually refers to a runner state that enables additional debugging or specialized project setup. For instance, you might need to move specific set of files from Program Files, or set a Token on the LabVIEW.ini of a specific LabVIEW version before running your workflow. Turning “dev mode” on/off allows you to toggle these specialized settings quickly in order to switch your system to a state where you can install the VI Package in order to test your change and to distribute it for others to test as well.
 
 ### Purpose of This Workflow
-- Makes it easy for collaborators to set a **self-hosted runner** (their own machine or a shared one) to a special “development” state without manually toggling environment variables or editing configurations.
+- Makes it easy for collaborators to set a **self-hosted runner** (their own machine or a shared one) to a special “development” state without having to do it manually, taking into consideration that this will have to happen multiple times in the development phase.
 - Can be triggered manually (via `workflow_dispatch`) or from other workflows (via `workflow_call`).
 - Lets you quickly switch back to a **testable** state when you’re done coding so you can install the final VI Package to test your change.
-- Allows collaborators to **experiment with or update the order of operations** in the underlying PowerShell scripts on their own fork, then propose those changes via pull requests.
+- Allows collaborators to **experiment with or update the order of operations** in the underlying PowerShell scripts on their own fork, then propose those changes via pull requests if they happen to improve our overall process.
 
 **Note**: Contributors who fork this repository can keep their local copy of `.github/workflows/toggle-dev-mode.yml` and its associated PowerShell scripts up to date by frequently pulling changes from the upstream repository. Likewise, if they make improvements to the scripts in their fork, they can open a pull request to merge those improvements back upstream.
 
