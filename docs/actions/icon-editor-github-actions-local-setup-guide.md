@@ -21,7 +21,7 @@ This document explains how to automate building, testing, and packaging the **La
 - **Run builds and tests** consistently across multiple developers or machines.  
 - **Produce shareable VI Packages** that track and distribute changes for easier testing.
 
-> **Prerequisites**: See the main repository’s [README.md](https://github.com/ni/labview-icon-editor#) for required software and any additional environment details.
+> **Prerequisites**: See the main repository’s [README.md](../README.md) for required software (LabVIEW 2021 SP1, VIPM, PowerShell, etc.) and any additional environment details.
 
 ---
 
@@ -31,12 +31,11 @@ This document explains how to automate building, testing, and packaging the **La
 **For experienced users**, here is a brief overview:
 
 1. **Install PowerShell & Git**  
-   - [PowerShell Latest Release](https://github.com/PowerShell/PowerShell/releases/latest)  
-   - [Git for Windows Latest Release](https://github.com/git-for-windows/git/releases/latest)
+    - PowerShell (Latest): https://github.com/PowerShell/PowerShell/releases/latest  
+    - Git for Windows (Latest): https://github.com/git-for-windows/git/releases/latest  
 2. **Restart Windows**  
-   - Ensures environment variables are properly set.
+    Ensures environment variables are properly set.
 3. **Configure a Self-Hosted Runner**  
-   - Go to your fork’s **Settings > Actions > Runners** and follow GitHub’s instructions.
 4. **Add Required Variables**  
    - **GlobalBuildEnv Environment Variable**:  
      Create the following variable **in the GlobalBuildEnv environment**:  
@@ -52,22 +51,14 @@ This document explains how to automate building, testing, and packaging the **La
        "buildCounter": 0
      }
      ```
-   - **Repository Variable**:  
-     Create the following repository variable (in **Settings > Secrets and variables > Actions**):  
-     ```bach
-     AGENTWORKINGFOLDER
-     ```
-     With the value:  
-     ```bach
-     C:\actions-runner\_work\labview-icon-editor\labview-icon-editor
-     ```
-5. **Enable Development Mode**  
-   - Manually run the “Enable Runner Development Mode” workflow.
-6. **Run Unit Tests**, then **Build VI Package**  
-   - Use the “Run Unit Tests” workflow for validation.  
-   - Use the “Build VI Package” workflow to produce the artifacts.
-7. **Disable Development Mode**  
-   - Revert your environment with the “Disable Runner Development Mode” workflow.
+    - Go to your fork’s **Settings > Actions > Runners** and follow GitHub’s instructions.
+4. **Toggle Development Mode (Manual)**  
+    - Use the **Development Mode Toggle** workflow, passing `mode: enable` or `mode: disable`.
+5. **Run Unit Tests**, then **Build VI Package**  
+    - Use the **Run Unit Tests** workflow to verify your changes.  
+    - Use the **Build VI Package** workflow to produce artifacts (auto-increments `.github/buildCounter.txt`).
+6. **Disable Dev Mode (When Done)**  
+    - Revert your environment by calling the **Development Mode Toggle** workflow with `mode: disable`.
 
 ---
 
@@ -80,90 +71,70 @@ The following sections provide **step-by-step** instructions and additional cont
 ### 1. Development vs. Testing
 
 #### Development Mode
-- **Purpose**: Editing the Icon Editor source requires special tokens in `LabVIEW.ini` and changes to `vi.lib` for both 32-bit and 64-bit LabVIEW 2021.  
-- **Manual Overhead**: Doing this repeatedly by hand is time-consuming, especially if you need to toggle between a “clean” and a “development” environment often.
+- **Purpose**: Editing the Icon Editor source requires adjusting `labview.ini` and `vi.lib` for 32-bit/64-bit LabVIEW 2021.  
+- **Automation**: Instead of having separate “Enable” and “Disable” workflows, you can call the **Development Mode Toggle** workflow with:
+    ```
+    mode: enable
+    ```
+  or:
+    ```
+    mode: disable
+    ```
 
 #### Testing with VI Packages
 - **Purpose**: VI Packages provide a reproducible, traceable way to distribute and test changes across different machines or developers.  
-- **Benefit**: Each package build is tied to a specific commit or workflow run, making it easier to correlate reported issues with the exact code baseline.
-
-**Example QA Flow**  
-<img width="345" alt="Icon Editor QA Workflow" src="https://github.com/user-attachments/assets/9c279b4e-7899-4a00-a3fd-c3ba185130b2" />
-
-A [GitHub action run](https://github.com/ni/labview-icon-editor/actions/runs/13741632917) can store the generated VI Package for easy download and review.
+- **Benefit**: Each package build is tied to a specific commit or workflow run, making it easier to correlate reported issues with the exact code baseline.  
+- **Build Numbering**: The “Build VI Package” workflow automatically increments a build counter (`.github/buildCounter.txt`), appends it to the package version, and stores the final `.vip` artifact.
 
 ---
 
 <a name="available-github-actions"></a>
 ### 2. Available GitHub Actions
 
-Below are the primary workflows you can trigger from your fork. Confirm all prerequisites from the repository’s README are met before running them.
+Below are the primary workflows you can trigger from your fork. Make sure **LabVIEW 2021 SP1** is installed and your environment matches the repository’s prerequisites.
 
-- **Build VI Package**  
-  - Creates 32-bit and 64-bit **Packed Project Libraries** for LabVIEW 2021.  
-  - Generates a **VI Package** artifact (~15 minutes).
+- **Development Mode Toggle**
+    - Toggles LabVIEW into dev mode (`Set_Development_Mode.ps1`) or reverts it (`RevertDevelopmentMode.ps1`) based on the input:
+        ```
+        with:
+          mode: enable   # or disable
+        ```
+    - **Duration**: ~1–2 minutes.
 
-- **Disable Runner Development Mode**  
-  - Reverts changes made to `vi.lib` and `LabVIEW.ini` (32-bit & 64-bit).  
-  - **Duration**: ~2 minutes.
+- **Build VI Package**
+    - Creates a 32-bit and 64-bit library for LabVIEW 2021.  
+    - Auto-increments the build revision in `.github/buildCounter.txt`.  
+    - Produces a **VI Package** artifact (~15 minutes).
 
-- **Enable Runner Development Mode**  
-  - Updates `vi.lib` and `LabVIEW.ini` to allow source editing.  
-  - **Duration**: ~2 minutes.
+- **Run Unit Tests**
+    - Executes the Icon Editor’s unit test suite in `unit_tests.ps1`.  
+    - Expected to pass if dev mode is properly disabled, unless certain tests require dev mode for specialized checks.
 
-- **Run Unit Tests**  
-  - Executes the Icon Editor’s unit test suite.  
-  - **Requires** development mode be enabled first (~5 minutes).
-
-**Actions Menu Example**  
-<img width="254" alt="Actions Menu" src="https://github.com/user-attachments/assets/1b17801b-d136-4507-9e76-7b430d26446c" />
+*(References to environment variables like `ICON_BUILD_INFO` or `AGENTWORKINGFOLDER` are no longer required; the new workflows rely on `$env:GITHUB_WORKSPACE` for path resolution.)*
 
 ---
 
 <a name="setting-up-a-self-hosted-runner"></a>
 ### 3. Setting Up a Self-Hosted Runner
 
-Follow these steps **exclusively on Windows** (latest version recommended):
+Follow these steps **on Windows**:
 
-1. **Install PowerShell (7.x+)**  
-   [Download the MSI Installer](https://github.com/PowerShell/PowerShell/releases/latest)
-2. **Install Git**  
-   [Download Git for Windows](https://github.com/git-for-windows/git/releases/latest)
-3. **Restart Your System**  
-   Ensures newly installed software paths are recognized.
-4. **Add a New Runner in GitHub**  
-   - In your forked repo, go to **Settings > Actions > Runners**.  
-   - Click **New self-hosted runner** and follow GitHub’s on-screen instructions.  
-   - This typically involves downloading the runner app, configuring a directory, and registering it with your repository.
-5. **Set Environment & Repository Variables**  
-   - **In GlobalBuildEnv**:  
+1. **Install PowerShell (7.x+)**
+    https://github.com/PowerShell/PowerShell/releases/latest
 
-     ```bach
-     ICON_BUILD_INFO
-     ```
+2. **Install Git**
+    https://github.com/git-for-windows/git/releases/latest
 
-     ```bach
-     {
-       "major": 1,
-       "minor": 0,
-       "patch": 0,
-       "buildCounter": 0
-     }
-     ```
+3. **Restart Your System**
+    Ensures newly installed software paths are recognized.
 
-   - **At the Repository Level**:  
+4. **Add a New Runner in GitHub**
+    - In your forked repo, go to **Settings > Actions > Runners**.  
+    - Click **New self-hosted runner** and follow GitHub’s on-screen instructions.
 
-     ```bach
-     AGENTWORKINGFOLDER
-     ```
-
-     ```bach
-     C:\actions-runner\_work\labview-icon-editor\labview-icon-editor
-     ```
-
-6. **Confirm LabVIEW 2021 SP1 and NI Package Manager**  
-   - Ensure LabVIEW 2021 SP1 32-bit and 64-bit are installed.
-   - Apply VIPC located on Tooling\deployment\Dependencies.vipc on 32 and 64 bit LabVIEW 2021 SP1  
+5. **Confirm LabVIEW 2021 SP1**
+    - Must have 32-bit and 64-bit installed if both are needed for your scenario.  
+    - Apply the VIPC from `Tooling\deployment\Dependencies.vipc` to both 32/64-bit LabVIEW 2021 SP1.
 
 ---
 
@@ -172,57 +143,55 @@ Follow these steps **exclusively on Windows** (latest version recommended):
 
 Once the runner is configured:
 
-1. **Enable Runner Development Mode**  
-   - Go to **Actions** in your fork.  
-   - Select **Enable Runner Development Mode** and click **Run workflow**.  
-   - If it fails initially, run it again (initialization might require a second attempt).
+1. **Toggle Dev Mode (Enable)**
+    - In **Actions**, select **Development Mode Toggle**, choose “Run workflow,” and set:
+      ```
+      mode: enable
+      ```
+    - This updates `labview.ini` and `vi.lib` for a dev environment.
 
-2. **Run Unit Tests**  
-   - With development mode enabled, select **Run Unit Tests**.  
-   - Validates that your environment is correctly set up.
+2. **Run Unit Tests**
+    - Validate your environment. Some tests might rely on dev mode being off; check logs to confirm expectations.
 
-3. **Build VI Package**  
-   - Then, select **Build VI Package**.  
-   - Wait (~15 minutes) for it to compile both 32-bit/64-bit code and produce a VI Package artifact.
+3. **Build VI Package**
+    - Launch the **Build VI Package** workflow to compile 32-bit/64-bit code.  
+    - A `.vip` file is generated (~15 minutes) and attached as an artifact.
 
-4. **Disable Runner Development Mode**  
-   - Revert your environment by running **Disable Runner Development Mode**.  
-   - This ensures a “clean” LabVIEW environment for testing the newly built VI Package.
+4. **Toggle Dev Mode (Disable)**
+    - Return to **Development Mode Toggle**, but set:
+      ```
+      mode: disable
+      ```
+    - Reverts your environment to a “clean” LabVIEW configuration.
 
-Afterward, download the artifact from the Build VI Package run and install it via VI Package Manager, ensuring to run VI Package manager on with Admin rights.
+Download the resulting `.vip` artifact from **Build VI Package** if you want to test it on another machine using VIPM.
 
 ---
 
 <a name="example-developer-workflow"></a>
 ### 5. Example Developer Workflow
 
-Here is an example of how you might **develop, test, package, and install** a change to the Icon Editor:
-
-1. **Enable Development Mode**  
-   - Run the “Enable Runner Development Mode” action to configure LabVIEW for direct source editing.
-2. **Modify Icon Editor Source**  
-   - For instance, change the UI background from gray to green.
-3. **Run Unit Tests**  
-   - Ensure your changes pass existing tests.
-4. **Build VI Package**  
-   - Produce a 32-bit/64-bit library and a VI Package artifact.
-5. **Disable Development Mode**  
-   - Restore a normal LabVIEW environment configuration.
-6. **Install and Validate**  
-   - Download the VI Package artifact from the workflow run.  
-   - Open VI Package manager in admin mode
-   - Install it locally.  
-   - Launch LabVIEW to confirm the UI color change or other modifications.
-
-**Video Demonstration**  
+1. **Enable Dev Mode**
+    mode: enable
+2. **Make Changes**
+    - Edit the Icon Editor’s source code as needed.
+3. **Run Unit Tests**
+    - Confirm test VIs pass as expected.
+4. **Build VI Package**
+    - Produces a versioned `.vip` artifact with an incremented build number.
+5. **Disable Dev Mode**
+    mode: disable
+6. **Install & Validate**
+    - Download the `.vip` artifact, install in VIPM, and check functionality outside of dev mode.
 
 ---
 
 <a name="next-steps"></a>
 ## Next Steps
 
-- **Review the Main [README.md](../README.md)** for additional environment prerequisites, LabVIEW setup steps, or other dependencies.  
-- **Modify or Extend Workflows**: Feel free to adjust these `.yml` files for tasks such as linting or code coverage.  
-- **Open a GitHub Issue**: If you encounter problems or have suggestions, please open an issue in the repository.
+- **Review the Main [README.md](../README.md)** for environment prerequisites and disclaimers.
+- **Extend Workflows**: Adjust YAML files for extra tasks (linting, coverage, etc.).
+- **Submit Pull Requests**: If you improve the scripts (PowerShell or YAML), open a PR with evidence (workflow logs) that your changes work on your runner.
+- **Troubleshooting**: [Manual Setup & Distribution docs](./ManualSetup.md).
 
 ---
