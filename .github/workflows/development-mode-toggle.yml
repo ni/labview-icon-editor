@@ -1,0 +1,121 @@
+name: "Toggle Development Mode"
+
+on:
+  # 1) Called by other workflows
+  workflow_call:
+    inputs:
+      mode:
+        description: "Enable or disable dev mode (reusable)."
+        type: string
+        required: true
+        default: "enable"
+
+  # 2) Triggered manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Enable or disable dev mode (manual)."
+        required: true
+        default: "enable"
+        type: choice
+        options:
+          - enable
+          - disable
+
+jobs:
+  toggle-dev-mode:
+    #
+    # -- FULLY DYNAMIC JOB NAME --
+    #
+    # If triggered by 'workflow_dispatch', read `github.event.inputs.mode`.
+    # Otherwise (workflow_call), read `inputs.mode`.
+    # Then display "Enable Dev Mode" or "Disable Dev Mode."
+    #
+    name: ${{ 
+      github.event_name == 'workflow_dispatch' && 
+        (github.event.inputs.mode == 'enable' && 'Enable Dev Mode' || 'Disable Dev Mode') || 
+        (inputs.mode == 'enable' && 'Enable Dev Mode' || 'Disable Dev Mode') }}
+
+    runs-on: [self-hosted, iconeditor]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log context
+        shell: pwsh
+        run: |
+          Write-Host "Actor: ${{ github.actor }}"
+          Write-Host "Reference: ${{ github.ref }}"
+          if ("${{ github.event_name }}" -eq "pull_request") {
+            Write-Host "Pull Request Number: ${{ github.event.pull_request.number }}"
+          } else {
+            Write-Host "Not triggered by a pull request."
+          }
+            
+      - name: ${{ 
+          github.event_name == 'workflow_dispatch' && 
+            (github.event.inputs.mode == 'enable' && 'Running Set_Development_Mode.ps1' || 'Running RevertDevelopmentMode.ps1') || 
+            (inputs.mode == 'enable' && 'Running Set_Development_Mode.ps1' || 'Running RevertDevelopmentMode.ps1') }}
+        id: toggle_dev_mode
+        shell: pwsh
+        working-directory: pipeline/scripts
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            if ('${{ github.event.inputs.mode }}' -eq 'enable') {
+              ./Set_Development_Mode.ps1 -RelativePath $env:GITHUB_WORKSPACE
+            } else {
+              ./RevertDevelopmentMode.ps1 -RelativePath $env:GITHUB_WORKSPACE
+            }
+          }
+          else {
+            if ('${{ inputs.mode }}' -eq 'enable') {
+              ./Set_Development_Mode.ps1 -RelativePath $env:GITHUB_WORKSPACE
+            } else {
+              ./RevertDevelopmentMode.ps1 -RelativePath $env:GITHUB_WORKSPACE
+            }
+          }
+      #
+      # -- SET OUTPUT (JSON) IF SUCCESS --
+      # Using multiline syntax to handle multi-line JSON safely
+      #
+      - name: Set environment_details output
+        if: ${{ success() }}
+        id: set_output
+        shell: pwsh
+        run: |
+          # Determine final mode for the JSON output
+          if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+            $mode = '${{ github.event.inputs.mode }}'
+          } else {
+            $mode = '${{ inputs.mode }}'
+          }
+
+          $actor     = '${{ github.actor }}'
+          $timestamp = (Get-Date -Format o)  # ISO8601 UTC
+          $osInfo    = [System.Environment]::OSVersion.VersionString
+
+          if ('${{ github.event_name }}' -eq 'pull_request') {
+            $prNumber = '${{ github.event.pull_request.number }}'
+          } else {
+            $prNumber = 'N/A'
+          }
+
+          # Pretty-printed JSON (multi-line)
+          $jsonObject = [ordered]@{
+            mode      = $mode
+            timestamp = $timestamp
+            actor     = $actor
+            pr_number = $prNumber
+            os        = $osInfo
+          } | ConvertTo-Json
+
+          Write-Host "JSON Output: $jsonObject"
+
+          # Write multiline output to GITHUB_OUTPUT:
+          echo "environment_details<<EOF" >> $env:GITHUB_OUTPUT
+          echo "$jsonObject"             >> $env:GITHUB_OUTPUT
+          echo "EOF"                     >> $env:GITHUB_OUTPUT
+
+    outputs:
+      environment_details: ${{ steps.set_output.outputs.environment_details }}

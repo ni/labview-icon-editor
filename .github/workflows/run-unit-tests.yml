@@ -22,33 +22,22 @@ on:
       - hotfix/*
       - feature/*
 
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
   run-unit-tests:
     name: Run unit tests
     runs-on: [self-hosted, iconeditor]
-    permissions:
-      # Make sure 'actions: write' or 'repository' scopes are included
-      actions: write
-      contents: write
-
-    env:
-      build_id: ${{ github.run_number }}
-      RelativePath: ${{ vars.AgentWorkingFolder }}
-      RelativePathScripts: ${{ vars.AgentWorkingFolder }}\pipeline\scripts
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-     
+
       - name: Run unit tests
         shell: pwsh
-        working-directory: ${{ env.RelativePathScripts }}
-        env:
-          build_id: ${{ env.build_id }}
-          build_revision: ${{ steps.get_revision.outputs.build_revision }}
-          build_version: 1.0.${{ env.build_id }}.${{ steps.get_revision.outputs.build_revision }}
+        working-directory: pipeline/scripts
+
         run: |
-          .\unit_tests.ps1 -RelativePath "${{ env.RelativePath }}" -AbsolutePathScripts "${{ env.RelativePathScripts }}"
+          $repoRoot = $env:GITHUB_WORKSPACE
+          $scriptsFolder = Join-Path $repoRoot 'pipeline/scripts'
+          .\unit_tests.ps1 -RelativePath $repoRoot -AbsolutePathScripts $scriptsFolder
