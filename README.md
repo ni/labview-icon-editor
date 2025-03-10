@@ -1,3 +1,7 @@
+[![Build VI Package](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml/badge.svg)](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml)
+## Latest Pull Request 
+See [Pull Request #152](https://github.com/ni/labview-icon-editor/pull/152) for details on the new CI workflows and dev mode changes.
+
 # LabVIEW Icon Editor
 
 Welcome to the source code and automated build tools for the LabVIEW Icon Editor. Use this project as a foundation to create or customize your own icon editor in LabVIEW. If you want to propose updates or submit bug fixes for future versions of LabVIEW, please consult our [CONTRIBUTING](CONTRIBUTING.md) guidelines.
@@ -29,7 +33,7 @@ This repository contains:
 ## Quick Links
 
 - [CONTRIBUTING](CONTRIBUTING.md) – Guidelines for submitting changes.
-- [LICENSE](LICENSE.md) – License information (if applicable).
+- [LICENSE](LICENSE) – License information (if applicable).
 
 ---
 
