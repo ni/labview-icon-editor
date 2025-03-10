@@ -52,13 +52,13 @@ Prerequisites: LabVIEW 2021 SP1, PowerShell 7+, Git for Windows
 
 Below are the key GitHub Actions for this repository:
 
-1. [Development Mode Toggle](actions\development-mode-toggle.md)
+1. [Development Mode Toggle](actions/development-mode-toggle.md)
    - Toggles LabVIEW to dev mode (Set_Development_Mode.ps1) or reverts it (RevertDevelopmentMode.ps1).
    - Usually triggered via workflow_dispatch so a user can manually enable/disable.
-2. Build VI Package
+2. [Build VI Package](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml)
    - Calls Build_all.ps1 to produce .vip artifacts.
    - Uses a new build counter to increment version numbers automatically.
-3. Run Unit Tests
+3. [Run Unit Tests](https://github.com/ni/labview-icon-editor/actions/workflows/run-unit-tests.yml)
    - Executes unit_tests.ps1 in pipeline/scripts.
    - Expects dev mode to be disabled if you want standard results.
 
