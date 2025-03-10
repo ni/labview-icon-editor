@@ -14,7 +14,7 @@ This repository contains:
 - Icon Editor Source Files: The core LabVIEW code for building or modifying the icon editor.
 - PowerShell Tooling: Scripts for automating development mode toggles, building VI packages, and running unit tests.
 - Local CI/CD Examples: References and YAML workflows (GitHub Actions) for self-hosted runners, including:
-  - Development Mode Toggle
+  - [Development Mode Toggle](docs/actions/development-mode-toggle.md)
   - Build VI Package
   - Run Unit Tests
 
