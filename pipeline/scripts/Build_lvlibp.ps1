@@ -19,8 +19,16 @@ g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness lvbuildspec -
 "@
 Write-Output "Executing the following command:"
 Write-Output $script
-            
+
 # Execute the command
 Invoke-Expression $script
 
-Write-Host "Build Editor Packed Library for LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)"
+# Check the exit code
+if ($LASTEXITCODE -ne 0) {
+    g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness QuitLabVIEW
+    Write-Host "Build failed with exit code $LASTEXITCODE."
+    exit 1
+} else {
+    Write-Host "Build succeeded."
+    exit 0
+}
