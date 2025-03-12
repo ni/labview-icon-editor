@@ -1,5 +1,5 @@
 const vscode = require('vscode');
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -55,14 +55,15 @@ function activate(context) {
       // d) Persist changes to file (if user changed major/minor/patch/commit, etc.)
       await saveVersionData(data);
 
-      // e) Run the PowerShell script (Solution A: Set correct CWD in the function)
+      // e) Run the PowerShell script with live output
+      //    This now streams output to an Output Channel instead of buffering
       const psOutput = await runPowerShellScript(data);
 
       // f) If success, increment build number and persist
       data.build = data.build + 1; 
       await saveVersionData(data);
 
-      // g) Write logs
+      // g) Write logs to a file
       const logFile = await writeLogs(psOutput);
 
       // h) Optionally show the log file in VS Code
@@ -237,14 +238,13 @@ async function promptNumber(prompt, defaultVal) {
 }
 
 /**
- * Runs the Build_lvlibp.ps1 script via pwsh with all parameters from data.
- * Returns stdout + stderr combined for logging.
- * 
- * KEY PART: sets 'cwd' to 'pipeline/scripts' so that './Build_lvlibp.ps1' is recognized
+ * Runs the Build_lvlibp.ps1 script via pwsh with all parameters from data,
+ * streaming output in real time to a VS Code Output Channel.
+ * Returns the combined output (stdout+stderr) so we can also log it.
  */
 async function runPowerShellScript(data) {
   return new Promise((resolve, reject) => {
-    // 1) Ensure we have a workspace
+    // 1) Ensure we have an open workspace
     if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
       return reject(new Error("No workspace folder is open in VS Code."));
     }
@@ -253,27 +253,57 @@ async function runPowerShellScript(data) {
     const workspacePath = vscode.workspace.workspaceFolders[0].uri.fsPath;
     const scriptDir = path.join(workspacePath, 'pipeline', 'scripts');
 
-    // 3) Construct the PowerShell command
-    // Example usage:
-    // pwsh -NoProfile -Command "./Build_lvlibp.ps1 -MinimumSupportedLVVersion '2021' ..."
-    const command = `pwsh -NoProfile -Command ` +
-                    `"./${PS_SCRIPT_NAME} ` +
-                    `-MinimumSupportedLVVersion '${data.MinimumSupportedLVVersion}' ` +
-                    `-SupportedBitness '${data.SupportedBitness}' ` +
-                    `-RelativePath '${data.RelativePath}' ` +
-                    `-Major ${data.major} -Minor ${data.minor} -Patch ${data.patch} -Build ${data.build} ` +
-                    `-Commit '${data.commit}'"`;
+    // 3) Create an Output Channel so we see real-time logs
+    const outputChannel = vscode.window.createOutputChannel("Build PPL Live");
+    outputChannel.show(true); // show it immediately
 
-    // 4) Force the current working directory to your scripts location
-    const options = { cwd: scriptDir };
+    // 4) Construct arguments for the PowerShell script
+    // We'll pass them as separate items in an array to spawn:
+    const psArgs = [
+      "-NoProfile",
+      "./" + PS_SCRIPT_NAME,
+      "-MinimumSupportedLVVersion", data.MinimumSupportedLVVersion,
+      "-SupportedBitness", data.SupportedBitness,
+      "-RelativePath", data.RelativePath,
+      "-Major", data.major.toString(),
+      "-Minor", data.minor.toString(),
+      "-Patch", data.patch.toString(),
+      "-Build", data.build.toString(),
+      "-Commit", data.commit
+    ];
 
-    // 5) Execute the command
-    exec(command, options, (error, stdout, stderr) => {
-      let combinedOutput = (stdout || "") + "\n" + (stderr || "");
-      if (error) {
-        return reject(new Error(`${error.message}\n${combinedOutput}`));
+    // 5) Spawn pwsh so we can read stdout/stderr in real time
+    const ps = spawn("pwsh", psArgs, { cwd: scriptDir });
+
+    let combinedOutput = "";
+
+    // 6) On each chunk of stdout, append to the channel and our combined logs
+    ps.stdout.on("data", (chunk) => {
+      const text = chunk.toString();
+      combinedOutput += text;
+      outputChannel.append(text);
+    });
+
+    // 7) Same for stderr
+    ps.stderr.on("data", (chunk) => {
+      const text = chunk.toString();
+      combinedOutput += text;
+      // We can color it differently or just append the same
+      outputChannel.append(text);
+    });
+
+    // 8) Listen for when the process closes
+    ps.on("close", (code) => {
+      if (code === 0) {
+        resolve(combinedOutput); // success
+      } else {
+        reject(new Error(`PowerShell script exited with code ${code}\n${combinedOutput}`));
       }
-      resolve(combinedOutput);
+    });
+
+    // 9) Catch spawn errors (e.g., pwsh not found)
+    ps.on("error", (err) => {
+      reject(err);
     });
   });
 }
