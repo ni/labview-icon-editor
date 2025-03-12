@@ -1,0 +1,16 @@
+{
+  "name": "toggle-dev-mode",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/vscode": "^1.98.0",
+    "vscode": "^1.1.37"
+  }
+}
