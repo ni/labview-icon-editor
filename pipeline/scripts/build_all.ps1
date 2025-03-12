@@ -1,10 +1,25 @@
-# .\Build.ps1 -RelativePath "C:\labview-icon-editor" -AbsolutePathScripts "C:\labview-icon-editor\pipeline\scripts"
+<#
+.SYNOPSIS
+  Example usage:
+    .\Build.ps1 `
+      -RelativePath "C:\labview-icon-editor" `
+      -AbsolutePathScripts "C:\labview-icon-editor\pipeline\scripts" `
+      -Major 1 -Minor 0 -Patch 0 -Build 0 -Commit "Placeholder"
+#>
+
 param(
     [Parameter(Mandatory = $true)]
     [string]$RelativePath,
     
     [Parameter(Mandatory = $true)]
-    [string]$AbsolutePathScripts
+    [string]$AbsolutePathScripts,
+
+    # NEW PARAMETERS to match the updated Build_lvlibp.ps1 requirements
+    [int]$Major = 1,
+    [int]$Minor = 0,
+    [int]$Patch = 0,
+    [int]$Build = 0,
+    [string]$Commit = "Placeholder"
 )
 
 # Helper function to check for file or directory existence
@@ -13,7 +28,7 @@ function Assert-PathExists {
         [string]$Path,
         [string]$Description
     )
-    if (-Not (Test-Path -Path $Path)) {
+    if (-not (Test-Path -Path $Path)) {
         Write-Host "The $Description does not exist: $Path" -ForegroundColor Red
         exit 1
     }
@@ -58,45 +73,57 @@ try {
     } else {
         Write-Host "No .lvlibp files found to delete." -ForegroundColor Cyan
     }
-	# Set development mode
 
-    # Apply dependencies for LV 2021
-#    Execute-Script "$($AbsolutePathScripts)\Applyvipc.ps1" `
-#        "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`" -VIPCPath `"Tooling\deployment\dependencies.vipc`" -VIP_LVVersion 2021"
-	
-#	# Apply dependencies for LV 2021 x64
-#    Execute-Script "$($AbsolutePathScripts)\Applyvipc.ps1" `
-#        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`" -VIPCPath `"Tooling\deployment\dependencies.vipc`" -VIP_LVVersion 2021"
-    
-    # Build LV Library
+    #----------------------------------------------------------------------
+    # Build LV Library (32-bit)
+    #----------------------------------------------------------------------
     Execute-Script "$($AbsolutePathScripts)\Build_lvlibp.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`""
+        ("-MinimumSupportedLVVersion 2021 " +
+         "-SupportedBitness 32 " +
+         "-RelativePath `"$RelativePath`" " +
+         "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
+         "-Commit `"$Commit`"")
 
-    # Close LabVIEW
+    # Close LabVIEW (32-bit)
     Execute-Script "$($AbsolutePathScripts)\Close_LabVIEW.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 32"
 
-    # Rename the file after build
+    # Rename the file after build (32-bit)
     Execute-Script "$($AbsolutePathScripts)\Rename-File.ps1" `
         "-CurrentFilename `"$RelativePath\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x86.lvlibp'"
 
-    # Build LV Library
+    #----------------------------------------------------------------------
+    # Build LV Library (64-bit)
+    #----------------------------------------------------------------------
     Execute-Script "$($AbsolutePathScripts)\Build_lvlibp.ps1" `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`""
+        ("-MinimumSupportedLVVersion 2021 " +
+         "-SupportedBitness 64 " +
+         "-RelativePath `"$RelativePath`" " +
+         "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
+         "-Commit `"$Commit`"")
 
-    # Rename the file after build
+    # Rename the file after build (64-bit)
     Execute-Script "$($AbsolutePathScripts)\Rename-File.ps1" `
         "-CurrentFilename `"$RelativePath\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x64.lvlibp'"
 
-    # Build VI Package
+    #----------------------------------------------------------------------
+    # Build VI Package (64-bit)
+    #----------------------------------------------------------------------
     Execute-Script "$($AbsolutePathScripts)\build_vip.ps1" `
-		"-SupportedBitness 64 -RelativePath `"$RelativePath`" -VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" -VIP_LVVersion 2021 -MinimumSupportedLVVersion 2021"
+        ("-SupportedBitness 64 " +
+         "-RelativePath `"$RelativePath`" " +
+         "-VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" " +
+         "-MinimumSupportedLVVersion 2021 " +
+         "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
+         "-Commit `"$Commit`" " +
+         "-ReleaseNotesFile `"$RelativePath\CHANGELOG.md`"")
 
-	# Close LabVIEW
+    # Close LabVIEW (64-bit)
     Execute-Script "$($AbsolutePathScripts)\Close_LabVIEW.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 64"
 		
     Write-Host "All scripts executed successfully!" -ForegroundColor Green
+
 } catch {
     Write-Host "An unexpected error occurred during script execution: $($_.Exception.Message)" -ForegroundColor Red
     exit 1

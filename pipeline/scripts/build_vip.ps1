@@ -1,10 +1,15 @@
 # Example usage:
-# .\build_vip.ps1 --lv-ver 2021 --arch 64 -SupportedBitness "64" -RelativePath "C:\labview-icon-editor"  -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -MinimumSupportedLVVersion 2021
+# .\build_vip.ps1 --lv-ver 2021 --arch 64 -SupportedBitness "64" -RelativePath "C:\labview-icon-editor"  -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -MinimumSupportedLVVersion 2021 -Major 1 -Minor 0 -Patch 0 -Build 0 -Commit "Placeholder"
 param (
     [string]$SupportedBitness,
     [string]$RelativePath,
     [string]$VIPBPath,
-    [string]$MinimumSupportedLVVersion
+    [string]$MinimumSupportedLVVersion,
+    [Int32]$Major,
+    [Int32]$Minor,
+    [Int32]$Patch,
+    [Int32]$Build,
+    [string]$Commit
 )
 
 # Resolve paths for consistency
@@ -37,7 +42,7 @@ Write-Output "Building VI Package for LabVIEW $VIP_LVVersion_A..."
 # Construct the script for execution
 $script = @"
 g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness "$ResolvedRelativePath\Tooling\deployment\Modify_VIPB_LabVIEW_Version.vi" -- "$ResolvedVIPBPath" "$VIP_LVVersion_A"
-g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness "$ResolvedRelativePath\Tooling\deployment\BuildVIP.vi" -- "$ResolvedVIPBPath" "$VIP_LVVersion_A"
+g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness vipb -- --buildspec "$ResolvedVIPBPath" --version "$Major.$Minor.$Patch.$Build" --release-notes "$ReleaseNotesFile" --timeout 300
 g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness QuitLabVIEW
 "@
 
