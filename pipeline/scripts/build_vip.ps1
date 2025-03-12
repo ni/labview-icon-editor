@@ -49,7 +49,7 @@ Write-Output "Building VI Package for LabVIEW $VIP_LVVersion_A..."
 # Construct the script for execution
 $script = @"
 g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness "$($ResolvedRelativePath)\Tooling\deployment\Modify_VIPB_LabVIEW_Version.vi" -- "$ResolvedVIPBPath" "$VIP_LVVersion_A"
-g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness vipb -- --buildspec "$ResolvedVIPBPath" --version "$Major.$Minor.$Patch.$Build" --release-notes "$ReleaseNotesFile" --timeout 300
+g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness vipb -- --buildspec "$ResolvedVIPBPath" -v "$Major.$Minor.$Patch.$Build" --release-notes "$ReleaseNotesFile" --timeout 300
 g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness QuitLabVIEW
 "@
 
