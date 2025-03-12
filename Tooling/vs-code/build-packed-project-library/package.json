@@ -1,0 +1,29 @@
+{
+    "name": "my-extension",
+    "displayName": "My Extension",
+    "description": "Sample extension created from scratch.",
+    "version": "0.0.1",
+    "engines": {
+      "vscode": "^1.50.0"
+    },
+    // The entry point for VS Code to load your extension code:
+    "main": "./extension.js",
+    "categories": ["Other"],
+    "activationEvents": [
+      "onCommand:myExtension.run"
+
+    ],
+    "contributes": {
+      "commands": [
+        {
+          "command": "myExtension.run",
+          "title": "Run My Extension"
+        }
+      ]
+    },
+    "devDependencies": {
+      "vscode": "^1.1.37",
+      "@types/vscode": "^1.50.0"
+    }
+  }
+  
