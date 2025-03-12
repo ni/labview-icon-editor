@@ -55,7 +55,7 @@ function activate(context) {
       // d) Persist changes to file (if user changed major/minor/patch/commit, etc.)
       await saveVersionData(data);
 
-      // e) Run the PowerShell script
+      // e) Run the PowerShell script (Solution A: Set correct CWD in the function)
       const psOutput = await runPowerShellScript(data);
 
       // f) If success, increment build number and persist
@@ -239,36 +239,38 @@ async function promptNumber(prompt, defaultVal) {
 /**
  * Runs the Build_lvlibp.ps1 script via pwsh with all parameters from data.
  * Returns stdout + stderr combined for logging.
- * @param {*} data
+ * 
+ * KEY PART: sets 'cwd' to 'pipeline/scripts' so that './Build_lvlibp.ps1' is recognized
  */
 async function runPowerShellScript(data) {
   return new Promise((resolve, reject) => {
-    // If no workspace, fallback
-    const workspacePath = data.RelativePath || "";
+    // 1) Ensure we have a workspace
+    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+      return reject(new Error("No workspace folder is open in VS Code."));
+    }
 
-    // Construct the command line
+    // 2) Build the path to your scripts folder, e.g. <workspace>/pipeline/scripts
+    const workspacePath = vscode.workspace.workspaceFolders[0].uri.fsPath;
+    const scriptDir = path.join(workspacePath, 'pipeline', 'scripts');
+
+    // 3) Construct the PowerShell command
     // Example usage:
-    // pwsh -NoProfile -Command "./Build_lvlibp.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath C:\labview-icon-editor -Major 1 -Minor 0 -Patch 0 -Build 0 -Commit 'Placeholder'"
-    const command = `pwsh -NoProfile -Command `
-      + `"./${PS_SCRIPT_NAME} `
-      + `-MinimumSupportedLVVersion '${data.MinimumSupportedLVVersion}' `
-      + `-SupportedBitness '${data.SupportedBitness}' `
-      + `-RelativePath '${workspacePath}' `
-      + `-Major ${data.major} -Minor ${data.minor} -Patch ${data.patch} -Build ${data.build} `
-      + `-Commit '${data.commit}'"`;
+    // pwsh -NoProfile -Command "./Build_lvlibp.ps1 -MinimumSupportedLVVersion '2021' ..."
+    const command = `pwsh -NoProfile -Command ` +
+                    `"./${PS_SCRIPT_NAME} ` +
+                    `-MinimumSupportedLVVersion '${data.MinimumSupportedLVVersion}' ` +
+                    `-SupportedBitness '${data.SupportedBitness}' ` +
+                    `-RelativePath '${data.RelativePath}' ` +
+                    `-Major ${data.major} -Minor ${data.minor} -Patch ${data.patch} -Build ${data.build} ` +
+                    `-Commit '${data.commit}'"`;
 
-    // Decide where the PS script actually lives
-    // If it's inside your workspace "pipeline/scripts", for example:
-    //   let scriptDir = path.join(workspacePath, 'pipeline', 'scripts');
-    let scriptDir = workspacePath; // or some custom path?
-
-    // We'll exec from that directory
+    // 4) Force the current working directory to your scripts location
     const options = { cwd: scriptDir };
 
+    // 5) Execute the command
     exec(command, options, (error, stdout, stderr) => {
       let combinedOutput = (stdout || "") + "\n" + (stderr || "");
       if (error) {
-        // Return the entire combined output for logging
         return reject(new Error(`${error.message}\n${combinedOutput}`));
       }
       resolve(combinedOutput);
