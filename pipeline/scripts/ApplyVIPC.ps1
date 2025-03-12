@@ -80,21 +80,17 @@ Write-Output "Applying dependencies for LabVIEW $VIP_LVVersion_B..."
 $script = @"
 g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v "$($ResolvedRelativePath)\Tooling\Deployment\Applyvipc.vi" -- "$ResolvedVIPCPath" "$VIP_LVVersion_B"
 g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v "$($ResolvedRelativePath)\Tooling\Deployment\Applyvipc.vi" -- "$ResolvedVIPCPath" "$VIP_LVVersion_B"
+g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v QuitLabVIEW
 "@
 
 # If we need to switch to a different version, we’ll quit LabVIEW and re-apply
 if ($VIP_LVVersion -ne $MinimumSupportedLVVersion) {
     $script += @"
+g-cli --lv-ver $VIP_LVVersion --arch $SupportedBitness -v "$($ResolvedRelativePath)\Tooling\Deployment\Applyvipc.vi" -- "$ResolvedVIPCPath" "$VIP_LVVersion_A"
+g-cli --lv-ver $VIP_LVVersion --arch $SupportedBitness -v "$($ResolvedRelativePath)\Tooling\Deployment\Applyvipc.vi" -- "$ResolvedVIPCPath" "$VIP_LVVersion_A"
 g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v QuitLabVIEW
-g-cli --lv-ver $VIP_LVVersion --arch $SupportedBitness -v "$($ResolvedRelativePath)\Tooling\Deployment\Applyvipc.vi" -- "$ResolvedVIPCPath" "$VIP_LVVersion_A"
-g-cli --lv-ver $VIP_LVVersion --arch $SupportedBitness -v "$($ResolvedRelativePath)\Tooling\Deployment\Applyvipc.vi" -- "$ResolvedVIPCPath" "$VIP_LVVersion_A"
 "@
 }
-
-# Finally, always quit LabVIEW from the “current” version
-$script += @"
-g-cli --lv-ver $VIP_LVVersion --arch $SupportedBitness -v QuitLabVIEW
-"@
 
 # -------------------------
 # 4) Output the script for debugging

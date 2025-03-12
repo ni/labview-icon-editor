@@ -77,6 +77,16 @@ try {
     }
 
     #----------------------------------------------------------------------
+    #      Apply VIPC (32-bit)
+    #----------------------------------------------------------------------
+    Execute-Script "$($AbsolutePathScripts)\ApplyVIPC.ps1" `
+        ("-MinimumSupportedLVVersion 2021 " +
+         "-VIP_LVVersion 2021 " +
+         "-SupportedBitness 32 " +
+         "-RelativePath `"$RelativePath`" " +
+         "-VIPCPath `"Tooling\deployment\Dependencies.vipc`"")
+
+    #----------------------------------------------------------------------
     # Build LV Library (32-bit)
     #----------------------------------------------------------------------
     Execute-Script "$($AbsolutePathScripts)\Build_lvlibp.ps1" `
@@ -93,6 +103,16 @@ try {
     # Rename the file after build (32-bit)
     Execute-Script "$($AbsolutePathScripts)\Rename-File.ps1" `
         "-CurrentFilename `"$RelativePath\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x86.lvlibp'"
+
+    #----------------------------------------------------------------------
+    #    Apply VIPC (64-bit)
+    #----------------------------------------------------------------------
+    Execute-Script "$($AbsolutePathScripts)\ApplyVIPC.ps1" `
+        ("-MinimumSupportedLVVersion 2021 " +
+         "-VIP_LVVersion 2021 " +
+         "-SupportedBitness 64 " +
+         "-RelativePath `"$RelativePath`" " +
+         "-VIPCPath `"Tooling\deployment\Dependencies.vipc`"")
 
     #----------------------------------------------------------------------
     # Build LV Library (64-bit)
