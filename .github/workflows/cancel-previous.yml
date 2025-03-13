@@ -15,4 +15,4 @@ jobs:
         uses: n1hility/cancel-previous-runs@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: "build-vi-package.yml"  # or whatever your main workflow file is
+          workflow: build-vi-package.yml
