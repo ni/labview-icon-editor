@@ -10,7 +10,6 @@ on:
 
 jobs:
   build-vi-package:
-    name: Build VI Package
     runs-on: [self-hosted, iconeditor]
 
     steps:
@@ -32,17 +31,31 @@ jobs:
 
       - name: Build the icon editor VI package
         shell: pwsh
-        # GitHub sets $GITHUB_WORKSPACE automatically
+        
+        # <--- Define environment variables for versioning here
+        #      You can hardcode some (Major, Minor, Patch) or increment them
         env:
-          build_id: ${{ github.run_number }}
-          build_revision: ${{ steps.get_revision.outputs.build_revision }}
-          build_version: 1.0.${{ github.run_number }}.${{ steps.get_revision.outputs.build_revision }}
+          VERSION_MAJOR: 1
+          VERSION_MINOR: 0
+          VERSION_PATCH: 0
+          # Use the build counter as the Build portion
+          VERSION_BUILD: ${{ steps.get_revision.outputs.build_revision }}
+          # Use the Git commit SHA as the "Commit" parameter
+          VERSION_COMMIT: ${{ github.sha }}
+
         run: |
-          $repoRoot = $env:GITHUB_WORKSPACE
+          $repoRoot      = $env:GITHUB_WORKSPACE
           $scriptsFolder = Join-Path $repoRoot 'pipeline/scripts'
 
-          # Call the script with defaulted paths
-          .\pipeline\scripts\Build_all.ps1 -RelativePath $repoRoot -AbsolutePathScripts $scriptsFolder
+          # Now pass these env variables to your Build.ps1 script
+          .\pipeline\scripts\Build.ps1 `
+            -RelativePath        $repoRoot `
+            -AbsolutePathScripts $scriptsFolder `
+            -Major               $env:VERSION_MAJOR `
+            -Minor               $env:VERSION_MINOR `
+            -Patch               $env:VERSION_PATCH `
+            -Build               $env:VERSION_BUILD `
+            -Commit              $env:VERSION_COMMIT
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
