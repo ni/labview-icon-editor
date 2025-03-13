@@ -38,7 +38,11 @@ param(
     [int]$Build,
 
     [Parameter(Mandatory = $true)]
-    [string]$Commit
+    [string]$Commit,
+
+    # New (optional) parameter
+    [Parameter(Mandatory = $false)]
+    [int]$LabVIEWMinorRevision = 3
 )
 
 # Helper function to check for file or directory existence
@@ -179,18 +183,34 @@ try {
     Execute-Script "$($AbsolutePathScripts)\Rename-File.ps1" `
         "-CurrentFilename `"$RelativePath\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x64.lvlibp'"
 
-    #----------------------------------------------------------------------
-    # Build VI Package (64-bit)
-    #----------------------------------------------------------------------
-    Write-Verbose "Building VI Package (64-bit)..."
-    Execute-Script "$($AbsolutePathScripts)\build_vip.ps1" `
-        ("-SupportedBitness 64 " +
-         "-RelativePath `"$RelativePath`" " +
-         "-VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" " +
-         "-MinimumSupportedLVVersion 2021 " +
-         "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
-         "-Commit `"$Commit`" " +
-         "-ReleaseNotesFile `"$RelativePath\CHANGELOG.md`"")
+#----------------------------------------------------------------------
+# Build VI Package (64-bit)
+#----------------------------------------------------------------------
+Write-Verbose "Building VI Package (64-bit)..."
+Execute-Script "$($AbsolutePathScripts)\build_vip.ps1" `
+    (
+        # If the script truly supports double-dash parameters:
+        "--lv-ver 2021 " +
+        "--arch 64 " +
+        
+        # Legacy (single-dash) parameters mixed in
+        "-SupportedBitness 64 " +
+        "-RelativePath `"$RelativePath`" " +
+        "-VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" " +
+        "-MinimumSupportedLVVersion 2021 " +
+        
+        # Pass the new LabVIEWMinorRevision param
+        "-LabVIEWMinorRevision $LabVIEWMinorRevision " +
+        
+        "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
+        "-Commit `"$Commit`" " +
+        
+        # If you’ve moved your release notes file:
+        "-ReleaseNotesFile `"$RelativePath\Tooling\deployment\release_notes.md`" " +
+
+        # Finally, enable verbose
+        "-Verbose"
+    )
 
     # Close LabVIEW (64-bit)
     Write-Verbose "Closing LabVIEW (64-bit)..."

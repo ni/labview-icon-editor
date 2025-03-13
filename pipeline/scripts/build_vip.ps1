@@ -1,5 +1,5 @@
 # Example usage:
-# .\build_vip.ps1 --lv-ver 2021 --arch 64 -SupportedBitness "64" -RelativePath "C:\labview-icon-editor-fork"  -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -MinimumSupportedLVVersion 2021 -LabVIEWMinorRevision 3 -Major 1 -Minor 0 -Patch 0 -Build 1 -Commit "Placeholder" -ReleaseNotesFile "C:\labview-icon-editor-fork\Tooling\deployment\release_notes.md" -LabVIEWMinorRevision 
+# .\build_vip.ps1 --lv-ver 2021 --arch 64 -SupportedBitness "64" -RelativePath "C:\labview-icon-editor-fork"  -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -MinimumSupportedLVVersion 2021 -LabVIEWMinorRevision 3 -Major 1 -Minor 0 -Patch 0 -Build 1 -Commit "Placeholder" -ReleaseNotesFile "C:\labview-icon-editor-fork\Tooling\deployment\release_notes.md" -Verbose
 param (
     [string]$SupportedBitness,
     [string]$RelativePath,
