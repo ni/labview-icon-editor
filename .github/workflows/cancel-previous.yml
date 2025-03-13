@@ -16,3 +16,4 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           workflow: build-vi-package.yml
+          event_name: push
