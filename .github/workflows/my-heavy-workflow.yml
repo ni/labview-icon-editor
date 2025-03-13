@@ -1,4 +1,4 @@
-name: Cleanup Duplicate Branches and PRs
+name: Cleanup Build VI Package Workflows
 
 on:
   workflow_dispatch:
@@ -13,4 +13,4 @@ jobs:
       - uses: n1hility/cancel-previous-runs@v3
         with: 
           token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: my-heavy-workflow.yml
+          workflow: build-vi-package.yml
