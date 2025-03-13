@@ -1,0 +1,32 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Enable Dev Mode",
+        "type": "shell",
+        "command": "pwsh",
+        "args": [
+          "./Set_Development_Mode.ps1",
+          "-RelativePath",
+          "${workspaceFolder}"
+        ],
+        "options": {
+          "cwd": "${workspaceFolder}/pipeline/scripts"
+        }
+      },
+      {
+        "label": "Disable Dev Mode",
+        "type": "shell",
+        "command": "pwsh",
+        "args": [
+          "./RevertDevelopmentMode.ps1",
+          "-RelativePath",
+          "${workspaceFolder}"
+        ],
+        "options": {
+          "cwd": "${workspaceFolder}/pipeline/scripts"
+        }
+      }
+    ]
+  }
+  

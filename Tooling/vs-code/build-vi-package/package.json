@@ -1,0 +1,30 @@
+{
+    "name": "build-vi-package",
+    "displayName": "Build VI Package",
+    "description": "Extension that runs Build.ps1 to build a VI Package, automatically discovering script paths from the workspace.",
+    "version": "0.0.1",
+    "engines": {
+      "vscode": "^1.50.0"
+    },
+    "categories": [
+      "Other"
+    ],
+    "main": "./extension.js", 
+    "activationEvents": [
+      "onStartupFinished",
+      "onCommand:extension.buildVIPackage"
+    ],
+    "contributes": {
+      "commands": [
+        {
+          "command": "extension.buildVIPackage",
+          "title": "Build VI Package"
+        }
+      ]
+    },
+    "devDependencies": {
+      "vscode": "^1.1.37",
+      "@types/vscode": "^1.50.0"
+    }
+  }
+  

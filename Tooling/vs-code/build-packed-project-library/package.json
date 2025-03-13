@@ -1,0 +1,31 @@
+{
+  "name": "build-packed-project-library",
+  "displayName": "Build Packed Project Library",
+  "description": "Single-click command that prompts version info and runs Build_lvlibp.ps1",
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.50.0"
+  },
+  "categories": ["Other"],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:extension.buildPackedProjectLibrary"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "extension.buildPackedProjectLibrary",
+        "title": "Build Packed 'Project Library'"
+      }
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/svelderrainruiz/labview-icon-editor.git"
+  },
+  "devDependencies": {
+    "vscode": "^1.50.0",
+    "@types/vscode": "^1.50.0"
+  }
+}
