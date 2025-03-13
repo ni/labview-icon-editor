@@ -1,4 +1,4 @@
-<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2025-03-10 18:12:31" Creator="svelderr" Comments="" ID="18d6a1f3ae16cbe8175312a58799b431">
+<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2025-03-12 20:53:40" Creator="svelderr" Comments="" ID="8becb8d73a7573914b791d92bcb6da96">
   <Library_General_Settings>
     <Package_File_Name>NI_Icon_editor</Package_File_Name>
     <Library_Version>1.0.0.128</Library_Version>
@@ -102,7 +102,7 @@
         <Name>LVAddons</Name>
         <LLB>false</LLB>
         <Preserve_Hierarchy>false</Preserve_Hierarchy>
-        <Path>&lt;OS Application Files&gt;\NI\LVAddons\niiconeditor32</Path>
+        <Path>&lt;OS Application Files&gt;\NI\LVAddons\niiconeditor64</Path>
       </Additional_Destination>
       <Additional_Destination>
         <Name>Install artifacts</Name>
@@ -286,6 +286,15 @@
       </Exclusions>
       <Exclusions>
         <Path>Tooling/RestoreSetupLVSource.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>.vscode</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>docs</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/vs-code</Path>
       </Exclusions>
       <Compile_Exclusions>
         <Path>.</Path>
