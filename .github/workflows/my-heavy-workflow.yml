@@ -9,4 +9,4 @@ cancel-runs:
       - uses: n1hility/cancel-previous-runs@v3
         with: 
           token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: build-vi-package.yml
+          workflow: my-heavy-workflow.yml
