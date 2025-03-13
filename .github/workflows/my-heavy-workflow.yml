@@ -1,10 +1,14 @@
-name: Cleanup Duplicate Branches and PRs  
+name: Cleanup Duplicate Branches and PRs
+
 on:
   workflow_dispatch:
-cancel-runs:
-  # Prevent forks from running this to be nice
-  if: github.repository == 'svelderrainruiz/labview-icon-editor'
-  runs-on: ubuntu-latest
+
+jobs:
+  cancel-runs:
+    # Prevent forks from running this
+    if: ${{ github.repository == 'svelderrainruiz/labview-icon-editor' }}
+    runs-on: ubuntu-latest
+    
     steps:
       - uses: n1hility/cancel-previous-runs@v3
         with: 
