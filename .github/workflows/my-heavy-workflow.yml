@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
 cancel-runs:
   # Prevent forks from running this to be nice
-  if: github.repository == 'foo-org/my-repo'
+  if: github.repository == 'svelderrainruiz/labview-icon-editor'
   runs-on: ubuntu-latest
     steps:
       - uses: n1hility/cancel-previous-runs@v3
