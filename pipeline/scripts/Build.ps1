@@ -15,8 +15,6 @@
       -RelativePath "C:\labview-icon-editor-fork" `
       -AbsolutePathScripts "C:\labview-icon-editor\pipeline\scripts" `
       -Major 1 -Minor 0 -Patch 0 -Build 0 -Commit "Placeholder" -Verbose
-
-      .\Build.ps1  -RelativePath "C:\labview-icon-editor-fork" -AbsolutePathScripts "C:\labview-icon-editor-fork\pipeline\scripts" -Major 1 -Minor 0 -Patch 0 -Build 0 -Commit "Placeholder" -Verbose
 #>
 
 [CmdletBinding()]  # Enables -Verbose, -Debug, etc.
@@ -65,7 +63,9 @@ function Execute-Script {
     )
     Write-Host "Executing: $ScriptPath $Arguments" -ForegroundColor Cyan
     Write-Verbose "Constructing command line..."
-    $command = "`"$ScriptPath`" $Arguments"
+    
+    # IMPORTANT FIX: Prepend '& ' to explicitly invoke the script
+    $command = "& `"$ScriptPath`" $Arguments"
     Write-Verbose "Command: $command"
 
     try {
@@ -110,10 +110,12 @@ try {
             Write-Verbose "Found $($PluginFiles.Count) file(s): $($PluginFiles | ForEach-Object { $_.Name } -join ', ')"
             $PluginFiles | Remove-Item -Force
             Write-Host "Deleted .lvlibp files from plugins folder." -ForegroundColor Green
-        } else {
+        }
+        else {
             Write-Host "No .lvlibp files found to delete." -ForegroundColor Cyan
         }
-    } catch {
+    }
+    catch {
         Write-Host "Error occurred while retrieving .lvlibp files: $($_.Exception.Message)" -ForegroundColor Red
         Write-Verbose "Stack Trace: $($_.Exception.StackTrace)"
     }
@@ -127,7 +129,7 @@ try {
          "-VIP_LVVersion 2021 " +
          "-SupportedBitness 32 " +
          "-RelativePath `"$RelativePath`" " +
-         "-VIPCPath `"Tooling\deployment\Dependencies.vipc`")
+         "-VIPCPath `"Tooling\deployment\Dependencies.vipc`"")
 
     #----------------------------------------------------------------------
     # Build LV Library (32-bit)
@@ -159,7 +161,7 @@ try {
          "-VIP_LVVersion 2021 " +
          "-SupportedBitness 64 " +
          "-RelativePath `"$RelativePath`" " +
-         "-VIPCPath `"Tooling\deployment\Dependencies.vipc`")
+         "-VIPCPath `"Tooling\deployment\Dependencies.vipc`"")
 
     #----------------------------------------------------------------------
     # Build LV Library (64-bit)

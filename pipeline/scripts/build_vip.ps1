@@ -1,5 +1,5 @@
 # Example usage:
-# .\build_vip.ps1 --lv-ver 2021 --arch 64 -SupportedBitness "64" -RelativePath "C:\labview-icon-editor-fork"  -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -MinimumSupportedLVVersion 2021 -Major 1 -Minor 0 -Patch 0 -Build 0 -Commit "Placeholder" -ReleaseNotesFile "C:\labview-icon-editor-fork\Tooling\deployment\release_notes.md"
+# .\build_vip.ps1 --lv-ver 2021 --arch 64 -SupportedBitness "64" -RelativePath "C:\labview-icon-editor-fork"  -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -MinimumSupportedLVVersion 2021 -Major 1 -Minor 0 -Patch 0 -Build 1 -Commit "Placeholder" -ReleaseNotesFile "C:\labview-icon-editor-fork\Tooling\deployment\release_notes.md"
 param (
     [string]$SupportedBitness,
     [string]$RelativePath,
@@ -50,7 +50,6 @@ Write-Output "Building VI Package for LabVIEW $VIP_LVVersion_A..."
 $script = @"
 g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness "$($ResolvedRelativePath)\Tooling\deployment\Modify_VIPB_LabVIEW_Version.vi" -- "$ResolvedVIPBPath" "$VIP_LVVersion_A"
 g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness vipb -- --buildspec "$ResolvedVIPBPath" -v "$Major.$Minor.$Patch.$Build" --release-notes "$ReleaseNotesFile" --timeout 300
-g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness QuitLabVIEW
 "@
 
 # Output the script for debugging
