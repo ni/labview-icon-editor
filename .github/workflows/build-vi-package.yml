@@ -1,10 +1,10 @@
 name: Build VI Package
 
 on:
-  pull_request:
-    branches: [main, develop, release/*, hotfix/*]
-    types: [opened, synchronize, reopened, ready_for_review]
+  # Any triggers you want (push, PR, workflow_dispatch, etc.)
   push:
+    branches: [main, develop, release/*, hotfix/*]
+  pull_request:
     branches: [main, develop, release/*, hotfix/*]
   workflow_dispatch:
 
@@ -13,50 +13,92 @@ jobs:
     runs-on: [self-hosted, iconeditor]
 
     steps:
-      - name: Checkout code
+      # (1) Check out your repo so we can read/write version.json
+      - name: Check out code
         uses: actions/checkout@v3
+        with:
+          # If you want to push changes back, you need write permissions
+          persist-credentials: true
 
-      - name: Get Build Revision
-        id: get_revision
+      # (2) Load version.json and parse out the semantic version parts
+      - name: Load semantic version
+        id: load_version
         shell: pwsh
         run: |
-          $COUNTER_FILE = "$env:GITHUB_WORKSPACE/.github/buildCounter.txt"
-          if (-Not (Test-Path $COUNTER_FILE)) {
-            "1" | Out-File $COUNTER_FILE
+          $versionFile = "$($env:GITHUB_WORKSPACE)/version.json"
+          if (-not (Test-Path $versionFile)) {
+            Write-Error "Cannot find version.json in the repo!"
+            exit 1
           }
-          $build_revision = Get-Content $COUNTER_FILE
-          $new_build_revision = [int]$build_revision + 1
-          $new_build_revision | Out-File $COUNTER_FILE
-          echo "build_revision=$new_build_revision" >> $env:GITHUB_OUTPUT
+          $json = Get-Content $versionFile | ConvertFrom-Json
 
+          # We'll output these so subsequent steps can use them
+          Write-Output "MAJOR=$($json.Major)"   >> $env:GITHUB_OUTPUT
+          Write-Output "MINOR=$($json.Minor)"   >> $env:GITHUB_OUTPUT
+          Write-Output "PATCH=$($json.Patch)"   >> $env:GITHUB_OUTPUT
+          Write-Output "BUILD=$($json.Build)"   >> $env:GITHUB_OUTPUT
+
+      # (3) Increment the Build number
+      - name: Increment Build number
+        id: inc_build
+        shell: pwsh
+        run: |
+          $versionFile = "$($env:GITHUB_WORKSPACE)/version.json"
+          $json = Get-Content $versionFile | ConvertFrom-Json
+
+          # Add 1 to the Build
+          $json.Build = [int]$json.Build + 1
+
+          # Save back to file
+          $json | ConvertTo-Json -Depth 10 | Out-File $versionFile -Encoding UTF8
+
+          # Print out new build
+          Write-Host "New Build number is $($json.Build)"
+
+          # Set an output for other steps
+          Write-Output "NEW_BUILD=$($json.Build)" >> $env:GITHUB_OUTPUT
+
+      # (4) Run your Build.ps1 with these parameters (Major.Minor.Patch.Build + Commit)
       - name: Build the icon editor VI package
         shell: pwsh
-        
-        # <--- Define environment variables for versioning here
-        #      You can hardcode some (Major, Minor, Patch) or increment them
         env:
-          VERSION_MAJOR: 1
-          VERSION_MINOR: 0
-          VERSION_PATCH: 0
-          # Use the build counter as the Build portion
-          VERSION_BUILD: ${{ steps.get_revision.outputs.build_revision }}
-          # Use the Git commit SHA as the "Commit" parameter
-          VERSION_COMMIT: ${{ github.sha }}
+          MAJOR: ${{ steps.load_version.outputs.MAJOR }}
+          MINOR: ${{ steps.load_version.outputs.MINOR }}
+          PATCH: ${{ steps.load_version.outputs.PATCH }}
+          # Use the updated Build number from the increment step:
+          BUILD: ${{ steps.inc_build.outputs.NEW_BUILD }}
 
+          # Optionally, pass the Git commit SHA as your "Commit" param
+          COMMIT: ${{ github.sha }}
         run: |
           $repoRoot      = $env:GITHUB_WORKSPACE
           $scriptsFolder = Join-Path $repoRoot 'pipeline/scripts'
 
-          # Now pass these env variables to your Build.ps1 script
+          Write-Host "Semantic Version: $($env:MAJOR).$($env:MINOR).$($env:PATCH).$($env:BUILD)"
+          Write-Host "Commit: $($env:COMMIT)"
+
           .\pipeline\scripts\Build.ps1 `
             -RelativePath        $repoRoot `
             -AbsolutePathScripts $scriptsFolder `
-            -Major               $env:VERSION_MAJOR `
-            -Minor               $env:VERSION_MINOR `
-            -Patch               $env:VERSION_PATCH `
-            -Build               $env:VERSION_BUILD `
-            -Commit              $env:VERSION_COMMIT
+            -Major               $env:MAJOR `
+            -Minor               $env:MINOR `
+            -Patch               $env:PATCH `
+            -Build               $env:BUILD `
+            -Commit              $env:COMMIT
 
+      # (5) Commit the updated version.json back to the repo IF we want to persist the new Build
+      - name: Commit updated version.json
+        if: ${{ success() && (github.event_name != 'pull_request') }}
+        # We'll only commit on push or workflow_dispatch, not on PR
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add version.json
+          git commit -m "CI: Bump Build number to ${{ steps.inc_build.outputs.NEW_BUILD }}"
+          git push
+
+      # (6) Upload build artifact
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
