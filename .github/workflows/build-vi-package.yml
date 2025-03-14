@@ -89,6 +89,7 @@ jobs:
       # (5) Commit the updated version.json back to the repo IF we want to persist the new Build
       - name: Commit updated version.json
         if: ${{ success() && (github.event_name != 'pull_request') }}
+        continue-on-error: true
         # We'll only commit on push or workflow_dispatch, not on PR
         run: |
           git config user.name "github-actions[bot]"
