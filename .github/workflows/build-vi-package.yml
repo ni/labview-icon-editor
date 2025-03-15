@@ -1,4 +1,4 @@
-name: Version 2 Build & Release
+name: Build VI Package
 
 on:
   push:
@@ -37,7 +37,7 @@ jobs:
           fetch-depth: 0
 
       ########################################################################
-      # 2) LABEL ENFORCEMENT
+      # 2) LABEL ENFORCEMENT (Pull Request only)
       ########################################################################
       - name: Validate version bump label
         if: ${{ github.event_name == 'pull_request' }}
@@ -54,6 +54,7 @@ jobs:
               core.setFailed(`No valid version label found. Must have one of: ${allowed.join(', ')}`);
             } else {
               core.info(`Found valid label(s): ${intersection.join(', ')}`);
+            }
 
       ########################################################################
       # 3) DETERMINE BUMP TYPE (major/minor/patch) VIA LABELS
@@ -78,9 +79,10 @@ jobs:
               }
               core.setOutput('bump_type', bump);
             } else {
-              // For direct pushes (e.g. hotfix main merges),
+              // For direct pushes (e.g. hotfix/main merges),
               // default to patch unless you have another logic
               core.setOutput('bump_type', 'patch');
+            }
 
       ########################################################################
       # 4) READ & INCREMENT GLOBAL BUILD COUNTER FROM GITHUB ENVIRONMENT
@@ -186,7 +188,6 @@ jobs:
           RC_SUFFIX=""
           if [[ "$BRANCH_NAME" == release/* ]]; then
             # naive commit count from develop or just from HEAD
-            # or parse existing rc tags
             COMMITS_COUNT=$(git rev-list --count HEAD ^origin/develop 2>/dev/null || echo 1)
             RC_SUFFIX="rc.${COMMITS_COUNT}"
           elif [[ "$BRANCH_NAME" == hotfix/* ]]; then
@@ -272,12 +273,12 @@ jobs:
         with:
           script: |
             const versionTag = '${{ steps.next_version.outputs.VERSION }}';
-            const isPrerelease = '${{ steps.next_version.outputs.IS_PRERELEASE }}' === 'true';
+            const isPrerelease = ('${{ steps.next_version.outputs.IS_PRERELEASE }}' === 'true');
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
             // Create the release referencing the tag
-            // Mark it prerelease if isPrerelease==true
+            // Mark it prerelease if isPrerelease == true
             await github.rest.repos.createRelease({
               owner,
               repo,
