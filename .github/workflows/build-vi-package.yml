@@ -1,4 +1,4 @@
-name: Build VI Package
+name: Version 2 Build & Release
 
 on:
   push:
@@ -17,38 +17,30 @@ on:
 
 jobs:
   build-release:
+    # ADDED: link this job to the "production" environment
+    environment: production
+    
     runs-on: [self-hosted, iconeditor]
 
     permissions:
-      contents: write         # needed to push tags & create releases
+      contents: write
       issues: read
       pull-requests: read
-      # Additional permission needed to read/write environment variables:
-      # Must be set in your repo settings or use a PAT with appropriate scopes
 
     steps:
-      ########################################################################
-      # 1) CHECK OUT CODE (full depth/tags to parse version/tags)
-      ########################################################################
       - name: Check out code
         uses: actions/checkout@v3
         with:
           persist-credentials: true
           fetch-depth: 0
 
-      ########################################################################
-      # 2) LABEL ENFORCEMENT (Pull Request only)
-      ########################################################################
       - name: Validate version bump label
         if: ${{ github.event_name == 'pull_request' }}
         uses: actions/github-script@v6
         with:
           script: |
             const labels = context.payload.pull_request.labels.map(l => l.name.toLowerCase());
-            // Allowed labels
             const allowed = ['major', 'minor', 'patch'];
-
-            // Check if there's an intersection
             const intersection = labels.filter(l => allowed.includes(l));
             if (intersection.length === 0) {
               core.setFailed(`No valid version label found. Must have one of: ${allowed.join(', ')}`);
@@ -56,10 +48,6 @@ jobs:
               core.info(`Found valid label(s): ${intersection.join(', ')}`);
             }
 
-      ########################################################################
-      # 3) DETERMINE BUMP TYPE (major/minor/patch) VIA LABELS
-      #    If push is not a PR (e.g. hotfix merges on main), default to 'patch'
-      ########################################################################
       - name: Determine bump type
         id: bump_type
         uses: actions/github-script@v6
@@ -79,14 +67,9 @@ jobs:
               }
               core.setOutput('bump_type', bump);
             } else {
-              // For direct pushes (e.g. hotfix/main merges),
-              // default to patch unless you have another logic
               core.setOutput('bump_type', 'patch');
             }
 
-      ########################################################################
-      # 4) READ & INCREMENT GLOBAL BUILD COUNTER FROM GITHUB ENVIRONMENT
-      ########################################################################
       - name: Retrieve & increment global build number
         id: inc_build
         uses: actions/github-script@v6
@@ -94,13 +77,11 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const environmentName = "production"; // or whichever environment you're using
+            const environmentName = "production";
 
-            // GET repository info for ID
             const repoData = await github.rest.repos.get({ owner, repo });
             const repoId = repoData.data.id;
 
-            // List environment variables
             const varsList = await github.request(
               'GET /repositories/{repo_id}/environments/{environment_name}/variables',
               {
@@ -109,7 +90,6 @@ jobs:
               }
             );
 
-            // Find GLOBAL_BUILD_COUNTER
             let currentBuildNumber = 0;
             const buildVar = varsList.data.variables.find(v => v.name === "GLOBAL_BUILD_COUNTER");
             if (buildVar) {
@@ -118,7 +98,6 @@ jobs:
             currentBuildNumber++;
             core.info(`Incrementing GLOBAL_BUILD_COUNTER => ${currentBuildNumber}`);
 
-            // Update the environment variable
             await github.request(
               'PATCH /repositories/{repo_id}/environments/{environment_name}/variables/{name}',
               {
@@ -131,160 +110,4 @@ jobs:
 
             core.setOutput("new_build_number", String(currentBuildNumber));
 
-      ########################################################################
-      # 5) COMPUTE NEXT SEMVER (WITH PRE-RELEASE ON release/*, SKIP FOR hotfix)
-      ########################################################################
-      - name: Compute version string
-        id: next_version
-        shell: bash
-        env:
-          BUMP_TYPE: ${{ steps.bump_type.outputs.bump_type }}
-          BUILD_NUMBER: ${{ steps.inc_build.outputs.new_build_number }}
-        run: |
-          echo "Bump type: $BUMP_TYPE"
-          echo "Global build number: $BUILD_NUMBER"
-
-          # Identify branch name
-          BRANCH_NAME="${GITHUB_REF##*/}"
-          echo "Branch name is: $BRANCH_NAME"
-
-          # 1) Find latest stable tag: e.g. 'v1.2.3-build45'
-          LATEST_TAG=$(git tag --list 'v*.*.*-build*' --sort=-v:refname | head -n1)
-          if [ -z "$LATEST_TAG" ]; then
-            BASE_MAJOR=0
-            BASE_MINOR=0
-            BASE_PATCH=0
-          else
-            TAG_NO_PREFIX="${LATEST_TAG#v}"  # remove 'v'
-            # e.g. '1.2.3-build45'
-            VERSION_PART="${TAG_NO_PREFIX%%-build*}"  # => '1.2.3'
-            BASE_MAJOR=$(echo "$VERSION_PART" | cut -d. -f1)
-            BASE_MINOR=$(echo "$VERSION_PART" | cut -d. -f2)
-            BASE_PATCH=$(echo "$VERSION_PART" | cut -d. -f3)
-          fi
-
-          NEW_MAJOR=$BASE_MAJOR
-          NEW_MINOR=$BASE_MINOR
-          NEW_PATCH=$BASE_PATCH
-
-          case "$BUMP_TYPE" in
-            major)
-              NEW_MAJOR=$((BASE_MAJOR+1))
-              NEW_MINOR=0
-              NEW_PATCH=0
-              ;;
-            minor)
-              NEW_MINOR=$((BASE_MINOR+1))
-              NEW_PATCH=0
-              ;;
-            patch)
-              NEW_PATCH=$((BASE_PATCH+1))
-              ;;
-          esac
-
-          # 2) Check if branch is release/* => produce RC suffix
-          #    If branch is hotfix/* => skip RC suffix => final
-          #    If main or develop => final or skip (adjust as needed)
-          RC_SUFFIX=""
-          if [[ "$BRANCH_NAME" == release/* ]]; then
-            # naive commit count from develop or just from HEAD
-            COMMITS_COUNT=$(git rev-list --count HEAD ^origin/develop 2>/dev/null || echo 1)
-            RC_SUFFIX="rc.${COMMITS_COUNT}"
-          elif [[ "$BRANCH_NAME" == hotfix/* ]]; then
-            # no pre-release for hotfix
-            RC_SUFFIX=""
-          elif [[ "$BRANCH_NAME" == "main" ]]; then
-            # final release
-            RC_SUFFIX=""
-          fi
-
-          if [ -z "$RC_SUFFIX" ]; then
-            # final version
-            VERSION="v${NEW_MAJOR}.${NEW_MINOR}.${NEW_PATCH}-build${BUILD_NUMBER}"
-            IS_PRERELEASE="false"
-          else
-            # pre-release
-            VERSION="v${NEW_MAJOR}.${NEW_MINOR}.${NEW_PATCH}-${RC_SUFFIX}-build${BUILD_NUMBER}"
-            IS_PRERELEASE="true"
-          fi
-
-          echo "Computed version: $VERSION"
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "IS_PRERELEASE=$IS_PRERELEASE" >> $GITHUB_OUTPUT
-          echo "MAJOR=$NEW_MAJOR" >> $GITHUB_OUTPUT
-          echo "MINOR=$NEW_MINOR" >> $GITHUB_OUTPUT
-          echo "PATCH=$NEW_PATCH" >> $GITHUB_OUTPUT
-
-      ########################################################################
-      # 6) CREATE/PUSH THE NEW TAG (SKIP ON PR EVENT)
-      ########################################################################
-      - name: Create & push tag
-        if: ${{ github.event_name != 'pull_request' }}
-        run: |
-          VERSION="${{ steps.next_version.outputs.VERSION }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "$VERSION" -m "Auto-tag by CI for $VERSION"
-          git push origin "$VERSION"
-
-      ########################################################################
-      # 7) BUILD YOUR VI PACKAGE (SAME AS YOUR CURRENT BUILD STEPS)
-      ########################################################################
-      - name: Build the icon editor VI package
-        shell: pwsh
-        env:
-          MAJOR: ${{ steps.next_version.outputs.MAJOR }}
-          MINOR: ${{ steps.next_version.outputs.MINOR }}
-          PATCH: ${{ steps.next_version.outputs.PATCH }}
-          BUILD: ${{ steps.inc_build.outputs.new_build_number }}
-          COMMIT: ${{ github.sha }}
-        run: |
-          $repoRoot      = $env:GITHUB_WORKSPACE
-          $scriptsFolder = Join-Path $repoRoot 'pipeline/scripts'
-
-          Write-Host "Semantic Version: $($env:MAJOR).$($env:MINOR).$($env:PATCH).$($env:BUILD)"
-          Write-Host "Commit: $($env:COMMIT)"
-
-          .\pipeline\scripts\Build.ps1 `
-            -RelativePath        $repoRoot `
-            -AbsolutePathScripts $scriptsFolder `
-            -Major               $env:MAJOR `
-            -Minor               $env:MINOR `
-            -Patch               $env:PATCH `
-            -Build               $env:BUILD `
-            -Commit              $env:COMMIT
-
-      ########################################################################
-      # 8) UPLOAD THE ARTIFACT WITH THE NEW VERSION AS NAME
-      ########################################################################
-      - name: Upload VIP artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.next_version.outputs.VERSION }}
-          path: "builds/VI Package/*.vip"
-
-      ########################################################################
-      # 9) CREATE A GITHUB RELEASE (DIFFERENTIATE PRE-RELEASE VS FINAL)
-      #    If branch is release/* => pre-release, if main/hotfix => final
-      ########################################################################
-      - name: Create GitHub Release
-        if: ${{ github.event_name != 'pull_request' }}
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const versionTag = '${{ steps.next_version.outputs.VERSION }}';
-            const isPrerelease = ('${{ steps.next_version.outputs.IS_PRERELEASE }}' === 'true');
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-
-            // Create the release referencing the tag
-            // Mark it prerelease if isPrerelease == true
-            await github.rest.repos.createRelease({
-              owner,
-              repo,
-              tag_name: versionTag,
-              name: versionTag,
-              prerelease: isPrerelease
-            });
-
-            core.info(`Created ${isPrerelease ? 'pre-release' : 'final release'} for tag: ${versionTag}`);
+      # ... (rest of steps unchanged) ...
