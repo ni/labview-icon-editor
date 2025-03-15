@@ -1,4 +1,4 @@
-name: Version 2 Build & Release
+name: Version 2 Build & Release (PowerShell)
 
 on:
   push:
@@ -17,27 +17,22 @@ on:
 
 jobs:
   build-release:
-    # Link this job to the 'production' environment
-    environment: production
-
     runs-on: [self-hosted, iconeditor]
 
     permissions:
-      contents: write
+      contents: write        # needed to push tags & create releases
       issues: read
       pull-requests: read
-      # Must ensure the 'production' environment settings allow
-      # these branches and do not require manual approval (unless desired).
 
     steps:
       ########################################################################
-      # 1) CHECK OUT CODE (full depth/tags to parse version/tags)
+      # 1) CHECK OUT CODE
       ########################################################################
       - name: Check out code
         uses: actions/checkout@v3
         with:
           persist-credentials: true
-          fetch-depth: 0
+          fetch-depth: 0  # we need full tag history
 
       ########################################################################
       # 2) LABEL ENFORCEMENT (Pull Request only)
@@ -50,8 +45,8 @@ jobs:
           script: |
             const labels = context.payload.pull_request.labels.map(l => l.name.toLowerCase());
             const allowed = ['major', 'minor', 'patch'];
-
             const intersection = labels.filter(l => allowed.includes(l));
+
             if (intersection.length === 0) {
               core.setFailed(`No valid version label found. Must have one of: ${allowed.join(', ')}`);
             } else {
@@ -59,8 +54,8 @@ jobs:
             }
 
       ########################################################################
-      # 3) DETERMINE BUMP TYPE (major/minor/patch) VIA LABELS
-      #    If push is not a PR (e.g. hotfix merges on main), default to 'patch'
+      # 3) DETERMINE BUMP TYPE (major/minor/patch)
+      #    If push is not a PR, default to 'patch'
       ########################################################################
       - name: Determine bump type
         id: bump_type
@@ -72,159 +67,131 @@ jobs:
               const labels = context.payload.pull_request.labels.map(l => l.name.toLowerCase());
               core.info(`Found labels on PR: ${labels.join(', ')}`);
 
-              let bump = 'patch'; // fallback
-              if (labels.includes('major')) {
-                bump = 'major';
-              } else if (labels.includes('minor')) {
-                bump = 'minor';
-              } else if (labels.includes('patch')) {
-                bump = 'patch';
-              }
+              let bump = 'patch'; // fallback if no label
+              if (labels.includes('major')) bump = 'major';
+              else if (labels.includes('minor')) bump = 'minor';
+              else if (labels.includes('patch')) bump = 'patch';
               core.setOutput('bump_type', bump);
             } else {
-              // For direct pushes (e.g. hotfix merges on main),
-              // default to patch unless you have another logic
+              // Direct push => default patch
               core.setOutput('bump_type', 'patch');
             }
 
       ########################################################################
-      # 4) READ & INCREMENT GLOBAL BUILD COUNTER FROM GITHUB ENVIRONMENT
+      # 4) COMPUTE GLOBAL BUILD NUMBER (TAG COUNT) VIA POWERSHELL
       ########################################################################
-      - name: Retrieve & increment global build number
+      - name: Determine global build number
         id: inc_build
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const environmentName = "production"; // Must match your env name
+        shell: pwsh
+        run: |
+          # List all tags matching 'v*.*.*-build*'
+          $allTags = git tag --list 'v*.*.*-build*'
+          # Split the result by lines
+          $tagArray = $allTags -split "`r?`n"
+          $tagArray = $tagArray | Where-Object { $_ -ne "" }
 
-            // 1) Get repo ID
-            const repoData = await github.rest.repos.get({ owner, repo });
-            const repoId = repoData.data.id;
+          # The global build number is (# of matching tags) + 1
+          $count = $tagArray.Count
+          $newBuild = $count + 1
 
-            // 2) List environment variables
-            const varsList = await github.request(
-              'GET /repositories/{repo_id}/environments/{environment_name}/variables',
-              {
-                repo_id: repoId,
-                environment_name: environmentName
-              }
-            );
-
-            // 3) Find GLOBAL_BUILD_COUNTER
-            let currentBuildNumber = 0;
-            const buildVar = varsList.data.variables.find(v => v.name === "GLOBAL_BUILD_COUNTER");
-            if (buildVar) {
-              currentBuildNumber = parseInt(buildVar.value, 10) || 0;
-            }
-
-            // 4) Increment & update
-            currentBuildNumber++;
-            core.info(`Incrementing GLOBAL_BUILD_COUNTER => ${currentBuildNumber}`);
-
-            await github.request(
-              'PATCH /repositories/{repo_id}/environments/{environment_name}/variables/{name}',
-              {
-                repo_id: repoId,
-                environment_name: environmentName,
-                name: "GLOBAL_BUILD_COUNTER",
-                value: String(currentBuildNumber)
-              }
-            );
-
-            // 5) Expose for subsequent steps
-            core.setOutput("new_build_number", String(currentBuildNumber));
+          Write-Host "Computed new build number => $newBuild"
+          # Output to GITHUB_OUTPUT
+          "new_build_number=$newBuild" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       ########################################################################
-      # 5) COMPUTE NEXT SEMVER (WITH PRE-RELEASE ON release/*, SKIP FOR hotfix)
+      # 5) COMPUTE NEXT SEMVER (RELEASE/* => RC, HOTFIX => FINAL)
       ########################################################################
       - name: Compute version string
         id: next_version
-        shell: bash
+        shell: pwsh
         env:
           BUMP_TYPE: ${{ steps.bump_type.outputs.bump_type }}
           BUILD_NUMBER: ${{ steps.inc_build.outputs.new_build_number }}
         run: |
-          echo "Bump type: $BUMP_TYPE"
-          echo "Global build number: $BUILD_NUMBER"
+          Write-Host "Bump type: $($env:BUMP_TYPE)"
+          Write-Host "Global build number: $($env:BUILD_NUMBER)"
 
-          BRANCH_NAME="${GITHUB_REF##*/}"
-          echo "Branch name is: $BRANCH_NAME"
+          $branchName = $env:GITHUB_REF -split '/' | Select-Object -Last 1
+          Write-Host "Branch name is: $branchName"
 
-          # 1) Find latest stable tag: e.g. 'v1.2.3-build45'
-          LATEST_TAG=$(git tag --list 'v*.*.*-build*' --sort=-v:refname | head -n1)
-          if [ -z "$LATEST_TAG" ]; then
-            BASE_MAJOR=0
-            BASE_MINOR=0
-            BASE_PATCH=0
-          else
-            TAG_NO_PREFIX="${LATEST_TAG#v}"
-            VERSION_PART="${TAG_NO_PREFIX%%-build*}"
-            BASE_MAJOR=$(echo "$VERSION_PART" | cut -d. -f1)
-            BASE_MINOR=$(echo "$VERSION_PART" | cut -d. -f2)
-            BASE_PATCH=$(echo "$VERSION_PART" | cut -d. -f3)
-          fi
+          # 1) Find latest stable tag => e.g. "v1.2.3-build45"
+          $latestTag = git tag --list 'v*.*.*-build*' | Sort-Object -Descending | Select-Object -First 1
+          if ([string]::IsNullOrEmpty($latestTag)) {
+            $baseMajor = 0
+            $baseMinor = 0
+            $basePatch = 0
+          }
+          else {
+            # remove 'v'
+            $tagNoPrefix = $latestTag.TrimStart('v')
+            # e.g. from "1.2.3-build45" => "1.2.3"
+            $versionPart = $tagNoPrefix -replace '-build.*',''
+            $baseMajor, $baseMinor, $basePatch = $versionPart.Split('.')
+          }
 
-          NEW_MAJOR=$BASE_MAJOR
-          NEW_MINOR=$BASE_MINOR
-          NEW_PATCH=$BASE_PATCH
+          $newMajor = [int]$baseMajor
+          $newMinor = [int]$baseMinor
+          $newPatch = [int]$basePatch
 
-          case "$BUMP_TYPE" in
-            major)
-              NEW_MAJOR=$((BASE_MAJOR+1))
-              NEW_MINOR=0
-              NEW_PATCH=0
-              ;;
-            minor)
-              NEW_MINOR=$((BASE_MINOR+1))
-              NEW_PATCH=0
-              ;;
-            patch)
-              NEW_PATCH=$((BASE_PATCH+1))
-              ;;
-          esac
+          switch ($env:BUMP_TYPE) {
+            'major' {
+              $newMajor++
+              $newMinor = 0
+              $newPatch = 0
+            }
+            'minor' {
+              $newMinor++
+              $newPatch = 0
+            }
+            'patch' {
+              $newPatch++
+            }
+          }
 
-          # 2) If branch is release/* => produce RC suffix
-          RC_SUFFIX=""
-          if [[ "$BRANCH_NAME" == release/* ]]; then
-            # naive count from develop or HEAD
-            COMMITS_COUNT=$(git rev-list --count HEAD ^origin/develop 2>/dev/null || echo 1)
-            RC_SUFFIX="rc.${COMMITS_COUNT}"
-          elif [[ "$BRANCH_NAME" == hotfix/* || "$BRANCH_NAME" == "main" ]]; then
-            RC_SUFFIX=""
-          fi
+          # 2) If branch is release/* => produce -rc.<N>
+          $rcSuffix = ""
+          if ($branchName -like 'release/*') {
+            $commitsCount = git rev-list --count HEAD ^origin/develop 2>$null
+            if ([string]::IsNullOrEmpty($commitsCount)) { $commitsCount = 1 }
+            $rcSuffix = "rc.$commitsCount"
+          }
+          elseif ($branchName -like 'hotfix/*' -or $branchName -eq 'main') {
+            $rcSuffix = ""
+          }
 
-          if [ -z "$RC_SUFFIX" ]; then
-            VERSION="v${NEW_MAJOR}.${NEW_MINOR}.${NEW_PATCH}-build${BUILD_NUMBER}"
-            IS_PRERELEASE="false"
-          else
-            VERSION="v${NEW_MAJOR}.${NEW_MINOR}.${NEW_PATCH}-${RC_SUFFIX}-build${BUILD_NUMBER}"
-            IS_PRERELEASE="true"
-          fi
+          if ([string]::IsNullOrEmpty($rcSuffix)) {
+            $version = "v$($newMajor).$($newMinor).$($newPatch)-build$($env:BUILD_NUMBER)"
+            $isPrerelease = "false"
+          }
+          else {
+            $version = "v$($newMajor).$($newMinor).$($newPatch)-$rcSuffix-build$($env:BUILD_NUMBER)"
+            $isPrerelease = "true"
+          }
 
-          echo "Computed version: $VERSION"
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "IS_PRERELEASE=$IS_PRERELEASE" >> $GITHUB_OUTPUT
-          echo "MAJOR=$NEW_MAJOR" >> $GITHUB_OUTPUT
-          echo "MINOR=$NEW_MINOR" >> $GITHUB_OUTPUT
-          echo "PATCH=$NEW_PATCH" >> $GITHUB_OUTPUT
+          Write-Host "Computed version => $version"
+
+          "VERSION=$version"        | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "IS_PRERELEASE=$isPrerelease" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "MAJOR=$newMajor"         | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "MINOR=$newMinor"         | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "PATCH=$newPatch"         | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       ########################################################################
-      # 6) CREATE/PUSH THE NEW TAG (SKIP ON PR EVENT)
+      # 6) CREATE & PUSH NEW TAG (FIXED FOR POWERSHELL)
       ########################################################################
       - name: Create & push tag
         if: ${{ github.event_name != 'pull_request' }}
+        shell: pwsh
         run: |
-          VERSION="${{ steps.next_version.outputs.VERSION }}"
+          $VERSION = "${{ steps.next_version.outputs.VERSION }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "$VERSION" -m "Auto-tag by CI for $VERSION"
-          git push origin "$VERSION"
+
+          git tag -a $VERSION -m "Auto-tag by CI for $VERSION"
+          git push origin $VERSION
 
       ########################################################################
-      # 7) BUILD THE VI PACKAGE
+      # 7) BUILD VI PACKAGE
       ########################################################################
       - name: Build the icon editor VI package
         if: ${{ success() }}
@@ -252,7 +219,7 @@ jobs:
             -Commit              $env:COMMIT
 
       ########################################################################
-      # 8) UPLOAD ARTIFACTS
+      # 8) UPLOAD ARTIFACT
       ########################################################################
       - name: Upload VIP artifact
         if: ${{ success() }}
@@ -262,7 +229,7 @@ jobs:
           path: "builds/VI Package/*.vip"
 
       ########################################################################
-      # 9) CREATE GITHUB RELEASE (DIFFERENTIATE PRE-RELEASE VS FINAL)
+      # 9) CREATE GITHUB RELEASE (PRE-RELEASE IF 'rc')
       ########################################################################
       - name: Create GitHub Release
         if: ${{ success() && github.event_name != 'pull_request' }}
@@ -275,7 +242,6 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            // Create the release referencing the tag
             await github.rest.repos.createRelease({
               owner,
               repo,
