@@ -17,8 +17,7 @@ on:
 
 jobs:
   build-release:
-    # Important: Link this job to the 'production' environment
-    # so GitHub knows this job is deploying to that environment.
+    # Link this job to the 'production' environment
     environment: production
 
     runs-on: [self-hosted, iconeditor]
@@ -27,11 +26,12 @@ jobs:
       contents: write
       issues: read
       pull-requests: read
-      # NOTE: The environment must allow this job/branch to access it.
+      # Must ensure the 'production' environment settings allow
+      # these branches and do not require manual approval (unless desired).
 
     steps:
       ########################################################################
-      # 1) CHECK OUT CODE
+      # 1) CHECK OUT CODE (full depth/tags to parse version/tags)
       ########################################################################
       - name: Check out code
         uses: actions/checkout@v3
@@ -46,6 +46,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const labels = context.payload.pull_request.labels.map(l => l.name.toLowerCase());
             const allowed = ['major', 'minor', 'patch'];
@@ -58,13 +59,14 @@ jobs:
             }
 
       ########################################################################
-      # 3) DETERMINE BUMP TYPE
+      # 3) DETERMINE BUMP TYPE (major/minor/patch) VIA LABELS
       #    If push is not a PR (e.g. hotfix merges on main), default to 'patch'
       ########################################################################
       - name: Determine bump type
         id: bump_type
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             if (context.event_name === 'pull_request') {
               const labels = context.payload.pull_request.labels.map(l => l.name.toLowerCase());
@@ -86,19 +88,19 @@ jobs:
             }
 
       ########################################################################
-      # 4) READ & INCREMENT GLOBAL BUILD COUNTER FROM "production" ENV
+      # 4) READ & INCREMENT GLOBAL BUILD COUNTER FROM GITHUB ENVIRONMENT
       ########################################################################
       - name: Retrieve & increment global build number
         id: inc_build
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            // The environment name MUST match the environment you configured in your repo
-            const environmentName = "production";  
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+            const environmentName = "production"; // Must match your env name
 
-            // 1) Find the repository ID
+            // 1) Get repo ID
             const repoData = await github.rest.repos.get({ owner, repo });
             const repoId = repoData.data.id;
 
@@ -111,7 +113,7 @@ jobs:
               }
             );
 
-            // 3) Find "GLOBAL_BUILD_COUNTER"
+            // 3) Find GLOBAL_BUILD_COUNTER
             let currentBuildNumber = 0;
             const buildVar = varsList.data.variables.find(v => v.name === "GLOBAL_BUILD_COUNTER");
             if (buildVar) {
@@ -132,7 +134,7 @@ jobs:
               }
             );
 
-            // 5) Expose this new build number to subsequent steps
+            // 5) Expose for subsequent steps
             core.setOutput("new_build_number", String(currentBuildNumber));
 
       ########################################################################
@@ -148,19 +150,18 @@ jobs:
           echo "Bump type: $BUMP_TYPE"
           echo "Global build number: $BUILD_NUMBER"
 
-          # Identify branch name
           BRANCH_NAME="${GITHUB_REF##*/}"
           echo "Branch name is: $BRANCH_NAME"
 
-          # 1) Find latest stable tag, e.g. 'v1.2.3-build45'
+          # 1) Find latest stable tag: e.g. 'v1.2.3-build45'
           LATEST_TAG=$(git tag --list 'v*.*.*-build*' --sort=-v:refname | head -n1)
           if [ -z "$LATEST_TAG" ]; then
             BASE_MAJOR=0
             BASE_MINOR=0
             BASE_PATCH=0
           else
-            TAG_NO_PREFIX="${LATEST_TAG#v}"  
-            VERSION_PART="${TAG_NO_PREFIX%%-build*}"  
+            TAG_NO_PREFIX="${LATEST_TAG#v}"
+            VERSION_PART="${TAG_NO_PREFIX%%-build*}"
             BASE_MAJOR=$(echo "$VERSION_PART" | cut -d. -f1)
             BASE_MINOR=$(echo "$VERSION_PART" | cut -d. -f2)
             BASE_PATCH=$(echo "$VERSION_PART" | cut -d. -f3)
@@ -172,22 +173,23 @@ jobs:
 
           case "$BUMP_TYPE" in
             major)
-              NEW_MAJOR=$((BASE_MAJOR + 1))
+              NEW_MAJOR=$((BASE_MAJOR+1))
               NEW_MINOR=0
               NEW_PATCH=0
               ;;
             minor)
-              NEW_MINOR=$((BASE_MINOR + 1))
+              NEW_MINOR=$((BASE_MINOR+1))
               NEW_PATCH=0
               ;;
             patch)
-              NEW_PATCH=$((BASE_PATCH + 1))
+              NEW_PATCH=$((BASE_PATCH+1))
               ;;
           esac
 
-          # 2) If branch is release/* => produce RC suffix, else skip
+          # 2) If branch is release/* => produce RC suffix
           RC_SUFFIX=""
           if [[ "$BRANCH_NAME" == release/* ]]; then
+            # naive count from develop or HEAD
             COMMITS_COUNT=$(git rev-list --count HEAD ^origin/develop 2>/dev/null || echo 1)
             RC_SUFFIX="rc.${COMMITS_COUNT}"
           elif [[ "$BRANCH_NAME" == hotfix/* || "$BRANCH_NAME" == "main" ]]; then
@@ -222,7 +224,7 @@ jobs:
           git push origin "$VERSION"
 
       ########################################################################
-      # 7) BUILD YOUR VI PACKAGE
+      # 7) BUILD THE VI PACKAGE
       ########################################################################
       - name: Build the icon editor VI package
         if: ${{ success() }}
@@ -250,7 +252,7 @@ jobs:
             -Commit              $env:COMMIT
 
       ########################################################################
-      # 8) UPLOAD THE ARTIFACT WITH THE NEW VERSION AS NAME
+      # 8) UPLOAD ARTIFACTS
       ########################################################################
       - name: Upload VIP artifact
         if: ${{ success() }}
@@ -260,12 +262,13 @@ jobs:
           path: "builds/VI Package/*.vip"
 
       ########################################################################
-      # 9) CREATE A GITHUB RELEASE (DIFFERENTIATE PRE-RELEASE VS FINAL)
+      # 9) CREATE GITHUB RELEASE (DIFFERENTIATE PRE-RELEASE VS FINAL)
       ########################################################################
       - name: Create GitHub Release
         if: ${{ success() && github.event_name != 'pull_request' }}
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const versionTag = '${{ steps.next_version.outputs.VERSION }}';
             const isPrerelease = ('${{ steps.next_version.outputs.IS_PRERELEASE }}' === 'true');
@@ -273,7 +276,6 @@ jobs:
             const repo = context.repo.repo;
 
             // Create the release referencing the tag
-            // Mark it prerelease if isPrerelease == true
             await github.rest.repos.createRelease({
               owner,
               repo,
