@@ -30,7 +30,7 @@ jobs:
       #     Store the old config in step outputs for restoration later
       ########################################################################
       - name: Disable GPG signing (only on forks)
-        if: ${{ github.repository != 'svelderrainruiz/labview-icon-editor' }}
+        if: ${{ github.repository != 'ni/labview-icon-editor' }}
         id: disable_signing
         run: |
           echo "Detected fork; temporarily disabling GPG signing..."
@@ -281,7 +281,7 @@ jobs:
       # (B) RE-ENABLE GPG SIGNING IF WE DISABLED IT
       ########################################################################
       - name: Re-enable GPG signing (only on forks)
-        if: always() && github.repository != 'svelderrainruiz/labview-icon-editor'
+        if: always() && github.repository != 'ni/labview-icon-editor'
         run: |
           echo "Restoring GPG signing to previous config..."
           oldCommitGpgsign="${{ steps.disable_signing.outputs.commit_gpgsign }}"
