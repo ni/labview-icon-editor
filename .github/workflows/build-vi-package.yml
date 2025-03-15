@@ -1,4 +1,4 @@
-name: Version 2 Build & Release (PowerShell)
+name: Build VI Package
 
 on:
   push:
@@ -20,11 +20,36 @@ jobs:
     runs-on: [self-hosted, iconeditor]
 
     permissions:
-      contents: write        # needed to push tags & create releases
+      contents: write   # needed to push tags & create releases
       issues: read
       pull-requests: read
 
     steps:
+      ########################################################################
+      # (A) DISABLE GPG SIGNING IF WE'RE ON A FORK
+      #     Store the old config in step outputs for restoration later
+      ########################################################################
+      - name: Disable GPG signing (only on forks)
+        if: ${{ github.repository != 'svelderrainruiz/labview-icon-editor' }}
+        id: disable_signing
+        run: |
+          echo "Detected fork; temporarily disabling GPG signing..."
+
+          # Grab current config (if set)
+          currentCommitGpgsign=$(git config --global commit.gpgsign || echo "")
+          currentTagGpgsign=$(git config --global tag.gpgsign || echo "")
+
+          echo "Found commit.gpgsign=$currentCommitGpgsign"
+          echo "Found tag.gpgsign=$currentTagGpgsign"
+
+          # Make them available as step outputs
+          echo "commit_gpgsign=$currentCommitGpgsign" >> "$GITHUB_OUTPUT"
+          echo "tag_gpgsign=$currentTagGpgsign" >> "$GITHUB_OUTPUT"
+
+          # Disable GPG signing for commits & tags
+          git config --global commit.gpgsign false
+          git config --global tag.gpgsign false
+
       ########################################################################
       # 1) CHECK OUT CODE
       ########################################################################
@@ -177,7 +202,7 @@ jobs:
           "PATCH=$newPatch"         | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       ########################################################################
-      # 6) CREATE & PUSH NEW TAG (FIXED FOR POWERSHELL)
+      # 6) CREATE & PUSH NEW TAG (only if NOT a PR)
       ########################################################################
       - name: Create & push tag
         if: ${{ github.event_name != 'pull_request' }}
@@ -251,3 +276,25 @@ jobs:
             });
 
             core.info(`Created ${isPrerelease ? 'pre-release' : 'final release'} for tag: ${versionTag}`);
+
+      ########################################################################
+      # (B) RE-ENABLE GPG SIGNING IF WE DISABLED IT
+      ########################################################################
+      - name: Re-enable GPG signing (only on forks)
+        if: always() && github.repository != 'svelderrainruiz/labview-icon-editor'
+        run: |
+          echo "Restoring GPG signing to previous config..."
+          oldCommitGpgsign="${{ steps.disable_signing.outputs.commit_gpgsign }}"
+          oldTagGpgsign="${{ steps.disable_signing.outputs.tag_gpgsign }}"
+
+          if [ -n "$oldCommitGpgsign" ]; then
+            git config --global commit.gpgsign "$oldCommitGpgsign"
+          else
+            git config --global --unset commit.gpgsign || true
+          fi
+
+          if [ -n "$oldTagGpgsign" ]; then
+            git config --global tag.gpgsign "$oldTagGpgsign"
+          else
+            git config --global --unset tag.gpgsign || true
+          fi
