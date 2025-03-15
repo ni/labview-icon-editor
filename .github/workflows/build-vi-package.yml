@@ -26,25 +26,29 @@ jobs:
 
     steps:
       ########################################################################
-      # (A) DISABLE GPG SIGNING IF WE'RE ON A FORK
-      #     Store the old config in step outputs for restoration later
+      # (A) DISABLE GPG SIGNING IF WE'RE ON A FORK (NOT 'ni/labview-icon-editor')
       ########################################################################
       - name: Disable GPG signing (only on forks)
         if: ${{ github.repository != 'ni/labview-icon-editor' }}
         id: disable_signing
+        shell: pwsh
         run: |
-          echo "Detected fork; temporarily disabling GPG signing..."
+          Write-Host "Detected fork; temporarily disabling GPG signing..."
 
-          # Grab current config (if set)
-          currentCommitGpgsign=$(git config --global commit.gpgsign || echo "")
-          currentTagGpgsign=$(git config --global tag.gpgsign || echo "")
+          # Grab current config (if set) for commit and tag
+          $currentCommitGpgsign = git config --global commit.gpgsign
+          if (-not $currentCommitGpgsign) { $currentCommitGpgsign = "" }
 
-          echo "Found commit.gpgsign=$currentCommitGpgsign"
-          echo "Found tag.gpgsign=$currentTagGpgsign"
+          $currentTagGpgsign = git config --global tag.gpgsign
+          if (-not $currentTagGpgsign) { $currentTagGpgsign = "" }
+
+          Write-Host "Found commit.gpgsign=$currentCommitGpgsign"
+          Write-Host "Found tag.gpgsign=$currentTagGpgsign"
 
           # Make them available as step outputs
-          echo "commit_gpgsign=$currentCommitGpgsign" >> "$GITHUB_OUTPUT"
-          echo "tag_gpgsign=$currentTagGpgsign" >> "$GITHUB_OUTPUT"
+          # Use $env:GITHUB_OUTPUT to set outputs in PowerShell
+          "commit_gpgsign=$currentCommitGpgsign" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "tag_gpgsign=$currentTagGpgsign"       | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
           # Disable GPG signing for commits & tags
           git config --global commit.gpgsign false
@@ -282,19 +286,24 @@ jobs:
       ########################################################################
       - name: Re-enable GPG signing (only on forks)
         if: always() && github.repository != 'ni/labview-icon-editor'
+        shell: pwsh
         run: |
-          echo "Restoring GPG signing to previous config..."
-          oldCommitGpgsign="${{ steps.disable_signing.outputs.commit_gpgsign }}"
-          oldTagGpgsign="${{ steps.disable_signing.outputs.tag_gpgsign }}"
+          Write-Host "Restoring GPG signing to previous config..."
 
-          if [ -n "$oldCommitGpgsign" ]; then
-            git config --global commit.gpgsign "$oldCommitGpgsign"
-          else
-            git config --global --unset commit.gpgsign || true
-          fi
+          $oldCommitGpgsign = '${{ steps.disable_signing.outputs.commit_gpgsign }}'
+          $oldTagGpgsign    = '${{ steps.disable_signing.outputs.tag_gpgsign }}'
 
-          if [ -n "$oldTagGpgsign" ]; then
-            git config --global tag.gpgsign "$oldTagGpgsign"
-          else
-            git config --global --unset tag.gpgsign || true
-          fi
+          Write-Host "Previous commit.gpgsign = $oldCommitGpgsign"
+          Write-Host "Previous tag.gpgsign    = $oldTagGpgsign"
+
+          if ($oldCommitGpgsign) {
+            git config --global commit.gpgsign $oldCommitGpgsign
+          } else {
+            git config --global --unset commit.gpgsign || Write-Host "commit.gpgsign was not set."
+          }
+
+          if ($oldTagGpgsign) {
+            git config --global tag.gpgsign $oldTagGpgsign
+          } else {
+            git config --global --unset tag.gpgsign || Write-Host "tag.gpgsign was not set."
+          }
