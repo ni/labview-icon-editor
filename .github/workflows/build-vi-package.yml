@@ -39,14 +39,22 @@ jobs:
       ########################################################################
       # 2) LABEL ENFORCEMENT
       ########################################################################
-      - name: Validate version bump label
-        uses: actions-ecosystem/action-label-check@vmain
-        with:
-          allow_empty: 'false'
-          allowed_labels: |
-            major
-            minor
-            patch
+  - name: Validate version bump label
+  if: ${{ github.event_name == 'pull_request' }}
+  uses: actions/github-script@v6
+  with:
+    script: |
+      const labels = context.payload.pull_request.labels.map(l => l.name.toLowerCase());
+      // Allowed labels
+      const allowed = ['major', 'minor', 'patch'];
+
+      // Check if there's an intersection
+      const intersection = labels.filter(l => allowed.includes(l));
+      if (intersection.length === 0) {
+        core.setFailed(`No valid version label found. Must have one of: ${allowed.join(', ')}`);
+      } else {
+        core.info(`Found valid label(s): ${intersection.join(', ')}`);
+      }
       ########################################################################
       # 3) DETERMINE BUMP TYPE (major/minor/patch) VIA LABELS
       #    If push is not a PR (e.g. hotfix merges on main), default to 'patch'
