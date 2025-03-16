@@ -23,14 +23,13 @@ This repository contains:
 
 ## Documentation
 
-- [Manual Setup & Distribution](./docs/manual-setup.md)  
+- [Manual Setup & Distribution](./docs/manual-setup.md) 
   Provides manual steps to *configure*, *edit*, and distribute the LabVIEW Icon Editor without using automation *(e.g. PowerShell scipts, GitHub Actions)*.
 
 - [Automated Setup & Distribution](./docs/automated-setup.md)
-  Describes how to *build*, *test*, and *distribute* the LabVIEW Icon Editor using a single call to a PowerShell script.
+  Describes how to build, test, and distribute the LabVIEW Icon Editor using PowerShell. You can run these scripts locally on your development or self-hosted runner, or within GitHub Actions.
 
-- [Fork-Friendly Icon Editor CI/CD Workflow](./docs/ci-workflows.md)  
-  Explains how to automate *building*, *testing*, *distributing*, and *releasing* your version of the Icon Editor using your fork and a self-hosted runner, it includes features such as **fork-friendly GPG signing toggles**, and **automatic version bumping** (using labels).
+- [Fork-Friendly Icon Editor CI/CD Workflow](./docs/ci-workflows.md)   Explains how to automate *building*, *testing*, *distributing*, and *releasing* your version of the Icon Editor using your fork and a self-hosted runner, it includes features such as **fork-friendly GPG signing toggles**, and **automatic version bumping** (using labels).
 
 ---
 
