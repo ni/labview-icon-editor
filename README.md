@@ -1,19 +1,20 @@
 [![Build VI Package](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml/badge.svg)](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml)
+
 ## Latest Pull Request 
-[Reusable Release GitHub Action to Build the Icon Editor](https://github.com/ni/labview-icon-editor/pull/158)
+[GitHub Action to Build and release the Icon Editor](https://github.com/ni/labview-icon-editor/pull/158)
 
 # LabVIEW Icon Editor
 
-Welcome to the source code and automated build tools for the LabVIEW Icon Editor. Use this project as a foundation to create or customize your own icon editor. If you want to propose updates or submit bug fixes for future versions of LabVIEW, please consult our [CONTRIBUTING](CONTRIBUTING.md) guidelines.
+Welcome to the open-source **LabVIEW Icon Editor**. If you want to propose updates or submit bug fixes for the next shipping version of LabVIEW, please consult our [CONTRIBUTING](CONTRIBUTING.md) guidelines.
 
 ---
 
 ## Overview
 
 This repository contains:
-- Icon Editor Source Files: The core LabVIEW code for building or modifying the icon editor.
-- PowerShell Tooling: Scripts for automating development mode toggles, building VI packages, and running unit tests.
-- Local CI/CD Examples: References and YAML workflows (GitHub Actions) for self-hosted runners, including:
+- Icon Editor Source Files: LabVIEW core files required for building or modifying the Icon Editor.
+- PowerShell Tooling: Automation scripts using [g-cli](https://github.com/G-CLI/G-CLI) that replaces the manual tasks of distributing the Icon Editor as a VI Package. 
+- Local CI/CD Examples: References and YAML workflows (GitHub Actions) for self-hosted runners using the PowerShell Tooling, including:
   - [Development Mode Toggle](docs/actions/development-mode-toggle.md)
   - [Build VI Package](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml)
   - [Run Unit Tests](https://github.com/ni/labview-icon-editor/actions/workflows/run-unit-tests.yml)
@@ -22,11 +23,14 @@ This repository contains:
 
 ## Documentation
 
-- [Manual Setup & Distribution](./docs/ManualSetup.md)  
-  Explains how to manually configure your environment, edit the Icon Editor source, and create a distributable package.
+- [Manual Setup & Distribution](./docs/manual-setup.md)  
+  Provides manual steps to *configure*, *edit*, and distribute the LabVIEW Icon Editor without using automation *(e.g. PowerShell scipts, GitHub Actions)*.
 
-- [Local CI/CD Workflows](./docs/CIWorkflows.md)  
-  Covers using GitHub Actions (or a similar CI system) to automate testing, building, and toggling development mode on a self-hosted runner.
+- [Automated Setup & Distribution](./docs/automated-setup.md)
+  Describes how to *build*, *test*, and *distribute* the LabVIEW Icon Editor using a single call to a PowerShell script.
+
+- [Fork-Friendly Icon Editor CI/CD Workflow](./docs/ci-workflows.md)  
+  Explains how to automate *building*, *testing*, *distributing*, and *releasing* your version of the Icon Editor using your fork and a self-hosted runner, it includes features such as **fork-friendly GPG signing toggles**, and **automatic version bumping** (using labels).
 
 ---
 
@@ -37,17 +41,8 @@ This repository contains:
 
 ---
 
-## Getting Started
-
-1. Check LabVIEW Version
-   - This editor is built with LabVIEW 2021 SP1.
-   - Other versions may require back-saving or updating the project.
-
-2. Clone This Repo
-    git clone https://github.com/username/labview-icon-editor.git
-
 3. Consult the Docs
    - For manual editing or distributing the icon editor, see [Manual Setup & Distribution](./docs/ManualSetup.md).
-   - For automated workflows, see [Local CI/CD Workflows](./docs/CIWorkflows.md).
+   - For automated workflows, see [Local CI/CD Workflows](./docs/ci-workflows.md).
 
 Enjoy building and customizing your LabVIEW Icon Editor!
