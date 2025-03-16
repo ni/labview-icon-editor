@@ -76,7 +76,7 @@ Automating your Icon Editor builds and tests:
 
 Below are the **key GitHub Actions** provided in this repository:
 
-1. **[Development Mode Toggle](actions/development-mode-toggle.md)**  
+1. **[Development Mode Toggle](https://github.com/ni/labview-icon-editor/actions/workflows/development-mode-toggle.yml)**
    - Invokes `Set_Development_Mode.ps1` or `RevertDevelopmentMode.ps1`.  
    - Usually triggered via `workflow_dispatch` for manual toggling.
 
@@ -133,10 +133,10 @@ Although GitHub Actions primarily runs on GitHub-hosted or self-hosted agents, y
 
 ### 3.5 Example Developer Workflow
 
-**Scenario**: You want to implement a new feature and produce a `.vip` to share.
+**Scenario**: You want to implement a new feature and produce a `.vip` to install and test your change.
 
 1. **Enable Development Mode**:  
-   - Toggle dev mode 
+   
 
 2. **Implement & Test**:  
    - Use the **Run Unit Tests** workflow or script to ensure your changes pass.
@@ -149,7 +149,7 @@ Although GitHub Actions primarily runs on GitHub-hosted or self-hosted agents, y
    - The **Build VI Package & Release** workflow automatically tags the commit (e.g., `v1.2.0-build7`) and uploads the `.vip`.
 
 5. **Disable Development Mode**:  
-   - Restores from development mode
+   - Disable development mode, install the VI Package, and test your change on the IDE.
 
 ---
 
