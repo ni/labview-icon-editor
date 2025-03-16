@@ -1,6 +1,6 @@
 [![Build VI Package](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml/badge.svg)](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml)
 ## Latest Pull Request 
-See [Pull Request #152](https://github.com/ni/labview-icon-editor/pull/152) for details on the new CI workflows and dev mode changes.
+[Reusable Release GitHub Action to Build the Icon Editor](https://github.com/ni/labview-icon-editor/pull/158)
 
 # LabVIEW Icon Editor
 
