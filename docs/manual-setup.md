@@ -36,7 +36,7 @@ This document provides **manual** steps to configure, edit, and distribute the L
    Tooling\Prepare LV to Use Icon Editor Source.vi
    ```
 
-   This script will:
+   This VI will:
    - Remove `<LabVIEW>\resource\plugins\lv_icon.lvlibp`
    - Remove `<LabVIEW>\vi.lib\LabVIEW Icon API`
    - Update `LocalHost.LibraryPaths` in your **LabVIEW.ini** so the custom VIs are recognized
