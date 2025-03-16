@@ -41,8 +41,4 @@ This repository contains:
 
 ---
 
-3. Consult the Docs
-   - For manual editing or distributing the icon editor, see [Manual Setup & Distribution](./docs/ManualSetup.md).
-   - For automated workflows, see [Local CI/CD Workflows](./docs/ci-workflows.md).
-
 Enjoy building and customizing your LabVIEW Icon Editor!
