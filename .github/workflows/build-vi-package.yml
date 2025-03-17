@@ -301,41 +301,46 @@ jobs:
       # 10) Attach .vip to Release (Fixed by removing {?name,label} correctly)
       ########################################################################
       - name: Attach .vip to Release
-        if: ${{ success() && env.ATTACH_ARTIFACTS_TO_RELEASE == 'true' && github.event_name != 'pull_request' }}
-        shell: pwsh
-        run: |
-          $vipPath = '${{ steps.find_vip.outputs.vip_path }}'
-          if (-not (Test-Path $vipPath)) {
-            Write-Warning "VIP file not found at $vipPath"
-            exit 0
-          }
-
-          $uploadUrl = '${{ steps.create_release.outputs.upload_url }}'
-          if (-not $uploadUrl) {
-            Write-Warning "No upload_url from create_release step."
-            exit 0
-          }
-
-          # Use a regex replace to remove everything from '{' onward
-          $uploadUrlClean = $uploadUrl -replace '{.*',''
-          $fileName = [System.IO.Path]::GetFileName($vipPath)
-
-          $uri = "$uploadUrlClean?name=$fileName"
-
-          Write-Host "Attaching VIP file: $vipPath"
-          Write-Host "Constructed upload URL => $uri"
-
-          $headers = @{
-            # Typically: "Authorization" = "Bearer $env:GITHUB_TOKEN"
-            "Authorization" = $env:GITHUB_TOKEN
-            "Content-Type"  = "application/octet-stream"
-          }
-
-          Invoke-RestMethod `
-            -Uri $uri `
-            -Method POST `
-            -Headers $headers `
-            -InFile $vipPath
+      if: ${{ success() && env.ATTACH_ARTIFACTS_TO_RELEASE == 'true' && github.event_name != 'pull_request' }}
+      shell: pwsh
+      run: |
+        $vipPath = '${{ steps.find_vip.outputs.vip_path }}'
+        if (-not (Test-Path $vipPath)) {
+          Write-Warning "VIP file not found at $vipPath"
+          exit 0
+        }
+    
+        $uploadUrl = '${{ steps.create_release.outputs.upload_url }}'
+        if (-not $uploadUrl) {
+          Write-Warning "No upload_url from create_release step."
+          exit 0
+        }
+    
+        # Remove everything from '{' onward. (upload_url typically looks like:
+        # https://uploads.github.com/repos/owner/repo/releases/123/assets{?name,label})
+        $uploadUrlClean = $uploadUrl -replace '{.*',''
+    
+        # URL-encode the filename in case it contains spaces or special characters
+        Add-Type -AssemblyName System.Web
+        $fileName        = [System.IO.Path]::GetFileName($vipPath)
+        $fileNameEncoded = [System.Web.HttpUtility]::UrlEncode($fileName)
+    
+        $uri = "$uploadUrlClean?name=$fileNameEncoded"
+    
+        Write-Host "Attaching VIP file: $vipPath"
+        Write-Host "Constructed upload URL => $uri"
+    
+        # Include the 'Bearer' prefix in the Authorization header
+        $headers = @{
+          "Authorization" = "Bearer $($env:GITHUB_TOKEN)"
+          "Content-Type"  = "application/octet-stream"
+        }
+    
+        Invoke-RestMethod `
+          -Uri $uri `
+          -Method POST `
+          -Headers $headers `
+          -InFile $vipPath    
 
       ########################################################################
       # B) Re-enable GPG signing if it was disabled
