@@ -42,7 +42,7 @@ jobs:
         id: disable_signing
         shell: pwsh
         run: |
-          if ("${{ github.repository }}" -ne "ni/labview-icon-editor") {
+          if ("${{ github.repository }}" -ne "ni/labview-icon-editor-test") {
             Write-Host "Detected a fork; disabling GPG signing..."
             $currentCommitGpgsign = git config --global commit.gpgsign
             if (-not $currentCommitGpgsign) { $currentCommitGpgsign = "" }
@@ -298,7 +298,7 @@ jobs:
             core.info(`Created release [draft=${draftRelease}] => ${versionTag}`);
 
       ########################################################################
-      # 10) Attach .vip to Release (fixed for spaces & 'Bearer')
+      # 10) Attach .vip to Release (split on '{' to avoid losing entire URL)
       ########################################################################
       - name: Attach .vip to Release
         if: ${{ success() && env.ATTACH_ARTIFACTS_TO_RELEASE == 'true' && github.event_name != 'pull_request' }}
@@ -316,10 +316,11 @@ jobs:
             exit 0
           }
 
-          # 1) Strip off '{?name,label}' from the upload_url
-          $uploadUrlClean = $uploadUrl -replace '{.*',''
+          # Remove everything from the first '{' onward.
+          # (Typically: https://uploads.github.com/.../assets{?name,label})
+          $uploadUrlClean = $uploadUrl.Split('{')[0]
 
-          # 2) URL-encode the filename in case it contains spaces or special characters
+          # URL-encode the file name in case it has spaces or special chars
           Add-Type -AssemblyName System.Web
           $fileName        = [System.IO.Path]::GetFileName($vipPath)
           $fileNameEncoded = [System.Web.HttpUtility]::UrlEncode($fileName)
@@ -329,13 +330,12 @@ jobs:
           Write-Host "Attaching VIP file: $vipPath"
           Write-Host "Constructed upload URL => $uri"
 
-          # 3) IMPORTANT: Use Bearer token in Authorization header
+          # IMPORTANT: Use Bearer token in Authorization header
           $headers = @{
             "Authorization" = "Bearer $($env:GITHUB_TOKEN)"
             "Content-Type"  = "application/octet-stream"
           }
 
-          # 4) Upload the file
           Invoke-RestMethod `
             -Uri $uri `
             -Method POST `
@@ -349,7 +349,7 @@ jobs:
         if: ${{ always() && env.DISABLE_GPG_ON_FORKS == 'true' }}
         shell: pwsh
         run: |
-          if ("${{ github.repository }}" -ne "ni/labview-icon-editor") {
+          if ("${{ github.repository }}" -ne "ni/labview-icon-editor-test") {
             Write-Host "Restoring GPG signing..."
             $oldCommitGpgsign = '${{ steps.disable_signing.outputs.old_commit_gpgsign }}'
             $oldTagGpgsign    = '${{ steps.disable_signing.outputs.old_tag_gpgsign }}'
@@ -367,4 +367,3 @@ jobs:
             }
           } else {
             Write-Host "Official repo or DISABLE_GPG_ON_FORKS==false => no restore needed."
-          }
