@@ -46,57 +46,51 @@ jobs:
       # 4) Attach .vip files to Release (robust version)
       ########################################################################
       - name: Attach .vip files to Release (robust version)
-        if: ${{ success() }}
-        shell: pwsh
-        run: |
-          # 1) Gather .vip files
-          $vipFiles = Get-ChildItem -Path "builds/VI Package" -Filter "*.vip" -ErrorAction SilentlyContinue
-
-          # 2) Exit if no .vip found
-          if (!$vipFiles) {
-            Write-Warning "No .vip files found in 'builds/VI Package'!"
-            exit 0
+      shell: pwsh
+      run: |
+        $vipFiles = Get-ChildItem -Path "builds/VI Package" -Filter "*.vip" -ErrorAction SilentlyContinue
+        if (!$vipFiles) {
+          Write-Warning "No .vip files found"
+          exit 0
+        }
+    
+        # 1) Grab the upload URL
+        $uploadUrl = '${{ steps.create_release.outputs.upload_url }}'
+        if (-not $uploadUrl) {
+          Write-Warning "No upload_url from create_release step."
+          exit 0
+        }
+    
+        # 2) Remove '{?name,label}' from the URL
+        #    (Use either -replace with a regex or just Replace)
+        $uploadUrlClean = $uploadUrl.Replace('{?name,label}', '')
+    
+        # 3) Use System.Web for URL-encoding
+        Add-Type -AssemblyName System.Web
+    
+        foreach ($vipFile in $vipFiles) {
+          $fileNameEncoded = [System.Web.HttpUtility]::UrlEncode($vipFile.Name)
+          $assetUri        = "$uploadUrlClean?name=$fileNameEncoded"
+    
+          Write-Host "Attaching VIP file: $($vipFile.FullName)"
+          Write-Host "Constructed upload URL => $assetUri"
+    
+          $headers = @{
+            "Authorization" = "Bearer $($env:GITHUB_TOKEN)"
+            "Content-Type"  = "application/octet-stream"
           }
-
-          # 3) Ensure we have an upload URL
-          $uploadUrl = '${{ steps.create_release.outputs.upload_url }}'
-          if (-not $uploadUrl) {
-            Write-Warning "No upload_url from create_release step."
-            exit 0
+    
+          try {
+            Invoke-RestMethod `
+              -Uri $assetUri `
+              -Method POST `
+              -Headers $headers `
+              -InFile $vipFile.FullName
+    
+            Write-Host "Successfully uploaded '$($vipFile.Name)'!"
           }
-
-          # 4) Strip off '{?name,label}' from the upload URL
-          $uploadUrlClean = $uploadUrl.Split('{')[0]
-
-          # 5) Add System.Web for URL encoding
-          Add-Type -AssemblyName System.Web
-
-          # 6) Loop through each .vip, attach to the release
-          foreach ($vipFile in $vipFiles) {
-            # Encode the filename (handles spaces, parentheses, etc.)
-            $fileNameEncoded = [System.Web.HttpUtility]::UrlEncode($vipFile.Name)
-            $assetUri        = "$uploadUrlClean?name=$fileNameEncoded"
-
-            Write-Host "Attaching VIP file: $($vipFile.FullName)"
-            Write-Host "Constructed upload URL => $assetUri"
-
-            # Must prefix the token with 'Bearer'
-            $headers = @{
-              "Authorization" = "Bearer $($env:GITHUB_TOKEN)"
-              "Content-Type"  = "application/octet-stream"
-            }
-
-            try {
-              Invoke-RestMethod `
-                -Uri $assetUri `
-                -Method POST `
-                -Headers $headers `
-                -InFile $vipFile.FullName
-
-              Write-Host "Successfully uploaded '$($vipFile.Name)'!"
-            }
-            catch {
-              Write-Error "Upload failed for '$($vipFile.Name)': $($_.Exception.Message)"
-              exit 1
-            }
+          catch {
+            Write-Error "Upload failed for '$($vipFile.Name)': $($_.Exception.Message)"
+            exit 1
           }
+        }
