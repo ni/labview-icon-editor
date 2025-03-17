@@ -123,7 +123,7 @@ jobs:
           Write-Host "Bump type: $($env:BUMP_TYPE)"
           Write-Host "Build number: $($env:BUILD_NUMBER)"
 
-          # Grab full ref (e.g. 'refs/heads/release-alpha/mybranch'),
+          # Grab full ref (e.g., 'refs/heads/release-alpha/mybranch'),
           # remove 'refs/heads/' => 'release-alpha/mybranch'
           $branchRef = $env:GITHUB_REF -replace '^refs/heads/', ''
           Write-Host "Full branchRef: $branchRef"
@@ -165,7 +165,7 @@ jobs:
             }
           }
 
-          # 3) Check for ALPHA / BETA / RC suffix
+          # 3) Check for alpha/beta/rc suffix
           $preSuffix = ""
 
           if ($branchRef -like 'release-alpha/*') {
@@ -298,45 +298,44 @@ jobs:
             core.info(`Created release [draft=${draftRelease}] => ${versionTag}`);
 
       ########################################################################
-      # 10) Attach .vip to Release (if ATTACH_ARTIFACTS_TO_RELEASE==true)
+      # 10) Attach .vip to Release (Fixed by removing {?name,label} correctly)
       ########################################################################
       - name: Attach .vip to Release
-      if: ${{ success() && env.ATTACH_ARTIFACTS_TO_RELEASE == 'true' && github.event_name != 'pull_request' }}
-      shell: pwsh
-      run: |
-        $vipPath = 'C:\actions-runner\_work\labview-icon-editor\labview-icon-editor\builds\VI Package\ni_icon_editor-0.0.8.307.vip'
-        if (-not (Test-Path $vipPath)) {
-          Write-Warning "VIP file not found at $vipPath"
-          exit 0
-        }
-    
-        $uploadUrl = 'https://uploads.github.com/repos/ni/labview-icon-editor/releases/206133816/assets{?name,label}'
-        if (-not $uploadUrl) {
-          Write-Warning "No upload_url from create_release step."
-          exit 0
-        }
-    
-        # Remove everything from '{' onward
-        $uploadUrlClean = $uploadUrl -replace '{.*',''
-        $fileName = [System.IO.Path]::GetFileName($vipPath)
-    
-        # Build the final asset upload URL
-        $uri = "$uploadUrlClean?name=$fileName"
-    
-        Write-Host "Attaching $vipPath"
-        Write-Host "Constructed upload URL => $uri"
-    
-        $headers = @{
-          "Authorization" = "***"  # or "Bearer $env:GITHUB_TOKEN"
-          "Content-Type"  = "application/octet-stream"
-        }
-    
-        Invoke-RestMethod `
-          -Uri $uri `
-          -Method POST `
-          -Headers $headers `
-          -InFile $vipPath
-    
+        if: ${{ success() && env.ATTACH_ARTIFACTS_TO_RELEASE == 'true' && github.event_name != 'pull_request' }}
+        shell: pwsh
+        run: |
+          $vipPath = '${{ steps.find_vip.outputs.vip_path }}'
+          if (-not (Test-Path $vipPath)) {
+            Write-Warning "VIP file not found at $vipPath"
+            exit 0
+          }
+
+          $uploadUrl = '${{ steps.create_release.outputs.upload_url }}'
+          if (-not $uploadUrl) {
+            Write-Warning "No upload_url from create_release step."
+            exit 0
+          }
+
+          # Use a regex replace to remove everything from '{' onward
+          $uploadUrlClean = $uploadUrl -replace '{.*',''
+          $fileName = [System.IO.Path]::GetFileName($vipPath)
+
+          $uri = "$uploadUrlClean?name=$fileName"
+
+          Write-Host "Attaching VIP file: $vipPath"
+          Write-Host "Constructed upload URL => $uri"
+
+          $headers = @{
+            # Typically: "Authorization" = "Bearer $env:GITHUB_TOKEN"
+            "Authorization" = $env:GITHUB_TOKEN
+            "Content-Type"  = "application/octet-stream"
+          }
+
+          Invoke-RestMethod `
+            -Uri $uri `
+            -Method POST `
+            -Headers $headers `
+            -InFile $vipPath
 
       ########################################################################
       # B) Re-enable GPG signing if it was disabled
