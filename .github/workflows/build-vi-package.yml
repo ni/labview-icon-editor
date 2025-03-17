@@ -298,66 +298,58 @@ jobs:
             core.info(`Created release [draft=${draftRelease}] => ${versionTag}`);
 
       ########################################################################
-      # 10) Attach .vip to Release (split on '{' to avoid losing entire URL)
+      # 10) Attach .vip files to Release (robust version)
       ########################################################################
-      - name: Attach .vip files to Release 
-      if: ${{ success() && env.ATTACH_ARTIFACTS_TO_RELEASE == 'true' && github.event_name != 'pull_request' }}
-      shell: pwsh
-      run: |
-        # 1) Gather .vip files
-        $vipFiles = Get-ChildItem -Path "builds/VI Package" -Filter "*.vip" -ErrorAction SilentlyContinue
-    
-        # 2) Exit if no .vip found
-        if (!$vipFiles) {
-          Write-Warning "No .vip files found in 'builds/VI Package'!"
-          exit 0
-        }
-    
-        # 3) Ensure we have an upload URL from the release step
-        $uploadUrl = '${{ steps.create_release.outputs.upload_url }}'
-        if (-not $uploadUrl) {
-          Write-Warning "No upload_url from create_release step."
-          exit 0
-        }
-    
-        # 4) Remove everything from '{' onward to keep the base upload URL
-        #    E.g. "https://uploads.github.com/repos/ORG/REPO/releases/123/assets{?name,label}"
-        $uploadUrlClean = $uploadUrl.Split('{')[0]
-    
-        # 5) Prepare for URL encoding
-        Add-Type -AssemblyName System.Web
-    
-        # 6) Loop through each .vip file, attach to the release
-        foreach ($vipFile in $vipFiles) {
-          # Construct the final asset upload URL (encode file name)
-          $fileNameEncoded = [System.Web.HttpUtility]::UrlEncode($vipFile.Name)
-          $assetUri = "$uploadUrlClean?name=$fileNameEncoded"
-    
-          Write-Host "Attaching VIP file: $($vipFile.FullName)"
-          Write-Host "Constructed upload URL => $assetUri"
-    
-          # 7) Build headers (MUST prefix token with 'Bearer')
-          $headers = @{
-            "Authorization" = "Bearer $($env:GITHUB_TOKEN)"
-            "Content-Type"  = "application/octet-stream"
+      - name: Attach .vip files to Release (robust)
+        if: ${{ success() && env.ATTACH_ARTIFACTS_TO_RELEASE == 'true' && github.event_name != 'pull_request' }}
+        shell: pwsh
+        run: |
+          # 1) Gather *.vip files
+          $vipFiles = Get-ChildItem -Path "builds/VI Package" -Filter "*.vip" -ErrorAction SilentlyContinue
+          if (!$vipFiles) {
+            Write-Warning "No .vip files found in 'builds/VI Package'!"
+            exit 0
           }
-    
-          try {
-            # 8) Upload the file
-            Invoke-RestMethod `
-              -Uri $assetUri `
-              -Method POST `
-              -Headers $headers `
-              -InFile $vipFile.FullName
-    
-            Write-Host "Successfully uploaded '$($vipFile.Name)'!"
+
+          $uploadUrl = '${{ steps.create_release.outputs.upload_url }}'
+          if (-not $uploadUrl) {
+            Write-Warning "No upload_url from create_release step."
+            exit 0
           }
-          catch {
-            Write-Error "Upload failed for '$($vipFile.Name)': $($_.Exception.Message)"
-            exit 1
+
+          # 2) Remove everything from '{' onward
+          $uploadUrlClean = $uploadUrl.Split('{')[0]
+
+          # 3) Prepare for URL-encoding
+          Add-Type -AssemblyName System.Web
+
+          # 4) Loop over each .vip and upload
+          foreach ($vipFile in $vipFiles) {
+            $fileNameEncoded = [System.Web.HttpUtility]::UrlEncode($vipFile.Name)
+            $assetUri = "$uploadUrlClean?name=$fileNameEncoded"
+
+            Write-Host "Attaching VIP file: $($vipFile.FullName)"
+            Write-Host "Constructed upload URL => $assetUri"
+
+            $headers = @{
+              "Authorization" = "Bearer $($env:GITHUB_TOKEN)"
+              "Content-Type"  = "application/octet-stream"
+            }
+
+            try {
+              Invoke-RestMethod `
+                -Uri $assetUri `
+                -Method POST `
+                -Headers $headers `
+                -InFile $vipFile.FullName
+
+              Write-Host "Successfully uploaded '$($vipFile.Name)'!"
+            }
+            catch {
+              Write-Error "Upload failed for '$($vipFile.Name)': $($_.Exception.Message)"
+              exit 1
+            }
           }
-        }
-    
 
       ########################################################################
       # B) Re-enable GPG signing if it was disabled
@@ -384,3 +376,4 @@ jobs:
             }
           } else {
             Write-Host "Official repo or DISABLE_GPG_ON_FORKS==false => no restore needed."
+          }
