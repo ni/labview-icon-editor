@@ -4,7 +4,7 @@
     <Library_Version>21.0.0.12</Library_Version>
     <Auto_Increment_Version>false</Auto_Increment_Version>
     <Library_Source_Folder>..\..</Library_Source_Folder>
-    <Library_Output_Folder>..\..\builds\VI Package</Library_Output_Folder>
+    <Library_Output_Folder>..\..\builds\VI_Package</Library_Output_Folder>
     <Company_Name>NI</Company_Name>
     <Library_Summary/>
     <Library_License>MIT</Library_License>
