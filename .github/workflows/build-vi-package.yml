@@ -94,7 +94,6 @@ jobs:
               }
               core.setOutput('bump_type', bump);
             } else {
-              // For direct pushes, default to 'none'
               core.setOutput('bump_type', 'none');
             }
 
@@ -123,8 +122,7 @@ jobs:
           Write-Host "Bump type: $($env:BUMP_TYPE)"
           Write-Host "Build number: $($env:BUILD_NUMBER)"
 
-          # Grab full ref (e.g., 'refs/heads/release-alpha/mybranch'),
-          # remove 'refs/heads/' => 'release-alpha/mybranch'
+          # Grab branch ref (e.g. release-alpha/mybranch)
           $branchRef = $env:GITHUB_REF -replace '^refs/heads/', ''
           Write-Host "Full branchRef: $branchRef"
 
@@ -136,7 +134,6 @@ jobs:
             $basePatch = 0
           }
           else {
-            # e.g. if $latestTag is v1.2.3-build45, remove the prefix and any -build
             $tagNoPrefix = $latestTag.TrimStart('v')
             $versionPart = $tagNoPrefix -replace '-build.*',''
             $baseMajor, $baseMinor, $basePatch = $versionPart.Split('.')
@@ -161,11 +158,11 @@ jobs:
               $newPatch++
             }
             'none' {
-              # no change to major/minor/patch
+              # do nothing
             }
           }
 
-          # 3) Check for alpha/beta/rc suffix
+          # 3) Determine if alpha/beta/rc => generate pre-release suffix
           $preSuffix = ""
 
           if ($branchRef -like 'release-alpha/*') {
@@ -185,12 +182,10 @@ jobs:
           }
 
           if ([string]::IsNullOrEmpty($preSuffix)) {
-            # final version
             $version = "v$($newMajor).$($newMinor).$($newPatch)-build$($env:BUILD_NUMBER)"
             $isPrerelease = "false"
           }
           else {
-            # pre-release
             $version = "v$($newMajor).$($newMinor).$($newPatch)-$preSuffix-build$($env:BUILD_NUMBER)"
             $isPrerelease = "true"
           }
@@ -266,7 +261,7 @@ jobs:
           git push origin $VERSION
 
       ########################################################################
-      # 9) Create GitHub Release
+      # 9) Create GitHub Release (capture release_id)
       ########################################################################
       - name: Create GitHub Release
         if: ${{ success() && github.event_name != 'pull_request' }}
@@ -278,13 +273,15 @@ jobs:
             const versionTag = '${{ steps.next_version.outputs.VERSION }}';
             const draftRelease = (process.env.DRAFT_RELEASE || 'true').toLowerCase() === 'true';
             const useAutoNotes = (process.env.USE_AUTO_NOTES || 'true').toLowerCase() === 'true';
+            const isPrerelease = (('${{ steps.next_version.outputs.IS_PRERELEASE }}' || '').toLowerCase() === 'true');
 
             const createParams = {
               owner: context.repo.owner,
               repo: context.repo.repo,
               tag_name: versionTag,
               name: versionTag,
-              draft: draftRelease
+              draft: draftRelease,
+              prerelease: isPrerelease
             };
 
             if (useAutoNotes) {
@@ -295,61 +292,90 @@ jobs:
 
             const response = await github.rest.repos.createRelease(createParams);
             core.setOutput("upload_url", response.data.upload_url);
-            core.info(`Created release [draft=${draftRelease}] => ${versionTag}`);
+            core.setOutput("release_id", response.data.id);
+
+            core.info(
+              `Created release [draft=${draftRelease}, prerelease=${isPrerelease}] => ${versionTag}`
+            );
 
       ########################################################################
-      # 10) Attach .vip files to Release (robust version)
+      # 10) Attach .vip file(s) to Release using github-script
       ########################################################################
-      - name: Attach .vip files to Release (robust)
+      - name: Attach .vip file(s) to Release
         if: ${{ success() && env.ATTACH_ARTIFACTS_TO_RELEASE == 'true' && github.event_name != 'pull_request' }}
-        shell: pwsh
-        run: |
-          # 1) Gather *.vip files
-          $vipFiles = Get-ChildItem -Path "builds/VI Package" -Filter "*.vip" -ErrorAction SilentlyContinue
-          if (!$vipFiles) {
-            Write-Warning "No .vip files found in 'builds/VI Package'!"
-            exit 0
-          }
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
 
-          $uploadUrl = '${{ steps.create_release.outputs.upload_url }}'
-          if (-not $uploadUrl) {
-            Write-Warning "No upload_url from create_release step."
-            exit 0
-          }
-
-          # 2) Remove everything from '{' onward
-          $uploadUrlClean = $uploadUrl.Split('{')[0]
-
-          # 3) Prepare for URL-encoding
-          Add-Type -AssemblyName System.Web
-
-          # 4) Loop over each .vip and upload
-          foreach ($vipFile in $vipFiles) {
-            $fileNameEncoded = [System.Web.HttpUtility]::UrlEncode($vipFile.Name)
-            $assetUri = "$uploadUrlClean?name=$fileNameEncoded"
-
-            Write-Host "Attaching VIP file: $($vipFile.FullName)"
-            Write-Host "Constructed upload URL => $assetUri"
-
-            $headers = @{
-              "Authorization" = "Bearer $($env:GITHUB_TOKEN)"
-              "Content-Type"  = "application/octet-stream"
+            // The numeric release ID from "Create GitHub Release" step
+            const releaseId = '${{ steps.create_release.outputs.release_id }}';
+            if (!releaseId) {
+              core.warning("No release_id found; skipping attach.");
+              return;
             }
 
+            // If you only want to attach the single .vip discovered in step #6:
+            // ---------------------------------------------------------------
+            // const vipFilePath = '${{ steps.find_vip.outputs.vip_path }}';
+            // if (!vipFilePath) {
+            //   core.warning("No .vip file path found; skipping attach.");
+            //   return;
+            // }
+            // const fileData = fs.readFileSync(vipFilePath);
+            // const fileName = path.basename(vipFilePath);
+            // await github.rest.repos.uploadReleaseAsset({
+            //   owner: context.repo.owner,
+            //   repo: context.repo.repo,
+            //   release_id: parseInt(releaseId, 10),
+            //   name: fileName,
+            //   data: fileData,
+            //   headers: {
+            //     'content-type': 'application/octet-stream',
+            //     'content-length': fileData.length
+            //   }
+            // });
+            // core.info(`Uploaded single file: ${fileName}`);
+
+            // Or, to loop over ALL *.vip in "builds/VI Package" for multiple attachments:
+            // --------------------------------------------------------------------------
+            const vipDir = path.join(process.env.GITHUB_WORKSPACE, 'builds', 'VI Package');
+            let vipFiles = [];
             try {
-              Invoke-RestMethod `
-                -Uri $assetUri `
-                -Method POST `
-                -Headers $headers `
-                -InFile $vipFile.FullName
+              vipFiles = fs.readdirSync(vipDir).filter(f => f.toLowerCase().endsWith('.vip'));
+            } catch (err) {
+              core.warning(`Could not read directory 'builds/VI Package': ${err.message}`);
+              return;
+            }
 
-              Write-Host "Successfully uploaded '$($vipFile.Name)'!"
+            if (!vipFiles.length) {
+              core.warning("No .vip files found to attach.");
+              return;
             }
-            catch {
-              Write-Error "Upload failed for '$($vipFile.Name)': $($_.Exception.Message)"
-              exit 1
+
+            core.info(`Discovered .vip files: ${vipFiles.join(', ')}`);
+
+            for (const vipFile of vipFiles) {
+              const fullPath = path.join(vipDir, vipFile);
+              const fileData = fs.readFileSync(fullPath);
+
+              core.info(`Uploading '${vipFile}' to release #${releaseId}...`);
+
+              await github.rest.repos.uploadReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: parseInt(releaseId, 10),
+                name: vipFile,
+                data: fileData,
+                headers: {
+                  'content-type': 'application/octet-stream',
+                  'content-length': fileData.length
+                }
+              });
+              core.info(`Successfully attached '${vipFile}'!`);
             }
-          }
 
       ########################################################################
       # B) Re-enable GPG signing if it was disabled
@@ -374,6 +400,7 @@ jobs:
             } else {
               git config --global --unset tag.gpgsign || Write-Host "tag.gpgsign wasn't originally set."
             }
-          } else {
+          }
+          else {
             Write-Host "Official repo or DISABLE_GPG_ON_FORKS==false => no restore needed."
           }
