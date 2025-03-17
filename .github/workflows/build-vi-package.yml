@@ -298,49 +298,49 @@ jobs:
             core.info(`Created release [draft=${draftRelease}] => ${versionTag}`);
 
       ########################################################################
-      # 10) Attach .vip to Release (Fixed by removing {?name,label} correctly)
+      # 10) Attach .vip to Release (fixed for spaces & 'Bearer')
       ########################################################################
       - name: Attach .vip to Release
-      if: ${{ success() && env.ATTACH_ARTIFACTS_TO_RELEASE == 'true' && github.event_name != 'pull_request' }}
-      shell: pwsh
-      run: |
-        $vipPath = '${{ steps.find_vip.outputs.vip_path }}'
-        if (-not (Test-Path $vipPath)) {
-          Write-Warning "VIP file not found at $vipPath"
-          exit 0
-        }
-    
-        $uploadUrl = '${{ steps.create_release.outputs.upload_url }}'
-        if (-not $uploadUrl) {
-          Write-Warning "No upload_url from create_release step."
-          exit 0
-        }
-    
-        # Remove everything from '{' onward. (upload_url typically looks like:
-        # https://uploads.github.com/repos/owner/repo/releases/123/assets{?name,label})
-        $uploadUrlClean = $uploadUrl -replace '{.*',''
-    
-        # URL-encode the filename in case it contains spaces or special characters
-        Add-Type -AssemblyName System.Web
-        $fileName        = [System.IO.Path]::GetFileName($vipPath)
-        $fileNameEncoded = [System.Web.HttpUtility]::UrlEncode($fileName)
-    
-        $uri = "$uploadUrlClean?name=$fileNameEncoded"
-    
-        Write-Host "Attaching VIP file: $vipPath"
-        Write-Host "Constructed upload URL => $uri"
-    
-        # Include the 'Bearer' prefix in the Authorization header
-        $headers = @{
-          "Authorization" = "Bearer $($env:GITHUB_TOKEN)"
-          "Content-Type"  = "application/octet-stream"
-        }
-    
-        Invoke-RestMethod `
-          -Uri $uri `
-          -Method POST `
-          -Headers $headers `
-          -InFile $vipPath    
+        if: ${{ success() && env.ATTACH_ARTIFACTS_TO_RELEASE == 'true' && github.event_name != 'pull_request' }}
+        shell: pwsh
+        run: |
+          $vipPath = '${{ steps.find_vip.outputs.vip_path }}'
+          if (-not (Test-Path $vipPath)) {
+            Write-Warning "VIP file not found at $vipPath"
+            exit 0
+          }
+
+          $uploadUrl = '${{ steps.create_release.outputs.upload_url }}'
+          if (-not $uploadUrl) {
+            Write-Warning "No upload_url from create_release step."
+            exit 0
+          }
+
+          # 1) Strip off '{?name,label}' from the upload_url
+          $uploadUrlClean = $uploadUrl -replace '{.*',''
+
+          # 2) URL-encode the filename in case it contains spaces or special characters
+          Add-Type -AssemblyName System.Web
+          $fileName        = [System.IO.Path]::GetFileName($vipPath)
+          $fileNameEncoded = [System.Web.HttpUtility]::UrlEncode($fileName)
+
+          $uri = "$uploadUrlClean?name=$fileNameEncoded"
+
+          Write-Host "Attaching VIP file: $vipPath"
+          Write-Host "Constructed upload URL => $uri"
+
+          # 3) IMPORTANT: Use Bearer token in Authorization header
+          $headers = @{
+            "Authorization" = "Bearer $($env:GITHUB_TOKEN)"
+            "Content-Type"  = "application/octet-stream"
+          }
+
+          # 4) Upload the file
+          Invoke-RestMethod `
+            -Uri $uri `
+            -Method POST `
+            -Headers $headers `
+            -InFile $vipPath
 
       ########################################################################
       # B) Re-enable GPG signing if it was disabled
