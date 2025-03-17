@@ -1,6 +1,6 @@
 # **Updated Guide: Multi-Channel Release Workflow**
 
-This revised guide focuses on the **release workflow**, specifically how we handle **multiple pre-release channels** (Alpha, Beta, RC) in addition to final versions. It builds on the original structure, highlighting where the logic differs from a single “`release/*` → RC” approach.
+This revised guide focuses on the **release workflow**, specifically how we handle **multiple pre-release channels** (Alpha, Beta, RC) in addition to final versions.
 
 
 ## **Table of Contents**
