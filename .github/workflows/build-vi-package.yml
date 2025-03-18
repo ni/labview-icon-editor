@@ -122,11 +122,10 @@ jobs:
           Write-Host "Bump type: $($env:BUMP_TYPE)"
           Write-Host "Build number: $($env:BUILD_NUMBER)"
 
-          # Grab branch ref (e.g. release-alpha/mybranch)
           $branchRef = $env:GITHUB_REF -replace '^refs/heads/', ''
           Write-Host "Full branchRef: $branchRef"
 
-          # 1) Find the last stable tag or fallback
+          # Find the last stable tag (fallback to 0.0.0 if none)
           $latestTag = git describe --tags --abbrev=0 2>$null
           if ([string]::IsNullOrEmpty($latestTag)) {
             $baseMajor = 0
@@ -143,7 +142,7 @@ jobs:
           $newMinor = [int]$baseMinor
           $newPatch = [int]$basePatch
 
-          # 2) Apply label-based semantic bump
+          # Apply label-based semantic bump
           switch ($env:BUMP_TYPE) {
             'major' {
               $newMajor++
@@ -157,14 +156,11 @@ jobs:
             'patch' {
               $newPatch++
             }
-            'none' {
-              # do nothing
-            }
+            'none' { }
           }
 
-          # 3) Determine if alpha/beta/rc => generate pre-release suffix
+          # If alpha/beta/rc => generate pre-release suffix
           $preSuffix = ""
-
           if ($branchRef -like 'release-alpha/*') {
             $countAlpha = git rev-list --count HEAD
             if ([string]::IsNullOrEmpty($countAlpha)) { $countAlpha = 1 }
@@ -211,9 +207,15 @@ jobs:
         run: |
           $repoRoot      = $env:GITHUB_WORKSPACE
           $scriptsFolder = Join-Path $repoRoot 'pipeline/scripts'
-
+    
+          # Split the 'owner/repo' string to extract org and repository
+          $org, $repo = $env:GITHUB_REPOSITORY -split '/'
+    
           Write-Host "Building VI package => MAJOR=$($env:MAJOR), MINOR=$($env:MINOR), PATCH=$($env:PATCH), BUILD=$($env:BUILD)"
-
+          Write-Host "CompanyName => $org"
+          Write-Host "AuthorName => $repo"
+    
+          # Call the updated Build.ps1 which now expects -CompanyName and -AuthorName
           .\pipeline\scripts\Build.ps1 `
             -RelativePath        $repoRoot `
             -AbsolutePathScripts $scriptsFolder `
@@ -221,8 +223,10 @@ jobs:
             -Minor               $env:MINOR `
             -Patch               $env:PATCH `
             -Build               $env:BUILD `
-            -Commit              $env:COMMIT
-
+            -Commit              $env:COMMIT `
+            -CompanyName         $org `
+            -AuthorName          $repo
+    
       ########################################################################
       # 6) Capture the .vip file path as a step output
       ########################################################################
@@ -310,37 +314,12 @@ jobs:
             const fs = require('fs');
             const path = require('path');
 
-            // The numeric release ID from "Create GitHub Release" step
             const releaseId = '${{ steps.create_release.outputs.release_id }}';
             if (!releaseId) {
               core.warning("No release_id found; skipping attach.");
               return;
             }
 
-            // If you only want to attach the single .vip discovered in step #6:
-            // ---------------------------------------------------------------
-            // const vipFilePath = '${{ steps.find_vip.outputs.vip_path }}';
-            // if (!vipFilePath) {
-            //   core.warning("No .vip file path found; skipping attach.");
-            //   return;
-            // }
-            // const fileData = fs.readFileSync(vipFilePath);
-            // const fileName = path.basename(vipFilePath);
-            // await github.rest.repos.uploadReleaseAsset({
-            //   owner: context.repo.owner,
-            //   repo: context.repo.repo,
-            //   release_id: parseInt(releaseId, 10),
-            //   name: fileName,
-            //   data: fileData,
-            //   headers: {
-            //     'content-type': 'application/octet-stream',
-            //     'content-length': fileData.length
-            //   }
-            // });
-            // core.info(`Uploaded single file: ${fileName}`);
-
-            // Or, to loop over ALL *.vip in "builds/VI Package" for multiple attachments:
-            // --------------------------------------------------------------------------
             const vipDir = path.join(process.env.GITHUB_WORKSPACE, 'builds', 'VI Package');
             let vipFiles = [];
             try {
