@@ -66,6 +66,9 @@ This repository hosts the source for the **LabVIEW Icon Editor**. It includes Po
 - **[Runner Setup Guide](docs/ci/actions/runner-setup-guide.md)**
    Explains how to locally set up and run the **LabVIEW Icon Editor** workflows on a **self-hosted runner** using **GitHub Actions**.
 
+- **[Injecting Owner/Repo Into VI Package](docs/actions/injecting-repo-org-to-vi-package.md)**
+   This document explains how we leverage **PowerShell** scripts and **GitHub Actions** to insert **repository** and **organization** metadata into the LabVIEW Icon Editor’s VI Package, ensuring each build is **unique** and **traceable**.
+
 - **[Troubleshooting & FAQ](docs/ci/troubleshooting-faq.md)**
 provides a collection of common **troubleshooting** scenarios (with solutions) and a **FAQ** (Frequently Asked Questions) for the LabVIEW Icon Editor GitHub Actions workflows.
 
