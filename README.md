@@ -30,7 +30,7 @@ This repository hosts the source for the **LabVIEW Icon Editor**. It includes Po
 2. Review the [**CONTRIBUTING**](CONTRIBUTING.md) guidelines to find out how to get assigned to an issue.
 3. Pick 1 workflow:
    1. [Manual](./docs/manual-instructions.md)
-   2. [Powershell Tools](./docs/powershell-cli-github-action-instructions.md)
+   2. [Powershell Tools](./docs/powershell-cli-instructions.md)
    3. [PowerShell Tools on Self-Hosted Runner](docs/powershell-cli-github-action-instructions.md) 
 4. [Enable Development Mode](docs/actions/development-mode-toggle.md) **or** follow the steps to [Edit the source manually](./docs/manual-setup.md)
 5. Develop the feature on your fork. The way you test your changes will depend on the workflow you chose.
