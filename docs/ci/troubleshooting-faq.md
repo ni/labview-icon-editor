@@ -17,6 +17,11 @@ This document provides a collection of common **troubleshooting** scenarios (wit
    8. [No. 8: Branch Protection Blocks Merge](#no-8-branch-protection-blocks-merge)
    9. [No. 9: Incorrect Pre-Release Suffix (Alpha/Beta/RC)](#no-9-incorrect-pre-release-suffix-alphabetarc)
    10. [No. 10: Hotfix Not Tagged as Expected](#no-10-hotfix-not-tagged-as-expected)
+   11. [No. 11: Double-Dash Parameters Not Recognized](#no-11-double-dash-parameters-not-recognized)  
+   12. [No. 12: Company/Author Fields Not Populating](#no-12-companyauthor-fields-not-populating)  
+   13. [No. 13: JSON Fields Overwritten Incorrectly](#no-13-json-fields-overwritten-incorrectly)  
+   14. [No. 14: Repository Forks Not Displaying Correct Metadata](#no-14-repository-forks-not-displaying-correct-metadata)
+
 
 2. [FAQ](#faq)
    1. [Q1: Can I Override the Build Number?](#q1-can-i-override-the-build-number)
@@ -29,12 +34,17 @@ This document provides a collection of common **troubleshooting** scenarios (wit
    8. [Q8: Can I Use This Workflow Without Gitflow?](#q8-can-i-use-this-workflow-without-gitflow)
    9. [Q9: Why Is My Dev Mode Toggle Not Working Locally?](#q9-why-is-my-dev-mode-toggle-not-working-locally)
    10. [Q10: Can I Use a Different LabVIEW Version (e.g., 2023)?](#q10-can-i-use-a-different-labview-version-eg-2023)
+   11. [Q11: How Do I Pass Repository Name and Organization?](#q11-how-do-i-pass-repository-name-and-organization)  
+   12. [Q12: Can I Omit the Company/Author Fields in My JSON?](#q12-can-i-omit-the-companyauthor-fields-in-my-json)  
+   13. [Q13: Why Must I Use Single-Dash Instead of Double-Dash?](#q13-why-must-i-use-single-dash-instead-of-double-dash)  
+   14. [Q14: Can I Add More Fields to the VIPB Display Information?](#q14-can-i-add-more-fields-to-the-vipb-display-information)
+
 
 ---
 
 ## Troubleshooting
 
-Below are 10 common issues you might encounter, along with suggested steps to resolve them.
+Below are 14 possible issues you might encounter, along with suggested steps to resolve them.
 
 ### No. 1: LabVIEW Not Found on Runner
 
@@ -194,9 +204,73 @@ Below are 10 common issues you might encounter, along with suggested steps to re
 
 ---
 
+### No. 11: Double-Dash Parameters Not Recognized
+
+**Symptoms**:
+- You see an error like:  
+  *“A positional parameter cannot be found that accepts argument '--lv-ver'”*
+
+**Possible Causes**:
+- PowerShell scripts typically declare parameters with single dashes (e.g. `-SupportedBitness 64`).  
+- The script has no parameter named `lv-ver` or `arch`, so passing `--lv-ver` or `--arch` triggers a parsing error.
+
+**Solution**:
+1. Remove or replace `--lv-ver` and `--arch` with valid single-dash parameters your script actually declares, such as `-MinimumSupportedLVVersion 2021` and `-SupportedBitness 64`.  
+2. If you really want `--lv-ver`, you must update the script’s `param()` block to accept that alias.
+
+---
+
+### No. 12: Company/Author Fields Not Populating
+
+**Symptoms**:
+- The final `.vip` file’s metadata for “Company Name” or “Author Name (Person or Company)” remains empty.
+
+**Possible Causes**:
+- You didn’t pass `-CompanyName` or `-AuthorName` to the `Build.ps1` script.  
+- The JSON creation step is missing or incorrectly references the parameters.
+
+**Solution**:
+1. In your GitHub Actions or local call, ensure you specify both `-CompanyName "XYZ Corp"` and `-AuthorName "my-org/repo"`.  
+2. Check that the script’s code block generating `$DisplayInformationJSON` includes these fields.  
+3. Confirm no conflicting code overwrote your JSON after you set it.
+
+---
+
+### No. 13: JSON Fields Overwritten Incorrectly
+
+**Symptoms**:
+- You see “Add-Member … already exists” errors, or your `Package Version` keys get overwritten unexpectedly.
+
+**Possible Causes**:
+- The script is re-adding or re-initializing the same JSON fields multiple times without using `-Force`.  
+- Another function in the pipeline modifies the same subobject.
+
+**Solution**:
+1. Update your script to **conditionally** add fields only if they’re missing, or directly assign the property if it already exists.  
+2. If needed, specify `Add-Member -Force` (though recommended approach is to check existence first).  
+3. Ensure you only do the “Package Version” injection once in your pipeline.
+
+---
+
+### No. 14: Repository Forks Not Displaying Correct Metadata
+
+**Symptoms**:
+- A user forks the repository, but the `.vip` file still shows the **original** repo or organization name.
+
+**Possible Causes**:
+- The fork’s GitHub Actions workflow wasn’t updated to pass the new org name.  
+- The fork’s build scripts are still using default or stale values for `-CompanyName` / `-AuthorName`.
+
+**Solution**:
+1. In the new fork, update the workflow to pass `-CompanyName "${{ github.repository_owner }}"` and `-AuthorName "${{ github.repository }}"`.  
+2. Check that the script logic references those parameters for the final JSON.  
+3. Review environment variables in GitHub Actions for the fork to ensure they’re set correctly.
+
+---
+
 ## FAQ
 
-Below are 10 frequently asked questions about the CI workflow and Gitflow process.
+Below are 14 frequently asked questions about the CI workflow and Gitflow process.
 
 ### Q1: Can I Override the Build Number?
 
@@ -267,3 +341,29 @@ The Dev Mode Toggle scripts rely on a self-hosted runner context. If you’re tr
 Yes, if your machine and project support it. You’ll need to install that version on your self-hosted runner, and potentially update environment variables or references in the build scripts (e.g., specifying the correct LabVIEW EXE path). Just ensure everything in the project is compatible.
 
 ---
+
+### Q11: How Do I Pass Repository Name and Organization?
+
+**Answer**:  
+Inside **GitHub Actions**, you can reference environment variables such as `${{ github.repository_owner }}` and `${{ github.repository }}`. Pass them to your script (for example, `-CompanyName "$env:REPO_OWNER"` and `-AuthorName "$env:REPO_NAME"`), which then gets injected into the `DisplayInformationJSON` used by `build_vip.ps1`. This ensures each build is branded with your fork’s or org’s name.
+
+---
+
+### Q12: Can I Omit the Company/Author Fields in My JSON?
+
+**Answer**:  
+Yes. If you don’t want to display them, pass empty strings (`-CompanyName "" -AuthorName ""`) or remove those fields from your script’s JSON object. The final `.vip` file will simply show blank lines or omit those entries.
+
+---
+
+### Q13: Why Must I Use Single-Dash Instead of Double-Dash?
+
+**Answer**:  
+PowerShell **named parameters** typically start with a single dash (`-Parameter`). Double-dash syntax (`--param`) is common in Linux CLI tools but is not standard in a typical PowerShell `param()` declaration. If you try to pass `--arch` or `--lv-ver`, you’ll get an error about an unrecognized parameter.
+
+---
+
+### Q14: Can I Add More Fields to the VIPB Display Information?
+
+**Answer**:  
+Absolutely. You can modify `$jsonObject` in your script to include new keys, such as `"Product Description"` or `"Special Internal ID"`. Just be sure that the VI that updates the `.vipb` file (`Modify_VIPB_Display_Information.vi`) knows how to handle those additional fields, or they might be ignored.
