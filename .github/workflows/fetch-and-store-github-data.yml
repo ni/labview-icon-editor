@@ -1,0 +1,66 @@
+name: Fetch and Store GitHub Data for Organization
+
+on:
+  schedule:
+    - cron: "0 0 * * *"  # Run daily at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  fetch-and-store:
+    # Self-hosted Windows runner
+    runs-on: self-hosted
+    
+    # Prevent overlapping runs (optional)
+    concurrency:
+      group: fetch-and-store
+      cancel-in-progress: true
+
+    steps:
+      # 1. Checkout the repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 2. Set up Python (pin to a minor version, e.g., "3.9" or "3.9.16")
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      # 3. Cache Python dependencies
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      # 4. Install Python Dependencies
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 5. Run the Python script to fetch and store data
+      - name: Fetch and Store Data in MySQL
+        # Use PowerShell if your self-hosted runner requires it. 
+        # For a Windows runner with PowerShell Core, you could do `shell: pwsh`
+        shell: pwsh
+        env:
+          # Secrets remain at the step level
+          GITHUB_TOKEN: ${{ secrets.PAT_GITHUB }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          
+          # Other environment variables
+          ORG_NAME: "ni"
+          REQUIRED_TOPIC: "ni-open-source"
+          MYSQL_HOST: "127.0.0.1"
+          MYSQL_USER: "root"
+          MYSQL_DATABASE: "ni_open_source_github_data"
+
+        run: |
+          # Optional: any pre-check or logging in PowerShell
+          # e.g., Write-Host "Starting fetch-and-store process..."
+
+          # Run the Python script
+          python .github/scripts/fetch_store_org_data_conditional.py
