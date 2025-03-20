@@ -49,14 +49,13 @@ Before we can merge a Pull Request from **any** external contributor, you will n
 <a name="contributephilosophy"></a>
 ## 4. Contributing Philosophy
 
-We use a **pull-request model** on [GitHub](https://github.com/ni/labview-icon-editor). The key principles:
+We use a **pull-request model**. The key principles:
 
 - **MIT License**: Minimizes legal barriers for external devs.  
 - **Steering Committee & BDFL**: The committee (including NI & community members) steers day-to-day decisions; major roadmap calls remain with NI.  
 - **Workflow Labeling**: An issue labeled “**Workflow: Open to contribution**” indicates it’s **ready** for external devs to work on.  
 - **Feature Branch**: Once assigned, you’ll use a dedicated feature branch to do your dev work.
 
-**Success Example**: Another open-source LabVIEW component (Actor Framework) saw a **7% build-time improvement** from a community fix. We anticipate the Icon Editor will see similar benefits.
 
 ---
 
