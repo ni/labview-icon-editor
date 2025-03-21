@@ -59,7 +59,7 @@ We welcome **code** and **non-code** contributions—everything from bug fixes a
 - **Must sign a CLA**: For external contributors, we require a Contributor License Agreement before we can merge your pull requests.  
 - **Steering Committee**: A group of NI staff + community experts steers features. If an issue is labeled "`Workflow: Open to contribution`," it’s ready for external work.  
 - **Fork or Clone**: Start by forking (or cloning) this repo. Then pick an issue or propose a feature.  
-- **Experiments**: If you have a **long-lived** or large-scale feature (spanning weeks or months), see [EXPERIMENTS.md](./docs/ci/actions/EXPERIMENTS.md). Experimental branches might require special approval before `.vip` distribution is enabled.
+- **Experiments**: If you have a **long-lived** or large-scale feature (spanning weeks or months), see [EXPERIMENTS.md](docs/ci/experiments.md). Experimental branches might require special approval before `.vip` distribution is enabled.
 
 For more details on the standard process, see our [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -97,7 +97,7 @@ For more details on the standard process, see our [CONTRIBUTING.md](CONTRIBUTING
 
 ### Experimental Branch Workflow
 
-For **long-running** or **complex** features, see [EXPERIMENTS.md](./EXPERIMENTS.md). 
+For **long-running** or **complex** features, see [EXPERIMENTS.md](docs/ci/EXPERIMENTS.md). 
 - **Docker VI Analyzer** & CodeQL run automatically on experimental branches, but distributing `.vip` artifacts requires NI’s **manual approval** (“approve-experiment” event).  
 - Alpha/Beta/RC sub-branches are optional for staging within the experiment.  
 - Final merges also go through the Steering Committee.
@@ -115,10 +115,10 @@ Check out our docs folder for detailed guides:
 - **[Runner Setup Guide](docs/ci/actions/runner-setup-guide.md)** – Steps for self-hosted runners with GitHub Actions.  
 - **[Injecting Owner/Repo Into VI Package](docs/actions/injecting-repo-org-to-vi-package.md)** – Add unique repo/org metadata to .vip.  
 - **[Troubleshooting & FAQ](docs/ci/troubleshooting-faq.md)** – Common issues, solutions, frequently asked questions.  
-- **[EXPERIMENTS.md](docs/ci/actions/EXPERIMENTS.md)** – Detailed instructions for the GitFlow-like model for long-lived experimental features.  
-- **[MAINTAINERS_GUIDE.md](docs/ci/actions/MAINTAINERS_GUIDE.md)** – Admin tasks for “approve-experiment” workflow dispatch, BDFL overrides, final merges.  
-- **[TROUBLESHOOTING_EXPERIMENTS.md](docs/ci/actions/TROUBLESHOOTING_EXPERIMENTS.md)** – Common pitfalls specific to experimental branches.  
-- **[GOVERNANCE.md](./GOVERNANCE.md)** – Steering Committee, BDFL, and membership structure.
+- **[Experiments.md](docs/ci/experiments.md)** – Detailed instructions for the GitFlow-like model for long-lived experimental features.  
+- **[Maintainers_Guide.md](docs/ci/actions/maintainers-guide.md)** – Admin tasks for “approve-experiment” workflow dispatch, BDFL overrides, final merges.
+- **[Troubleshooting_Experiments.md](docs/ci/actions/troubleshooting-experiments.md)** – Common pitfalls specific to experimental branches.  
+- **[Governance.md](./GOVERNANCE.md)** – Steering Committee, BDFL, and membership structure.
 
 ---
 
@@ -134,7 +134,7 @@ Check out our docs folder for detailed guides:
 
 **NI Open Source Program Manager**: [@svelderrainruiz](https://github.com/svelderrainruiz) – sergio.velderrain@emerson.com
 
-They review incoming PRs, decide on feature readiness, and merge changes once they pass testing. For **long-lived experiment** branches, see [EXPERIMENTS.md](./EXPERIMENTS.md) for how they approve final merges or partial merges.
+They review incoming PRs, decide on feature readiness, and merge changes once they pass testing. For **long-lived experiment** branches, see [EXPERIMENTS.md](docs/ci/experiments.md) for how they approve final merges or partial merges.
 
 ---
 
