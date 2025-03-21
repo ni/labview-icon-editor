@@ -149,7 +149,7 @@ By contributing, you agree to license your work under these terms so NI and the 
 ---
 
 <a name="contact-discord"></a>
-## 8. Contact & Discord
+## 8. Contact & Discord.
 
 Have questions or want to discuss an idea in real-time?
 
