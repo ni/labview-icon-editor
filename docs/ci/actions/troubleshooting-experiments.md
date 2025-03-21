@@ -2,8 +2,6 @@
 
 Welcome to the **Troubleshooting Guide** for experimental branches. This document aims to help you quickly identify common pitfalls and resolve issues that may arise when working with **long-lived experiment branches** in our GitFlow-like model. Below, you will find **20 typical scenarios** grouped into subsections—each with a **symptom**, a **cause**, and a **solution** (including commands where relevant).  
 
-> **Note**: We do not reference any Docker-based scanning tools here. All scanning references are generic, and references to year-based product contexts are omitted.
-
 ---
 
 ## Subsection A: Setup & Approval
