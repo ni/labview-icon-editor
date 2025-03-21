@@ -1,4 +1,4 @@
-# EXPERIMENTS.md
+# Experimental branches
 
 > **Note**: This document provides both a **detailed & comprehensive narrative** and a **step-by-step guide** for our **GitFlow-like experimental branches**. Use it when you need **long-lived, multi-collaborator** features (e.g., 6–8 weeks or up to 1–1.5 years) that eventually merge back into the main product code.
 
