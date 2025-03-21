@@ -167,7 +167,3 @@ If an experiment is **complete** or **abandoned**:
 - [GOVERNANCE.md](./GOVERNANCE.md)
 
 ---
-
-If you run into issues, check [TROUBLESHOOTING_EXPERIMENTS.md](./TROUBLESHOOTING_EXPERIMENTS.md).
-
----
