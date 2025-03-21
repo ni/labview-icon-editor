@@ -20,7 +20,7 @@
 
 ---
 
-## Overview
+# Overview
 Long-lived **experimental branches** (`experiment/<shortName>`) allow you to develop complex features in an isolated environment.
 
 - **Multi-collaborator**: Multiple contributors can push or PR into the experiment.  
