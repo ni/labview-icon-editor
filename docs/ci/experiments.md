@@ -154,6 +154,8 @@ NI’s primary goal is to make **collaboration** on significant, **long-running*
 ---
 
 ## See Also
-- [MAINTAINERS_GUIDE.md](./MAINTAINERS_GUIDE.md) — For how admins run the “approve-experiment” workflow, how final merges are labeled.  
-- [TROUBLESHOOTING_EXPERIMENTS.md](./TROUBLESHOOTING_EXPERIMENTS.md) — Ten common pitfalls (e.g., missing `.vip` files, partial merges).  
+- [MAINTAINERS_GUIDE.md](./actions/maintainers-guide.md) — For how admins run the “approve-experiment” workflow, how final merges are labeled.  
+- [TROUBLESHOOTING_EXPERIMENTS.md](./actions/troubleshooting-experiments.md) — Ten common pitfalls (e.g., missing `.vip` files, partial merges).  
 - [GOVERNANCE.md](./GOVERNANCE.md) — Steering Committee roles, BDFL membership, and how experiments get approved.
+
+---
