@@ -14,7 +14,7 @@ This document is written for maintainers of experimental branches and experiment
 
 **Context**: Our project supports a **GitFlow-like model** for core development (`main`, `develop`, `release-*`, `hotfix/*`) plus **long-lived experimental branches** (`experiment/<shortName>`). This doc focuses on the extra tasks maintainers handle for experiments.
 
-> **Note**: For a broader overview of experiment lifecycle, see [EXPERIMENTS.md](./EXPERIMENTS.md). For governance details (Steering Committee roles, BDFL approach), see [GOVERNANCE.md](./GOVERNANCE.md). For common pitfalls in experiments, see [TROUBLESHOOTING_EXPERIMENTS.md](./TROUBLESHOOTING_EXPERIMENTS.md).
+> **Note**: For a broader overview of experiment lifecycle, see [EXPERIMENTS.md](../experiments.md). For governance details (Steering Committee roles, BDFL approach), see [GOVERNANCE.md](./GOVERNANCE.md). For common pitfalls in experiments, see [TROUBLESHOOTING_EXPERIMENTS.md](./troubleshooting-experiments.md).
 
 ---
 
@@ -78,7 +78,7 @@ Until you **manually** approve the experiment, the specialized CI or GitHub Acti
 
 ---
 
-## Alpha/Beta/RC Management
+## Alpha Beta RC Management
 Some experiments use **sub-branches** to stage progress:
 
 1. **Alpha**  
