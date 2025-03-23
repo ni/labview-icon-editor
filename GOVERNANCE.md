@@ -2,7 +2,7 @@
 
 *Last Updated: March 21, 2025*
 
-**Lightweight governance guidelines for National Instruments (NI) open source projects** – This document outlines how NI’s open source projects are managed in a transparent, collaborative way. It is intended for both external contributors and NI internal maintainers across all NI open source repositories (not just LabVIEW-related projects). These bylaws are not formal legal rules, but rather a common understanding to help our community work together effectively.
+**Lightweight governance guidelines for NI open source projects** – This document outlines how NI’s open source projects are managed in a transparent, collaborative way. It is intended for both external contributors and NI internal maintainers across all NI open source repositories. These bylaws are not formal legal rules, but rather a common understanding to help our community work together effectively.
 
 ## Table of Contents
 - [Scope and Purpose](#scope-and-purpose)
@@ -13,7 +13,7 @@
   - [Contributors](#contributors)
 - [Governance and Decision-Making](#governance-and-decision-making)
   - [Technical Decisions and Changes](#technical-decisions-and-changes)
-  - [Project Proposals and New Repositories](#project-proposals-and-new-repositories)
+  - [Open sourcing LabVIEW features](#open-sourcing-labview-features)
   - [Meetings and Communication](#meetings-and-communication)
 - [Contribution Process](#contribution-process)
 - [Code of Conduct and Enforcement](#code-of-conduct-and-enforcement)
@@ -29,29 +29,35 @@ The purpose of this document is to make governance clear and accessible. It desc
 
 Our open source community includes various roles, each with specific responsibilities. We emphasize clarity in these roles so that everyone knows how to participate and who to turn to for guidance or decisions. NI Open Source Program Managers and the Steering Committee have special leadership duties, while Maintainers and Contributors handle the day-to-day development and collaboration.
 
-### NI Open Source Program Managers
+### NI Open Source Program Manager
 
-NI Open Source Program Managers (OSPMs) are NI employees who oversee the health and process of NI’s open source initiatives. They act as coordinators and facilitators rather than traditional “bosses.” Their responsibilities include:
+NI Open Source Program Manager (OSPM) is an NI employee who oversee the health and process of the NI’s open source initiative. They act as coordinators and facilitators rather than traditional “bosses.” Their responsibilities include:
 
-- **Strategic Oversight:** Ensuring that each project aligns with NI’s open source strategy and values. OSPMs help decide, in coordination with the Steering Committee, which projects to open source and how they evolve.
-- **Support & Resources:** Providing maintainers and contributors with the support they need. This can include arranging access to tools, facilitating CI/CD resources, and helping with things like licensing or legal questions.
-- **Process Stewardship:** Making sure projects adhere to these bylaws and follow consistent processes. For example, OSPMs check that every repo has necessary files like a [README.md](README.md), [CONTRIBUTING.md](CONTRIBUTING.md), and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
-- **Facilitating Decisions:** Assisting in decision-making when consensus is difficult to reach. OSPMs do not typically dictate technical decisions, but they help the community come to an agreement. In rare cases (e.g. a stalemate), an OSPM may act as a tie-breaker or appoint a mediator.
-- **Code of Conduct Enforcement:** Alongside the Steering Committee, ensuring the community stays welcoming and respectful. If serious issues arise (like a violation of the Code of Conduct), OSPMs help investigate and resolve them per the guidelines in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+- **Strategic Oversight:** Ensuring that each project aligns with NI’s open source strategy and values. OSPM is the one that makes the recommendation to senior leadership on which projects to open source, and determines how they evolve.
+- **Support & Resources:** Providing maintainers and contributors with the support they need. This can include arranging access to tools, facilitating CI/CD resources, and helping with things like technical aspects or access to LabVIEW R&D.
+- **Process Stewardship:** Making sure projects adhere to these bylaws and follow consistent processes. For example, OSPM checks that every repo has necessary files like a [README.md](README.md), [CONTRIBUTING.md](CONTRIBUTING.md), and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+- **Facilitating Decisions:** Assisting in decision-making when consensus is difficult to reach. OSPM does not typically dictate technical decisions, but they help the community come to an agreement. In rare cases (e.g. a stalemate), an OSPM may act as a tie-breaker or appoint a mediator.
+- **Code of Conduct Enforcement:** Alongside the Steering Committee, ensuring the community stays welcoming and respectful. If serious issues arise (like a violation of the Code of Conduct), OSPM helps investigate and resolve them per the guidelines in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
-Overall, NI Open Source Program Managers are champions of open source culture within NI. They bridge internal NI teams and the external community, making sure contributors have a positive experience. They also handle any internal NI requirements (such as legal compliance or contributor license agreements) behind the scenes so that contributors can focus on what they do best.
+Overall, the NI Open Source Program Manager is a champion of open source culture within NI. OSPM bridges internal NI teams and the external community, making sure contributors have a positive experience. They also handle any internal NI requirements (such as legal compliance,  contributor license agreements, CI/CD) behind the scenes so that contributors can focus on what they do best.
 
 ### Steering Committee
 
-The **Steering Committee** is a group of experienced project leaders (both NI staff and, optionally, community experts) who guide the technical direction and governance of NI open source projects. This committee works as a team to make collaborative decisions for the benefit of the projects and community. Key aspects of the Steering Committee’s role:
+The **Steering Committee** Consists of LabVIEW experts (both NI staff and, optionally, community experts) who guide the technical direction and governance of NI open source projects. This committee works as a team to make collaborative decisions for the benefit of the projects and community. Key aspects of the Steering Committee’s role:
 
-- **Composition:** The committee typically includes NI Open Source Program Manager(s), lead maintainers from important projects, and possibly notable external contributors. Membership is based on merit and interest – individuals who have demonstrated commitment and expertise may be invited to join. We aim for a mix of NI insiders and community members to balance perspectives.
-- **Technical Guidance:** Steering Committee members collectively set the overall vision and priorities for projects. They evaluate proposals for major new features or new open source releases. For example, if someone proposes a significant change or a new repository to be open-sourced, the Steering Committee will discuss its fit with our goals.
-- **Decision Authority:** The committee makes decisions on high-level or cross-project matters. Wherever possible, decisions are made by consensus (general agreement). If consensus can’t be reached, the committee may call a simple majority vote among members to decide. The tone is collaborative – formal votes are a last resort. The Steering Committee’s goal is to reflect community input in all decisions.
-- **Issue Triage & Workflow:** In practice, the Steering Committee might help triage important issues or designate certain issues as high priority. In some projects, they label issues as “Workflow: Open to contribution” (or similar) to signal that external contributors are welcome to work on them. They also review and approve significant changes: for instance, final review of a major pull request or deciding when a feature is ready to merge. Steering Committee approval may be required for changes that affect multiple projects or have broader impact.
-- **Mentorship & Community Health:** Members serve as mentors and leaders in the community. They help new contributors find their footing, encourage diverse input, and ensure that discussions remain productive and respectful. If conflicts arise among contributors or maintainers, the Steering Committee can step in to mediate (always with reference to our Code of Conduct).
+- **Composition:** Each open-source repo has its own committee. When a new open-source feature is authorized by NI, only the Open Source Program Manager is responsible for selecting a Steering Committee, selection criteria remains at his discretion. Newly appointed steering committee members are encouraged to nominate people into joining a committee.
+- **Membership:** Steering committee members are considered life-time members. The "ship" these committees will steer has a big turn radius, making it necessary to offer a permanent membership to ensure continuity regardless of who is the acting NI employee.
+- **Technical Guidance:** Steering committee members provide technical guidance when as a team we decide which issues are going to be opened for collaboration to the community.
+- **Decision Authority:** The committee enables NI to make decisions faster regarding  which issues we want to see merged into LabVIEW for their specific repo. Wherever possible, decisions are made by consensus (general agreement). If consensus can’t be reached, the committee may call a simple majority vote among members to decide. The tone is collaborative – formal votes are a last resort, and the Open Source Program Manager ensures that what they are voting on is consistent with LabVIEW's roadmap as NI's representative. The Steering Committee’s goal is to reflect community input on the repo they steer.
+- **Issue Triage & Workflow:** In practice, the Steering Committee acts as additional approvers with external collaborator access to a repo, effectively helping us become a more informed BDFL.
+- **Mentorship & Community Health:** Members serve as mentors and leaders in the community. They help new contributors find their footing, encourage diverse input, and ensure that discussions remain productive and respectful. 
+- **Organizational Steering Committee:** Members of the Organizational Steering committees are non-ni employees and volunteers that help the OSPM steer the direction of all repos. The difference between a technical steering commitee and an organizational steering committee is that TSC do not have influence over over TSCs, while the organizational steering committees has voting rights across all steering committes
 
-The Steering Committee is essentially the “brain trust” of NI’s open source efforts. However, it operates openly: discussions and decisions should be visible to the community (through meeting notes, GitHub issues, or other public forums). This transparency helps build trust. The committee does not control day-to-day development – that’s up to maintainers and contributors – but it provides guidance and oversight to keep projects on track with their objectives.
+The Steering Committee is essentially the “brain trust” of NI’s open source efforts. However, it operates openly: discussions and decisions should be visible to the community (through meeting notes, GitHub issues, or other public forums). This transparency helps build trust.
+
+People that form a committee does not represent, and we dont want to give the impression that we only speak to a small group of people. NI regularly discusses with other experts who are not part of the committee, and brings that input to the committee. Additionally, if a contributor not member of a committee disagrees with a member of the committee, and his point has enough standing, it is the responsibility of the OSPM to ensure that opinion is heard without differentiation.
+
+So, what differentiate a steering committee member from a non-steering committee collaborator is the fact that non-steering committee collaborators do not have the invite to the bi weekly meeting the OSPM has with steering committees from individual repos. 
 
 ### Project Maintainers
 
@@ -92,19 +98,9 @@ For technical decisions within a project (like implementing a new feature, chang
 
 The above process is meant to be natural and not overly bureaucratic. Many changes, especially minor ones, will flow through quickly with maintainers merging pull requests once tests pass and reviews are done. We mostly invoke the formal “decision-making” steps for big matters where community input is important. Our default is trust: we trust maintainers to handle routine decisions, and maintainers trust contributors to submit improvements in good faith. When in doubt, open communication ensures we get it right.
 
-### Project Proposals and New Repositories
+### Open sourcing LabVIEW features
 
-From time to time, NI (or community members in partnership with NI) may want to open source a new project or create a new repository under the NI GitHub organization. The process for proposing a new project or significant initiative is as follows:
-
-1. **Draft a Proposal:** The person or team proposing the new project should draft a brief description of the project’s scope, goals, and why it should be open-sourced. This could be done in a GitHub Discussion or a document shared with the Steering Committee. (Eventually, we may have a template for such proposals or an `EXPERIMENTS.md` to capture ideas that are being tried out.)
-2. **Review by Program Managers and Steering Committee:** NI Open Source Program Managers will review the proposal first to ensure it aligns with NI’s strategy and resources (for example, verifying that NI can support the project long-term, or that it doesn’t conflict with any licensing concerns). Then the Steering Committee will evaluate the technical merits and community interest. Key questions include: Is there a clear benefit to open sourcing this? Are there maintainers available to steward it? Does it fit well with our other projects?
-3. **Community Input:** If appropriate, the proposal may be shared publicly (for example, if it’s an addition to an existing product line or something users have asked for). Community feedback can be gathered via comments. This isn’t always necessary (for example, if NI decides to open source an internal tool, the initial decision might be mostly internal), but we prefer to gauge interest whenever possible.
-4. **Decision:** The Steering Committee, with recommendation from the Program Managers, will make the final call. If there’s strong agreement, the project gets a green light. The decision will be documented (through meeting notes or an announcement in the Discussions forum of a relevant repo). If the proposal is declined or postponed, we will communicate the reasons to maintain transparency.
-5. **Bootstrap the Project:** If approved, initial repository setup will be done. This includes creating the repo (under github.com/ni), adding standard files like README, CONTRIBUTING, LICENSE, CODE_OF_CONDUCT, etc., and populating it with the initial code drop. The new project will then follow the same bylaws as others. The proposers might become the first maintainers, and the Steering Committee will oversee its integration into the broader NI open source ecosystem.
-
-For major new features within an existing project, a lighter version of the above may occur: for example, the maintainers and Steering Committee might treat a big new subsystem as an “experimental feature”. They could use an `EXPERIMENTS.md` (if available) to outline the plan and get feedback, then develop it in a separate branch or behind a feature flag until it’s stable.
-
-In summary, new ideas are welcome! We just ensure there’s enough discussion and planning so that new projects or features start off on the right foot, with community buy-in and clarity on who will maintain them.
+**Decision taken by NI.** It is the responsibility of the Open Source Program Manager to identify LabVIEW features that could be open-sourced, which he presents regularly to its management via a roadmap.
 
 ### Meetings and Communication
 
@@ -113,8 +109,8 @@ In summary, new ideas are welcome! We just ensure there’s enough discussion an
 - **Pull Request Feedback:** Code review comments in pull requests are another key form of communication. We keep these constructive and on-topic. It’s fine to have detailed technical debates in PRs — that ensures decisions around code changes are captured in context.
 
 The Steering Committee and Program Managers may also have periodic meetings to coordinate across projects:
-- **Steering Committee Meetings:** These might be monthly or quarterly (depending on need). In the spirit of transparency, we aim to at least partially conduct these in the open. For example, the committee might meet via a call (with internal notes), but then publish a summary of decisions/outcomes publicly. If feasible, some meetings could even be open to observers or have an open portion for community questions.
-- **Meeting Notes:** All decisions or important points from Steering Committee meetings will be posted in a public place (such as a `governance` repo, a `MEETINGS.md` file, or a Discussion post). This way, even community members who weren’t present can stay informed about what was discussed and decided.
+- **Steering Committee Meetings:** These might be monthly or biweekly (depending on need). If feasible, some meetings could even be open to observers or have an open portion for community questions.
+- **Meeting Agenda:** All decisions or important points from Steering Committee meetings will be posted in a public place (such as a `governance` repo, a `MEETINGS.md` file, or a Discussion post). This way, even community members who weren’t present can stay informed about what was discussed and decided.
 - **Ad-hoc Discussions:** Program Managers and maintainers sometimes need to discuss things in real time (for example, via an NI-internal channel or a private Slack) – especially for urgent issues like security disclosures or incidents. However, any decisions affecting the project will be brought back to the public channels as soon as possible. We avoid “closed-door” decision making; even if initial discussion is private, the outcome should be shared openly once ready.
 
 Additionally, NI may provide or support certain communication platforms for the community:
@@ -129,8 +125,8 @@ Effective communication ensures that everyone moves in the same direction and fe
 
 Each NI open source repository provides specific instructions for contributing (see the project’s individual [CONTRIBUTING.md](CONTRIBUTING.md) file for details). However, there are common principles across all projects, which we summarize here for clarity. The contribution process is designed to be as straightforward as possible:
 
-1. **Find an Issue or Idea:** To start contributing code or documentation, find something you’d like to work on. This could be an open issue labeled “help wanted” or “good first issue,” or maybe you have a new idea to propose. Maintainers and the Steering Committee often label issues (e.g., `Workflow: Open to contribution`) to signal that community contributions are welcome on those. If you have a totally new idea, consider opening a new issue to discuss it first.
-2. **Fork & Branch:** Fork the repository to your own GitHub account and create a new branch for your work (or if you have push access as a maintainer, create a feature branch on the main repo). Give the branch a descriptive name (e.g., `feature/add-plot-widget` or `bugfix/fix-memory-leak`).
+1. **Find an Issue or Idea:** To start contributing code, find something you’d like to work on labeled `Workflow: Open to contribution`. Maintainers and the Steering Committee label issues (e.g., `Workflow: Open to contribution`) to signal that community contributions are welcome on those. If you have a totally new idea, consider opening a github discussion first or discuss it on our discord server.
+2. **Fork & Branch:** Fork the repository to your own GitHub account, and checkout the feature branch. Create your own branch and give it an additional unique identifier (e.g., `feature/12-add-plot-widget-sergio` if your name is sergio).
 3. **Write Code or Content:** Implement your changes following the project’s coding standards and style. If adding a feature or fixing a bug, try to include tests that verify the behavior (if the project has a test suite). For documentation changes, ensure clarity and proper formatting. Don’t forget to run the project locally if applicable, to manually test your changes.
 4. **Continuous Integration Checks:** When you push your changes and open a Pull Request (PR), automated workflows will run (usually visible in the PR checks section). These might include building the project, running unit tests, linting the code style, etc. Our CI is configured via GitHub Actions workflows (see the YAML files in the [workflows](.github/workflows/) directory for what’s being checked, such as build verification and unit tests). Ensure your changes pass these checks. If something fails, you can push additional commits to fix the issues – maintainers can help interpret failures if you’re stuck.
 5. **Pull Request Review:** Maintainers (and possibly other community members) will review your PR. They might request changes or provide feedback. This is a normal part of the process to maintain quality and consistency. Try to respond to feedback in a timely manner by making the requested updates or discussing further if you disagree (politely, of course). Remember, we’re all aiming to improve the project together.
@@ -151,11 +147,11 @@ All NI open source projects adhere to a common **Code of Conduct** (see [CODE_OF
 - Focus on what is best for the community and project. We’re all here to make the software better and help each other.
 
 If someone’s behavior violates these principles, we have a clear path to address it:
-- **Reporting Issues:** Anyone who experiences or witnesses a Code of Conduct violation should feel safe to report it. The Code of Conduct file provides contact information (often an email for the maintainers or NI Open Source Program Manager). You can also privately contact an NI Open Source Program Manager or Steering Committee member to report concerns. All reports will be handled confidentially.
+- **Reporting Issues:** Anyone who experiences or witnesses a Code of Conduct violation should feel safe to report it is welcome to report it to our Software Community Director elijah.kerry@emerson.com.
 - **Enforcement Process:** Upon receiving a report, the Program Managers (and if needed, the Steering Committee) will review the situation. We follow the process outlined in the Code of Conduct document, which typically involves reaching out to the person reported, understanding the facts, and deciding on appropriate action. For minor issues, a friendly reminder or warning might be sufficient. For serious misconduct, actions can range from temporary suspension from project participation to a permanent ban from the community.
 - **Resolution and Follow-up:** We commit to resolving Code of Conduct issues promptly and fairly. Once a decision is made, the affected parties will be informed. We won’t publicly shame anyone; however, if someone is removed from the community, other members may be informed that the person will no longer be participating (without divulging private details). Our goal is always to restore a healthy environment. In some cases, that may involve mediation or setting specific expectations for future behavior if the person remains in the community.
 
-The Steering Committee is empowered to enforce the Code of Conduct, and NI Open Source Program Managers back them up with institutional support. This might include consulting NI’s HR or legal teams if an incident is extreme (especially if it involves an NI employee), but generally, the community leaders will handle it internally.
+Enforcement and mediation is done exlusively by NI Staff.
 
 We also emphasize education and improvement. If someone makes a mistake and is willing to learn and apologize, we welcome that. We’re all human, and we’d rather help someone align with our values than simply punish. However, we have zero tolerance for repeated or severe violations that jeopardize community safety.
 
@@ -176,4 +172,3 @@ We want the amendment process itself to embody the openness we aim for. Nothing 
 By following a collaborative change process, we ensure that the bylaws continue to serve the community’s needs and that everyone has a voice in shaping our project governance. In essence, **these bylaws belong to the community**: let’s keep them useful, clear, and in tune with how we actually work together.
 
 ---
-*© 2025 National Instruments Corporation. This document is open source (feel free to reuse/adapt it for your own communities). It is provided as guidance for collaborative development and does not constitute legal advice.* 
