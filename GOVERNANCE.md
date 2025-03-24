@@ -43,8 +43,16 @@ Overall, the NI Open Source Program Manager is a champion of open source culture
 
 ### Steering Committee
 
-The **Steering Committee** Consists of LabVIEW experts (both NI staff and, optionally, community experts) who guide the technical direction and governance of NI open source projects. This committee works as a team to make collaborative decisions for the benefit of the projects and community. Key aspects of the Steering Committee’s role:
+The **Steering Committee** Includes a rotating assortment of NI staff generally from LabVIEW R&D that the Open Source Program Manager involves on a case-by-case basis and, members of the LabVIEW community that Open Source Program Manager decides to involve based on a criteria.
 
+ who guide the technical direction and governance of NI open source projects. This committee works as a team to make collaborative decisions for the benefit of the projects and community. Key aspects of the Steering Committee’s role:
+- **Code of Conduct:** Steering Committee members have an additional code of conduct which is contained on this paragraph, due to the fact that the code of conduct applies to contributors that collaborate within GitHub, this code of conduct governs how Steering Committees have to conduct themselves with others when in a open face-to-face discussion.
+  1. We have a common goal and agree with the BDFL model from NI.
+  2. We do not use anecdotal experience to disagree with someone.
+  3. Disagreeing with the OSPM has to be met with a better one on the meeting, if not, then the disagreement has to be brought only on our private discord server.
+  4. Communication channels on discord "NI Open Source" and on meetings are governed by NI, the committee member agrees to conduct himselt to others in a positive and collaborative manner.
+  5. 
+- **Member Initiation:** This is what the OSPM looks for on a member of a steering committee:
 - **Composition:** Each open-source repo has its own committee. When a new open-source feature is authorized by NI, only the Open Source Program Manager is responsible for selecting a Steering Committee, selection criteria remains at his discretion. Newly appointed steering committee members are encouraged to nominate people into joining a committee.
 - **Membership:** Steering committee members are considered life-time members. The "ship" these committees will steer has a big turn radius, making it necessary to offer a permanent membership to ensure continuity regardless of who is the acting NI employee.
 - **Technical Guidance:** Steering committee members provide technical guidance when as a team we decide which issues are going to be opened for collaboration to the community.
