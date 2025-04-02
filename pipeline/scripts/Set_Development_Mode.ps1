@@ -1,10 +1,21 @@
-
-# Example usage:
-# .\Set_Development_Mode.ps1 -RelativePath "C:\labview-icon-editor"
+# Example usage (path auto-detected):
+# .\Set_Development_Mode.ps1
 
 param(
     [string]$RelativePath
 )
+
+# If no path is provided, detect the repository directory automatically
+if (-not $RelativePath) {
+    if ($PSScriptRoot) {
+        $scriptDir = $PSScriptRoot
+    } else {
+        $scriptDir = Split-Path -Path $MyInvocation.MyCommand.Path -Parent
+    }
+    # Repository root is assumed to be one level up from the 'pipeline' directory
+    $RelativePath = Split-Path -Path (Split-Path -Path $scriptDir -Parent) -Parent
+    Write-Host "RelativePath not provided. Using detected path: $RelativePath"
+}
 
 # Helper function to execute scripts and stop on error
 function Execute-Script {
@@ -19,16 +30,16 @@ function Execute-Script {
         exit 1
     }
 }
+
 # Sequential script execution with error handling
 try {
-	Execute-Script "Get-ChildItem -Path '$RelativePath\resource\plugins' -Filter '*.lvlibp' | Remove-Item -Force" 
+    Execute-Script "Get-ChildItem -Path '$RelativePath\resource\plugins' -Filter '*.lvlibp' | Remove-Item -Force"
     Execute-Script ".\AddTokenToLabVIEW.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath '$RelativePath'"
-    Execute-Script ".\Prepare_LabVIEW_source.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath '$RelativePath' -LabVIEW_Project 'lv_icon_editor' -Build_Spec 'Editor Packed Library'" 
-    Execute-Script ".\Close_LabVIEW.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32" 
-	Execute-Script ".\AddTokenToLabVIEW.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath '$RelativePath'" 
-    Execute-Script ".\Prepare_LabVIEW_source.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath '$RelativePath' -LabVIEW_Project 'lv_icon_editor' -Build_Spec 'Editor Packed Library'" 
-    Execute-Script ".\Close_LabVIEW.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64" 
-
+    Execute-Script ".\Prepare_LabVIEW_source.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath '$RelativePath' -LabVIEW_Project 'lv_icon_editor' -Build_Spec 'Editor Packed Library'"
+    Execute-Script ".\Close_LabVIEW.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 32"
+    Execute-Script ".\AddTokenToLabVIEW.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath '$RelativePath'"
+    Execute-Script ".\Prepare_LabVIEW_source.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath '$RelativePath' -LabVIEW_Project 'lv_icon_editor' -Build_Spec 'Editor Packed Library'"
+    Execute-Script ".\Close_LabVIEW.ps1 -MinimumSupportedLVVersion 2021 -SupportedBitness 64"
 } catch {
     Write-Error "An unexpected error occurred during script execution: $($_.Exception.Message)"
     exit 1
