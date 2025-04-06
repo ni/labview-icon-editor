@@ -237,9 +237,7 @@
 					<Item Name="Undo Redo" Type="Folder">
 						<Item Name="Add Data to History.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Undo Redo/Add Data to History.vi"/>
 						<Item Name="FGV_Undo Redo.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Undo Redo/FGV_Undo Redo.vi"/>
-						<Item Name="Limit value.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Undo Redo/Limit value.vi"/>
 						<Item Name="Replay Data from History.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Undo Redo/Replay Data from History.vi"/>
-						<Item Name="Wrap.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Undo Redo/Wrap.vi"/>
 					</Item>
 					<Item Name="User Events" Type="Folder">
 						<Item Name="Initialization_UserEvents.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/User Events/Initialization_UserEvents.vi"/>
@@ -547,6 +545,12 @@
 				<Item Name="Test Report.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/Addons/_JKI Toolkits/Caraya/Classes/Test Report/Test Report.lvclass"/>
 				<Item Name="Run Tests.vi" Type="VI" URL="/&lt;vilib&gt;/Addons/_JKI Toolkits/Caraya/run-tests/Run Tests.vi"/>
 				<Item Name="Run Test (Scalar Path).vi" Type="VI" URL="/&lt;vilib&gt;/Addons/_JKI Toolkits/Caraya/run-tests/Run Test (Scalar Path).vi"/>
+				<Item Name="Test Case.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/Astemes/LUnit/Test Case.lvclass"/>
+				<Item Name="LUnit Runnable.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/Astemes/LUnit/LUnit Runnable.lvclass"/>
+				<Item Name="NI_Data Type.lvlib" Type="Library" URL="/&lt;vilib&gt;/Utility/Data Type/NI_Data Type.lvlib"/>
+				<Item Name="Get LV Class Name.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/LVClass/Get LV Class Name.vi"/>
+				<Item Name="Test Suite.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/Astemes/LUnit/Test Suite.lvclass"/>
+				<Item Name="Get LV Class Path.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/LVClass/Get LV Class Path.vi"/>
 			</Item>
 			<Item Name="Advapi32.dll" Type="Document" URL="Advapi32.dll">
 				<Property Name="NI.PreserveRelativePath" Type="Bool">true</Property>
