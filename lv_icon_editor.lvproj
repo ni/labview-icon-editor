@@ -326,6 +326,15 @@
 				<Item Name="Missing in Project" Type="Folder">
 					<Item Name="Missing in Project.lvclass" Type="LVClass" URL="../Tooling/Unit tests/Missing in Project/Missing in Project.lvclass"/>
 				</Item>
+				<Property Name="NI.SortType" Type="Int">1</Property>
+				<Item Name="Text-Based VI Icon Unit Tests" Type="Folder">
+					<Item Name="Text-Based VI Icon Unit Tests.lvlib" Type="Library" URL="../Tooling/Unit tests/Text-Based VI Icon/Text-Based VI Icon Unit Tests.lvlib"/>
+				</Item>
+				<Item Name="Missing classes on LV project.vi" Type="VI" URL="../Tooling/Unit tests/Missing classes on LV project.vi"/>
+				<Item Name="Missing libraries on LV project.vi" Type="VI" URL="../Tooling/Unit tests/Missing libraries on LV project.vi"/>
+				<Item Name="Missing PPLs on LV project.vi" Type="VI" URL="../Tooling/Unit tests/Missing PPLs on LV project.vi"/>
+				<Item Name="Missing VIs or controls on LV project.vi" Type="VI" URL="../Tooling/Unit tests/Missing VIs or controls on LV project.vi"/>
+				<Item Name="Undo Redo Core.lvclass" Type="LVClass" URL="../Tooling/Unit tests/Undo Redo Core/Undo Redo Core.lvclass"/>
 			</Item>
 			<Item Name="Force Icon Editor to Unload.vi" Type="VI" URL="../Tooling/Force Icon Editor to Unload.vi"/>
 			<Item Name="Post Build Icon Editor PPL.vi" Type="VI" URL="../Tooling/Post Build Icon Editor PPL.vi"/>
@@ -546,10 +555,10 @@
 				<Item Name="Run Tests.vi" Type="VI" URL="/&lt;vilib&gt;/Addons/_JKI Toolkits/Caraya/run-tests/Run Tests.vi"/>
 				<Item Name="Run Test (Scalar Path).vi" Type="VI" URL="/&lt;vilib&gt;/Addons/_JKI Toolkits/Caraya/run-tests/Run Test (Scalar Path).vi"/>
 				<Item Name="Test Case.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/Astemes/LUnit/Test Case.lvclass"/>
-				<Item Name="LUnit Runnable.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/Astemes/LUnit/LUnit Runnable.lvclass"/>
 				<Item Name="NI_Data Type.lvlib" Type="Library" URL="/&lt;vilib&gt;/Utility/Data Type/NI_Data Type.lvlib"/>
 				<Item Name="Get LV Class Name.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/LVClass/Get LV Class Name.vi"/>
 				<Item Name="Test Suite.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/Astemes/LUnit/Test Suite.lvclass"/>
+				<Item Name="LUnit Runnable.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/Astemes/LUnit/LUnit Runnable.lvclass"/>
 				<Item Name="Get LV Class Path.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/LVClass/Get LV Class Path.vi"/>
 			</Item>
 			<Item Name="Advapi32.dll" Type="Document" URL="Advapi32.dll">
