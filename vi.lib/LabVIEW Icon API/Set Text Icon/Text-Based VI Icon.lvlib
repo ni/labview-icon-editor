@@ -8,7 +8,7 @@
 
 </Property>
 	<Item Name="Friends List" Type="Friends List">
-		<Item Name="Text-Based VI Icon Unit Tests.lvlib" Type="Friended Library" URL="../../../../Tooling/Unit tests/Text-Based VI Icon/Text-Based VI Icon Unit Tests.lvlib"/>
+		<Item Name="Text-Based VI Icon Tests.lvclass" Type="Friended Library" URL="../../../../Tooling/Unit tests/Text-Based VI Icon Tests/Text-Based VI Icon Tests.lvclass"/>
 	</Item>
 	<Item Name="Community" Type="Folder">
 		<Property Name="NI.LibItem.Scope" Type="Int">4</Property>
