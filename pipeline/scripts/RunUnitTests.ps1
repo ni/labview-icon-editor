@@ -4,10 +4,11 @@ param(
     [string]$SupportedBitness,
     [string]$RelativePath
 )
-
+Write-Host "Run unit tests for LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)"
 # Construct the command
 $script = @"
-g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v "$RelativePath\Tooling\Run all tests CLI.vi"
+g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness lunit -- -r UnitTestReport.xml "$RelativePath\lv_icon_editor.lvproj"
+
 "@
 
 Write-Output "Executing the following command:"
@@ -27,4 +28,3 @@ try {
     exit 1
 }
 
-Write-Host "Run unit tests for LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)"
