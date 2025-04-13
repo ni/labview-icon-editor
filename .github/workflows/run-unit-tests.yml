@@ -43,7 +43,7 @@ jobs:
         shell: pwsh
         working-directory: pipeline/scripts
         run: |
-          .\RunUnitTests.ps1 -MinimumSupportedLVVersion ${{ matrix.lv-version }} -SupportedBitness ${{ matrix.bitness }} -SkipCleanup
+          .\RunUnitTests.ps1 -MinimumSupportedLVVersion ${{ matrix.lv-version }} -SupportedBitness ${{ matrix.bitness }}
 
       - name: Summarize test results
         if: always()  # run this even if the previous step fails
