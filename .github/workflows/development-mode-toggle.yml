@@ -36,7 +36,7 @@ jobs:
         (github.event.inputs.mode == 'enable' && 'Enable Dev Mode' || 'Disable Dev Mode') || 
         (inputs.mode == 'enable' && 'Enable Dev Mode' || 'Disable Dev Mode') }}
 
-    runs-on: [self-hosted, iconeditor]
+    runs-on: [self-hosted-windows-lv]
 
     steps:
       - name: Checkout repository
