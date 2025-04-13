@@ -30,7 +30,7 @@ jobs:
         os: [windows]        # Logical placeholders (we'll map them to specific self-hosted runners)
         lv-version: ["2021"]
         bitness: ["32","64"]
-      fail-fast: true
+      fail-fast: false
 
     # Map your matrix OS to specific self-hosted runner labels
     # Example: a self-hosted Windows runner labeled "self-hosted-windows-lv"
