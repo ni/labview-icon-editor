@@ -43,10 +43,7 @@ jobs:
         shell: pwsh
         working-directory: pipeline/scripts
         run: |
-          # Run your script, but ensure it doesn't delete UnitTestReport.xml
-          .\RunUnitTests.ps1 -MinimumSupportedLVVersion ${{ matrix.lv-version }} -SupportedBitness ${{ matrix.bitness }}
-          # If you're using the skip-cleanup parameter approach, do:
-          # .\RunUnitTests.ps1 -MinimumSupportedLVVersion ${{ matrix.lv-version }} -SupportedBitness ${{ matrix.bitness }} -SkipCleanup
+          .\RunUnitTests.ps1 -MinimumSupportedLVVersion ${{ matrix.lv-version }} -SupportedBitness ${{ matrix.bitness }} -SkipCleanup
 
       - name: Summarize test results
         if: always()  # run this even if the previous step fails
