@@ -1,4 +1,4 @@
-name: Run unit tests
+name: LabVIEW Unit Tests
 
 on:
   pull_request:
@@ -13,7 +13,6 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-
   push:
     branches:
       - main
@@ -21,23 +20,62 @@ on:
       - release/*
       - hotfix/*
       - feature/*
-
   workflow_dispatch:
 
 jobs:
-  run-unit-tests:
-    name: Run unit tests
-    runs-on: [self-hosted, iconeditor]
+  run-labview-tests:
+    # Matrix: test multiple OS, LabVIEW versions, and bitness
+    strategy:
+      matrix:
+        os: [windows, linux]        # Logical placeholders (we'll map them to specific self-hosted runners)
+        lv-version: ["2021","2022"]
+        bitness: ["32","64"]
+      fail-fast: false
+
+    # Map your matrix OS to specific self-hosted runner labels
+    # Example: a self-hosted Windows runner labeled "self-hosted-windows-lv"
+    #          and a self-hosted Linux runner labeled "self-hosted-linux-lv"
+    runs-on: ${{ matrix.os == 'windows' && 'self-hosted-windows-lv' || 'self-hosted-linux-lv' }}
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Run unit tests
-        shell: pwsh
-        working-directory: pipeline/scripts
-
+      - name: Find RunUnitTests.ps1
+        id: find-script
+        shell: bash
         run: |
-          $repoRoot = $env:GITHUB_WORKSPACE
-          $scriptsFolder = Join-Path $repoRoot 'pipeline/scripts'
-          .\unit_tests.ps1 -RelativePath $repoRoot -AbsolutePathScripts $scriptsFolder
+          # If you already know the path, skip searching. For example:
+          # echo "script-path=scripts/RunUnitTests.ps1" >> $GITHUB_OUTPUT
+          # Instead, here's a simple find:
+          PS_FILE=$(find . -type f -iname "RunUnitTests.ps1" | head -n 1)
+          if [ -z "$PS_FILE" ]; then
+            echo "Could not find RunUnitTests.ps1" >&2
+            exit 1
+          fi
+          echo "script-path=$PS_FILE" >> $GITHUB_OUTPUT
+
+      - name: Run PowerShell-based LabVIEW Tests
+        # On Windows self-hosted, we can use shell: pwsh or shell: powershell
+        # On Linux self-hosted with PowerShell installed, we must use shell: pwsh
+        shell: pwsh
+        run: |
+          # Windows or Linux with PowerShell
+          ./${{ steps.find-script.outputs['script-path'] }} `
+            -MinimumSupportedLVVersion ${{ matrix.lv-version }} `
+            -SupportedBitness ${{ matrix.bitness }}
+
+        # If you require different shells for Windows vs. Linux, you can do:
+        # shell: ${{ matrix.os == 'windows' && 'powershell' || 'pwsh' }}
+
+      - name: Upload Test Report
+        if: always()   # Always run to collect the report even if tests fail
+        uses: actions/upload-artifact@v3
+        with:
+          name: unit-test-report-${{ matrix.os }}-${{ matrix.lv-version }}-${{ matrix.bitness }}
+          path: |
+            # Path to UnitTestReport.xml is in the same folder as the .ps1 script,
+            # but we must assume it was left behind if tests failed or if the script didn't delete it.
+            # We'll search in a broad scope just in case:
+            **/UnitTestReport.xml
+          if-no-files-found: ignore
