@@ -27,14 +27,12 @@ jobs:
     # Matrix: test multiple OS, LabVIEW versions, and bitness
     strategy:
       matrix:
-        os: [windows]        # Logical placeholders (we'll map them to specific self-hosted runners)
+        os: [windows]        # Logical placeholders (map them to your self-hosted runners)
         lv-version: ["2021"]
         bitness: ["32","64"]
       fail-fast: false
 
     # Map your matrix OS to specific self-hosted runner labels
-    # Example: a self-hosted Windows runner labeled "self-hosted-windows-lv"
-    #          and a self-hosted Linux runner labeled "self-hosted-linux-lv"
     runs-on: ${{ matrix.os == 'windows' && 'self-hosted-windows-lv' || 'self-hosted-linux-lv' }}
 
     steps:
@@ -45,6 +43,50 @@ jobs:
         shell: pwsh
         working-directory: pipeline/scripts
         run: |
-            $repoRoot = $env:GITHUB_WORKSPACE
-            $scriptsFolder = Join-Path $repoRoot 'pipeline/scripts'
-            .\RunUnitTests.ps1 -MinimumSupportedLVVersion ${{ matrix.lv-version }} -SupportedBitness ${{ matrix.bitness }}
+          # Run your script, but ensure it doesn't delete UnitTestReport.xml
+          .\RunUnitTests.ps1 -MinimumSupportedLVVersion ${{ matrix.lv-version }} -SupportedBitness ${{ matrix.bitness }}
+          # If you're using the skip-cleanup parameter approach, do:
+          # .\RunUnitTests.ps1 -MinimumSupportedLVVersion ${{ matrix.lv-version }} -SupportedBitness ${{ matrix.bitness }} -SkipCleanup
+
+      - name: Summarize test results
+        if: always()  # run this even if the previous step fails
+        shell: pwsh
+        working-directory: pipeline/scripts
+        run: |
+          $reportPath = ".\UnitTestReport.xml"
+          if (!(Test-Path $reportPath)) {
+              Write-Host "No UnitTestReport.xml found; nothing to summarize."
+              exit 0
+          }
+
+          try {
+              [xml]$xmlDoc = Get-Content $reportPath -ErrorAction Stop
+          }
+          catch {
+              Write-Host "UnitTestReport.xml is invalid or malformed: $($_.Exception.Message)"
+              exit 0
+          }
+
+          $testCases = $xmlDoc.SelectNodes("//testcase")
+          if (!$testCases -or $testCases.Count -eq 0) {
+              Write-Host "No <testcase> entries found in the report."
+              exit 0
+          }
+
+          # Build a Markdown table
+          $markdown = "## LabVIEW Unit Test Results`n"
+          $markdown += "| TestCaseName | ClassName | Status | Time(s) | Assertions |`n"
+          $markdown += "|---|---|---|---|---|`n"
+
+          foreach ($case in $testCases) {
+              $name       = $case.GetAttribute("name")
+              $className  = $case.GetAttribute("classname")
+              $status     = $case.GetAttribute("status")
+              $time       = $case.GetAttribute("time")
+              $assertions = $case.GetAttribute("assertions")
+
+              $markdown += "| $name | $className | $status | $time | $assertions |`n"
+          }
+
+          # Write the table into the GitHub Step Summary, so it appears in the workflow's "Summary" tab
+          Add-Content -Path $Env:GITHUB_STEP_SUMMARY -Value $markdown

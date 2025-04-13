@@ -234,7 +234,7 @@ function Cleanup {
 # -------------------  EXECUTION FLOW  -------------------
 Setup
 MainSequence
-Cleanup
+#Cleanup
 
 # -------------------  FINAL EXIT CODE  ------------------
 if ($Script:OriginalExitCode -ne 0) {
