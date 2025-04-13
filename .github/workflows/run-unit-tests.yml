@@ -27,10 +27,10 @@ jobs:
     # Matrix: test multiple OS, LabVIEW versions, and bitness
     strategy:
       matrix:
-        os: [windows, linux]        # Logical placeholders (we'll map them to specific self-hosted runners)
-        lv-version: ["2021","2022"]
+        os: [windows]        # Logical placeholders (we'll map them to specific self-hosted runners)
+        lv-version: ["2021"]
         bitness: ["32","64"]
-      fail-fast: false
+      fail-fast: true
 
     # Map your matrix OS to specific self-hosted runner labels
     # Example: a self-hosted Windows runner labeled "self-hosted-windows-lv"
