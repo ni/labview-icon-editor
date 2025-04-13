@@ -1,15 +1,14 @@
 <#
 .SYNOPSIS
-    ("Alpha") Run LabVIEW unit tests using g-cli, searching upward for a single *.lvproj,
-    then show results in MainSequence (rather than Cleanup).
+    Run LabVIEW unit tests using g-cli and output a color-coded table of results.
 
 .DESCRIPTION
-    Implements a Setup/MainSequence/Cleanup flow with:
-      - Automatic search for exactly one .lvproj file by moving up the folder hierarchy 
+    Demonstrates a Setup/MainSequence/Cleanup flow with:
+      - Table-based test results
+      - Color-coded pass/fail
+      - Non-zero exit if g-cli fails or if any test fails
+      - Automatic search for exactly one *.lvproj file by moving up the folder hierarchy 
         until just before the drive root.
-      - Runs LabVIEW unit tests via g-cli.
-      - Displays color-coded pass/fail results in the MainSequence.
-      - Deletes the test report in Cleanup if everything passes.
 
 .PARAMETER MinimumSupportedLVVersion
     LabVIEW minimum supported version (e.g., "2021").
@@ -20,7 +19,6 @@
 .NOTES
     PowerShell 7.5+ assumed for cross-platform support.
     This script *requires* that g-cli and LabVIEW be compatible with the OS.
-    This version is labeled "Alpha" for tracking purposes.
 #>
 
 param(
@@ -120,111 +118,116 @@ function MainSequence {
     $script:OriginalExitCode = $LASTEXITCODE
     if ($script:OriginalExitCode -ne 0) {
         Write-Error "g-cli test execution failed (exit code $script:OriginalExitCode)."
-        return
     }
 
-    # -- Now parse and display the test results in MainSequence --
-    if (-not (Test-Path $ReportPath)) {
-        Write-Error "No test report found despite g-cli exit code 0."
-        $script:TestsHadFailures = $true
-        return
-    }
-
-    try {
-        [xml]$xmlDoc = Get-Content $ReportPath -ErrorAction Stop
-    }
-    catch {
-        Write-Error "UnitTestReport.xml is invalid or malformed: $($_.Exception.Message)"
-        $script:TestsHadFailures = $true
-        return
-    }
-
-    $testCases = $xmlDoc.SelectNodes("//testcase")
-    if (!$testCases -or $testCases.Count -eq 0) {
-        Write-Error "No <testcase> entries found in UnitTestReport.xml."
-        $script:TestsHadFailures = $true
-        return
-    }
-
-    # Prepare for tabular output
-    $col1 = "TestCaseName"; $col2 = "ClassName"; $col3 = "Status"; $col4 = "Time(s)"; $col5 = "Assertions"
-    $maxName   = $col1.Length
-    $maxClass  = $col2.Length
-    $maxStatus = $col3.Length
-    $maxTime   = $col4.Length
-    $maxAssert = $col5.Length
-
-    $results = @()
-    foreach ($case in $testCases) {
-        $name       = $case.GetAttribute("name")
-        $className  = $case.GetAttribute("classname")
-        $status     = $case.GetAttribute("status")
-        $time       = $case.GetAttribute("time")
-        $assertions = $case.GetAttribute("assertions")
-
-        # Update max lengths for formatting
-        if ($name.Length       -gt $maxName)   { $maxName   = $name.Length }
-        if ($className.Length  -gt $maxClass)  { $maxClass  = $className.Length }
-        if ($status.Length     -gt $maxStatus) { $maxStatus = $status.Length }
-        if ($time.Length       -gt $maxTime)   { $maxTime   = $time.Length }
-        if ($assertions.Length -gt $maxAssert) { $maxAssert = $assertions.Length }
-
-        # Store data
-        $results += [PSCustomObject]@{
-            TestCaseName = $name
-            ClassName    = $className
-            Status       = $status
-            Time         = $time
-            Assertions   = $assertions
-        }
-
-        # Mark any non-Passed test as failure
-        if ($status -notmatch "^Passed$") {
+        # If g-cli failed and no report was produced, we can't parse anything
+        if ($script:OriginalExitCode -ne 0 -and -not (Test-Path $ReportPath)) {
             $script:TestsHadFailures = $true
+            Write-Warning "No test report found, and g-cli returned an error."
+            return
         }
-    }
-
-    # Print table header
-    $header = ($col1.PadRight($maxName) + "  " +
-               $col2.PadRight($maxClass) + "  " +
-               $col3.PadRight($maxStatus) + "  " +
-               $col4.PadRight($maxTime) + "  " +
-               $col5.PadRight($maxAssert))
-    Write-Host $header
-
-    # Output test results in color
-    foreach ($res in $results) {
-        $line = ($res.TestCaseName.PadRight($maxName) + "  " +
-                 $res.ClassName.PadRight($maxClass)   + "  " +
-                 $res.Status.PadRight($maxStatus)     + "  " +
-                 $res.Time.PadRight($maxTime)         + "  " +
-                 $res.Assertions.PadRight($maxAssert))
-
-        if ($res.Status -eq "Passed") {
-            Write-Host $line -ForegroundColor Green
+    
+        # Parse UnitTestReport.xml if it exists
+        if (Test-Path $ReportPath) {
+            try {
+                [xml]$xmlDoc = Get-Content $ReportPath -ErrorAction Stop
+            }
+            catch {
+                Write-Error "UnitTestReport.xml is invalid or malformed: $($_.Exception.Message)"
+                $script:TestsHadFailures = $true
+                return
+            }
         }
         else {
-            Write-Host $line -ForegroundColor Red
+            Write-Error "UnitTestReport.xml not found; cannot parse results."
+            $script:TestsHadFailures = $true
+            return
         }
-    }
+    
+        # Retrieve all <testcase> nodes
+        $testCases = $xmlDoc.SelectNodes("//testcase")
+        if (!$testCases -or $testCases.Count -eq 0) {
+            Write-Error "No <testcase> entries found in UnitTestReport.xml."
+            $script:TestsHadFailures = $true
+            return
+        }
+    
+        # Prepare for tabular output
+        $col1 = "TestCaseName"; $col2 = "ClassName"; $col3 = "Status"; $col4 = "Time(s)"; $col5 = "Assertions"
+        $maxName   = $col1.Length
+        $maxClass  = $col2.Length
+        $maxStatus = $col3.Length
+        $maxTime   = $col4.Length
+        $maxAssert = $col5.Length
+    
+        $results = @()
+        foreach ($case in $testCases) {
+            $name       = $case.GetAttribute("name")
+            $className  = $case.GetAttribute("classname")
+            $status     = $case.GetAttribute("status")
+            $time       = $case.GetAttribute("time")
+            $assertions = $case.GetAttribute("assertions")
+    
+            # Update max lengths for formatting
+            if ($name.Length       -gt $maxName)   { $maxName   = $name.Length }
+            if ($className.Length  -gt $maxClass)  { $maxClass  = $className.Length }
+            if ($status.Length     -gt $maxStatus) { $maxStatus = $status.Length }
+            if ($time.Length       -gt $maxTime)   { $maxTime   = $time.Length }
+            if ($assertions.Length -gt $maxAssert) { $maxAssert = $assertions.Length }
+    
+            # Store data
+            $results += [PSCustomObject]@{
+                TestCaseName = $name
+                ClassName    = $className
+                Status       = $status
+                Time         = $time
+                Assertions   = $assertions
+            }
+    
+            # Mark any non-Passed test as failure
+            if ($status -notmatch "^Passed$") {
+                $script:TestsHadFailures = $true
+            }
+        }
+    
+        # Print table header
+        $header = ($col1.PadRight($maxName) + "  " +
+                   $col2.PadRight($maxClass) + "  " +
+                   $col3.PadRight($maxStatus) + "  " +
+                   $col4.PadRight($maxTime) + "  " +
+                   $col5.PadRight($maxAssert))
+        Write-Host $header
+    
+        # Output test results in color
+        foreach ($res in $results) {
+            $line = ($res.TestCaseName.PadRight($maxName) + "  " +
+                     $res.ClassName.PadRight($maxClass)   + "  " +
+                     $res.Status.PadRight($maxStatus)     + "  " +
+                     $res.Time.PadRight($maxTime)         + "  " +
+                     $res.Assertions.PadRight($maxAssert))
+    
+            if ($res.Status -eq "Passed") {
+                Write-Host $line -ForegroundColor Green
+            }
+            else {
+                Write-Host $line -ForegroundColor Red
+            }
+        }
+    
 }
 
 # --------------------------  CLEANUP  --------------------------
 function Cleanup {
     Write-Host "`n=== Cleanup ==="
-
     # If everything passed (and g-cli was OK), delete the report
-    if (($script:OriginalExitCode -eq 0) -and (-not $script:TestsHadFailures) -and (Test-Path $ReportPath)) {
+    if (($script:OriginalExitCode -eq 0) -and (-not $script:TestsHadFailures)) {
         try {
             Remove-Item $ReportPath -Force -ErrorAction Stop
-            Write-Host "All tests passed. Deleted UnitTestReport.xml."
+            Write-Host "`nAll tests passed. Deleted UnitTestReport.xml."
         }
         catch {
             Write-Warning "Failed to delete $($ReportPath): $($_.Exception.Message)"
         }
-    }
-    else {
-        Write-Host "Cleanup complete; leaving $ReportPath in place."
     }
 }
 
