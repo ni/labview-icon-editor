@@ -25,6 +25,8 @@ This document details how to automate **building**, **testing**, and **packaging
 - **Attach** `.vip` artifacts to a new GitHub Release (unless it’s a pull request).  
 - Seamlessly handle **fork** scenarios—**GPG signing** is enabled if `github.repository` is your main repo, disabled otherwise.
 
+Additionally, **you can pass metadata fields** (like **organization** or **repository name**) to the **build script**. These fields are embedded into the **VI Package** display information, effectively **branding** the Icon Editor package with a unique identifier. This is especially useful when multiple forks or organizations produce their own versions of the Icon Editor—ensuring each `.vip` is clearly labeled with the correct “author” or “company.”
+
 > **Prerequisites**:  
 > - **LabVIEW 2021 SP1 (32-bit and 64-bit)** both required.  
 > - The relevant **VIPC** file is now at `Tooling/deployment/runner_dependencies.vipc`.  
@@ -55,7 +57,8 @@ This document details how to automate **building**, **testing**, and **packaging
    - Use the **Run Unit Tests** workflow to confirm environment health.
 
 6. **Build VI Package**  
-   - Invoke **Build VI Package & Release** to produce `.vip`, automatically version your code (labels vs. default patch), and optionally create a GitHub Release.
+   - Invoke **Build VI Package & Release** to produce `.vip`, automatically version your code (labels vs. default patch), and optionally create a GitHub Release.  
+   - **You can also** pass in **org/repository** info (e.g., `-CompanyName "MyOrg"` or `-AuthorName "myorg/myrepo"`) to brand the resulting package with your unique identifiers.
 
 7. **Disable Dev Mode** (Optional)  
    - Revert environment once building/testing is done.
@@ -89,6 +92,9 @@ This document details how to automate **building**, **testing**, and **packaging
    - **Counts existing tags** (`v*.*.*-build*`) to increment the global build number.  
    - **Fork-friendly** GPG: disabled for forks to avoid passphrase prompts.  
    - Publishes `.vip` as an artifact and optionally creates a GitHub Release if not a pull request.
+   - **Branding the Package**:  
+     - You can **pass** metadata parameters like `-CompanyName` and `-AuthorName` into the build script. These map to fields in the **VI Package** (e.g., “Company Name,” “Author Name (Person or Company)”).  
+     - This means each package can show the **organization** and **repository** that produced it, providing a **unique ID** if you have multiple forks or parallel versions.
 
 3. **Run Unit Tests**  
    - Executes test scripts to validate your Icon Editor code in a stable environment.
@@ -127,6 +133,7 @@ With your runner online:
 
 3. **Build VI Package & Release**  
    - Produces `.vip`, bumps the version, and can create a Git tag + GitHub Release (if not a PR).  
+   - **Pass** your **org/repo** info (e.g. `-CompanyName "AcmeCorp"` / `-AuthorName "AcmeCorp/IconEditor"`) to embed in the final package.  
    - Artifacts appear in the run summary under **Artifacts**.
 
 4. **Disable Dev Mode** (if used)  
@@ -146,16 +153,17 @@ With your runner online:
    - The workflow checks this label upon merging.  
 4. **Merge**:  
    - **Build VI Package & Release** triggers, incrementing version and uploading `.vip`.  
+   - **Metadata** (such as company/repo) is already integrated into the final `.vip`, so each build is easily identified.  
 5. **Disable Dev Mode**: Return to a normal LabVIEW environment.  
 6. **Install & Verify**: Download the `.vip` artifact for final validations.
 
+---
 
 ## 4. Next Steps
 
 - **Check the Main Repo’s [README.md](../README.md)**: for environment disclaimers, additional tips, or project-specific instructions.  
 - **Extend the Workflows**: You can add custom steps for linting, coverage, or multi-version LabVIEW tests.  
 - **Submit Pull Requests**: If you refine scripts or fix issues, open a PR with logs showing your updated workflow runs.  
-- **Troubleshoot**: If manual environment edits are needed, consult `ManualSetup.md` or the original documentation for advanced configuration steps.
+- **Troubleshoot**: If manual environment edits are needed, consult `ManualSetup.md` or the original documentation for advanced configuration steps.  
 
-
-**Happy Building!** By integrating these workflows, you’ll maintain a **robust, automated CI/CD** pipeline for the LabVIEW Icon Editor—complete with **semantic versioning**, **build artifact uploads**, and **GPG-signing** or **GPG-free** mode for forks.
+**Happy Building!** By integrating these workflows, you’ll maintain a **robust, automated CI/CD** pipeline for the LabVIEW Icon Editor—complete with **semantic versioning**, **build artifact uploads**, **metadata branding** (company/repo), and **GPG-signing** or **GPG-free** mode for forks.
