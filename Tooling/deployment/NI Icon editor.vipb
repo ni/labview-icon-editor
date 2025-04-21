@@ -1,4 +1,4 @@
-<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2025-03-13 13:11:19" Creator="svelderr" Comments="" ID="cd45cc85d704b9f72bb854ddbe113e7d">
+<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2025-04-20 19:57:08" Creator="svelderr" Comments="" ID="30febb7f29c6e6fa0b8c76172073d17f">
   <Library_General_Settings>
     <Package_File_Name>NI_Icon_editor</Package_File_Name>
     <Library_Version>21.0.0.12</Library_Version>
@@ -148,18 +148,6 @@
         <Additional_Destination>true</Additional_Destination>
         <Additional_Destination_Index>1</Additional_Destination_Index>
       </Destination_Overrides>
-      <Destination_Overrides>
-        <Path>resource/plugins/lv_icon_x86.lvlibp</Path>
-        <Destination>0</Destination>
-        <Additional_Destination>true</Additional_Destination>
-        <Additional_Destination_Index>3</Additional_Destination_Index>
-      </Destination_Overrides>
-      <Destination_Overrides>
-        <Path>resource/plugins/lv_icon_x64.lvlibp</Path>
-        <Destination>0</Destination>
-        <Additional_Destination>true</Additional_Destination>
-        <Additional_Destination_Index>3</Additional_Destination_Index>
-      </Destination_Overrides>
       <Password_Overrides>
         <Path>.</Path>
         <Password/>
@@ -175,9 +163,6 @@
       </Exclusions>
       <Exclusions>
         <Path>Antidoc-Output</Path>
-      </Exclusions>
-      <Exclusions>
-        <Path>builds</Path>
       </Exclusions>
       <Exclusions>
         <Path>pipeline/scripts</Path>
@@ -231,9 +216,6 @@
         <Path>Tooling/deployment/ApplyVIPC.vi</Path>
       </Exclusions>
       <Exclusions>
-        <Path>Tooling/deployment/BuildVIP.vi</Path>
-      </Exclusions>
-      <Exclusions>
         <Path>Tooling/deployment/BuildVIPackage.vi</Path>
       </Exclusions>
       <Exclusions>
@@ -244,9 +226,6 @@
       </Exclusions>
       <Exclusions>
         <Path>Tooling/deployment/Destroy_LV_INI_Token.vi</Path>
-      </Exclusions>
-      <Exclusions>
-        <Path>Tooling/deployment/Modify_VIPB_LabVIEW_Version.vi</Path>
       </Exclusions>
       <Exclusions>
         <Path>Tooling/deployment/ModifyProjectBuildOutput.vi</Path>
@@ -300,16 +279,16 @@
         <Path>Tooling/RestoreSetupLVSource.vi</Path>
       </Exclusions>
       <Exclusions>
-        <Path>.vscode</Path>
-      </Exclusions>
-      <Exclusions>
         <Path>docs</Path>
       </Exclusions>
       <Exclusions>
-        <Path>Tooling/vs-code</Path>
+        <Path>GOVERNANCE.md</Path>
       </Exclusions>
       <Exclusions>
-        <Path>Tooling/deployment/release_notes.md</Path>
+        <Path>requirements.txt</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/deployment/Modify_VIPB_Display_Information.vi</Path>
       </Exclusions>
       <Compile_Exclusions>
         <Path>.</Path>
