@@ -27,7 +27,7 @@ env:
 
 jobs:
   build-release:
-    runs-on: [self-hosted, iconeditor]
+    runs-on: [self-hosted-windows-lv]
     permissions:
       contents: write
       issues: read
