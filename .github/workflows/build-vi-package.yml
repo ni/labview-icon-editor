@@ -66,10 +66,15 @@ jobs:
       # 1) Check out code (full depth)
       ########################################################################
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
           persist-credentials: true
           fetch-depth: 0
+          
+      # This fixes the dubious ownership issue
+      - name: Trust repository folder (Git safe.directory)
+        run: git config --global --add safe.directory "$env:GITHUB_WORKSPACE"
+        shell: pwsh
 
       ########################################################################
       # 2) Determine bump type from labels (major/minor/patch), else none
