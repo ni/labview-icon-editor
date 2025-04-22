@@ -20,8 +20,9 @@
 			<Item Name="Destroy_LV_INI_Token.vi" Type="VI" URL="../deployment/Destroy_LV_INI_Token.vi"/>
 			<Item Name="Modify_VIPB_Display_Information.vi" Type="VI" URL="../deployment/Modify_VIPB_Display_Information.vi"/>
 			<Item Name="PrepareIESource.vi" Type="VI" URL="../PrepareIESource.vi"/>
+			<Item Name="PrepareIESourceCore.vi" Type="VI" URL="../PrepareIESourceCore.vi"/>
 			<Item Name="RestoreSetupLVSource.vi" Type="VI" URL="../RestoreSetupLVSource.vi"/>
-			<Item Name="Run all tests CLI.vi" Type="VI" URL="../Run all tests CLI.vi"/>
+			<Item Name="RestoreSetupLVSourceCore.vi" Type="VI" URL="../RestoreSetupLVSourceCore.vi"/>
 		</Item>
 		<Item Name="NI Package install actions" Type="Folder">
 			<Item Name="NIP Post uninstall.vi" Type="VI" URL="../deployment/NIP Post uninstall.vi"/>
@@ -33,7 +34,7 @@
 			<Item Name="VIP_Post-Install Custom Action.vi" Type="VI" URL="../deployment/VIP_Post-Install Custom Action.vi"/>
 			<Item Name="VIP_Post-Uninstall Custom Action.vi" Type="VI" URL="../deployment/VIP_Post-Uninstall Custom Action.vi"/>
 		</Item>
-		<Item Name="Run all tests.vi" Type="VI" URL="../Run all tests.vi"/>
+		<Item Name="Untitled 1.vi" Type="VI" URL="../Untitled 1.vi"/>
 		<Item Name="Dependencies" Type="Dependencies"/>
 		<Item Name="Build Specifications" Type="Build">
 			<Item Name="VIPM Install support" Type="Packed Library">
