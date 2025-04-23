@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - develop
+      - feature/*
       - release-alpha/*
       - release-beta/*
       - release-rc/*
