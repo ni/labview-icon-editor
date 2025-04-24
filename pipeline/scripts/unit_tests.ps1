@@ -1,4 +1,4 @@
-# .\Build.ps1 -RelativePath "C:\labview-icon-editor" -AbsolutePathScripts "C:\labview-icon-editor\pipeline\scripts"
+# .\unit_tests.ps1 -RelativePath "C:\labview-icon-editor" -AbsolutePathScripts "C:\labview-icon-editor\pipeline\scripts"
 param(
     [Parameter(Mandatory = $true)]
     [string]$RelativePath,

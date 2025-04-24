@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - develop
+      - feature/*
       - release-alpha/*
       - release-beta/*
       - release-rc/*
@@ -27,7 +28,7 @@ env:
 
 jobs:
   build-release:
-    runs-on: [self-hosted, iconeditor]
+    runs-on: [self-hosted-windows-lv]
     permissions:
       contents: write
       issues: read
@@ -70,6 +71,11 @@ jobs:
         with:
           persist-credentials: true
           fetch-depth: 0
+          
+      # This fixes the dubious ownership issue
+      - name: Trust repository folder (Git safe.directory)
+        run: git config --global --add safe.directory "$env:GITHUB_WORKSPACE"
+        shell: pwsh
 
       ########################################################################
       # 2) Determine bump type from labels (major/minor/patch), else none

@@ -2,7 +2,6 @@
 
 [![Build VI Package](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml/badge.svg)](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml)
 
-> **Pre-Release**: Icon Editor (green-default theme) supporting **LabVIEW 2021–2025**
 
 ---
 

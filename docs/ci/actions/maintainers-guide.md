@@ -1,5 +1,11 @@
+# Validated Experiment Maintainers’ Guide
+
+Below is a fully validated version of your markdown document, with corrected anchors so that each Table of Contents link will jump to the correct subsection on GitHub. You can copy/paste this as-is into a `.md` file.
+
+---
+
 ## Introduction
-This document is written for maintainers of experimental branches and experiment leads in order to guide them througout the lifecycle of the experiment. It covers:
+This document is written for maintainers of experimental branches and experiment leads in order to guide them throughout the lifecycle of the experiment. It covers:
 
 - **How** to create and manage experimental branches,  
 - **When** and **how** to manually approve `.vip` artifact distribution,  
@@ -8,7 +14,7 @@ This document is written for maintainers of experimental branches and experiment
 
 **Context**: Our project supports a **GitFlow-like model** for core development (`main`, `develop`, `release-*`, `hotfix/*`) plus **long-lived experimental branches** (`experiment/<shortName>`). This doc focuses on the extra tasks maintainers handle for experiments.
 
-> **Note**: For a broader overview of experiment lifecycle, see [EXPERIMENTS.md](./EXPERIMENTS.md). For governance details (Steering Committee roles, BDFL approach), see [GOVERNANCE.md](./GOVERNANCE.md). For common pitfalls in experiments, see [TROUBLESHOOTING_EXPERIMENTS.md](./TROUBLESHOOTING_EXPERIMENTS.md).
+> **Note**: For a broader overview of experiment lifecycle, see [EXPERIMENTS.md](../experiments.md). For governance details (Steering Committee roles, BDFL approach), see [GOVERNANCE.md](./GOVERNANCE.md). For common pitfalls in experiments, see [TROUBLESHOOTING_EXPERIMENTS.md](./troubleshooting-experiments.md).
 
 ---
 
@@ -16,7 +22,7 @@ This document is written for maintainers of experimental branches and experiment
 1. [Roles & Responsibilities](#roles--responsibilities)  
 2. [Creating an Experiment Branch](#creating-an-experiment-branch)  
 3. [Approving Official Artifact Distribution](#approving-official-artifact-distribution)  
-4. [Alpha/Beta/RC Management](#alphabeta-and-rc-management)  
+4. [Alpha/Beta/RC Management](#alpha-beta-rc-management)  
 5. [Code Scanning & Security Checks](#code-scanning--security-checks)  
 6. [BDFL Overrides](#bdfl-overrides)  
 7. [Labels & Final Merges](#labels--final-merges)  
@@ -27,7 +33,7 @@ This document is written for maintainers of experimental branches and experiment
 
 ---
 
-## 1. Roles & Responsibilities
+## Roles & Responsibilities
 Maintainers serve as **administrators** and **trusted gatekeepers**. You:
 
 - **Facilitate** the creation of `experiment/<shortName>` branches once the Steering Committee approves a new experiment.
@@ -39,7 +45,7 @@ The **Open Source Program Manager** (OSPM) or designated NI staff typically hand
 
 ---
 
-## 2. Creating an Experiment Branch
+## Creating an Experiment Branch
 1. **Steering Committee Approval**  
    - A collaborator or lead opens a GitHub Issue proposing the experiment. The Steering Committee, chaired by the OSPM, decides if it’s viable.
 2. **Branch Creation**  
@@ -53,8 +59,8 @@ The **Open Source Program Manager** (OSPM) or designated NI staff typically hand
 
 ---
 
-## 3. Approving Official Artifact Distribution
-Until you **manually** approve the experiment, the specialized CI or GitHub Action **won’t** publish `.vip` artifacts. 
+## Approving Official Artifact Distribution
+Until you **manually** approve the experiment, the specialized CI or GitHub Action **won’t** publish `.vip` artifacts.
 
 ### How to Approve
 1. **Workflow Dispatch**  
@@ -72,7 +78,7 @@ Until you **manually** approve the experiment, the specialized CI or GitHub Acti
 
 ---
 
-## 4. Alpha/Beta and RC Management
+## Alpha Beta RC Management
 Some experiments use **sub-branches** to stage progress:
 
 1. **Alpha**  
@@ -90,7 +96,7 @@ Some experiments use **sub-branches** to stage progress:
 
 ---
 
-## 5. Code Scanning & Security Checks
+## Code Scanning & Security Checks
 **Docker VI Analyzer** and **CodeQL** run automatically:
 
 1. **Check Logs**  
@@ -103,7 +109,7 @@ Some experiments use **sub-branches** to stage progress:
 
 ---
 
-## 6. BDFL Overrides
+## BDFL Overrides
 Although we want a consistent approach, the BDFL (via the OSPM or designated NI staff) may **skip** certain steps in **rare** circumstances:
 
 - **Forcing** a `.vip` artifact distribution even if scanning isn’t fully complete.  
@@ -113,14 +119,14 @@ We don’t document formal guidelines for these rare actions; they’re done cas
 
 ---
 
-## 7. Labels & Final Merges
-### 7.1. Labels for Major/Minor/Patch
+## Labels & Final Merges
+### Labels for Major/Minor/Patch
 The main CI doc covers how to label PRs. Generally:
 - “major” = big changes  
 - “minor” = moderate addition  
 - “patch” = bug fix
 
-### 7.2. Merging Experiment → `develop`
+### Merging Experiment → `develop`
 Once an experiment is ready for prime time:
 1. **Open a PR** from `experiment/<shortName>` (or its `rc` branch) to `develop`.  
 2. **Steering Committee** decides if it’s major/minor/patch for the next release.  
@@ -130,7 +136,7 @@ Once an experiment is ready for prime time:
 
 ---
 
-## 8. Partial Merges
+## Partial Merges
 If only a portion of the experiment is viable:
 
 1. **Create a Sub-Branch**  
@@ -140,7 +146,7 @@ If only a portion of the experiment is viable:
 
 ---
 
-## 9. Archiving or Deleting an Experiment
+## Archiving or Deleting an Experiment
 If an experiment is **complete** or **abandoned**:
 
 - **Complete**: Merge to `develop`, then delete or rename the branch to `archived/<shortName>`.  
@@ -149,7 +155,7 @@ If an experiment is **complete** or **abandoned**:
 
 ---
 
-## 10. Best Practices & Tips
+## Best Practices & Tips
 1. **Frequent Merges from `develop`**  
    - Minimizes massive conflicts. At least once every couple of weeks if `develop` is active.
 2. **Early “approve-experiment”**  
@@ -162,12 +168,8 @@ If an experiment is **complete** or **abandoned**:
 ---
 
 ## See Also
-- [EXPERIMENTS.md](../EXPERIMENTS.md)  
-- [TROUBLESHOOTING_EXPERIMENTS.md](./TROUBLESHOOTING_EXPERIMENTS.md)  
-- [GOVERNANCE.md](./GOVERNANCE.md)
-
----
-
-If you run into issues, check [TROUBLESHOOTING_EXPERIMENTS.md](./TROUBLESHOOTING_EXPERIMENTS.md).
+- [EXPERIMENTS.md](../experiments.md)  
+- [TROUBLESHOOTING_EXPERIMENTS.md](./troubleshooting-experiments.md)  
+- GOVERNANCE.md (in progress)
 
 ---
