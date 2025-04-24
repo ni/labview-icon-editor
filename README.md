@@ -1,83 +1,161 @@
-# Icon Editor for LabVIEW #
+# LabVIEW Icon Editor
 
-This repo contains the source files and automated build tools for the LabVIEW icon editor.
-You can use this code as a starting point for creating a custom icon editor. Refer to the [CONTRIBUTING](CONTRIBUTING.md) document for information about submitting changes for inclusion with future versions of LabVIEW.
-
-## Compatible LabVIEW Versions
-
-LabVIEW source is saved in 21.0 (__LabVIEW 2021__) format. Either LabVIEW 2021 or LabVIEW 2024 can be used to do development work.
-
-To build using the automated build process,  ensure you have LabVIEW 2021 *both 32 and 64 bits* installed, latest VIPM, and apply the dependencies located on *Tooling\deployment\Dependencies.vipc* to both LabVIEW versions.
-
-## Editing Guide 
-
-Because the icon editor is part of the LabVIEW development environment, you need to make changes to installed files before editing this project. There is an manual process, and an automated process made following it for ease of use.
-
-### Automated process 
-
-Before following this process, create a backup of the following files and folder:
-   - \<LabVIEW\>\\resource\\plugins\\lv_icon.lvlibp 
-   - \<LabVIEW\>\\vi.lib\\LabVIEW Icon API\\*
-
-After cloning the repo into a development location, and applying the dependencies located on *Tooling\deployment\Dependencies.vipc* to LabVIEW 2021 32 and 64 bits, follow this process to use the automation layer.
-
-1. Open Powershell in *Admin* mode and navigate to *.pipeline\scripts* from your github repo.
-2. Modify the following command to point to your github repo and run it: *.\DevelopmentMode.ps1 -RelativePath "C:\labview-icon-editor"*
-3. Open lv_icon_editor.lvproj in LabVIEW.
-4. The top-level VI is in the Project Explorer at __My Computer &#x00BB; resource/plugins &#x00BB; lv_icon.lvlib &#x00BB; lv_icon.vi__.
-
-### Manual process  
-
-Complete the following steps to edit this project:
-1. Clone this repo into a development location (e.g., C:\dev).
-2. Run __Tooling\Prepare LV to Use Icon Editor Source.vi__.
-This will perform the following steps, which you can alternatively perform manually:
-   * Delete \<LabVIEW\>\\resource\\plugins\\lv_icon.lvlipb
-   * Delete \<LabVIEW\>\\vi.lib\\LabVIEW Icon API
-   * Set LocalHost.LibraryPaths in your labview.ini file to the location of this project. For example:*
-       *   LocalHost.LibraryPaths="C:\\dev\\labview-icon-editor"
-3. Open lv_icon_editor.lvproj in LabVIEW.
-4. The top-level VI is in the Project Explorer at __My Computer &#x00BB; resource/plugins &#x00BB; lv_icon.lvlib &#x00BB; lv_icon.vi__.
-
-## Distribution Guide
-
-Complete the following steps to distribute your custom icon editor to another machine.
-
-### Automated process 
-
-This automated build process will follow these steps: 
-
-1. Apply the dependencies
-2. Run the unit test, 
-build the icon editor packed project library
-
-1. Open powershell in *Admin* mode and navigate to *.pipeline\scripts* from your github repo.
-2. Modify the following command to point to your github repo and run it:
-   ```bach
-   .\build.ps1 -RelativePath "C:\labview-icon-editor"*
-   ```
-4. A VI package named *ni_icon_editor-x.x.x.x* will be built on *builds\VI Package*.
-5. You can now install this VI package on any LabVIEW version after 2020. 
-
-*NOTE: The VI package makes no backup of your current lv_icon.lvlibp because the VI Package itself contains a zip file with all combinations of lv_icon.lvlibp for all LabVIEW versions and bitnesses, which gets deployed to your LabVIEW application files on uninstall. This ensures that a user doesnt get locked out of his icon editor and having to copy it from another LabVIEW installation if somehow he deletes the backup he did manually.*
-
-### Manual process  
-
-First, build the __Editor Packed Library__ build specification in the project to create __lv_icon.lvlibp__.
-
-Then, on the machine where you want to install your custom icon editor:
-1. Rename __\<LabVIEW\>\\resource\\plugins\\lv_icon.lvlibp__, the shipping icon editor, to __lv_icon.lvlibp.ship__ to "hide" it.
-2. Archive __\<LabVIEW\>\\vi.lib\\LabVIEW Icon API__ to preserve the shipping copy.  Use your archive program of choice (e.g. 7-Zip).
-3. Copy the packed library and support files that you developed with this project into the \<LabVIEW\> directory:  
-   - \<LabVIEW\>\\resource\\plugins\\lv_icon.lvlibp 
-   - \<LabVIEW\>\\vi.lib\\LabVIEW Icon API\\*
-
-## CI using an Azure DevOps pipeline
-
-An Azure Devops pipeline is used as an additional check to approve pull requests from *feature* to *development* branches. This pipeline runs the unit tests, builds the packed project libraries for both 32 and 64 bit LabVIEW, and builds the VI Package.
-
-## CI using github actions
-
-An example of a github action that can manually trigger a CI/CD workflow is located at "C:\labview-icon-editor\.github\workflows\Build VI packages.yml"
+[![Build VI Package](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml/badge.svg)](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml)
 
 
+---
+
+## Table of Contents
+1. [Overview](#overview)  
+2. [Key Components](#key-components)  
+3. [Getting Started & Contributing](#getting-started)  
+4. [Feature & Experiment Workflows](#feature-dev-workflow)  
+5. [Documentation](#documentation)  
+6. [Technical Steering Committee](#steering-committee)  
+7. [License & CLA](#license-cla)  
+8. [Contact & Discord](#contact-discord)
+
+---
+
+<a name="overview"></a>
+## 1. Overview
+
+This repository hosts the **open-source LabVIEW Icon Editor** under an **MIT license**. Whenever **LabVIEW** is built for an official release, it automatically pulls the **latest** Icon Editor from this repo’s `main` branch. This means that **your contributions**—whether features, bug fixes, or documentation—can become part of **official LabVIEW distributions** (currently focusing on **LabVIEW 2021–2025**).
+
+### Current Pre-Release
+- **Green default theme** for testing (feel free to revert/customize!)  
+- LabVIEW **2021–2025** version specificity is important for technical reasons within this editor’s packaging approach.
+
+NI is eager to see **community collaboration** drive improvements, ensuring the Icon Editor remains robust and innovative.
+
+---
+
+<a name="key-components"></a>
+## 2. Key Components
+
+1. **Source Files**  
+   - Entirely **VI-based**, enabling customizations and enhancements to the Icon Editor’s UI and functionality.
+
+2. **PowerShell Automation**  
+   - Built on [G-CLI](https://github.com/G-CLI/G-CLI).  
+   - Handles build, packaging, and release tasks.  
+   - Easily integrated into DevOps (GitHub Actions, self-hosted runners).
+
+3. **CI/CD Workflows**  
+   - [Build VI Package](https://github.com/ni/labview-icon-editor/actions/workflows/build-vi-package.yml)  
+   - [Development Mode Toggle](https://github.com/ni/labview-icon-editor/actions/workflows/development-mode-toggle.yml)  
+   - [Run Unit Tests](https://github.com/ni/labview-icon-editor/actions/workflows/run-unit-tests.yml)
+
+These pipelines produce **.vip** artifacts so anyone can install and test changes in their **LabVIEW 2021–2025** environment.
+
+---
+
+<a name="getting-started"></a>
+## 3. Getting Started & Contributing
+
+We welcome **code** and **non-code** contributions—everything from bug fixes and performance tweaks to testing `.vip` files or improving documentation.
+
+- **Must sign a CLA**: For external contributors, we require a Contributor License Agreement before we can merge your pull requests.  
+- **Steering Committee**: A group of NI staff + community experts steers features. If an issue is labeled "`Workflow: Open to contribution`," it’s ready for external work.  
+- **Fork or Clone**: Start by forking (or cloning) this repo. Then pick an issue or propose a feature.  
+- **Experiments**: If you have a **long-lived** or large-scale feature (spanning weeks or months), see [EXPERIMENTS.md](docs/ci/experiments.md). Experimental branches might require special approval before `.vip` distribution is enabled.
+
+For more details on the standard process, see our [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+<a name="feature-dev-workflow"></a>
+## 4. Feature & Experiment Workflows
+
+### Standard Feature Workflow
+
+1. **Check or Create an Issue**  
+   - If you have an idea, discuss it on [Discord](#contact-discord) or open a GitHub Discussion.  
+   - Once it’s approved, the Steering Committee labels it "**Workflow: Open to contribution**."
+
+2. **Assignment**  
+   - Comment on the issue expressing interest in developing the feature.  
+   - The Steering Committee (or a maintainer) assigns you.
+
+3. **Branch Setup**  
+   - A feature branch is created.  
+   - Fork + clone the repo, checkout the feature branch, implement changes.
+
+4. **Build & Test**  
+   - Decide between [Manual Setup](./docs/manual-instructions.md) or [PowerShell Scripts](./docs/powershell-cli-instructions.md).  
+   - Our CI pipeline generates a `.vip` so others can confirm your feature works in **LabVIEW 2021–2025**.
+
+5. **Pull Request**  
+   - Open a PR referencing the issue.  
+   - Sign the CLA if needed.  
+   - The Steering Committee + maintainers review, test, and iterate.
+
+6. **Merge & Release**  
+   - Once approved, your changes merge into `develop` or a typical short-lived branch.  
+   - Eventually, everything merges to `main`, ready for the **official** LabVIEW build cycle.
+
+### Experimental Branch Workflow
+
+For **long-running** or **complex** features, see [EXPERIMENTS.md](docs/ci/EXPERIMENTS.md). 
+- **Docker VI Analyzer** & CodeQL run automatically on experimental branches, but distributing `.vip` artifacts requires NI’s **manual approval** (“approve-experiment” event).  
+- Alpha/Beta/RC sub-branches are optional for staging within the experiment.  
+- Final merges also go through the Steering Committee.
+
+---
+
+<a name="documentation"></a>
+## 5. Documentation
+
+Check out our docs folder for detailed guides:
+
+- **[Build VI Package](docs/ci/actions/build-vi-package.md)** – Automate release processes for LabVIEW-based projects (2021–2025).  
+- **[Development Mode Toggle](docs/ci/actions/development-mode-toggle.md)** – Enable/disable dev mode on a self-hosted runner.  
+- **[Multichannel Release Workflow](docs/ci/actions/multichannel-release-workflow.md)** – Handle alpha, beta, RC channels, plus final versions.  
+- **[Runner Setup Guide](docs/ci/actions/runner-setup-guide.md)** – Steps for self-hosted runners with GitHub Actions.  
+- **[Injecting Owner/Repo Into VI Package](docs/actions/injecting-repo-org-to-vi-package.md)** – Add unique repo/org metadata to .vip.  
+- **[Troubleshooting & FAQ](docs/ci/troubleshooting-faq.md)** – Common issues, solutions, frequently asked questions.  
+- **[Experiments.md](docs/ci/experiments.md)** – Detailed instructions for the GitFlow-like model for long-lived experimental features.  
+- **[Maintainers_Guide.md](docs/ci/actions/maintainers-guide.md)** – Admin tasks for “approve-experiment” workflow dispatch, BDFL overrides, final merges.
+- **[Troubleshooting_Experiments.md](docs/ci/actions/troubleshooting-experiments.md)** – Common pitfalls specific to experimental branches.  
+- **[Governance.md](./GOVERNANCE.md)** – Steering Committee, BDFL, and membership structure.
+
+---
+
+<a name="steering-committee"></a>
+## 6. Technical Steering Committee
+
+- [@JayKayAce](https://github.com/JayKayAce)  
+- [@crossrulz](https://github.com/crossrulz)  
+- [@neilpate](https://github.com/neilpate)  
+- [@j-medland](https://github.com/j-medland)  
+- @markballa  
+- [@RobustoSystems](https://github.com/RobustoSystems)
+
+**NI Open Source Program Manager**: [@svelderrainruiz](https://github.com/svelderrainruiz) – sergio.velderrain@emerson.com
+
+They review incoming PRs, decide on feature readiness, and merge changes once they pass testing. For **long-lived experiment** branches, see [EXPERIMENTS.md](docs/ci/experiments.md) for how they approve final merges or partial merges.
+
+---
+
+<a name="license-cla"></a>
+## 7. License & CLA
+
+- **MIT License**: The Icon Editor code is available under [MIT](LICENSE).  
+- **Contributor License Agreement (CLA)**: Before merging external pull requests, we’ll ask you to sign a CLA to confirm we can distribute your code as part of LabVIEW.  
+
+By contributing, you agree to license your work under these terms so NI and the LabVIEW community can incorporate improvements into future distributions.
+
+---
+
+<a name="contact-discord"></a>
+## 8. Contact & Discord
+
+Have questions or want to discuss an idea in real-time?
+
+- **Discord Server**: [Join here](https://discord.gg/q4d3ggrFVA). You can brainstorm features, ask about the labeling workflow, or get quick help from fellow contributors.  
+- **GitHub**: Use Issues, Discussions, or open a Pull Request directly.  
+
+### Thanks for Contributing!
+Your submissions—whether bug fixes, docs, or experimental features—directly shape the **LabVIEW Icon Editor** for **LabVIEW 2021–2025** and beyond. We appreciate your collaboration and look forward to your ideas!
+
+---

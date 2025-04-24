@@ -1,0 +1,57 @@
+name: Feature request
+description: Tell us about a new feature
+title: "[Feature] "
+labels: "Enhancement"
+body: 
+  - type: markdown
+    attributes:
+      value: |
+        **IMPORTANT:** Before creating an issue, start the discussion about a possible new feature on our [Discord Server](https://discord.gg/q4d3ggrFVA).
+
+  - type: textarea
+    attributes:
+      label: Summary / Description
+      description: A short explanation of the requested feature. Focus on what the feature is and the problem it addresses.
+      placeholder: "Provide a concise summary of the feature request."
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Motivation / Use Case
+      description: Explain why you need this feature or how it will be used. Describe the specific scenario(s) or challenge(s) the feature would help address.
+      placeholder: "Describe the need for this feature and its impact."
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Proposed Solution / Feature Details
+      description: Provide details on how you envision the feature working. Mention any interface elements, workflows, or technical details that might be relevant.
+      placeholder: "Explain how this feature should work."
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Alternatives / Workarounds (optional)
+      description: Describe any other solutions or workarounds you have tried or considered, and why they were not sufficient or optimal.
+      placeholder: "List alternative approaches and why they don’t fully solve the problem."
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Possible Implementation (optional)
+      description: If you’ve done some research or prototyping, share how the feature could be developed. Include code snippets or technical details if relevant.
+      placeholder: "Provide potential implementation details."
+    validations:
+      required: false
+
+  - type: textarea
+    attributes:
+      label: Additional Context (optional)
+      description: Anything else relevant to this feature request—links to related issues, references, screenshots, mockups, or other resources that help illustrate your idea.
+      placeholder: "Include any extra details, references, or screenshots."
+    validations:
+      required: false

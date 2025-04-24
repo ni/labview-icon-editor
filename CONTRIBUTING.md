@@ -1,72 +1,160 @@
-# The Open Source LabVIEW Icon Editor
+# Contributing to the LabVIEW Icon Editor
 
-Just recently, the LabVIEW Icon Editor has been made open source to encourage collaboration between NI and the LabVIEW Community. Every new build of LabVIEW will grab the icon editor that has been pushed into the `main` branch from this repo.
+## Table of Contents
+1. [Introduction](#introduction)  
+2. [Repository Overview](#repooverview)  
+3. [Contributor License Agreement](#cla)  
+4. [Contributing Philosophy](#contributephilosophy)  
+5. [How to Contribute](#hotocontribute)  
+   - [Entry Point: Assigning Issues](#entrypoint)  
+   - [Feature Branch Creation](#featurebranch)  
+6. [Non-Code Contributions](#noncodecontributions)  
+7. [Creating a Discussion for a New Feature](#discussionnewfeature)  
+8. [Enhancements](#enhancements)  
+9. [Reporting Issues](#reportingissues)  
+10. [Code of Conduct](#codeofconduct)  
 
-The direction of the LabVIEW Icon Editor and which new features are added, and which are left out, is decided by the core team, which includes NI staff and LabVIEW community volunteers (sometimes referred to as a “cathedral” style of development).
+---
 
-That being said, the Icon Editor is great because of the LabVIEW users who use it, share their code with the community, and discuss ways to make LabVIEW even better. Some of the most important and undervalued work in open source is from non-code contributions, and that is where we can use the most help from you.
+<a name="introduction"></a>
+## 1. Introduction
 
-# Our Contributing Philosophy
+Welcome to the **open-source LabVIEW Icon Editor** project! This repo is maintained under the **MIT license**, enabling collaboration between **NI** and the **LabVIEW community** to improve the Icon Editor. Ultimately, each official **LabVIEW release** automatically pulls the Editor from our `main` branch, so **your contributions** can appear in LabVIEW updates.
 
-This repo is managed via [git](https://git-scm.com), with the canonical upstream repository hosted on [GitHub](https://github.com/ni/labview-icon-editor) and it follows a pull-request model for development. If you wish to contribute, you will need to create a GitHub account, fork this project, push a branch with your changes to your project, and then submit a pull request.
+---
 
-# How can I help?
+<a name="repooverview"></a>
+## 2. Repository Overview
 
-The things we need the most help for the library and its community are:
+- **Pre-Release**: Currently supports **LabVIEW 2021–2025**, with a **green default** theme. You can modify and test it at will.  
+- **Steering Committee**: Consists of NI staff and select community volunteers (a “cathedral” style approach). They determine which issues or features are ready for external dev work by labeling them as **“Workflow: Open to contribution.”**  
+- **Discord Server**: Join [this channel](https://discord.gg/q4d3ggrFVA) for real-time discussions about new features, bug triage, and general Q&A.  
 
-**🐛 Bug reports:** We simply can’t catch them all. Check [existing issues](https://github.com/ni/labview-icon-editor/issues/new/choose) and discussion first, then [create a new issue](https://github.com/ni/labview-icon-editor/issues/new/choose) to tell us what’s up.
+**Key Note**: We value both **code and non-code contributions**—testing `.vip` packages, improving docs, or providing UI feedback are equally important to shipping a robust Icon Editor.
 
-**💬 Answering questions and provide feedback**: New features begin by creating a discussion on our [board](https://github.com/ni/labview-icon-editor/discussions/new?category=ideas), you can provide feedback to the new features that are planned to be added to the icon editor. This is an [example](https://github.com/ni/labview-icon-editor/discussions/55) of a discussion for a new feature request. 
+---
 
-🎬 **Work on ["Good first issue"**](https://github.com/ni/labview-icon-editor/labels/good%20first%20issue) items: You can right now assign yourself action items to finish or test a feature. Check out the [issues](https://github.com/ni/labview-icon-editor/issues) section and look for any issue labeled as [Good first issue](https://github.com/ni/labview-icon-editor/labels/good%20first%20issue).
+<a name="cla"></a>
+## 3. Contributor License Agreement (CLA)
 
-**✏️ Edit our [Docs](https://labview-icon-editor.dev/docs/introduction/)**: Make changes in the [labview-icon-editor-docs repo](https://github.com/ni/labview-icon-editor-docs), or click the "edit this page” button that lives on every doc site.
+Before we can merge a Pull Request from **any** external contributor, you will need to **sign our Contributor License Agreement** (CLA). This ensures that:
 
-All interactions should be done with care following our [Code of Conduct](https://github.com/ni/labview-icon-editor/blob/main/CODE_OF_CONDUCT.md).
+- NI and other users of the Icon Editor have the legal right to distribute your code under the **MIT license**.  
+- You retain any necessary rights to your contributions, but also formally allow them to be incorporated into LabVIEW releases.
 
-## Enhancements
+**How to sign the CLA**: Instructions will be provided when you open your first Pull Request. You’ll be guided through a quick, one-time CLA process.
 
-If you have an idea or suggestion for an enhancement to the LabVIEW Icon Editor library, please use the [New Features](https://github.com/ni/labview-icon-editor/discussions/categories/new-features) discussion section. **please make sure to start a discussion about your changes.** The direction of the LabVIEW Icon Editor and which new features are added are discussed in our Discord Server and in [this GitHub discussions section](https://github.com/ni/labview-icon-editor/discussions/categories/new-features), and in the end, they are decided by the core team.
+---
 
-Talking to us first via the discussions section about the enhancement you want to build will be the most likely way to get your pull request into the library (see Our Contributing Philosophy above). We would hate to see you write code you’re proud of, just to learn that we’ve already been working on the same thing, or that we feel doesn’t fit into the core library.
+<a name="contributephilosophy"></a>
+## 4. Contributing Philosophy
 
-Once your idea has been selected for the next release of LabVIEW, a branch will be created that you can submit your pull request to.
+We use a **pull-request model**. The key principles:
 
-## Creating a discussion for a new feature
+- **MIT License**: Minimizes legal barriers for external devs.  
+- **Steering Committee & BDFL**: The committee (including NI & community members) steers day-to-day decisions; major roadmap calls remain with NI.  
+- **Workflow Labeling**: An issue labeled “**Workflow: Open to contribution**” indicates it’s **ready** for external devs to work on.  
+- **Feature Branch**: Once assigned, you’ll use a dedicated feature branch to do your dev work.
 
-The first step to start an enhancement to the icon editor is to create a discussion on the [New Features](https://github.com/ni/labview-icon-editor/discussions/categories/new-features) discussion board. You must describe the problem that made you want to have this enhancement.
 
-### 💫 Pull Requests
+---
 
-When submitting a PR, please follow these guidelines to ensure clarity and ease
-of review:
- 
-1. **Title**: Start with a short, descriptive title that summarizes the change.
-2. **Description**:
-   - **Purpose**: Explain why you are making this change.
-   - **Changes Made**: Describe what changes you made and why.
-   - **Related Issues**: Reference any related issues using `#issue_number`.
-   - **Testing**: Outline how you tested your changes and any specific areas of
-     the code to focus on during review.
-   
-Please remember to sign off your commits (e.g., by using git commit -s if you
-are using the command line client). This amends your git commit message with a
-line of the form Signed-off-by: Name Lastname <name.lastmail@emailaddress.com>.
-Please include all authors of any given commit into the commit message with a
-Signed-off-by line. This indicates that you have read and signed the Developer
-Certificate of Origin (see below) and are able to legally submit your code to
-this repository.
+<a name="hotocontribute"></a>
+## 5. How to Contribute
 
-### Reporting Issues
- 
-When creating an issue, please provide a detailed description to help us
-understand the problem. Here are some tips:
- 
-1. **Title**: Use a clear, concise title that summarizes the issue.
-2. **Description**:
-   - **What Happened**: Describe the issue you encountered.
-   - **Expected Behavior**: Explain what you expected to happen.
-   - **Steps to Reproduce**: List the steps necessary to reproduce the issue.
-   - **Environment**: Include relevant details about your environment (e.g.,
-     operating system, LabVIEW version, etc.).
-   - **Screenshots**: If applicable, add screenshots to clarify the issue.
+You can contribute by **fixing bugs**, **adding new features**, **testing** other people’s PRs, or **enhancing docs**. Below is how to get started:
+
+<a name="entrypoint"></a>
+### Entry Point: Assigning Issues
+
+1. **Check Labeled Issues**: Go to [GitHub Issues](https://github.com/ni/labview-icon-editor/issues?q=is%3Aissue+label%3A%22Workflow%3A%20Open+to+contribution%22).  
+2. **Comment**: If you see something you’d like to tackle, let us know in the issue thread (e.g., “I’d like to fix this—please assign me!”).  
+3. **Assignment**: The Steering Committee or maintainers assign you, confirming you can begin development.  
+
+> **No label, no assignment** → The issue is either under internal discussion or not yet ready for external dev.
+
+<a name="featurebranch"></a>
+### Feature Branch Creation
+
+- **After You’re Assigned**: A feature branch is either generated by a GitHub Action or created by maintainers.  
+- **Fork & Clone**: Typically, you’ll fork the repo, clone your fork, and then pull this feature branch locally.  
+- **Implement & Test**: Use LabVIEW 2021–2025 with the green-default Icon Editor to validate your changes.  
+- **Open a Pull Request**: Reference the issue in your PR. The CI pipeline builds a `.vip` package for easy testing by others.  
+- **CLA Reminder**: If this is your first contribution, the CLA check will appear. Please sign it before we can merge.
+
+---
+
+<a name="noncodecontributions"></a>
+## 6. Non-Code Contributions
+
+Non-code contributions are **crucial** to a thriving open-source project. Some ways you can help:
+
+1. **Testing**  
+   - Download and install `.vip` artifacts from open pull requests.  
+   - Verify the fix or feature in your LabVIEW environment and report any findings in the PR thread.  
+
+2. **Documentation**  
+   - Improve or expand `README.md`, `CONTRIBUTING.md`, or Wiki pages.  
+   - Provide clear examples, usage steps, or troubleshooting tips for new users.  
+
+3. **UI/UX Feedback**  
+   - If the green-default theme or certain UI flows seem confusing, open an issue or discussion.  
+   - Propose improvements to the Icon Editor’s layout or design elements.  
+
+4. **Issue Triage**  
+   - Help confirm if a reported bug is reproducible.  
+   - Provide logs, screenshots, or more context for existing issues.  
+
+5. **Community Moderation**  
+   - Welcome new contributors on Discord.  
+   - Encourage respectful, inclusive communication.
+
+**Remember**: Non-code contributions often lead to the biggest improvements in usability, clarity, and overall adoption.
+
+---
+
+<a name="discussionnewfeature"></a>
+## 7. Creating a Discussion for a New Feature
+
+1. **Open a Discussion**: [Start a new Discussion](https://github.com/ni/labview-icon-editor/discussions/new/choose) or bring it up on our [Discord server](https://discord.gg/q4d3ggrFVA).  
+2. **Gather Feedback**: Let the Steering Committee and community weigh in.  
+3. **Issue Creation**: If the idea is approved, an issue labeled `Workflow: Open to contribution` will be made.  
+4. **Assignment & Branch**: Once you comment to claim it, a feature branch is created, and you can start development.
+
+---
+
+<a name="enhancements"></a>
+## 8. Enhancements
+
+If you have an **enhancement** to existing functionality, it’s best to discuss it first (on Discord or GitHub Discussions). That ensures:
+
+- No duplicate work or overlapping ideas.  
+- Alignment with the Steering Committee’s roadmap.  
+
+If the committee agrees, they’ll add `Workflow: Open to contribution` to an issue. After you’re assigned, begin coding on the assigned feature branch.
+
+---
+
+<a name="reportingissues"></a>
+## 9. Reporting Issues
+
+1. **Open a New Issue**: [Click here](https://github.com/ni/labview-icon-editor/issues/new/choose) to file a bug or unexpected behavior. Provide as many details as possible—LabVIEW version, steps to reproduce, logs/screenshots, etc.  
+2. **Label Decision**: The Steering Committee triages the issue. If it’s ripe for external help, they label it `Workflow: Open to contribution`.  
+3. **Get Assigned**: Comment on the issue if you want to fix it; the maintainers assign you.  
+4. **Implementation**: Work on the newly created or designated feature branch.  
+5. **Pull Request**: Submit your changes, sign the CLA if needed, and wait for the `.vip` tests to confirm everything.
+
+---
+
+<a name="codeofconduct"></a>
+## 10. Code of Conduct
+
+All interactions—whether on GitHub or Discord—must follow our [Code of Conduct](https://github.com/ni/labview-icon-editor/blob/main/CODE_OF_CONDUCT.md). We strive to maintain a welcoming community. Please be respectful, inclusive, and considerate in all your contributions.
+
+---
+
+## Thank You!
+
+Your feedback, testing, and contributions (code or otherwise) directly improve a tool that thousands of LabVIEW users rely on every day. Whether you fix a minor bug, propose a new feature, or simply validate a `.vip` build, **you** help shape the future of the LabVIEW Icon Editor.
+
+Feel free to reach out on [Discord](https://discord.gg/q4d3ggrFVA) if you have questions or want to collaborate. Happy contributing!

@@ -1,7 +1,7 @@
-<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2024-12-02 18:39:48" Creator="svelderr" Comments="" ID="6c9906e66c94719631dde7ae5c132ea8">
+<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2025-03-13 13:11:19" Creator="svelderr" Comments="" ID="cd45cc85d704b9f72bb854ddbe113e7d">
   <Library_General_Settings>
     <Package_File_Name>NI_Icon_editor</Package_File_Name>
-    <Library_Version>0.0.0.125</Library_Version>
+    <Library_Version>21.0.0.12</Library_Version>
     <Auto_Increment_Version>false</Auto_Increment_Version>
     <Library_Source_Folder>..\..</Library_Source_Folder>
     <Library_Output_Folder>..\..\builds\VI Package</Library_Output_Folder>
@@ -16,7 +16,12 @@
     <Target>LabVIEW</Target>
   </Library_General_Settings>
   <Advanced_Settings>
-    <Package_Dependencies/>
+    <Package_Dependencies>
+      <Additional_External_Dependencies>oglib_array &gt;=6.0.1.20</Additional_External_Dependencies>
+      <Additional_External_Dependencies>oglib_error &gt;=6.0.0.26</Additional_External_Dependencies>
+      <Additional_External_Dependencies>oglib_file &gt;=6.0.2.28</Additional_External_Dependencies>
+      <Additional_External_Dependencies>oglib_lvzip &gt;=5.0.9</Additional_External_Dependencies>
+    </Package_Dependencies>
     <Custom_Action_VIs>
       <Pre-Build_VI/>
       <Post-Build_VI/>
@@ -97,7 +102,7 @@
         <Name>LVAddons</Name>
         <LLB>false</LLB>
         <Preserve_Hierarchy>false</Preserve_Hierarchy>
-        <Path>&lt;OS Application Files&gt;\NI\LVAddons\niiconeditor32</Path>
+        <Path>&lt;OS Application Files&gt;\NI\LVAddons\niiconeditor64</Path>
       </Additional_Destination>
       <Additional_Destination>
         <Name>Install artifacts</Name>
@@ -138,6 +143,12 @@
         <Additional_Destination_Index>2</Additional_Destination_Index>
       </Destination_Overrides>
       <Destination_Overrides>
+        <Path>resource/plugins</Path>
+        <Destination>0</Destination>
+        <Additional_Destination>true</Additional_Destination>
+        <Additional_Destination_Index>1</Additional_Destination_Index>
+      </Destination_Overrides>
+      <Destination_Overrides>
         <Path>resource/plugins/lv_icon_x86.lvlibp</Path>
         <Destination>0</Destination>
         <Additional_Destination>true</Additional_Destination>
@@ -148,12 +159,6 @@
         <Destination>0</Destination>
         <Additional_Destination>true</Additional_Destination>
         <Additional_Destination_Index>3</Additional_Destination_Index>
-      </Destination_Overrides>
-      <Destination_Overrides>
-        <Path>resource/plugins</Path>
-        <Destination>0</Destination>
-        <Additional_Destination>true</Additional_Destination>
-        <Additional_Destination_Index>1</Additional_Destination_Index>
       </Destination_Overrides>
       <Password_Overrides>
         <Path>.</Path>
@@ -188,9 +193,6 @@
       </Exclusions>
       <Exclusions>
         <Path>.gitignore</Path>
-      </Exclusions>
-      <Exclusions>
-        <Path>azure-pipelines.yml</Path>
       </Exclusions>
       <Exclusions>
         <Path>CODE_OF_CONDUCT.md</Path>
@@ -296,6 +298,22 @@
       </Exclusions>
       <Exclusions>
         <Path>Tooling/RestoreSetupLVSource.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>docs</Path>
+        <Path>.vscode</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>GOVERNANCE.md</Path>
+        <Path>docs</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>requirements.txt</Path>
+        <Path>Tooling/vs-code</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/deployment/Modify_VIPB_Display_Information.vi</Path>
+        <Path>Tooling/deployment/release_notes.md</Path>
       </Exclusions>
       <Compile_Exclusions>
         <Path>.</Path>

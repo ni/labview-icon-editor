@@ -1,0 +1,71 @@
+name: Bug Report
+description: Report a bug you've found
+title: "[Bug]: "
+labels: "bug"
+body: 
+- type: markdown
+  attributes: 
+    value: |
+      * IMPORTANT: Before creating an issue, start the discussion about a possible bug on our [Discord Server](https://discord.gg/q4d3ggrFVA)
+
+- type: dropdown
+  id: version
+  attributes:
+    label: What version of the icon editor are you using?
+    options:
+      - The one that came with LabVIEW
+      - Latest release from GitHub
+      - Built from source
+      - Does not apply to this issue
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Summary
+    description: A brief explanation of the bug and why it is problematic. Highlight the impact or severity if applicable.
+    placeholder: Tell us what you see!
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Steps to Reproduce (optional)
+    description: A clear, step-by-step description of how someone else can trigger the bug. Number the steps and keep them precise and minimal.
+    placeholder: 
+  validations:
+    required: false
+- type: textarea
+  attributes:
+    label: Expected Behavior (optional)
+    description: What you anticipated would happen if the software was functioning correctly. Helps distinguish the intended result from the bug.
+    placeholder: 
+  validations:
+    required: false
+- type: textarea
+  attributes:
+    label: Actual Behavior (optional)
+    description: The actual outcome you observed, including error messages or undesired results. Highlight differences between the actual and expected behavior.
+    placeholder: 
+  validations:
+    required: false
+- type: textarea
+  attributes:
+    label: Screenshots / Logs / Error Messages  (optional)
+    description: Attach or paste screenshots, console logs, stack traces, or relevant error messages. This can be crucial for quickly identifying patterns or anomalies.
+    placeholder: 
+  validations:
+    required: false
+- type: textarea
+  attributes:
+    label: Possible Solution / Notes  (optional)
+    description: If you’ve done any initial debugging or have a hypothesis about the cause, include it. Be clear that this is your best guess, not a definitive answer.
+    placeholder: 
+  validations:
+    required: false
+- type: textarea
+  attributes:
+    label: Additional Context  (optional)
+    description: Anything else relevant to the issue - Links to related issues, workarounds you’ve tried, changes you recently made that might have introduced the bug, etc.
+    placeholder: 
+  validations:
+    required: false
+
