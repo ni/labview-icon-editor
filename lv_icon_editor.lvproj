@@ -319,12 +319,6 @@
 				<Item Name="Prompt to Confirm Archival.vi" Type="VI" URL="../Tooling/support/Prompt to Confirm Archival.vi"/>
 				<Item Name="Set LibraryPaths to Include Icon Editor.vi" Type="VI" URL="../Tooling/support/Set LibraryPaths to Include Icon Editor.vi"/>
 			</Item>
-			<Item Name="Unit tests" Type="Folder">
-				<Property Name="NI.SortType" Type="Int">1</Property>
-				<Item Name="Missing in Project.lvclass" Type="LVClass" URL="../Tooling/Unit tests/Missing in Project/Missing in Project.lvclass"/>
-				<Item Name="Text-Based VI Icon Tests.lvclass" Type="LVClass" URL="../Tooling/Unit tests/Text-Based VI Icon Tests/Text-Based VI Icon Tests.lvclass"/>
-				<Item Name="Undo Redo Core.lvclass" Type="LVClass" URL="../Tooling/Unit tests/Undo Redo Core/Undo Redo Core.lvclass"/>
-			</Item>
 			<Item Name="Force Icon Editor to Unload.vi" Type="VI" URL="../Tooling/Force Icon Editor to Unload.vi"/>
 			<Item Name="Post Build Icon Editor PPL.vi" Type="VI" URL="../Tooling/Post Build Icon Editor PPL.vi"/>
 			<Item Name="Pre Build Icon Editor PPL.vi" Type="VI" URL="../Tooling/Pre Build Icon Editor PPL.vi"/>
@@ -365,6 +359,12 @@
 				<Item Name="Text-Based VI Icon.lvlib" Type="Library" URL="/&lt;vilib&gt;/LabVIEW Icon API/Set Text Icon/Text-Based VI Icon.lvlib"/>
 			</Item>
 			<Item Name="LabVIEW Icon API.lvlib" Type="Library" URL="/&lt;vilib&gt;/LabVIEW Icon API/LabVIEW Icon API.lvlib"/>
+		</Item>
+		<Item Name="Unit tests" Type="Folder">
+			<Property Name="NI.SortType" Type="Int">1</Property>
+			<Item Name="Missing in Project.lvclass" Type="LVClass" URL="../Test/Unit Tests/Missing in Project/Missing in Project.lvclass"/>
+			<Item Name="Text-Based VI Icon Tests.lvclass" Type="LVClass" URL="../Test/Unit Tests/Text-Based VI Icon Tests/Text-Based VI Icon Tests.lvclass"/>
+			<Item Name="Undo Redo Core.lvclass" Type="LVClass" URL="../Test/Unit Tests/Undo Redo Core/Undo Redo Core.lvclass"/>
 		</Item>
 		<Item Name="Dependencies" Type="Dependencies">
 			<Item Name="vi.lib" Type="Folder">
