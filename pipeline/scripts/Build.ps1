@@ -7,14 +7,17 @@
     3. Builds the LabVIEW library (32-bit and 64-bit).
     4. Closes LabVIEW (32-bit and 64-bit).
     5. Renames the built files.
-    6. Builds the VI package (64-bit).
+    6. Builds the VI package (64-bit) with DisplayInformationJSON fields.
     7. Closes LabVIEW (64-bit).
 
   Example usage:
     .\Build.ps1 `
       -RelativePath "C:\labview-icon-editor-fork" `
-      -AbsolutePathScripts "C:\labview-icon-editor\pipeline\scripts" `
-      -Major 1 -Minor 0 -Patch 0 -Build 0 -Commit "Placeholder" -Verbose
+      -AbsolutePathScripts "C:\labview-icon-editor-fork\pipeline\scripts" `
+      -Major 1 -Minor 0 -Patch 0 -Build 0 -Commit "Placeholder" `
+      -CompanyName "Acme Corporation" `
+      -AuthorName "John Doe (Acme Corp)" `
+      -Verbose
 #>
 
 [CmdletBinding()]  # Enables -Verbose, -Debug, etc.
@@ -40,12 +43,19 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Commit,
 
-    # New (optional) parameter
+    # LabVIEW "minor" revision (0 or 3)
     [Parameter(Mandatory = $false)]
-    [int]$LabVIEWMinorRevision = 3
+    [int]$LabVIEWMinorRevision = 3,
+
+    # New parameters that will populate the JSON fields
+    [Parameter(Mandatory = $true)]
+    [string]$CompanyName,
+
+    [Parameter(Mandatory = $true)]
+    [string]$AuthorName
 )
 
-# Helper function to check for file or directory existence
+# Helper function to verify a file/folder path exists
 function Assert-PathExists {
     param(
         [string]$Path,
@@ -59,7 +69,7 @@ function Assert-PathExists {
     Write-Verbose "Confirmed '$Description' exists at path: $Path"
 }
 
-# Helper function to execute scripts sequentially
+# Helper function to run another script with arguments
 function Execute-Script {
     param(
         [string]$ScriptPath,
@@ -68,7 +78,7 @@ function Execute-Script {
     Write-Host "Executing: $ScriptPath $Arguments" -ForegroundColor Cyan
     Write-Verbose "Constructing command line..."
     
-    # IMPORTANT FIX: Prepend '& ' to explicitly invoke the script
+    # The & symbol explicitly invokes the script file
     $command = "& `"$ScriptPath`" $Arguments"
     Write-Verbose "Command: $command"
 
@@ -88,7 +98,6 @@ function Execute-Script {
     }
 }
 
-# Main script logic
 try {
     Write-Verbose "Script: Build.ps1 starting."
     Write-Verbose "Parameters received:"
@@ -99,13 +108,16 @@ try {
     Write-Verbose " - Patch: $Patch"
     Write-Verbose " - Build: $Build"
     Write-Verbose " - Commit: $Commit"
+    Write-Verbose " - LabVIEWMinorRevision: $LabVIEWMinorRevision"
+    Write-Verbose " - CompanyName: $CompanyName"
+    Write-Verbose " - AuthorName: $AuthorName"
 
-    # Validate required paths
+    # Validate needed folders
     Assert-PathExists $RelativePath "RelativePath"
     Assert-PathExists "$RelativePath\resource\plugins" "Plugins folder"
     Assert-PathExists $AbsolutePathScripts "Scripts folder"
 
-    # Clean up .lvlibp files in the plugins folder
+    # 1) Clean up old .lvlibp in the plugins folder
     Write-Host "Cleaning up old .lvlibp files in plugins folder..." -ForegroundColor Yellow
     Write-Verbose "Looking for .lvlibp files in $($RelativePath)\resource\plugins..."
     try {
@@ -124,9 +136,7 @@ try {
         Write-Verbose "Stack Trace: $($_.Exception.StackTrace)"
     }
 
-    #----------------------------------------------------------------------
-    # Apply VIPC (32-bit)
-    #----------------------------------------------------------------------
+    # 2) Apply VIPC (32-bit)
     Write-Verbose "Now applying VIPC for 32-bit..."
     Execute-Script "$($AbsolutePathScripts)\ApplyVIPC.ps1" `
         ("-MinimumSupportedLVVersion 2021 " +
@@ -135,9 +145,7 @@ try {
          "-RelativePath `"$RelativePath`" " +
          "-VIPCPath `"Tooling\deployment\Dependencies.vipc`"")
 
-    #----------------------------------------------------------------------
-    # Build LV Library (32-bit)
-    #----------------------------------------------------------------------
+    # 3) Build LV Library (32-bit)
     Write-Verbose "Building LV library (32-bit)..."
     Execute-Script "$($AbsolutePathScripts)\Build_lvlibp.ps1" `
         ("-MinimumSupportedLVVersion 2021 " +
@@ -146,19 +154,17 @@ try {
          "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
          "-Commit `"$Commit`"")
 
-    # Close LabVIEW (32-bit)
+    # 4) Close LabVIEW (32-bit)
     Write-Verbose "Closing LabVIEW (32-bit)..."
     Execute-Script "$($AbsolutePathScripts)\Close_LabVIEW.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 32"
 
-    # Rename the file after build (32-bit)
+    # 5) Rename .lvlibp -> lv_icon_x86.lvlibp
     Write-Verbose "Renaming .lvlibp file to lv_icon_x86.lvlibp..."
     Execute-Script "$($AbsolutePathScripts)\Rename-File.ps1" `
         "-CurrentFilename `"$RelativePath\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x86.lvlibp'"
 
-    #----------------------------------------------------------------------
-    # Apply VIPC (64-bit)
-    #----------------------------------------------------------------------
+    # 6) Apply VIPC (64-bit)
     Write-Verbose "Now applying VIPC for 64-bit..."
     Execute-Script "$($AbsolutePathScripts)\ApplyVIPC.ps1" `
         ("-MinimumSupportedLVVersion 2021 " +
@@ -167,9 +173,7 @@ try {
          "-RelativePath `"$RelativePath`" " +
          "-VIPCPath `"Tooling\deployment\Dependencies.vipc`"")
 
-    #----------------------------------------------------------------------
-    # Build LV Library (64-bit)
-    #----------------------------------------------------------------------
+    # 7) Build LV Library (64-bit)
     Write-Verbose "Building LV library (64-bit)..."
     Execute-Script "$($AbsolutePathScripts)\Build_lvlibp.ps1" `
         ("-MinimumSupportedLVVersion 2021 " +
@@ -178,41 +182,55 @@ try {
          "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
          "-Commit `"$Commit`"")
 
-    # Rename the file after build (64-bit)
+    # Rename .lvlibp -> lv_icon_x64.lvlibp
     Write-Verbose "Renaming .lvlibp file to lv_icon_x64.lvlibp..."
     Execute-Script "$($AbsolutePathScripts)\Rename-File.ps1" `
         "-CurrentFilename `"$RelativePath\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x64.lvlibp'"
 
-#----------------------------------------------------------------------
-# Build VI Package (64-bit)
-#----------------------------------------------------------------------
-Write-Verbose "Building VI Package (64-bit)..."
-Execute-Script "$($AbsolutePathScripts)\build_vip.ps1" `
-    (
-        # If the script truly supports double-dash parameters:
-        "--lv-ver 2021 " +
-        "--arch 64 " +
-        
-        # Legacy (single-dash) parameters mixed in
-        "-SupportedBitness 64 " +
-        "-RelativePath `"$RelativePath`" " +
-        "-VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" " +
-        "-MinimumSupportedLVVersion 2021 " +
-        
-        # Pass the new LabVIEWMinorRevision param
-        "-LabVIEWMinorRevision $LabVIEWMinorRevision " +
-        
-        "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
-        "-Commit `"$Commit`" " +
-        
-        # If you’ve moved your release notes file:
-        "-ReleaseNotesFile `"$RelativePath\Tooling\deployment\release_notes.md`" " +
+    # -------------------------------------------------------------------------
+    # 8) Construct the JSON for "Company Name" & "Author Name", plus version
+    # -------------------------------------------------------------------------
+    # We include "Package Version" with your script parameters.
+    # The rest of the fields remain empty or default as needed.
+    $jsonObject = @{
+        "Package Version" = @{
+            "major" = $Major
+            "minor" = $Minor
+            "patch" = $Patch
+            "build" = $Build
+        }
+        "Product Name"                  = ""
+        "Company Name"                  = $CompanyName
+        "Author Name (Person or Company)" = $AuthorName
+        "Product Homepage (URL)"        = ""
+        "Legal Copyright"               = ""
+        "License Agreement Name"        = ""
+        "Product Description Summary"   = ""
+        "Product Description"           = ""
+        "Release Notes - Change Log"    = ""
+    }
 
-        # Finally, enable verbose
-        "-Verbose"
-    )
+    $DisplayInformationJSON = $jsonObject | ConvertTo-Json -Depth 3
 
-    # Close LabVIEW (64-bit)
+    # 9) Build VI Package (64-bit) — no double-dash parameters
+    Write-Verbose "Building VI Package (64-bit)..."
+    Execute-Script "$($AbsolutePathScripts)\build_vip.ps1" `
+        (
+            # Use single-dash for all recognized parameters
+            "-SupportedBitness 64 " +
+            "-RelativePath `"$RelativePath`" " +
+            "-VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" " +
+            "-MinimumSupportedLVVersion 2021 " +
+            "-LabVIEWMinorRevision $LabVIEWMinorRevision " +
+            "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
+            "-Commit `"$Commit`" " +
+            "-ReleaseNotesFile `"$RelativePath\Tooling\deployment\release_notes.md`" " +
+            # Pass our JSON
+            "-DisplayInformationJSON '$DisplayInformationJSON' " +
+            "-Verbose"
+        )
+
+    # 10) Close LabVIEW (64-bit)
     Write-Verbose "Closing LabVIEW (64-bit)..."
     Execute-Script "$($AbsolutePathScripts)\Close_LabVIEW.ps1" `
         "-MinimumSupportedLVVersion 2021 -SupportedBitness 64"

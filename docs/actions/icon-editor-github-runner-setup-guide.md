@@ -1,178 +1,254 @@
-# LabVIEW Icon Editor GitHub Actions (Local Setup Guide) [**Updated**]
+# **icon-editor-github-runner-setup-guide.md**
 
-This **updated** guide explains how to locally set up and run the **LabVIEW Icon Editor** workflows on a **self-hosted runner** using **GitHub Actions**. It replaces older references (like `ICON_BUILD_INFO` and incremental counters) with a **new approach** leveraging:
-
-- **Label-Based Versioning** for semantic bumps (`major`, `minor`, `patch`).  
-- A **Global Build Number** found by scanning existing tags (`v*.*.*-build*`).  
-- **Fork-Friendly** GPG signing: signing is enabled on the main repo but disabled on forks to avoid passphrase prompts.  
+This document describes a **complete guide** to setting up and using the “Build VI Package” GitHub Actions workflow in your repository—whether it's the original (`ni/labview-icon-editor`) or a **fork**. It explains each part of the workflow, including **how to configure it**, **why certain design choices were made**, and **what steps** you must follow to replicate this functionality on your own fork.
 
 ---
 
-## Table of Contents
+## **Table of Contents**
 
-1. [Introduction](#introduction)  
-2. [Quickstart](#quickstart)  
-3. [Detailed Guide](#detailed-guide)  
-   1. [Development vs. Testing](#development-vs-testing)  
-   2. [Available GitHub Actions](#available-github-actions)  
-   3. [Setting Up a Self-Hosted Runner](#setting-up-a-self-hosted-runner)  
-   4. [Running the Actions Locally](#running-the-actions-locally)  
-   5. [Example Developer Workflow](#example-developer-workflow)  
-4. [Next Steps](#next-steps)
-
----
-
-<a name="introduction"></a>
-## 1. Introduction
-
-This document details how to automate **building**, **testing**, and **packaging** the **LabVIEW Icon Editor** on **Windows** using **GitHub Actions** on a **self-hosted runner**. By employing these workflows, you can:
-
-- **Eliminate** manual tasks like editing `vi.lib` or toggling `labview.ini`.  
-- **Run** consistent builds and tests across different machines or developers.  
-- **Automatically version** your Icon Editor code via **semantic labeling** (major/minor/patch) plus a global build counter.  
-- **Attach** `.vip` artifacts to a new GitHub Release (unless it’s a pull request).  
-- Seamlessly handle **fork** scenarios—**GPG signing** is enabled if `github.repository` is your main repo, disabled otherwise.
-
-> **Prerequisites**:  
-> - **LabVIEW 2021 SP1 (32-bit and 64-bit)** both required.  
-> - The relevant **VIPC** file is now at `Tooling/deployment/runner_dependencies.vipc`.  
-> - [PowerShell 7+](https://github.com/PowerShell/PowerShell/releases/latest)  
-> - [Git for Windows](https://github.com/git-for-windows/git/releases/latest)
-
----
-
-<a name="quickstart"></a>
-## 2. Quickstart
-
-**For experienced users**, a brief overview:
-
-1. **Install Required Software**  
-   - Ensure both **LabVIEW 2021 SP1 32-bit and 64-bit** are installed.  
-   - [PowerShell 7+](https://github.com/PowerShell/PowerShell/releases/latest)  
-   - [Git for Windows](https://github.com/git-for-windows/git/releases/latest)
-
-2. **Apply the VIPC (optional)**  
-   - If your environment needs certain dependencies, **apply** `Tooling/deployment/runner_dependencies.vipc` in both 32-bit and 64-bit LabVIEW 2021 SP1.
-
-3. **Configure a Self-Hosted Runner**  
-   - Go to **Settings → Actions → Runners** in your (forked) repo.  
-   - Follow GitHub’s steps to add a Windows runner.
-
-4. **Development Mode Toggle**  
-   - (Optional) Toggle LabVIEW dev mode (`Set_Development_Mode.ps1` or `RevertDevelopmentMode.ps1`) via the **Development Mode Toggle** workflow.
-
-5. **Run Unit Tests**  
-   - Use the **Run Unit Tests** workflow to confirm environment health.
-
-6. **Build VI Package**  
-   - Invoke **Build VI Package & Release** to produce `.vip`, automatically version your code (labels vs. default patch), and optionally create a GitHub Release.
-
-7. **Disable Dev Mode** (Optional)  
-   - Revert environment once building/testing is done.
+1. [Overview](#overview)  
+2. [Why Use This Workflow?](#why-use-this-workflow)  
+3. [Core Features](#core-features)  
+   - [1. Automatic Versioning](#1-automatic-versioning)  
+   - [2. GPG Signing Toggle](#2-gpg-signing-toggle)  
+   - [3. Artifact Build & Release](#3-artifact-build--release)  
+   - [4. Custom Branding (Repo/Org)](#4-custom-branding-repoorg)  
+4. [Setting Up in Your Fork](#setting-up-in-your-fork)  
+   - [1. Copy the Workflow File](#1-copy-the-workflow-file)  
+   - [2. Update the Repository Check](#2-update-the-repository-check)  
+   - [3. Ensure Runner & Permissions](#3-ensure-runner--permissions)  
+5. [Workflow Behavior](#workflow-behavior)  
+   - [Events That Trigger It](#events-that-trigger-it)  
+   - [Label-Based Semver Bumps](#label-based-semver-bumps)  
+   - [Release Candidate Logic](#release-candidate-logic)  
+6. [Usage Examples](#usage-examples)  
+   - [Pull Requests with Labels](#pull-requests-with-labels)  
+   - [Direct Push to Main or Develop](#direct-push-to-main-or-develop)  
+   - [Working on a Release Branch](#working-on-a-release-branch)  
+7. [Detailed Step Explanations](#detailed-step-explanations)  
+   - [Disable GPG Signing (if Fork)](#disable-gpg-signing-if-fork)  
+   - [Compute Version](#compute-version)  
+   - [Create Tag & Push](#create-tag--push)  
+   - [Build the Icon Editor VI Package](#build-the-icon-editor-vi-package)  
+   - [Upload Artifact](#upload-artifact)  
+   - [Create GitHub Release](#create-github-release)  
+   - [Re-Enable GPG Signing](#re-enable-gpg-signing)  
+8. [Testing & Verification](#testing--verification)  
+   - [Fork Testing](#fork-testing)  
+   - [Main Repo Testing](#main-repo-testing)  
+   - [Pull Request Testing](#pull-request-testing)  
+9. [Troubleshooting](#troubleshooting)  
+10. [FAQ](#faq)  
+11. [Conclusion](#conclusion)
 
 ---
 
-<a name="detailed-guide"></a>
-## 3. Detailed Guide
+## **1. Overview**
 
-<a name="development-vs-testing"></a>
-### 1. Development vs. Testing
+**Purpose**: This workflow provides a **consistent, automated release process** for LabVIEW Icon Editor packages, including:
 
-**Development Mode**  
-- Temporarily reconfigures `labview.ini` and `vi.lib` so LabVIEW loads your Icon Editor source directly.  
-- Enable/disable via the **Development Mode Toggle** workflow.
+- Automatic **Semantic Version** bumping (major/minor/patch).
+- **Build** and **packaging** of the `.vip` artifact.
+- **Tag creation** in Git with a `vX.Y.Z-buildN` format.
+- **GitHub Release** creation, optionally as a pre-release if using a `release/*` branch.
 
-**Testing / Distributable Builds**  
-- Usually done in a **normal** LabVIEW environment (Dev Mode disabled).  
-- Ensures that the `.vip` artifact or tests reflect a standard environment.
+For **forks**, the workflow automatically **disables** GPG signing to avoid passphrase prompts.
 
 ---
 
-<a name="available-github-actions"></a>
-### 2. Available GitHub Actions
+## **2. Why Use This Workflow?**
 
-1. **Development Mode Toggle**  
-   - `mode: enable` → calls `Set_Development_Mode.ps1`.  
-   - `mode: disable` → calls `RevertDevelopmentMode.ps1`.  
-   - Great for reconfiguring LabVIEW for local dev vs. distribution builds.
-
-2. **Build VI Package & Release**  
-   - **Label-based** semantic versioning (`major`, `minor`, `patch`). Defaults to `patch` if no label.  
-   - **Counts existing tags** (`v*.*.*-build*`) to increment the global build number.  
-   - **Fork-friendly** GPG: disabled for forks to avoid passphrase prompts.  
-   - Publishes `.vip` as an artifact and optionally creates a GitHub Release if not a pull request.
-
-3. **Run Unit Tests**  
-   - Executes test scripts to validate your Icon Editor code in a stable environment.
+1. **Standardizes versioning**: Eliminates confusion about version increments; labels guide the semver bump.  
+2. **Fork-friendly**: Fork owners won’t be blocked by GPG passphrase issues.  
+3. **Reduces manual overhead**: No more ad-hoc tagging, manual artifact uploads, or drafting releases.  
+4. **Encourages best practices**: Integrates cleanly with GitHub’s PR and branching model.  
+5. **Unique build branding**: You can **inject custom organization/repo metadata** into the `.vip` package, making it clear which fork or repo produced the Icon Editor.
 
 ---
 
-<a name="setting-up-a-self-hosted-runner"></a>
-### 3. Setting Up a Self-Hosted Runner
+## **3. Core Features**
 
-**Steps**:
+### **1. Automatic Versioning**
+- Pull request labels (`major`, `minor`, `patch`) decide how much to increment the version.
+- Defaults to a `patch` bump if there’s no label or on direct pushes.
 
-1. **Install LabVIEW 2021 SP1 (32-bit and 64-bit)**  
-   - Confirm both are present on your Windows machine.  
-   - Apply `Tooling/deployment/runner_dependencies.vipc` to each if needed.
+### **2. GPG Signing Toggle**
+- If the repository name **is** `ni/labview-icon-editor`, signing stays enabled.
+- If **not**, the workflow disables signing, preventing passphrase prompts that occur when no keys are available on the fork’s runner.
+- Restores any prior Git config after the build completes.
 
-2. **Install PowerShell 7+ and Git**  
-   - Reboot if newly installed so environment variables are recognized.
+### **3. Artifact Build & Release**
+- Runs a PowerShell script (`Build.ps1`) to compile `.vip` output.
+- Uploads the `.vip` to GitHub as a build artifact.
+- **Creates a release** in GitHub if it’s not a pull request, attaching the `.vip`.
 
-3. **Add a Self-Hosted Runner**  
-   - **Settings → Actions → Runners** → **New self-hosted runner**  
-   - Follow GitHub’s CLI instructions.
-
-4. **Labels** (optional)  
-   - If the workflow references `runs-on: [self-hosted, iconeditor]`, label your runner accordingly or update the YAML’s `runs-on` lines.
-
----
-
-<a name="running-the-actions-locally"></a>
-### 4. Running the Actions Locally
-
-With your runner online:
-
-1. **Enable Dev Mode** (if needed)  
-   - **Actions → Development Mode Toggle**, set `mode: enable`.
-
-2. **Run Unit Tests**  
-   - Confirm everything passes in logs. Some tests might rely on dev mode; see the logs for details.
-
-3. **Build VI Package & Release**  
-   - Produces `.vip`, bumps the version, and can create a Git tag + GitHub Release (if not a PR).  
-   - Artifacts appear in the run summary under **Artifacts**.
-
-4. **Disable Dev Mode** (if used)  
-   - `mode: disable` reverts your LabVIEW environment.
-
-5. **Review the `.vip`**  
-   - Download from **Artifacts** or check your Release page if a release was created.
+### **4. Custom Branding (Repo/Org)**
+- **Why**: Multiple teams or forks may produce their own **Icon Editor** packages. Embedding a **company name**, **GitHub organization**, or **repository name** helps uniquely identify who built each `.vip`.
+- **How**:  
+  - The workflow passes extra parameters (like `-CompanyName`, `-AuthorName`) to **Build.ps1**.  
+  - This metadata is injected into the **DisplayInformationJSON** for the VI Package.  
+  - In GitHub Actions, you can leverage `${{ github.repository_owner }}` or `${{ github.repository }}` to auto-fill those fields from your fork’s context.  
+  - Users installing the package can then see **which** organization or repository it came from (e.g., “AcmeCorp/lv-icon-editor”).
 
 ---
 
-<a name="example-developer-workflow"></a>
-### 5. Example Developer Workflow
+## **4. Setting Up in Your Fork**
 
-1. **Enable Development Mode**: if you plan to actively modify the Icon Editor code inside LabVIEW.  
-2. **Code & Test**: Make changes, run **Run Unit Tests** to confirm stability.  
-3. **Open a Pull Request**:  
-   - Assign a version bump label if you want `major`, `minor`, or `patch`.  
-   - The workflow checks this label upon merging.  
-4. **Merge**:  
-   - **Build VI Package & Release** triggers, incrementing version and uploading `.vip`.  
-5. **Disable Dev Mode**: Return to a normal LabVIEW environment.  
-6. **Install & Verify**: Download the `.vip` artifact for final validations.
+### **1. Copy the Workflow File**
+- In your fork, create a new file:  
+  `.github/workflows/build-vi-package.yml`
+- Copy the entire workflow YAML from the main repo or from a PR that merges these changes.  
+- Commit it to your fork’s branch (e.g., `develop`).
+
+### **2. Update the Repository Check**
+- Locate lines like:  
+  ```yaml
+  if: ${{ github.repository != 'ni/labview-icon-editor' }}
+  ```
+- If the original repo name is different (e.g., `myorg/lv-icon-editor`), adjust it accordingly.  
+- This ensures the workflow **knows** when it’s on a fork vs. the original repo and can disable or enable GPG signing correctly.
+
+### **3. Ensure Runner & Permissions**
+- **Self-Hosted Runner**:  
+  - The file references `runs-on: [self-hosted, iconeditor]`. Verify that your runner has both labels.  
+  - If not, change `runs-on` to match your runner’s labels.
+- **Write Permissions**:  
+  - In your fork’s **Settings** → **Actions** → **General**, check **Workflow Permissions** = “Read and Write.”  
+  - This allows the GITHUB_TOKEN to push tags and create releases.
 
 ---
 
-## 4. Next Steps
+## **5. Workflow Behavior**
 
-- **Check the Main Repo’s [README.md](../README.md)**: for environment disclaimers, additional tips, or project-specific instructions.  
-- **Extend the Workflows**: You can add custom steps for linting, coverage, or multi-version LabVIEW tests.  
-- **Submit Pull Requests**: If you refine scripts or fix issues, open a PR with logs showing your updated workflow runs.  
-- **Troubleshoot**: If manual environment edits are needed, consult `ManualSetup.md` or the original documentation for advanced configuration steps.
+### **Events That Trigger It**
+- `push` to `main`, `develop`, `release/*`, or `hotfix/*`.
+- `pull_request` targeting those branches.
+- `workflow_dispatch` (manual run) if enabled.
+
+### **Label-Based Semver Bumps**
+- On a pull request, the workflow inspects labels:
+  - `major` → X+1.0.0  
+  - `minor` → X.Y+1.0  
+  - `patch` → X.Y.Z+1  
+- If no label, it defaults to a patch bump.
+
+### **Release Candidate Logic**
+- For branches named `release/*`, the version gets an `-rc.N` suffix (e.g., `v1.2.0-rc.3-build10`).  
+- The resulting GitHub release is marked as a **pre-release**.  
+- Merging from `release/*` into `main` can finalize the version.
 
 ---
 
-**Happy Building!** By integrating these workflows, you’ll maintain a **robust, automated CI/CD** pipeline for the LabVIEW Icon Editor—complete with **semantic versioning**, **build artifact uploads**, and **GPG-signing** or **GPG-free** mode for forks.
+## **6. Usage Examples**
+
+### **Pull Requests with Labels**
+- Suppose you create a PR from `feature/my-new-feature` to `develop`.
+- Assign the `minor` label to indicate a minor bump.
+- Upon merging (or push), the version might go from `v1.2.3` to `v1.3.0` plus a build number.
+
+### **Direct Push to Main or Develop**
+- If you push directly (e.g., an urgent hotfix), the workflow defaults to patch bump if no label is set.
+- It automatically tags and releases the new version: `v1.3.1-build42`.
+
+### **Working on a Release Branch**
+- Branch name: `release/2.0`.
+- The workflow appends `-rc.N` to the semver (`v2.0.0-rc.2-build17`) before finalizing.
+
+---
+
+## **7. Detailed Step Explanations**
+
+### **Disable GPG Signing (if Fork)**
+- **When**: Immediately at the start of the job if `github.repository != 'ni/labview-icon-editor'`.  
+- **What**:  
+  - Reads existing Git config for signing.  
+  - Temporarily sets `commit.gpgsign` and `tag.gpgsign` to `false`.  
+- **Why**: Avoid passphrase prompts or errors if the user doesn’t have the GPG keys.
+
+### **Compute Version**
+- Checks for labels or direct push to decide the bump type.  
+- Scans existing tags matching `v*.*.*-build*` to determine the next build number.
+
+### **Create Tag & Push**
+- Only runs on non-PR events (e.g., push to `develop`).  
+- Uses `git tag -a vX.Y.Z-buildN` and pushes it to `origin`.
+
+### **Build the Icon Editor VI Package**
+- Invokes `Build.ps1` to compile `.vip` output inside `builds/VI Package/`.
+- **Injects Branding**: The PowerShell script merges parameters like `-CompanyName` and `-AuthorName` into the JSON that customizes the VI Package’s **Display Information**.  
+  - This ensures your build includes references to **which** organization or **repo** produced it.
+
+### **Upload Artifact**
+- Uses `actions/upload-artifact@v4` to store `.vip` in GitHub’s artifact section.  
+- You can download this artifact from the workflow summary page.
+
+### **Create GitHub Release**
+- Also only on non-PR events.  
+- Publishes a release with the newly created tag; if `-rc` suffix is present, marks it as pre-release.
+
+### **Re-Enable GPG Signing**
+- If it was disabled, the workflow restores any original signing config.
+
+---
+
+## **8. Testing & Verification**
+
+### **Fork Testing**
+1. **Fork** the repo.  
+2. **Push** to your fork’s `develop` branch.  
+3. Confirm the new tag appears in your fork’s tags (like `v0.0.1-build1`), and that GPG signing is not prompted.  
+4. Check the run logs for any errors.
+5. **Verify** the final `.vip` includes your fork’s branding (for example, `CompanyName: "Acme Corp"`).
+
+### **Main Repo Testing**
+1. **Push** or **merge** a change in `ni/labview-icon-editor`.  
+2. The job will detect it’s the original repo, keep signing enabled, and produce a signed tag.  
+3. Verify the `.vip` artifact is uploaded and that a release is created.
+
+### **Pull Request Testing**
+- **Open** a PR from a feature branch to `develop`.  
+- Assign `major`, `minor`, or `patch` label.  
+- Observe that the workflow checks the label but does **not** create a tag or release until merged.  
+- On merge, the final tag is pushed and the `.vip` is built.
+
+---
+
+## **9. Troubleshooting**
+
+- **“No runner matching labels”**: Update `runs-on` or set your self-hosted runner labels.  
+- **“Permission denied when pushing tag”**: Go to Settings → Actions → General and set “Workflow permissions” to “Read and write.”  
+- **Build script not found**: Make sure your repo has `pipeline/scripts/Build.ps1` in the correct path or update the workflow steps accordingly.  
+- **Signing errors in the original repo**: Ensure the runner has the correct GPG keys and passphrase configured, or remove signing if you don’t need it.
+- **Branding not updated**: Double-check you’re passing `-CompanyName` and `-AuthorName` to `Build.ps1`. If you’re referencing GitHub environment variables, ensure you spelled them correctly.
+
+---
+
+## **10. FAQ**
+
+**Q1**: *Can I rename the workflow file?*  
+**A1**: Yes. Just keep it in `.github/workflows/`. The name inside `name:` in the YAML doesn’t affect functionality.
+
+**Q2**: *Do I need the same runner labels (`iconeditor`)?*  
+**A2**: Not necessarily. You can adjust `runs-on` to any environment that has LabVIEW/PowerShell 7 installed, or uses GitHub-hosted runners with minimal changes.
+
+**Q3**: *What if I want to skip GPG signing in the main repo, too?*  
+**A3**: Remove or comment out the logic checking `github.repository` and disable signing altogether.
+
+**Q4**: *How do I pass my GitHub org and repo info to the VI Package?*  
+**A4**: In your workflow YAML, supply `-CompanyName "${{ github.repository_owner }}"` and `-AuthorName "${{ github.repository }}"` (or a variation). The build script merges those fields into the `.vip` metadata.
+
+**Q5**: *What if I want to force GPG signing on forks?*  
+**A5**: You must provide them with the keys or passphrase. Generally not recommended for open-source forks.
+
+---
+
+## **11. Conclusion**
+
+By setting up the **Build VI Package** workflow in your repository (or fork), you gain:
+
+- **Automated versioning** with semantic increments.  
+- A **straightforward** path to building and releasing `.vip` artifacts with **custom branding** for your organization or repo.  
+- A **fork-friendly** process that avoids GPG key complexities.  
+
+Simply follow the **setup steps** and **usage examples** above to enable consistent, robust releases for your Icon Editor project.  
+Happy building!

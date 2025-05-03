@@ -12,6 +12,7 @@ This document describes a **complete guide** to setting up and using the “Buil
    - [1. Automatic Versioning](#1-automatic-versioning)  
    - [2. GPG Signing Toggle](#2-gpg-signing-toggle)  
    - [3. Artifact Build & Release](#3-artifact-build--release)  
+   - [4. Custom Branding Via Metadata](#4-custom-branding-via-metadata)  
 4. [Setting Up in Your Fork](#setting-up-in-your-fork)  
    - [1. Copy the Workflow File](#1-copy-the-workflow-file)  
    - [2. Update the Repository Check](#2-update-the-repository-check)  
@@ -50,6 +51,7 @@ This document describes a **complete guide** to setting up and using the “Buil
 - **Build** and **packaging** of the `.vip` artifact.
 - **Tag creation** in Git with a `vX.Y.Z-buildN` format.
 - **GitHub Release** creation, optionally as a pre-release if using a `release/*` branch.
+- **Flexible metadata branding** of the final package (repo name, organization, etc.).
 
 For **forks**, the workflow automatically **disables** GPG signing to avoid passphrase prompts.
 
@@ -60,7 +62,8 @@ For **forks**, the workflow automatically **disables** GPG signing to avoid pass
 1. **Standardizes versioning**: Eliminates confusion about version increments; labels guide the semver bump.  
 2. **Fork-friendly**: Fork owners won’t be blocked by GPG passphrase issues.  
 3. **Reduces manual overhead**: No more ad-hoc tagging, manual artifact uploads, or drafting releases.  
-4. **Encourages best practices**: Integrates cleanly with GitHub’s PR and branching model.
+4. **Encourages best practices**: Integrates cleanly with GitHub’s PR and branching model.  
+5. **Unique package branding**: Inject repository/organization names to differentiate builds (especially valuable in multi-team or open-source contexts).
 
 ---
 
@@ -80,6 +83,11 @@ For **forks**, the workflow automatically **disables** GPG signing to avoid pass
 - Uploads the `.vip` to GitHub as a build artifact.
 - **Creates a release** in GitHub if it’s not a pull request, attaching the `.vip`.
 
+### **4. Custom Branding Via Metadata**
+- You can **pass metadata fields** (e.g., your **organization** or **repo name**) into the build script.  
+- This branding data is injected into the final `.vip` package to uniquely identify **who** built it and **where** it originated.  
+- Especially helpful if multiple forks or organizations produce their own builds and need a clear way to distinguish them.
+
 ---
 
 ## **4. Setting Up in Your Fork**
@@ -92,7 +100,9 @@ For **forks**, the workflow automatically **disables** GPG signing to avoid pass
 
 ### **2. Update the Repository Check**
 - Locate lines like:  
-      if: ${{ github.repository != 'ni/labview-icon-editor' }}
+  ```yaml
+  if: ${{ github.repository != 'ni/labview-icon-editor' }}
+  ```
 - If the original repo name is different (e.g., `myorg/lv-icon-editor`), adjust it accordingly.  
 - This ensures the workflow **knows** when it’s on a fork vs. the original repo.
 
@@ -162,10 +172,25 @@ For **forks**, the workflow automatically **disables** GPG signing to avoid pass
 - Uses `git tag -a vX.Y.Z-buildN` and pushes it to `origin`.
 
 ### **Build the Icon Editor VI Package**
-- Invokes `Build.ps1` to compile `.vip` output inside `builds/VI Package/`.
+- Invokes `Build.ps1` to compile `.vip` output inside `builds/VI Package/`.  
+- **Important**: You can pass your **GitHub repository** or **organization** as parameters (e.g., `-CompanyName`, `-AuthorName`) so the final `.vip` is **branded** with your fork’s identity.  
+  - For example:
+    ```yaml
+    - name: Run PowerShell Build
+      run: |
+        pwsh .\Build.ps1 `
+          -RelativePath "$env:GITHUB_WORKSPACE" `
+          -AbsolutePathScripts "$env:GITHUB_WORKSPACE\pipeline\scripts" `
+          -Major 1 -Minor 0 -Patch 0 -Build 42 `
+          -Commit "${{ github.sha }}" `
+          -CompanyName "${{ github.repository_owner }}" `
+          -AuthorName "${{ github.repository }}" `
+          -Verbose
+    ```
+- This way, the `.vip` package’s display fields clearly **indicate** who built it and from which repo.
 
 ### **Upload Artifact**
-- Uses `actions/upload-artifact@v4` to store `.vip` in GitHub’s artifact section.  
+- Uses `actions/upload-artifact@v4` to store `.vip` in GitHub’s artifact section.
 - You can download this artifact from the workflow summary page.
 
 ### **Create GitHub Release**
@@ -183,12 +208,14 @@ For **forks**, the workflow automatically **disables** GPG signing to avoid pass
 1. **Fork** the repo.  
 2. **Push** to your fork’s `develop` branch.  
 3. Confirm the new tag appears in your fork’s tags (like `v0.0.1-build1`), and GPG signing is not prompted.  
-4. Check the run logs for any errors.
+4. Check the run logs for any errors.  
+5. **Inspect** the final `.vip` file in VIPM to see that “Company Name” or “Author Name (Person or Company)” has **your** repo/fork branding.
 
 ### **Main Repo Testing**
 1. **Push** or **merge** a change in `ni/labview-icon-editor`.  
 2. The job will detect it’s the original repo, keep signing enabled, and produce a signed tag.  
 3. Verify the `.vip` artifact is uploaded and that a release is created.
+4. Inspect the package metadata for `ni/labview-icon-editor` branding or other relevant fields.
 
 ### **Pull Request Testing**
 - **Open** a PR from a feature branch to `develop`.  
@@ -203,7 +230,8 @@ For **forks**, the workflow automatically **disables** GPG signing to avoid pass
 - **“No runner matching labels”**: Update `runs-on` or set your self-hosted runner labels.  
 - **“Permission denied when pushing tag”**: Go to Settings → Actions → General and set “Workflow permissions” to “Read and write.”  
 - **Build script not found**: Make sure your repo has `pipeline/scripts/Build.ps1` in the correct path or update the workflow steps accordingly.  
-- **Signing errors in the original repo**: Ensure the runner has the correct GPG keys and passphrase configured, or remove signing if you don’t need it.
+- **Signing errors in the original repo**: Ensure the runner has the correct GPG keys and passphrase configured, or remove signing if you don’t need it.  
+- **Branded fields not showing**: Double-check your parameters in the `Build.ps1` call (e.g., `-CompanyName`, `-AuthorName`) or ensure the script itself updates JSON properly.
 
 ---
 
@@ -221,6 +249,9 @@ For **forks**, the workflow automatically **disables** GPG signing to avoid pass
 **Q4**: *What if I want to force GPG signing on forks?*  
 **A4**: You must provide them with the keys or passphrase. Generally not recommended for open-source forks.
 
+**Q5**: *Why do I need to pass `-CompanyName` or `-AuthorName`?*  
+**A5**: This ensures your `.vip` file is **branded** with your organization or repository. Helpful if you want to differentiate your fork’s output from the original.
+
 ---
 
 ## **11. Conclusion**
@@ -230,7 +261,6 @@ By setting up the **Build VI Package** workflow in your repository (or fork), yo
 - **Automated versioning** with semantic increments.  
 - A **straightforward** path to building and releasing `.vip` artifacts.  
 - A **fork-friendly** process that avoids GPG key complexities.  
+- **Optional branding** of the final package using your repository/organization metadata—making each build clearly identifiable.
 
-Simply follow the **setup steps** and **usage examples** above to enable consistent, robust releases for your Icon Editor project!
-
-**Happy building!**
+Simply follow the **setup steps** and **usage examples** above to enable consistent, robust releases for your Icon Editor project. **Happy building!**
