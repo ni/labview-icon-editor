@@ -300,15 +300,19 @@
         <Path>Tooling/RestoreSetupLVSource.vi</Path>
       </Exclusions>
       <Exclusions>
+        <Path>docs</Path>
         <Path>.vscode</Path>
       </Exclusions>
       <Exclusions>
+        <Path>GOVERNANCE.md</Path>
         <Path>docs</Path>
       </Exclusions>
       <Exclusions>
+        <Path>requirements.txt</Path>
         <Path>Tooling/vs-code</Path>
       </Exclusions>
       <Exclusions>
+        <Path>Tooling/deployment/Modify_VIPB_Display_Information.vi</Path>
         <Path>Tooling/deployment/release_notes.md</Path>
       </Exclusions>
       <Compile_Exclusions>
