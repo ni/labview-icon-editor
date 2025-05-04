@@ -51,6 +51,7 @@
 		<Item Name="Serialize Icon Data.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Support/Serialize Icon Data.vi"/>
 		<Item Name="Text.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Support/Text.vi"/>
 		<Item Name="Unflatten Load &amp; Unload.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Support/Unflatten Load &amp; Unload.vi"/>
+		<Item Name="Verify Cancel.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/User Dialogs/Verify Cancel.vi"/>
 	</Item>
 	<Item Name="Read and Write Icon Data" Type="Folder">
 		<Item Name="Read Icon Data from Library.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Support/Read Icon Data from Library.vi"/>
