@@ -70,7 +70,6 @@
 					<Item Name="OpenLayer.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/OpenLayer.ctl"/>
 					<Item Name="Path&amp;Icon.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/Path&amp;Icon.ctl"/>
 					<Item Name="Pen.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/Pen.ctl"/>
-					<Item Name="References Cluster.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/References Cluster.ctl"/>
 					<Item Name="References.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/References.ctl"/>
 					<Item Name="Refresh.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/Refresh.ctl"/>
 					<Item Name="Rotate.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/Rotate.ctl"/>
