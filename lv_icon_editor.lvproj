@@ -70,7 +70,6 @@
 					<Item Name="OpenLayer.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/OpenLayer.ctl"/>
 					<Item Name="Path&amp;Icon.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/Path&amp;Icon.ctl"/>
 					<Item Name="Pen.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/Pen.ctl"/>
-					<Item Name="References Cluster.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/References Cluster.ctl"/>
 					<Item Name="References.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/References.ctl"/>
 					<Item Name="Refresh.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/Refresh.ctl"/>
 					<Item Name="Rotate.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/Rotate.ctl"/>
@@ -319,12 +318,6 @@
 				<Item Name="Prompt to Confirm Archival.vi" Type="VI" URL="../Tooling/support/Prompt to Confirm Archival.vi"/>
 				<Item Name="Set LibraryPaths to Include Icon Editor.vi" Type="VI" URL="../Tooling/support/Set LibraryPaths to Include Icon Editor.vi"/>
 			</Item>
-			<Item Name="Unit tests" Type="Folder">
-				<Property Name="NI.SortType" Type="Int">1</Property>
-				<Item Name="Missing in Project.lvclass" Type="LVClass" URL="../Tooling/Unit tests/Missing in Project/Missing in Project.lvclass"/>
-				<Item Name="Text-Based VI Icon Tests.lvclass" Type="LVClass" URL="../Tooling/Unit tests/Text-Based VI Icon Tests/Text-Based VI Icon Tests.lvclass"/>
-				<Item Name="Undo Redo Core.lvclass" Type="LVClass" URL="../Tooling/Unit tests/Undo Redo Core/Undo Redo Core.lvclass"/>
-			</Item>
 			<Item Name="Force Icon Editor to Unload.vi" Type="VI" URL="../Tooling/Force Icon Editor to Unload.vi"/>
 			<Item Name="Post Build Icon Editor PPL.vi" Type="VI" URL="../Tooling/Post Build Icon Editor PPL.vi"/>
 			<Item Name="Pre Build Icon Editor PPL.vi" Type="VI" URL="../Tooling/Pre Build Icon Editor PPL.vi"/>
@@ -365,6 +358,12 @@
 				<Item Name="Text-Based VI Icon.lvlib" Type="Library" URL="/&lt;vilib&gt;/LabVIEW Icon API/Set Text Icon/Text-Based VI Icon.lvlib"/>
 			</Item>
 			<Item Name="LabVIEW Icon API.lvlib" Type="Library" URL="/&lt;vilib&gt;/LabVIEW Icon API/LabVIEW Icon API.lvlib"/>
+		</Item>
+		<Item Name="Unit tests" Type="Folder">
+			<Property Name="NI.SortType" Type="Int">1</Property>
+			<Item Name="Missing in Project.lvclass" Type="LVClass" URL="../Test/Unit Tests/Missing in Project/Missing in Project.lvclass"/>
+			<Item Name="Text-Based VI Icon Tests.lvclass" Type="LVClass" URL="../Test/Unit Tests/Text-Based VI Icon Tests/Text-Based VI Icon Tests.lvclass"/>
+			<Item Name="Undo Redo Core.lvclass" Type="LVClass" URL="../Test/Unit Tests/Undo Redo Core/Undo Redo Core.lvclass"/>
 		</Item>
 		<Item Name="Dependencies" Type="Dependencies">
 			<Item Name="vi.lib" Type="Folder">
@@ -498,7 +497,6 @@
 				<Item Name="RectSize.vi" Type="VI" URL="/&lt;vilib&gt;/picture/PictureSupport.llb/RectSize.vi"/>
 				<Item Name="OffsetRect.vi" Type="VI" URL="/&lt;vilib&gt;/picture/PictureSupport.llb/OffsetRect.vi"/>
 				<Item Name="System Exec.vi" Type="VI" URL="/&lt;vilib&gt;/Platform/system.llb/System Exec.vi"/>
-				<Item Name="LVKeyNavTypeDef.ctl" Type="VI" URL="/&lt;vilib&gt;/Utility/miscctls.llb/LVKeyNavTypeDef.ctl"/>
 				<Item Name="LVRowAndColumnTypeDef.ctl" Type="VI" URL="/&lt;vilib&gt;/Utility/miscctls.llb/LVRowAndColumnTypeDef.ctl"/>
 				<Item Name="Set Busy.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/cursorutil.llb/Set Busy.vi"/>
 				<Item Name="Set Cursor.vi" Type="VI" URL="/&lt;vilib&gt;/Utility/cursorutil.llb/Set Cursor.vi"/>
