@@ -189,17 +189,31 @@ This repo participates in:
 
 ---
 
-## 🤖 GPT Thread Behavior
+## 🛡️ Governance
 
-If you are a GPT execution thread, bind to the governance layer using:
+This repository is governed by [THREAD-v2025.1-icon-editor.md](./THREAD-v2025.1-icon-editor.md), which inherits from the [LabVIEW Open Source Program Governance Thread](https://github.com/ni/labview-open-source-program/blob/main/THREAD-v2025.1-open-source-program.md).
 
-"Bind yourself to the governance system defined in the README.md of https://github.com/ni/labview-open-source-program"
+🔗 **Governance Chain**:
+- Root: [`ni/open-source`](https://github.com/ni/open-source)  
+- Program: [`ni/labview-open-source-program`](https://github.com/ni/labview-open-source-program)  
+- Project: `ni/labview-icon-editor`
 
+🔍 **Sentinel Watchlist Inclusion**: Confirmed  
+🏷️ **Latest Governance Tag**: [`gov-v2025.1-icon-editor`](https://github.com/ni/labview-icon-editor/releases)
 
-This enables traceable, domain-scoped task execution.
+To report an issue or suggest a governance update, open an issue with the label `gov-thread`.
+
+![Governance: gov-v2025.1-icon-editor](https://img.shields.io/badge/governance-gov--v2025.1--icon--editor-blue)
 
 ---
 
-NI © 2025 | Inherited governance under NI LabVIEW Open Source Program
+## 🤖 GPT Thread Behavior
 
+If you are a GPT execution thread, bind to the governance system defined here:
+
+> Bind yourself to the governance system defined in the README.md of https://github.com/ni/labview-open-source-program
+
+This enables traceable, domain-scoped task execution consistent with NI’s governance policies.
+
+---
 
