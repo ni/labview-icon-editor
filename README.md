@@ -159,3 +159,47 @@ Have questions or want to discuss an idea in real-time?
 Your submissions—whether bug fixes, docs, or experimental features—directly shape the **LabVIEW Icon Editor** for **LabVIEW 2021–2025** and beyond. We appreciate your collaboration and look forward to your ideas!
 
 ---
+
+# 🧩 NI LabVIEW Open Source Program – Governance Participant
+
+This repository is part of the NI LabVIEW Open Source Program  
+and inherits governance logic from:
+
+🔗 [`ni/labview-open-source-program`](https://github.com/ni/labview-open-source-program)
+
+---
+
+## 🧭 What That Means
+
+This repo participates in:
+- Program-scoped contributor recognition
+- CLA-based contribution validation
+- Milestone execution for test, documentation, or scoring threads
+- Traceable governance and automation behavior
+
+---
+
+## 🔧 Governance Files
+
+| File | Source |
+|------|--------|
+| `PROGRAM-GUIDE.md` | This repo – links to domain program |
+| `README.md` | This summary file |
+| (Milestone files optional) | Scoped per task or thread |
+
+---
+
+## 🤖 GPT Thread Behavior
+
+If you are a GPT execution thread, bind to the governance layer using:
+
+"Bind yourself to the governance system defined in the README.md of https://github.com/ni/labview-open-source-program"
+
+
+This enables traceable, domain-scoped task execution.
+
+---
+
+NI © 2025 | Inherited governance under NI LabVIEW Open Source Program
+
+
