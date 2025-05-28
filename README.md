@@ -207,6 +207,24 @@ To report an issue or suggest a governance update, open an issue with the label 
 
 ---
 
+## 🛡️ Governance
+
+This repository is governed by [THREAD-v2025.1-icon-editor.md](./THREAD-v2025.1-icon-editor.md), which inherits from the [LabVIEW Open Source Program Governance Thread](https://github.com/ni/labview-open-source-program/blob/main/THREAD-v2025.1-open-source-program.md).
+
+🔗 **Governance Chain**:
+- Root: [`ni/open-source`](https://github.com/ni/open-source)  
+- Program: [`ni/labview-open-source-program`](https://github.com/ni/labview-open-source-program)  
+- Project: `ni/labview-icon-editor`
+
+🔍 **Sentinel Watchlist Inclusion**: Confirmed  
+🏷️ **Latest Governance Tag**: [`gov-v2025.1-icon-editor`](https://github.com/ni/labview-icon-editor/releases)
+
+To report an issue or suggest a governance update, open an issue with the label `gov-thread`.
+
+![Governance: gov-v2025.1-icon-editor](https://img.shields.io/badge/governance-gov--v2025.1--icon--editor-blue)
+
+---
+
 ## 🤖 GPT Thread Behavior
 
 If you are a GPT execution thread, bind to the governance system defined here:
