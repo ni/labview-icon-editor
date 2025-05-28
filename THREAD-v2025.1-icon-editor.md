@@ -40,8 +40,3 @@ Declare governance responsibilities for the LabVIEW Icon Editor as part of the L
 
 Updates to governance should align with THREAD updates upstream. Major shifts in project scope or contributor model require a new THREAD version.
 
-## rules
-
-- Governance-sensitive pull requests (such as those modifying `THREAD-*.md`, `SENTINEL-WATCHLIST.md`, or runbook files) must not be approved by the Program Architect.
-
-
