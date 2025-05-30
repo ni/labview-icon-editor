@@ -1,3 +1,22 @@
+# 🧑‍💻 Contributing to This Repository
+
+Thank you for your interest in contributing!
+
+This repository is governed under the [NI LabVIEW Open Source Program](https://github.com/ni/labview-open-source-program).  
+All contributor roles, CLA policies, and automation systems are described there.
+
+---
+
+## ✍️ To Contribute
+
+- Submit a Pull Request (PR) as usual
+- You may be asked to opt into a Contributor License Agreement (CLA)
+- If your contribution is tied to a milestone, it may be scored for certification
+
+For more info, visit the upstream program files:
+- [`PROGRAM-GUIDE.md`](https://github.com/ni/labview-open-source-program/blob/main/PROGRAM-GUIDE.md)
+- [`GPT-CAPTURE-INSTRUCTIONS.md`](https://github.com/ni/labview-open-source-program/blob/main/GPT-CAPTURE-INSTRUCTIONS.md)
+
 # Contributing to the LabVIEW Icon Editor
 
 ## Table of Contents
