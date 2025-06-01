@@ -24,6 +24,7 @@ on:
 
 jobs:
   run-labview-tests:
+    name: Run unit tests
     # Matrix: test multiple OS, LabVIEW versions, and bitness
     strategy:
       matrix:
