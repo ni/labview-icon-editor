@@ -1,4 +1,4 @@
-name: Run Unit Tests
+name: Run unit tests
 
 on:
   pull_request:
@@ -23,12 +23,19 @@ on:
   workflow_dispatch:
 
 jobs:
-  run-labview-tests:
+  run-unit-tests:
     name: Run unit tests
     # Matrix: test multiple OS, LabVIEW versions, and bitness
+    runs-on: ubuntu-latest
+    needs: labview-test-matrix
+    steps:
+      - name: Mark test suite as passed
+        run: echo "All LabVIEW matrix tests completed successfully."
+
+  labview-test-matrix:
     strategy:
       matrix:
-        os: [windows]        # Logical placeholders (map them to your self-hosted runners)
+        os: [windows]
         lv-version: ["2021"]
         bitness: ["32","64"]
       fail-fast: false

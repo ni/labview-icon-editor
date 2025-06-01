@@ -60,5 +60,8 @@
 		<Item Name="Write Icon Data to Library.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Support/Write Icon Data to Library.vi"/>
 		<Item Name="Write Icon Data to VI.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Support/Write Icon Data to VI.vi"/>
 	</Item>
+	<Item Name="Type Defs" Type="Folder">
+		<Item Name="References Cluster.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/References Cluster.ctl"/>
+	</Item>
 	<Item Name="lv_icon.vi" Type="VI" URL="/&lt;resource&gt;/plugins/lv_icon.vi"/>
 </Library>
