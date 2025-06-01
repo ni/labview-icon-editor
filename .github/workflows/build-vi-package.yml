@@ -27,8 +27,15 @@ env:
   ATTACH_ARTIFACTS_TO_RELEASE: true
 
 jobs:
-  build-release:
+  build-the-icon-editor:
     name: Build the icon editor
+    runs-on: ubuntu-latest
+    needs: [build-release]
+    steps:
+      - name: Mark build as complete
+        run: echo "All build steps completed successfully."
+
+  build-release:
     runs-on: [self-hosted-windows-lv]
     permissions:
       contents: write
@@ -72,8 +79,7 @@ jobs:
         with:
           persist-credentials: true
           fetch-depth: 0
-          
-      # This fixes the dubious ownership issue
+
       - name: Trust repository folder (Git safe.directory)
         run: git config --global --add safe.directory "$env:GITHUB_WORKSPACE"
         shell: pwsh
@@ -214,29 +220,21 @@ jobs:
         run: |
           $repoRoot      = $env:GITHUB_WORKSPACE
           $scriptsFolder = Join-Path $repoRoot 'pipeline/scripts'
-    
-          # Split the 'owner/repo' string to extract org and repository
           $org, $repo = $env:GITHUB_REPOSITORY -split '/'
-    
           Write-Host "Building VI package => MAJOR=$($env:MAJOR), MINOR=$($env:MINOR), PATCH=$($env:PATCH), BUILD=$($env:BUILD)"
           Write-Host "CompanyName => $org"
           Write-Host "AuthorName => $repo"
-    
-          # Call the updated Build.ps1 which now expects -CompanyName and -AuthorName
-          .\pipeline\scripts\Build.ps1 `
-            -RelativePath        $repoRoot `
-            -AbsolutePathScripts $scriptsFolder `
-            -Major               $env:MAJOR `
-            -Minor               $env:MINOR `
-            -Patch               $env:PATCH `
-            -Build               $env:BUILD `
-            -Commit              $env:COMMIT `
-            -CompanyName         $org `
+          .\pipeline\scripts\Build.ps1 \
+            -RelativePath        $repoRoot \
+            -AbsolutePathScripts $scriptsFolder \
+            -Major               $env:MAJOR \
+            -Minor               $env:MINOR \
+            -Patch               $env:PATCH \
+            -Build               $env:BUILD \
+            -Commit              $env:COMMIT \
+            -CompanyName         $org \
             -AuthorName          $repo
-    
-      ########################################################################
-      # 6) Capture the .vip file path as a step output
-      ########################################################################
+
       - name: Discover .vip path
         id: find_vip
         shell: pwsh
