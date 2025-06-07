@@ -58,7 +58,6 @@
 					<Item Name="IconFilename.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/IconFilename.ctl"/>
 					<Item Name="IconLibraryList.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/IconLibraryList.ctl"/>
 					<Item Name="IE Classes.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/IE Classes.ctl"/>
-					<Item Name="IE Data.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/IE Data.ctl"/>
 					<Item Name="IE Symbols.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/IE Symbols.ctl"/>
 					<Item Name="IERect.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/IERect.ctl"/>
 					<Item Name="INI.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/INI.ctl"/>
@@ -539,6 +538,7 @@
 				<Item Name="CenterRectInBnds.vi" Type="VI" URL="/&lt;vilib&gt;/picture/PictureSupport.llb/CenterRectInBnds.vi"/>
 				<Item Name="RectCentroid.vi" Type="VI" URL="/&lt;vilib&gt;/picture/PictureSupport.llb/RectCentroid.vi"/>
 				<Item Name="POffsetRect.vi" Type="VI" URL="/&lt;vilib&gt;/picture/PictureSupport.llb/POffsetRect.vi"/>
+				<Item Name="UID to GObject Reference.vi" Type="VI" URL="/&lt;vilib&gt;/VIServer/UID to GObject Reference.vi"/>
 			</Item>
 			<Item Name="Advapi32.dll" Type="Document" URL="Advapi32.dll">
 				<Property Name="NI.PreserveRelativePath" Type="Bool">true</Property>
