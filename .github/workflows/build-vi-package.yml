@@ -36,6 +36,7 @@ jobs:
         run: echo "All build steps completed successfully."
 
   build-release:
+    name: Build the icon editor
     runs-on: [self-hosted-windows-lv]
     permissions:
       contents: write
