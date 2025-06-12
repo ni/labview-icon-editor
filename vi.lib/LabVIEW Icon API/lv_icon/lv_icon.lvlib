@@ -51,6 +51,7 @@
 		<Item Name="Serialize Icon Data.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Support/Serialize Icon Data.vi"/>
 		<Item Name="Text.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Support/Text.vi"/>
 		<Item Name="Unflatten Load &amp; Unload.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Support/Unflatten Load &amp; Unload.vi"/>
+		<Item Name="Verify Cancel.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/User Dialogs/Verify Cancel.vi"/>
 	</Item>
 	<Item Name="Read and Write Icon Data" Type="Folder">
 		<Item Name="Read Icon Data from Library.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Support/Read Icon Data from Library.vi"/>
@@ -58,6 +59,10 @@
 		<Item Name="Remove Icon Data from VI.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Support/Remove Icon Data from VI.vi"/>
 		<Item Name="Write Icon Data to Library.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Support/Write Icon Data to Library.vi"/>
 		<Item Name="Write Icon Data to VI.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Support/Write Icon Data to VI.vi"/>
+	</Item>
+	<Item Name="Type Defs" Type="Folder">
+		<Item Name="Global Data.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/Global Data.ctl"/>
+		<Item Name="References Cluster.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/References Cluster.ctl"/>
 	</Item>
 	<Item Name="lv_icon.vi" Type="VI" URL="/&lt;resource&gt;/plugins/lv_icon.vi"/>
 </Library>

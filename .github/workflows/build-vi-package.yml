@@ -28,6 +28,7 @@ env:
 
 jobs:
   build-release:
+    name: Build the icon editor
     runs-on: [self-hosted-windows-lv]
     permissions:
       contents: write
