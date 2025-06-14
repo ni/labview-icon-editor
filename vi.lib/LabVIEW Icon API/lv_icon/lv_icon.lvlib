@@ -15,6 +15,10 @@
 		<Item Name="Save Editor Position.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Editor Position/Save Editor Position.vi"/>
 		<Item Name="Set Editor Position.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Editor Position/Set Editor Position.vi"/>
 	</Item>
+	<Item Name="INI" Type="Folder">
+		<Item Name="INI Data.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/INI/INI Data.ctl"/>
+		<Item Name="Write Data to LabVIEW INI.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/INI/Write Data to LabVIEW INI.vi"/>
+	</Item>
 	<Item Name="Other" Type="Folder">
 		<Item Name="Adjust temporary rotate and flip rectangle.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Support/Adjust temporary rotate and flip rectangle.vi"/>
 		<Item Name="Apply Opacity.vi" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Support/Apply Opacity.vi"/>
