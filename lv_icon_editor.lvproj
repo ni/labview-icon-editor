@@ -60,7 +60,6 @@
 					<Item Name="IE Classes.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/IE Classes.ctl"/>
 					<Item Name="IE Symbols.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/IE Symbols.ctl"/>
 					<Item Name="IERect.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/IERect.ctl"/>
-					<Item Name="INI.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/INI.ctl"/>
 					<Item Name="LayerList.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/LayerList.ctl"/>
 					<Item Name="Line.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/Line.ctl"/>
 					<Item Name="Move.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Controls/Move.ctl"/>
@@ -113,8 +112,8 @@
 					<Item Name="Font" Type="Folder">
 						<Item Name="Linux.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Font/Linux.vi"/>
 						<Item Name="Mac.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Font/Mac.vi"/>
-						<Item Name="Populate Font Control.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Font/Populate Font Control.vi"/>
 						<Item Name="Windows.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Font/Windows.vi"/>
+						<Item Name="Populate Font ComboBox.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Font/Populate Font ComboBox.vi"/>
 					</Item>
 					<Item Name="Glyphs" Type="Folder">
 						<Item Name="Glyph_MouseDown.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Glyphs/Glyph_MouseDown.vi"/>
@@ -197,7 +196,6 @@
 						<Item Name="Load.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/Load.vi"/>
 						<Item Name="Read Data from Caller.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/Read Data from Caller.vi"/>
 						<Item Name="Read Glyphs from  File.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/Read Glyphs from  File.vi"/>
-						<Item Name="ReadDataFromLabVIEWINI.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/ReadDataFromLabVIEWINI.vi"/>
 						<Item Name="Reset Layer VI.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/Reset Layer VI.vi"/>
 						<Item Name="Return MutationCode Folder.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/Return MutationCode Folder.vi"/>
 						<Item Name="Unflatten Icon.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/Unflatten Icon.vi"/>
@@ -205,7 +203,6 @@
 						<Item Name="Write Data to Caller.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/Write Data to Caller.vi"/>
 						<Item Name="Write Glyphs to  File.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/Write Glyphs to  File.vi"/>
 						<Item Name="Write INI Tokens and VI Tags.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/Write INI Tokens and VI Tags.vi"/>
-						<Item Name="WriteDataToLabVIEWINI.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/WriteDataToLabVIEWINI.vi"/>
 					</Item>
 					<Item Name="Menubar" Type="Folder">
 						<Item Name="EnableDisable Combine Layers.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Menubar/EnableDisable Combine Layers.vi"/>
@@ -265,7 +262,6 @@
 					<Item Name="Load Glyph from File.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Glyph from File.vi"/>
 					<Item Name="Magic Active Layer Constant.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Magic Active Layer Constant.vi"/>
 					<Item Name="MoveLayers.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/MoveLayers.vi"/>
-					<Item Name="Populate Font ComboBox.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Populate Font ComboBox.vi"/>
 					<Item Name="PrepareData4HTML.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/PrepareData4HTML.vi"/>
 					<Item Name="PrepareTemporaryView.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/PrepareTemporaryView.vi"/>
 					<Item Name="Process Temporary View Layers.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Process Temporary View Layers.vi"/>
@@ -325,18 +321,10 @@
 		<Item Name="vi.lib/LabVIEW Icon API" Type="Folder">
 			<Item Name="lv_icon" Type="Folder">
 				<Item Name="Classes" Type="Folder">
-					<Item Name="Icon" Type="Folder">
-						<Item Name="Icon.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Classes/Icon/Icon.lvclass"/>
-					</Item>
-					<Item Name="Icon Framework" Type="Folder">
-						<Item Name="Icon Framework.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Classes/Icon Framework/Icon Framework.lvclass"/>
-					</Item>
-					<Item Name="Layer" Type="Folder">
-						<Item Name="Layer.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Classes/Layer/Layer.lvclass"/>
-					</Item>
-					<Item Name="Load_Unload" Type="Folder">
-						<Item Name="Load &amp; Unload.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Classes/Load_Unload/Load &amp; Unload.lvclass"/>
-					</Item>
+					<Item Name="Icon.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Classes/Icon/Icon.lvclass"/>
+					<Item Name="Icon Framework.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Classes/Icon Framework/Icon Framework.lvclass"/>
+					<Item Name="Layer.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Classes/Layer/Layer.lvclass"/>
+					<Item Name="Load &amp; Unload.lvclass" Type="LVClass" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Classes/Load_Unload/Load &amp; Unload.lvclass"/>
 				</Item>
 				<Item Name="Controls" Type="Folder">
 					<Item Name="Alignment.ctl" Type="VI" URL="/&lt;vilib&gt;/LabVIEW Icon API/lv_icon/Controls/Alignment.ctl"/>
@@ -539,6 +527,7 @@
 				<Item Name="RectCentroid.vi" Type="VI" URL="/&lt;vilib&gt;/picture/PictureSupport.llb/RectCentroid.vi"/>
 				<Item Name="POffsetRect.vi" Type="VI" URL="/&lt;vilib&gt;/picture/PictureSupport.llb/POffsetRect.vi"/>
 				<Item Name="UID to GObject Reference.vi" Type="VI" URL="/&lt;vilib&gt;/VIServer/UID to GObject Reference.vi"/>
+				<Item Name="Enum to Array of Enums.vim" Type="VI" URL="/&lt;vilib&gt;/numeric/Enum to Array of Enums.vim"/>
 			</Item>
 			<Item Name="Advapi32.dll" Type="Document" URL="Advapi32.dll">
 				<Property Name="NI.PreserveRelativePath" Type="Bool">true</Property>
