@@ -196,7 +196,6 @@
 						<Item Name="Load.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/Load.vi"/>
 						<Item Name="Read Data from Caller.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/Read Data from Caller.vi"/>
 						<Item Name="Read Glyphs from  File.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/Read Glyphs from  File.vi"/>
-						<Item Name="ReadDataFromLabVIEWINI.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/ReadDataFromLabVIEWINI.vi"/>
 						<Item Name="Reset Layer VI.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/Reset Layer VI.vi"/>
 						<Item Name="Return MutationCode Folder.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/Return MutationCode Folder.vi"/>
 						<Item Name="Unflatten Icon.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/Miscellaneous/Load Unload/Unflatten Icon.vi"/>

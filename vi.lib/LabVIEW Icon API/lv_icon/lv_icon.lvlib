@@ -17,6 +17,7 @@
 	</Item>
 	<Item Name="INI" Type="Folder">
 		<Item Name="INI Data.ctl" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/INI/INI Data.ctl"/>
+		<Item Name="Read Data From LabVIEW INI.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/INI/Read Data From LabVIEW INI.vi"/>
 		<Item Name="Write Data to LabVIEW INI.vi" Type="VI" URL="/&lt;resource&gt;/plugins/NIIconEditor/INI/Write Data to LabVIEW INI.vi"/>
 	</Item>
 	<Item Name="Other" Type="Folder">
