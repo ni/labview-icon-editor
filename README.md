@@ -1,4 +1,4 @@
-# LabVIEW Icon Editor
+# LabVIEW Icon Editor 
 
 [![CI Status](https://img.shields.io/github/actions/workflow/status/ni/labview-icon-editor/ci-composite.yml?branch=main)](https://github.com/ni/labview-icon-editor/actions/workflows/ci-composite.yml)
 [![Latest Release](https://img.shields.io/github/v/release/ni/labview-icon-editor?label=release)](https://github.com/ni/labview-icon-editor/releases/latest)
