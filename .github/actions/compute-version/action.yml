@@ -47,6 +47,13 @@ runs:
         $ErrorActionPreference = 'Stop'
         git fetch --tags --force --prune
 
+    - name: Mark workspace as safe for git
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $root = Resolve-Path .
+        git config --global --add safe.directory "$root"
+
     - name: Determine bump type
       id: bump_type
       uses: actions/github-script@v7
