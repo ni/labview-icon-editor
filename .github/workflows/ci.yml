@@ -398,6 +398,79 @@ jobs:
           "lv_version=$derived" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf8 -Append
           Write-Host ("LabVIEW version check passed: env policy {0} == VIPB {1} (normalized {2})." -f $env:EXPECTED_MIN_LV, $derivedRaw, $derived)
 
+  list-collaborators:
+    name: List Repo Collaborators
+    needs: [verify-checklist-sync]
+    runs-on: ubuntu-latest
+    steps:
+      - name: List collaborators and permissions
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:GH_TOKEN) { throw "GITHUB_TOKEN is not available." }
+          if (-not $env:GH_REPO) { throw "GITHUB_REPOSITORY is not set." }
+
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept        = "application/vnd.github+json"
+            "User-Agent"  = "labview-icon-editor-ci-collaborators"
+          }
+
+          $owner, $repo = $env:GH_REPO -split '/', 2
+          $page = 1
+          $all = @()
+          while ($true) {
+            $uri = "https://api.github.com/repos/$owner/$repo/collaborators?per_page=100&page=$page"
+            $resp = Invoke-RestMethod -Uri $uri -Headers $headers -Method Get
+            if ($resp) {
+              $all += @($resp)
+            }
+            if (-not $resp -or @($resp).Count -lt 100) { break }
+            $page++
+          }
+
+          function Get-Perm {
+            param($perm)
+            if ($perm.admin) { return "admin" }
+            elseif ($perm.maintain) { return "maintain" }
+            elseif ($perm.push) { return "write" }
+            elseif ($perm.triage) { return "triage" }
+            elseif ($perm.pull) { return "read" }
+            else { return "unknown" }
+          }
+
+          if (-not $all) {
+            Write-Warning "No collaborators returned for $owner/$repo."
+            return
+          }
+
+          $rows = foreach ($c in $all) {
+            [pscustomobject]@{
+              Login       = $c.login
+              Name        = $c.name
+              Permission  = Get-Perm $c.permissions
+              Type        = $c.type
+            }
+          }
+
+          $summary = @()
+          $summary += "### Repository collaborators"
+          $summary += ""
+          $summary += "| Login | Name | Permission | Type |"
+          $summary += "| --- | --- | --- | --- |"
+          foreach ($r in $rows | Sort-Object -Property Permission, Login) {
+            $summary += ("| `{0}` | {1} | `{2}` | `{3}` |" -f $r.Login, ($r.Name ?? ''), $r.Permission, ($r.Type ?? ''))
+          }
+          $summary += ""
+          $summaryText = $summary -join "`n"
+          if ($env:GITHUB_STEP_SUMMARY) {
+            $summaryText | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+          Write-Host $summaryText
+
   apply-deps:
     name: Apply VIPC (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x${{ matrix.bits }})
     needs: [verify-checklist-sync, resolve-labview-version, ps-coverage, version]
