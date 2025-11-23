@@ -38,8 +38,13 @@ jobs:
             '/.github/'
             '/docs/'
           )
+          esc() {
+            # Escape regex metacharacters for grep -E
+            printf '%s' "$1" | sed -e 's/[]\\.^$|?*+(){}[]/\\&/g'
+          }
           for pat in "${required[@]}"; do
-            if ! grep -Eq "^${pat}[[:space:]]+@" "$file"; then
+            regex="^$(esc "$pat")[[:space:]]+@"
+            if ! grep -Eq "$regex" "$file"; then
               echo "Required pattern '${pat}' with at least one @owner is missing in $file" >&2
               exit 1
             fi
