@@ -43,7 +43,13 @@ jobs:
         with:
           fetch-depth: 0
       - name: Summarize TRW checklist CSV
-        run: python3 .github/scripts/summarize_requirements.py --csv docs/requirements/Requirements.csv --rows 5 --title "Requirements Checklist" --repo "${{ github.repository }}" --summary-output "${GITHUB_STEP_SUMMARY:-}"
+        run: python3 .github/scripts/summarize_requirements.py --csv docs/requirements/Requirements.csv --rows 5 --title "Requirements Checklist" --repo "${{ github.repository }}" --summary-output "${GITHUB_STEP_SUMMARY:-}" --full-output "${{ github.workspace }}/reports/req-full.md"
+      - name: Upload requirements table
+        uses: actions/upload-artifact@v4
+        with:
+          name: requirements-full-table
+          path: reports/req-full.md
+          if-no-files-found: error
 
   test-compute-version-bump:
     name: Test compute-version bump selection (matrix)
