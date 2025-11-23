@@ -39,6 +39,7 @@ runs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        fetch-tags: true
 
     - name: Determine bump type
       id: bump_type
