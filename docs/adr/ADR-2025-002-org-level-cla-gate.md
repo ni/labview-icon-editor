@@ -18,6 +18,13 @@ We need a consistent, auditable way to ensure that contributors across many repo
 ## Decision
 We adopt **Option A**: an org-level CLA manifest plus a reusable `cla-gate` workflow that repositories can call via `workflow_call`. The central `cla-manifest` repository **shall** be the single source of truth for contributor CLA status, and the shared `cla-automation` (or equivalent) repository **shall** host the reusable CLA gate workflow and associated validation scripts. Individual repositories, including this one, **shall** integrate the gate by adding a small workflow that invokes `cla-gate` on pull requests into protected branches and by requiring the `cla-gate` check to pass via branch protection rules. The gate **shall** fail closed when it cannot retrieve or validate the manifest.
 
+## Requirements
+- **CLA-001**: The organization **shall** maintain a single `cla-manifest` repository as the authoritative source of CLA status, with each record including at minimum: `github`, `cla_type`, `cla_version`, `signed_on`, `status` (active/revoked), and an `evidence_ref`.  
+- **CLA-002**: The reusable `cla-gate` workflow **shall** validate pull requests by checking the PR author and all non-bot commit authors against the manifest; any missing or non-active entry **shall** cause the check to fail with a clear diagnostic.  
+- **CLA-003**: Repositories adopting the org-level CLA policy **shall** invoke the `cla-gate` workflow on pull requests targeting protected branches (for example, `main`, `develop`, `release/*`, and `feature/*`).  
+- **CLA-004**: Branch protection rules for protected branches **shall** require the `cla-gate` status check to pass before merges are allowed.  
+- **CLA-005**: The `cla-manifest` and CLA automation repositories **shall** be protected with CODEOWNERS and branch protection rules to prevent unauthorized or unreviewed changes to CLA policy or data.  
+
 ## Consequences
 - **+** CLA policy becomes consistent and enforceable across all participating repositories, with a single manifest and one implementation of gate logic to maintain.  
 - **+** Compliance, security, and legal teams can audit and update CLA status in one place without per-repo changes.  
