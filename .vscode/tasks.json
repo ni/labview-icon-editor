@@ -173,11 +173,14 @@
       "problemMatcher": []
     },
     {
-      "label": "Summarize TRW checklist",
+      "label": "Requirements checklist",
       "type": "shell",
       "command": "python",
       "args": [
-        "${workspaceFolder}/.github/scripts/summarize_requirements.py",
+        "dotnet",
+        "run",
+        "--project",
+        "${workspaceFolder}/tools/RequirementsSummarizer/RequirementsSummarizer.csproj",
         "--csv",
         "${workspaceFolder}/docs/requirements/Requirements.csv",
         "--rows",
