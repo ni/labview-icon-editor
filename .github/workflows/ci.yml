@@ -459,7 +459,7 @@ jobs:
 
   apply-deps-x64:
     name: Apply VIPC (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x64)
-    needs: [verify-checklist-sync, changes, resolve-labview-version, ps-coverage]
+    needs: [verify-checklist-sync, changes, resolve-labview-version, ps-coverage, version]
     runs-on: self-hosted-windows-lv
     steps:
       - uses: ./.github/actions/apply-vipc
