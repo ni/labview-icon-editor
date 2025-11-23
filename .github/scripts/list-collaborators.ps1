@@ -104,25 +104,12 @@ $rows = foreach ($c in $all) {
 }
 
 $summary = @()
-$summary += "### Repository collaborators"
+$summary += "### Users with direct repository permissions (GitHub collaborators)"
 $summary += ""
-$summary += ("Repository: `{0}`" -f $Repo)
-
-$total = $rows.Count
-$byPerm = $rows | Group-Object -Property Permission | Sort-Object -Property Name
-$summary += ("Found **{0}** direct collaborator(s)." -f $total)
-if ($byPerm.Count -gt 0) {
-    $summary += ""
-    $summary += "Permissions breakdown:"
-    foreach ($g in $byPerm) {
-        $summary += ("- `{0}`: {1}" -f $g.Name, $g.Count)
-    }
-}
-$summary += ""
-$summary += "| Login | Name | Permission | Type |"
-$summary += "| --- | --- | --- | --- |"
+$summary += "| Login | Permission | Type |"
+$summary += "| --- | --- | --- |"
 foreach ($r in $rows | Sort-Object -Property Permission, Login) {
-    $summary += ("| `{0}` | {1} | `{2}` | `{3}` |" -f $r.Login, ($r.Name ?? ''), $r.Permission, ($r.Type ?? ''))
+    $summary += ("| `{0}` | `{1}` | `{2}` |" -f $r.Login, $r.Permission, ($r.Type ?? ''))
 }
 $summary += ""
 $summaryText = $summary -join "`n"
