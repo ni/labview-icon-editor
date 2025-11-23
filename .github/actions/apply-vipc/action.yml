@@ -36,6 +36,9 @@ outputs:
   vipc_git_commit:
     description: 'Git commit hash of the applied .vipc file (last change to the file).'
     value: ${{ steps.apply.outputs.vipc_git_commit }}
+  vipc_git_author:
+    description: 'Git author for the applied .vipc file (last change to the file).'
+    value: ${{ steps.apply.outputs.vipc_git_author }}
 inputs:
   package_labview_version:
     description: 'LabVIEW version to target (derived from VIPB)'

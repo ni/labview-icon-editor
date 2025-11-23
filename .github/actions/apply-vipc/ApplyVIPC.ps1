@@ -83,6 +83,7 @@ catch {
 $vipcItem = Get-Item -LiteralPath $ResolvedVIPCPath -ErrorAction Stop
 $vipcHash = (Get-FileHash -LiteralPath $ResolvedVIPCPath -Algorithm SHA256 -ErrorAction Stop).Hash
 $vipcGitCommit = $null
+$vipcGitAuthor = $null
 try {
     $gitCmd = Get-Command git -ErrorAction Stop
     Push-Location -LiteralPath $ResolvedRepositoryPath
@@ -90,6 +91,10 @@ try {
         $commit = & $gitCmd.Path log -1 --format=%H -- $VIPCPath 2>$null
         if (-not [string]::IsNullOrWhiteSpace($commit)) {
             $vipcGitCommit = $commit.Trim()
+            $author = & $gitCmd.Path log -1 --format=%an -- $VIPCPath 2>$null
+            if (-not [string]::IsNullOrWhiteSpace($author)) {
+                $vipcGitAuthor = $author.Trim()
+            }
         }
         else {
             Write-Warning "Unable to determine git commit for VIPC path '$VIPCPath'."
@@ -409,6 +414,7 @@ if ($env:GITHUB_OUTPUT) {
         ("vipc_size_bytes={0}" -f $vipcItem.Length)
         ("vipc_last_write_utc={0:o}" -f $vipcItem.LastWriteTimeUtc)
         ("vipc_git_commit={0}" -f ($vipcGitCommit ?? 'unknown'))
+        ("vipc_git_author={0}" -f ($vipcGitAuthor ?? 'unknown'))
     ) | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 }
 
@@ -425,7 +431,7 @@ if ($env:GITHUB_STEP_SUMMARY) {
     $summary += ("| Size (bytes) | `{0}` |" -f $vipcItem.Length)
     $summary += ("| Last write (UTC) | `{0}` |" -f $vipcItem.LastWriteTimeUtc.ToString("o"))
     $summary += ("| Git commit | `{0}` |" -f ($vipcGitCommit ?? 'unknown'))
-    $summary += ("| Repo path | `{0}` |" -f $VIPCPath)
+    $summary += ("| Git author | `{0}` |" -f ($vipcGitAuthor ?? 'unknown'))
     $summary += ""
     $summary -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
 }

@@ -459,12 +459,15 @@ jobs:
             throw "VIPC file not found at '$vipcFull'."
           }
           $commit = ""
+          $author = ""
           try {
             $commit = git log -1 --format=%H -- $vipcRel 2>$null
+            $author = git log -1 --format=%an -- $vipcRel 2>$null
           } catch {
             Write-Warning "git log failed for '$vipcRel': $($_.Exception.Message)"
           }
           if ([string]::IsNullOrWhiteSpace($commit)) { $commit = "unknown" }
+          if ([string]::IsNullOrWhiteSpace($author)) { $author = "unknown" }
 
           $vipcLeaf = Split-Path -Leaf $vipcRel
           $bitLabel = "x${{ matrix.bits }}"
@@ -474,8 +477,8 @@ jobs:
           $summary += "| Field | Value |"
           $summary += "| --- | --- |"
           $summary += ("| Path | `{0}` |" -f $vipcFull)
-          $summary += ("| Repo path | `{0}` |" -f $vipcRel)
           $summary += ("| Git commit | `{0}` |" -f $commit)
+          $summary += ("| Git author | `{0}` |" -f $author)
           $summary += ""
           $summaryText = $summary -join "`n"
           if ($env:GITHUB_STEP_SUMMARY) {
@@ -580,7 +583,7 @@ jobs:
           $summary += ("| Size (bytes) | `{0}` |" -f "${{ steps.apply_vipc.outputs.vipc_size_bytes }}")
           $summary += ("| Last write (UTC) | `{0}` |" -f "${{ steps.apply_vipc.outputs.vipc_last_write_utc }}")
           $summary += ("| Git commit | `{0}` |" -f "${{ steps.apply_vipc.outputs.vipc_git_commit }}")
-          $summary += ("| Repo path | `{0}` |" -f "${{ env.VIPC_PATH }}")
+          $summary += ("| Git author | `{0}` |" -f "${{ steps.apply_vipc.outputs.vipc_git_author }}")
           $summary += ""
           $summaryText = $summary -join "`n"
           if ($env:GITHUB_STEP_SUMMARY) {
