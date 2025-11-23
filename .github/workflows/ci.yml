@@ -402,23 +402,6 @@ jobs:
           path: lychee/report.json
           if-no-files-found: error
 
-  changes:
-    name: Detect VIPC changes
-    needs: [verify-checklist-sync, enforce-verify-checklist-needs, rtm-gates, docs-quality, ps-coverage]
-    runs-on: ubuntu-latest
-    outputs:
-      vipc: ${{ steps.filter.outputs.vipc }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            vipc:
-              - '**/*.vipc'
-
   resolve-labview-version:
     name: Resolve LabVIEW version from VIPB
     needs: [verify-checklist-sync]
@@ -457,39 +440,90 @@ jobs:
           "lv_version=$derived" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf8 -Append
           Write-Host ("LabVIEW version check passed: env policy {0} == VIPB {1} (normalized {2})." -f $env:EXPECTED_MIN_LV, $derivedRaw, $derived)
 
-  apply-deps-x64:
-    name: Apply VIPC (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x64)
-    needs: [verify-checklist-sync, changes, resolve-labview-version, ps-coverage, version]
+  apply-deps:
+    name: Apply VIPC (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x${{ matrix.bits }})
+    needs: [verify-checklist-sync, resolve-labview-version, ps-coverage, version]
     runs-on: self-hosted-windows-lv
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - bits: "64"
+          - bits: "32"
+    env:
+      VIPC_PATH: ".github/actions/apply-vipc/runner_dependencies.vipc"
     steps:
-      - uses: ./.github/actions/apply-vipc
-        if: needs.changes.outputs.vipc == 'true'
+      - uses: actions/checkout@v4
         with:
-          package_labview_version:      ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
-          supported_bitness:            64
-          repository_path:              ${{ github.workspace }}
-          vipc_path:                    ".github/actions/apply-vipc/runner_dependencies.vipc"
-      - run: echo "No .vipc changes detected; skipping dependency application."
-        if: needs.changes.outputs.vipc != 'true'
+          fetch-depth: 0
 
-  apply-deps-x86:
-    name: Apply VIPC (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x86)
-    needs: [verify-checklist-sync, apply-deps-x64, changes, resolve-labview-version]
-    runs-on: self-hosted-windows-lv
-    steps:
-      - uses: ./.github/actions/apply-vipc
-        if: needs.changes.outputs.vipc == 'true'
+      - id: detect
+        name: Setup - detect VIPC changes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vipcRel = $env:VIPC_PATH
+          if ([string]::IsNullOrWhiteSpace($vipcRel)) {
+            throw "VIPC_PATH is not set."
+          }
+          $vipcFull = Join-Path $env:GITHUB_WORKSPACE $vipcRel
+          if (-not (Test-Path $vipcFull)) {
+            throw "VIPC file not found at '$vipcFull'."
+          }
+
+          $changed = $false
+          try {
+            $diff = git diff --name-only HEAD~1..HEAD 2>$null
+            if ($diff) {
+              $changed = ($diff -contains $vipcRel)
+            }
+          } catch {
+            Write-Warning "git diff failed; falling back to status."
+          }
+          if (-not $changed) {
+            $status = git status --short -- $vipcRel 2>$null
+            if ($status) { $changed = $true }
+          }
+          "changed_vipc=$changed" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          Write-Host ("VIPC changed? {0}" -f $changed)
+
+      - name: Apply VIPC dependencies
+        if: steps.detect.outputs.changed_vipc == 'true'
+        uses: ./.github/actions/apply-vipc
         with:
-          package_labview_version:      ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
-          supported_bitness:            32
-          repository_path:              ${{ github.workspace }}
-          vipc_path:                    ".github/actions/apply-vipc/runner_dependencies.vipc"
-      - run: echo "No .vipc changes detected; skipping dependency application."
-        if: needs.changes.outputs.vipc != 'true'
+          package_labview_version: ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
+          supported_bitness: ${{ matrix.bits }}
+          repository_path: ${{ github.workspace }}
+          vipc_path: ${{ env.VIPC_PATH }}
+
+      - name: Skip apply (no VIPC changes)
+        if: steps.detect.outputs.changed_vipc != 'true'
+        run: echo "No .vipc changes detected; skipping dependency application."
+
+      - id: report
+        if: steps.detect.outputs.changed_vipc == 'true'
+        name: Capture report path
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = Join-Path $env:GITHUB_WORKSPACE ".github/actions/apply-vipc/apply_vipc_report.json"
+          if (Test-Path $path) {
+            "report_path=$path" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          } else {
+            Write-Warning "apply_vipc_report.json not found after apply step."
+          }
+
+      - name: Upload apply VIPC report
+        if: steps.report.outputs.report_path
+        uses: actions/upload-artifact@v4
+        with:
+          name: apply-vipc-report-x${{ matrix.bits }}
+          path: ${{ steps.report.outputs.report_path }}
+          if-no-files-found: error
 
   check-library-paths:
     name: Check LocalHost.LibraryPaths (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }})
-    needs: [verify-checklist-sync, apply-deps-x86, resolve-labview-version]
+    needs: [verify-checklist-sync, apply-deps, resolve-labview-version]
     runs-on: self-hosted-windows-lv
     steps:
       - uses: actions/checkout@v4
@@ -544,7 +578,7 @@ jobs:
 
   missing-in-project-x64:
     name: Test Missing-In-Project (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x64)
-    needs: [verify-checklist-sync, apply-deps-x64, check-library-paths, resolve-labview-version]
+    needs: [verify-checklist-sync, apply-deps, check-library-paths, resolve-labview-version]
     runs-on: self-hosted-windows-lv
     steps:
       - uses: actions/checkout@v4
@@ -574,7 +608,7 @@ jobs:
 
   missing-in-project-x86:
     name: Test Missing-In-Project (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x86)
-    needs: [verify-checklist-sync, missing-in-project-x64, check-library-paths, resolve-labview-version]
+    needs: [verify-checklist-sync, missing-in-project-x64, check-library-paths, resolve-labview-version, apply-deps]
     runs-on: self-hosted-windows-lv
     steps:
       - uses: actions/checkout@v4
