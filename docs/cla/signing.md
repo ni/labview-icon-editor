@@ -11,7 +11,7 @@ This process explains how a contributor gets cleared to contribute (for all repo
 ## For CLA reviewers
 1) Validate the evidence and identity in the intake issue.  
 2) Add or update the contributor entry in the org-level `cla-manifest` (required fields: `github`, `cla_type`, `cla_version`, `signed_on`, `status`, `evidence_ref`).  
-3) Keep `status=active` only when verified; set `status=revoked` if superseded/invalid.  
+3) Keep `status=active` only when verified. If a newer CLA replaces the prior one, set the old entry to `status=superseded` and add the new entry/version as `status=active`. Use `status=inactive` only for identity corrections (e.g., wrong handle) or terminated corporate coverage.  
 4) Merge the manifest change via PR (CODEOWNERS + branch protection apply).  
 5) Reply on the intake issue to confirm activation (or request fixes).
 
@@ -23,4 +23,5 @@ This process explains how a contributor gets cleared to contribute (for all repo
 ## Notes
 - CLA applies org-wide for all repos using `cla-gate`.  
 - Evidence refs point to storage outside the repo; do not attach signed documents here.  
+- The CLA is treated as irrevocable for contributions; do not honor “withdraw” requests—use `superseded` for new versions, and reserve `inactive` for identity fixes or corporate termination.
 - If a handle changes or is duplicated, update the manifest and note the change in the intake issue.
