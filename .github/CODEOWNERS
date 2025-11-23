@@ -1,0 +1,6 @@
+# Repository-wide default owners
+* @svelderrainruiz
+
+# Scoped ownership (override default for specific areas as needed)
+/.github/ @svelderrainruiz
+/docs/ @svelderrainruiz
