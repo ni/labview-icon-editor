@@ -30,7 +30,7 @@ We adopt **Option A**: an org-level CLA manifest plus a reusable `cla-gate` work
 - **+** Compliance, security, and legal teams can audit and update CLA status in one place without per-repo changes.  
 - **+** Projects can opt in with minimal configuration (a short workflow that calls the reusable gate and a branch protection rule).  
 - **–** There is upfront work to create and secure the central manifest and automation repositories and to migrate existing per-repo CLA logic.  
-- **–** The CLA gate introduces a hard dependency on the manifest and automation repos being available; failures there will block merges until resolved (by design).  
+- **–** The CLA gate introduces a hard dependency on the manifest and automation repos being available; failures there **shall block** merges until resolved (by design).  
 
 ## Follow-ups
 - [ ] Create an org-level `cla-manifest` repository with a documented JSON schema, governance rules, and CI validation.  
@@ -38,4 +38,4 @@ We adopt **Option A**: an org-level CLA manifest plus a reusable `cla-gate` work
 - [ ] Update this repository to replace local CLA checks with a call to `cla-gate` and protect `develop/main/release/*/feature/*` branches with the `cla-gate` status check.  
 - [ ] Document the CLA intake process (issue template + manifest update PR) at the org level and link to it from this repo’s contributor docs.
 
-> Traceability: org-wide CLA policy requirements (TBD), CI tests for the reusable `cla-gate` workflow, and branch protection rules that require `cla-gate` on protected branches.
+> Traceability: CLA-001–CLA-005 in `docs/requirements/requirements.csv`, CI tests for the reusable `cla-gate` workflow, and branch protection rules that require `cla-gate` on protected branches.

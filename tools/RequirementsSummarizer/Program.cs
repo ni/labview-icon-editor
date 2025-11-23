@@ -45,7 +45,7 @@ internal static class Program
 
         bool HasFlag(string name) => args.Any(a => a == name);
 
-        var csvPath = GetArg("--csv") ?? "docs/requirements/Requirements.csv";
+        var csvPath = GetArg("--csv") ?? "docs/requirements/requirements.csv";
         var rowsParam = int.TryParse(GetArg("--rows"), out var r) ? r : 5;
         var title = GetArg("--title") ?? "Requirements Checklist";
         var repo = GetArg("--repo") ?? Environment.GetEnvironmentVariable("GITHUB_REPOSITORY") ?? string.Empty;
