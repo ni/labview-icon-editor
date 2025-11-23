@@ -413,8 +413,10 @@ if ($env:GITHUB_OUTPUT) {
 }
 
 if ($env:GITHUB_STEP_SUMMARY) {
+    $vipcLeaf = Split-Path -Leaf $ResolvedVIPCPath
+    $bitLabel = "x$SupportedBitness"
     $summary = @()
-    $summary += "### Applied VIPC file"
+    $summary += ("### {0} ({1})" -f $vipcLeaf, $bitLabel)
     $summary += ""
     $summary += "| Field | Value |"
     $summary += "| --- | --- |"
@@ -423,6 +425,7 @@ if ($env:GITHUB_STEP_SUMMARY) {
     $summary += ("| Size (bytes) | `{0}` |" -f $vipcItem.Length)
     $summary += ("| Last write (UTC) | `{0}` |" -f $vipcItem.LastWriteTimeUtc.ToString("o"))
     $summary += ("| Git commit | `{0}` |" -f ($vipcGitCommit ?? 'unknown'))
+    $summary += ("| Repo path | `{0}` |" -f $VIPCPath)
     $summary += ""
     $summary -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
 }
