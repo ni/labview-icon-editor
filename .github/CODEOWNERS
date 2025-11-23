@@ -6,4 +6,5 @@
 /.github/ @svelderrainruiz
 
 # Documentation
-/docs/** @svelderrainruiz
+/docs/ @svelderrainruiz
+/docs/cla/ @svelderrainruiz
