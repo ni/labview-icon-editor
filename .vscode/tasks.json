@@ -190,7 +190,6 @@
         "--repo",
         "${env:GITHUB_REPOSITORY}",
         "--section-details",
-        "--section-details-open",
         "--summary-output",
         "${workspaceFolder}/reports/req-summary.md",
         "--full-output",
