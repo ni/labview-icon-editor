@@ -1,6 +1,6 @@
 # Apply VIPC Dependencies 📦
 
-Ensure a runner has all required LabVIEW packages installed before building or testing. This composite action calls **`ApplyVIPC.ps1`** to apply a `.vipc` container through **g-cli**.
+Ensure a runner has all required LabVIEW packages installed before building or testing. This composite action calls **`ApplyVIPC.ps1`** to apply a `.vipc` container through the **VIPM CLI**.
 
 ---
 
@@ -17,9 +17,9 @@ Ensure a runner has all required LabVIEW packages installed before building or t
 ## Prerequisites
 | Requirement | Notes |
 |-------------|-------|
-| **Windows runner** | LabVIEW and g-cli are Windows only. |
-| **LabVIEW** `>= 2021` | Must match both `minimum_supported_lv_version` and `vip_lv_version`. |
-| **g-cli** in `PATH` | Used to apply the `.vipc` container. Install from NI Package Manager or include the executable in the runner image. |
+| **Windows runner** | LabVIEW and VIPM CLI are Windows only. |
+| **LabVIEW** `>= 2021` | Must match `package_labview_version` (typically derived from the `.vipb`). |
+| **VIPM CLI** in `PATH` | Used to apply the `.vipc` container. Install from VIPM. |
 | **PowerShell 7** | Composite steps use PowerShell Core (`pwsh`). |
 
 ---
@@ -27,26 +27,24 @@ Ensure a runner has all required LabVIEW packages installed before building or t
 ## Inputs
 | Name | Required | Example | Description |
 |------|----------|---------|-------------|
-| `minimum_supported_lv_version` | **Yes** | `2021` | LabVIEW *major* version that the repo supports. |
-| `vip_lv_version` | **Yes** | `2021` | LabVIEW version used to apply the `.vipc` file. Usually the same as `minimum_supported_lv_version`. |
+| `package_labview_version` | **Yes** | `2021` | LabVIEW version used to apply the `.vipc` file (typically derived from the `.vipb`). |
 | `supported_bitness` | **Yes** | `32` or `64` | LabVIEW bitness to target. |
-| `relative_path` | **Yes** | `${{ github.workspace }}` | Root path of the repository on disk. |
-| `vipc_path` | **Yes** | `Tooling/deployment/runner_dependencies.vipc` | Path (relative to `relative_path`) of the container to apply. |
+| `repository_path` | **Yes** | `${{ github.workspace }}` | Root path of the repository on disk. |
+| `vipc_path` | **Yes** | `Tooling/deployment/runner_dependencies.vipc` | Path (relative to `repository_path`) of the container to apply. |
 
 ---
 
 ## Quick-start
 ```yaml
-# .github/workflows/ci-composite.yml (excerpt)
+# .github/workflows/ci.yml (excerpt)
 steps:
   - uses: actions/checkout@v4
   - name: Install LabVIEW dependencies
     uses: ./.github/actions/apply-vipc
     with:
-      minimum_supported_lv_version: 2024
-      vip_lv_version: 2024
+      package_labview_version: 2024
       supported_bitness: 64
-      relative_path: ${{ github.workspace }}
+      repository_path: ${{ github.workspace }}
       vipc_path: Tooling/deployment/runner_dependencies.vipc
 ```
 
@@ -55,16 +53,17 @@ steps:
 ## How it works
 1. **Checkout** – pulls the repository to ensure scripts and the `.vipc` file are present.
 2. **PowerShell wrapper** – executes `ApplyVIPC.ps1` with the provided inputs.
-3. **g-cli invocation** – `ApplyVIPC.ps1` launches **g-cli** to apply the `.vipc` container to the specified LabVIEW installation.
-4. **Failure propagation** – any error in path resolution, g-cli, or the script causes the step (and job) to fail.
+3. **VIPM CLI invocation** – `ApplyVIPC.ps1` launches **vipm install** to apply the `.vipc` container to the specified LabVIEW installation.
+4. **Package diffing** – before/after applying, the script compares installed packages against the VIPC; it skips install if already compliant and fails if post-check still shows missing/mismatched packages. A summary JSON is written (`summary-json` output) for downstream steps.
+5. **Failure propagation** – any error in path resolution, VIPM CLI, or the script causes the step (and job) to fail.
 
 ---
 
 ## Troubleshooting
 | Symptom | Hint |
 |---------|------|
-| *g-cli executable not found* | Ensure g-cli is installed and on `PATH`. |
-| *`.vipc` file not found* | Check `relative_path` and `vipc_path` values. |
+| *vipm executable not found* | Ensure VIPM CLI is installed and on `PATH`. |
+| *`.vipc` file not found* | Check `repository_path` and `vipc_path` values. |
 | *LabVIEW version mismatch* | Make sure the installed LabVIEW version matches both version inputs. |
 
 ---

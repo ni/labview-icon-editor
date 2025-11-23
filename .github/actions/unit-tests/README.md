@@ -5,13 +5,13 @@ Use **`unit_tests.ps1`** to orchestrate setup and LabVIEW unit testing for both 
 ## Inputs
 | Name | Required | Example | Description |
 |------|----------|---------|-------------|
-| `relative_path` | **Yes** | `${{ github.workspace }}` | Repository root path. |
+| `repository_path` | **Yes** | `${{ github.workspace }}` | Repository root path. |
 
 ## Quick-start
 ```yaml
 - uses: ./.github/actions/unit-tests
   with:
-    relative_path: ${{ github.workspace }}
+    repository_path: ${{ github.workspace }}
 ```
 
 ## License

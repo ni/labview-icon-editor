@@ -51,7 +51,7 @@ Results are returned as standard GitHub Action outputs so downstream jobs can d
 
 ## Quick-start
 ```yaml
-# .github/workflows/ci-composite.yml  (excerpt)
+# .github/workflows/ci.yml  (excerpt)
 jobs:
   prepare:
     runs-on: self-hosted-windows-lv

@@ -1,0 +1,85 @@
+name: Draft Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Workflow run ID from the successful CI build (usually ci.yml)"
+        required: true
+      tag:
+        description: "Optional tag/release name (defaults to computed version without -build suffix)"
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  draft-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute version
+        id: version
+        uses: ./.github/actions/compute-version
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Form tag
+        id: tag
+        shell: pwsh
+        run: |
+          $inputTag = "${{ github.event.inputs.tag }}"
+          if (-not [string]::IsNullOrWhiteSpace($inputTag)) {
+            $tag = $inputTag.Trim()
+          } else {
+            $tag = '${{ steps.version.outputs.VERSION }}' -replace '-build\d+$',''
+          }
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            Write-Error "Tag is empty; cannot proceed."
+          }
+          "tag=$tag" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          Write-Host ("Release tag/name: {0}" -f $tag)
+
+      - name: Download artifacts from CI run
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.inputs.run_id }}
+          path: artifacts
+
+      - name: Create draft release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          release_name: ${{ steps.tag.outputs.tag }}
+          draft: true
+          prerelease: ${{ steps.version.outputs.IS_PRERELEASE }}
+
+      - name: Upload artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ steps.create_release.outputs.id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s globstar
+          root="artifacts"
+          found=0
+          for f in "$root"/**/*; do
+            [ -f "$f" ] || continue
+            name=$(basename "$f")
+            echo "Uploading $f as $name"
+            found=1
+            gh release upload "$RELEASE_ID" "$f" --clobber --repo "$GITHUB_REPOSITORY"
+          done
+          if [ "$found" -eq 0 ]; then
+            echo "No files found under $root to upload." >&2
+            exit 1
+          fi

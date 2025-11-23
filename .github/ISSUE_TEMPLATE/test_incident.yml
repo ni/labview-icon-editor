@@ -1,0 +1,115 @@
+name: Test Incident (§8.11)
+description: Record a test incident with timing, originator, context, severity, priority, risk, and status.
+title: "[Test Incident] <Requirement ID> short summary"
+labels: ["test-incident"]
+body:
+  - type: input
+    id: run_id
+    attributes:
+      label: Run ID / Workflow URL
+      description: CI run or manual execution reference.
+      placeholder: "123456789 (or https://github.com/org/repo/actions/runs/....)"
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and Environment
+      description: Branch/ref, runner, OS, LabVIEW version, data/env readiness state.
+      placeholder: "main @ abcdef, test-2021-x64, LabVIEW 2021 + UTF"
+    validations:
+      required: true
+  - type: input
+    id: originator
+    attributes:
+      label: Originator
+      description: Person or CI job filing the incident.
+      placeholder: "CI: test-report / automation"
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Critical
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority (from RTM)
+      options:
+        - Critical
+        - High
+        - Medium
+        - Low
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Risk / Impact
+      options:
+        - Blocks release
+        - Blocks merge
+        - Needs follow-up
+        - Informational
+    validations:
+      required: true
+  - type: dropdown
+    id: status
+    attributes:
+      label: Incident Status
+      options:
+        - Open
+        - In Progress
+        - Resolved
+        - Deferred
+    validations:
+      required: true
+  - type: input
+    id: timing
+    attributes:
+      label: Timing (UTC)
+      description: When the incident was observed.
+      placeholder: "2025-11-21T04:30:00Z"
+    validations:
+      required: true
+  - type: input
+    id: requirement_id
+    attributes:
+      label: RTM Requirement ID(s)
+      description: Link the affected RTM IDs.
+      placeholder: "UT-001, NF-001"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Incident Description
+      description: What happened, where, and under what conditions.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Result
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce / Attachments
+      description: Steps, logs, screenshots, links to artifacts (status/completion report, structured results).
+    validations:
+      required: false

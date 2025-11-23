@@ -26,7 +26,7 @@ function Rename-File {
         [string]$CurrentFilename,
         [string]$NewFilename
     )
-    
+
     # Check if the file exists
     if (-Not (Test-Path -Path $CurrentFilename)) {
         Write-Error "File '$CurrentFilename' does not exist."
@@ -36,7 +36,7 @@ function Rename-File {
     # Attempt to rename the file
     try {
         Rename-Item -Path $CurrentFilename -NewName $NewFilename
-        Write-Host "Renamed the packed project library to '$NewFilename'."
+        Write-Information "Renamed the packed project library to '$NewFilename'." -InformationAction Continue
     } catch {
         Write-Error "Could not rename the file. $_"
         exit 1

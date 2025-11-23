@@ -9,6 +9,11 @@ on:
         type: string
         required: true
         default: "enable"
+      bitness:
+        description: "Target LabVIEW bitness (32 or 64)."
+        type: string
+        required: false
+        default: "64"
 
   # 2) Triggered manually from the Actions tab
   workflow_dispatch:
@@ -21,6 +26,14 @@ on:
         options:
           - enable
           - disable
+      bitness:
+        description: "Target LabVIEW bitness (32 or 64)."
+        required: false
+        default: "64"
+        type: choice
+        options:
+          - "32"
+          - "64"
 
 jobs:
   toggle-dev-mode:
@@ -61,17 +74,26 @@ jobs:
         shell: pwsh
         run: |
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-            if ('${{ github.event.inputs.mode }}' -eq 'enable') {
-              ./.github/actions/set-development-mode/Set_Development_Mode.ps1 -RelativePath $env:GITHUB_WORKSPACE
+            $mode    = '${{ github.event.inputs.mode }}'
+            $bitness = '${{ github.event.inputs.bitness }}'
+          }
+          else {
+            $mode    = '${{ inputs.mode }}'
+            $bitness = '${{ inputs.bitness }}'
+          }
+
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            if ($mode -eq 'enable') {
+              ./.github/actions/set-development-mode/Set_Development_Mode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
             } else {
-              ./.github/actions/revert-development-mode/RevertDevelopmentMode.ps1 -RelativePath $env:GITHUB_WORKSPACE
+              ./.github/actions/revert-development-mode/RevertDevelopmentMode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
             }
           }
           else {
-            if ('${{ inputs.mode }}' -eq 'enable') {
-              ./.github/actions/set-development-mode/Set_Development_Mode.ps1 -RelativePath $env:GITHUB_WORKSPACE
+            if ($mode -eq 'enable') {
+              ./.github/actions/set-development-mode/Set_Development_Mode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
             } else {
-              ./.github/actions/revert-development-mode/RevertDevelopmentMode.ps1 -RelativePath $env:GITHUB_WORKSPACE
+              ./.github/actions/revert-development-mode/RevertDevelopmentMode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
             }
           }
       #
@@ -86,8 +108,10 @@ jobs:
           # Determine final mode for the JSON output
           if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
             $mode = '${{ github.event.inputs.mode }}'
+            $bitness = '${{ github.event.inputs.bitness }}'
           } else {
             $mode = '${{ inputs.mode }}'
+            $bitness = '${{ inputs.bitness }}'
           }
 
           $actor     = '${{ github.actor }}'
@@ -103,6 +127,7 @@ jobs:
           # Pretty-printed JSON (multi-line)
           $jsonObject = [ordered]@{
             mode      = $mode
+            bitness   = $bitness
             timestamp = $timestamp
             actor     = $actor
             pr_number = $prNumber

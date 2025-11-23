@@ -12,8 +12,8 @@ runs:
       shell: pwsh
       run: |
         & "${{ github.action_path }}/Set_Development_Mode.ps1" \
-          -RelativePath "${{ inputs.relative_path }}"
+          -RepositoryPath "${{ inputs.repository_path }}"
 inputs:
-  relative_path:
+  repository_path:
     description: 'Workspace root path'
     required: true

@@ -9,25 +9,26 @@ runs:
         fetch-depth: 0
 
     - name: Run ApplyVIPC.ps1
+      id: apply
       shell: pwsh
       run: |
         & "${{ github.action_path }}/ApplyVIPC.ps1" `
-          -MinimumSupportedLVVersion ${{ inputs.minimum_supported_lv_version }} `
-          -VIP_LVVersion ${{ inputs.vip_lv_version }} `
+          -Package_LabVIEW_Version ${{ inputs.package_labview_version }} `
           -SupportedBitness ${{ inputs.supported_bitness }} `
-          -RelativePath "${{ inputs.relative_path }}" `
+          -RepositoryPath "${{ inputs.repository_path }}" `
           -VIPCPath "${{ inputs.vipc_path }}"
+outputs:
+  summary-json:
+    description: 'Path to the apply-vipc summary JSON (package diff and verification results).'
+    value: ${{ steps.apply.outputs.summary-json }}
 inputs:
-  minimum_supported_lv_version:
-    description: 'LabVIEW major version (e.g. 2021)'
-    required: true
-  vip_lv_version:
-    description: 'VIPC LV version (usually same as minimum supported)'
+  package_labview_version:
+    description: 'LabVIEW version to target (derived from VIPB)'
     required: true
   supported_bitness:
     description: '32 or 64'
     required: true
-  relative_path:
+  repository_path:
     description: 'Workspace root path'
     required: true
   vipc_path:

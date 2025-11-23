@@ -44,7 +44,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 
 2. **Apply the VIPC**
   - Apply `.github/actions/apply-vipc/runner_dependencies.vipc` with VIPM in **LabVIEW 2021 (32-bit)**; repeat for **LabVIEW 2021 (64-bit)**. If using **LabVIEW 2023 (64-bit)** for builds, apply the same VIPC there as well.
-   - This is required on new runners because the workflow's `apply-deps` job in `.github/workflows/ci-composite.yml` runs only when `.vipc` files change (`if: needs.changes.outputs.vipc == 'true'`). When no `.vipc` updates exist, dependencies aren't installed automatically, so apply the VIPC manually.
+   - This is required on new runners because the workflow's `apply-deps` job in `.github/workflows/ci.yml` runs only when `.vipc` files change (`if: needs.changes.outputs.vipc == 'true'`). When no `.vipc` updates exist, dependencies aren't installed automatically, so apply the VIPC manually.
 
 3. **Configure a Self-Hosted Runner**  
    - Go to **Settings → Actions → Runners** in your (forked) repo.  
@@ -88,7 +88,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
    - Great for reconfiguring LabVIEW for local dev vs. distribution builds.
 
 2. **CI Pipeline (Composite)**
-   - Includes a **test** job for unit tests, a **version** job that computes semantic versioning, and a **build-vi-package** job that packages the `.vip` using the version job's outputs.
+   - Includes a **test** job for unit tests, a **version** job that computes semantic versioning, and a **build-vip** job that packages the `.vip` using the version job's outputs.
    - **Label-based** semantic versioning (`major`, `minor`, `patch`). Defaults to `patch` if no label.
    - **Derives build number from total commit count** (`git rev-list --count HEAD`).
    - **Fork-friendly**: runs on forks without requiring signing keys.

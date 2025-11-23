@@ -15,12 +15,25 @@ runs:
         DISPLAY_INFORMATION_JSON: |
           ${{ inputs.display_information_json }}
       run: |
+        $ErrorActionPreference = 'Stop'
         $displayInformationJson = $Env:DISPLAY_INFORMATION_JSON
+
+        $repo = "${{ inputs.repository_path }}"
+        $candidates = @(
+          (Join-Path $repo 'scripts/get-package-lv-version.ps1'),
+          (Join-Path $repo '.github/scripts/get-package-lv-version.ps1')
+        )
+        $lvScript = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+        if (-not $lvScript) {
+          throw "Unable to locate get-package-lv-version.ps1 under '$repo/scripts' or '$repo/.github/scripts'."
+        }
+
+        $lvVer = pwsh -NoProfile -File $lvScript -RepositoryPath $repo
         & "${{ github.action_path }}/ModifyVIPBDisplayInfo.ps1" `
           -SupportedBitness ${{ inputs.supported_bitness }} `
-          -RelativePath "${{ inputs.relative_path }}" `
+          -RepositoryPath "${{ inputs.repository_path }}" `
           -VIPBPath "${{ inputs.vipb_path }}" `
-          -MinimumSupportedLVVersion ${{ inputs.minimum_supported_lv_version }} `
+          -Package_LabVIEW_Version $lvVer `
           -LabVIEWMinorRevision ${{ inputs.labview_minor_revision }} `
           -Major ${{ inputs.major }} `
           -Minor ${{ inputs.minor }} `
@@ -33,14 +46,11 @@ inputs:
   supported_bitness:
     description: '32 or 64'
     required: true
-  relative_path:
+  repository_path:
     description: 'Workspace root path'
     required: true
   vipb_path:
     description: 'Path to the VIPB file (relative to workspace)'
-    required: true
-  minimum_supported_lv_version:
-    description: 'LabVIEW major version'
     required: true
   labview_minor_revision:
     description: 'LabVIEW minor revision (0 or 3)'

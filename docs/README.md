@@ -4,18 +4,23 @@ This directory collects guides and references for working with the LabVIEW Icon 
 
 ## General Guides
 
-- [Manual Setup Instructions](manual-instructions.md)
-- [Automated Setup Instructions](automated-setup.md)
-- [PowerShell CLI GitHub Action Instructions](powershell-cli-github-action-instructions.md)
-- [PowerShell Dependency Scripts](powershell-dependency-scripts.md)
+- [Building & Packaging via VS Code Tasks](vscode-tasks.md)
 - [CI Workflows Overview](ci-workflows.md)
+- [VS Code task shortlist](vscode-tasks.md)
+
+## Testing
+
+- [Test Policy](testing/policy.md)
+- [Test Strategy](testing/strategy.md)
+- [Test Plan](testing/test-plan.md)
+- [Test Report Template](testing/templates/test-report-template.md)
 
 ## CI and Advanced Topics
 
 - [Experiments Guide](ci/experiments.md)
 - [Troubleshooting & FAQ](ci/troubleshooting-faq.md)
 - [Composite Actions](ci/actions/README.md)
-  - [Build VI Package](ci/actions/build-vi-package.md)
+  - [Build VI Package](ci/actions/build-vi-package.md) *(build-vip action)*
   - [Development Mode Toggle](ci/actions/development-mode-toggle.md)
   - [Injecting Repo/Org to VI Package](ci/actions/injecting-repo-org-to-vi-package.md)
   - [Maintainer's Guide](ci/actions/maintainers-guide.md)

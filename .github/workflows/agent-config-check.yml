@@ -1,0 +1,51 @@
+name: Agent Config Check
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+      - release/*
+      - feature/*
+      - hotfix/*
+    paths:
+      - agent.yaml
+      - .github/scripts/validate_agent_yaml.py
+      - .github/workflows/agent-config-check.yml
+  push:
+    branches:
+      - main
+      - develop
+      - release/*
+      - feature/*
+      - hotfix/*
+    paths:
+      - agent.yaml
+      - .github/scripts/validate_agent_yaml.py
+      - .github/workflows/agent-config-check.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-agent-config:
+    name: Validate agent.yaml
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pyyaml
+
+      - name: Lint requirements language (ADRs + agent.yaml)
+        run: python .github/scripts/lint_requirements_language.py
+
+      - name: Run agent.yaml validation
+        run: python .github/scripts/validate_agent_yaml.py agent.yaml

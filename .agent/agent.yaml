@@ -1,0 +1,91 @@
+# Repository-root agent configuration
+# Purpose: single source of truth for agent identity, behavior, capabilities, and guardrails.
+# Notes: binding provisions use "shall"; preferences use "should"; allowances use "may". fileciteturn0file2
+
+schema_version: "1.0"
+
+metadata:
+  name: "requirements-agent"
+  version: "0.1.0"
+  owners:
+    - "@team/architecture"
+    - "@team/product"
+  description: >
+    An assistant focused on drafting, checking, and organizing requirements, ADRs, and specs.
+    It emphasizes clear, verifiable language and maintains traceability across decisions and artifacts. fileciteturn0file2
+
+goals:
+  - "Elicit and formalize requirements that are necessary, unambiguous, complete, feasible, and verifiable."  # fileciteturn0file2
+  - "Draft and maintain ADRs using a lightweight MADR structure."
+  - "Keep configuration and decisions auditable, testable, and under version control."
+
+model:
+  provider: "${MODEL_PROVIDER:-openai}"
+  name: "${MODEL_NAME:-gpt-4o}"
+  temperature: 0.2
+  max_tokens: 2000
+
+policies:
+  requirement_language:
+    use_shall_for_binding: true  # binding provisions
+    use_should_for_preferences: true
+    use_may_for_allowances: true
+    avoid_terms:
+      - "user-friendly"
+      - "as appropriate"
+      - "best"
+      - "minimal"
+      - "and/or"  # prefer explicit alternatives
+    notes: "Follow unambiguous, testable phrasing and avoid subjective qualifiers."  # fileciteturn0file2
+
+capabilities:
+  - id: "read_write_files"
+    enabled: true
+  - id: "execute_code"
+    enabled: false
+  - id: "web_browsing"
+    enabled: false
+
+tools: []  # extend with tool descriptors when needed (e.g., retrieval, vector store, issue tracker)
+
+safety:
+  pii_redaction: true
+  allow_external_network: false
+  refusal_triggers:
+    - "request to exfiltrate secrets"
+    - "illegal or clearly harmful activities"
+
+io_limits:
+  max_input_mb: 8
+  max_output_chars: 20000
+
+output:
+  style:
+    format: "markdown"
+    headings: true
+    cite_internal_files: true  # reference ADRs and repo docs when relevant
+
+telemetry:
+  enabled: false  # default off; enable explicitly per environment
+  redact_pii: true
+
+revision:
+  last_modified: "2025-11-20"
+  authors:
+    - "seed@system"
+
+# Verification (non-normative): example checks CI may run
+verification:
+  lint:
+    - "yamllint agent.yaml"
+  schema:
+    required_keys:
+      - "metadata.name"
+      - "metadata.version"
+      - "metadata.owners"
+      - "goals"
+      - "model.provider"
+      - "model.name"
+      - "capabilities"
+      - "safety"
+      - "revision.last_modified"

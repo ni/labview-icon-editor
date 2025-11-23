@@ -1,0 +1,12 @@
+[
+  {
+    "architecture": "test-2021-x64",
+    "status": "pass",
+    "notes": "Unit tests and workflows passed."
+  },
+  {
+    "architecture": "test-2021-x86",
+    "status": "pass",
+    "notes": "Unit tests and workflows passed."
+  }
+]

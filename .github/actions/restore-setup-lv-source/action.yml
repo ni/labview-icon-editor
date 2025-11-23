@@ -11,20 +11,18 @@ runs:
     - name: Run RestoreSetupLVSource.ps1
       shell: pwsh
       run: |
+        $lvVer = pwsh -NoProfile -File "${{ github.action_path }}/../../scripts/get-package-lv-version.ps1" -RepositoryPath "${{ inputs.repository_path }}"
         & "${{ github.action_path }}/RestoreSetupLVSource.ps1" \
-          -MinimumSupportedLVVersion ${{ inputs.minimum_supported_lv_version }} \
+          -Package_LabVIEW_Version $lvVer \
           -SupportedBitness ${{ inputs.supported_bitness }} \
-          -RelativePath "${{ inputs.relative_path }}" \
+          -RepositoryPath "${{ inputs.repository_path }}" \
           -LabVIEW_Project "${{ inputs.labview_project }}" \
           -Build_Spec "${{ inputs.build_spec }}"
 inputs:
-  minimum_supported_lv_version:
-    description: 'LabVIEW major version'
-    required: true
   supported_bitness:
     description: '32 or 64'
     required: true
-  relative_path:
+  repository_path:
     description: 'Workspace root path'
     required: true
   labview_project:

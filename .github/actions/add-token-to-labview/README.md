@@ -5,17 +5,15 @@ Invoke **`AddTokenToLabVIEW.ps1`** through a composite action to add a `Localhos
 ## Inputs
 | Name | Required | Example | Description |
 |------|----------|---------|-------------|
-| `minimum_supported_lv_version` | **Yes** | `2021` | LabVIEW major version used by g-cli. |
 | `supported_bitness` | **Yes** | `32` or `64` | Target LabVIEW bitness. |
-| `relative_path` | **Yes** | `${{ github.workspace }}` | Repository root on disk. |
+| `repository_path` | **Yes** | `${{ github.workspace }}` | Repository root on disk; version is resolved from the repo VIPB. |
 
 ## Quick-start
 ```yaml
 - uses: ./.github/actions/add-token-to-labview
   with:
-    minimum_supported_lv_version: 2024
     supported_bitness: 64
-    relative_path: ${{ github.workspace }}
+    repository_path: ${{ github.workspace }}
 ```
 
 ## License
