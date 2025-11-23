@@ -43,7 +43,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Summarize TRW checklist CSV
-        run: python3 .github/scripts/summarize_requirements.py --csv docs/requirements/Requirements.csv --rows 5 --summary-full --title "Requirements Checklist" --repo "${{ github.repository }}" --summary-output "${GITHUB_STEP_SUMMARY:-}" --full-output "${{ github.workspace }}/reports/req-full.md" --json-output "${{ github.workspace }}/reports/requirements.json"
+        run: python3 .github/scripts/summarize_requirements.py --csv docs/requirements/Requirements.csv --rows 5 --summary-full --details --details-label "Requirements (full table)" --title "Requirements Checklist" --repo "${{ github.repository }}" --summary-output "${GITHUB_STEP_SUMMARY:-}" --full-output "${{ github.workspace }}/reports/req-full.md" --json-output "${{ github.workspace }}/reports/requirements.json"
       - name: Upload requirements artifacts
         uses: actions/upload-artifact@v4
         with:

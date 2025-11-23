@@ -6,6 +6,7 @@ from textwrap import shorten
 import sys
 import io
 import json
+import os
 
 REQUIRED_HEADERS = [
     "ID",
@@ -80,6 +81,9 @@ def main():
     parser.add_argument("--summary-output", default="", help="Path to write summary (e.g., GITHUB_STEP_SUMMARY)")
     parser.add_argument("--full-output", default="", help="Path to write full table markdown (all rows)")
     parser.add_argument("--json-output", default="", help="Path to write full requirements as JSON")
+    parser.add_argument("--details", action="store_true", help="Wrap summary in an expandable <details> block")
+    parser.add_argument("--details-label", default="", help="Custom label for <summary> when --details is used")
+    parser.add_argument("--details-open", action="store_true", help="Render <details> open by default")
     args = parser.parse_args()
 
     csv_path = Path(args.csv)
@@ -88,6 +92,11 @@ def main():
 
     repo = args.repo or os.environ.get("GITHUB_REPOSITORY", "")
     summary = build_summary(csv_path, args.rows, args.title, repo, args.summary_full)
+    header_title = f"{args.title} ({repo})" if repo else args.title
+    if args.details:
+        label = args.details_label or header_title
+        open_attr = " open" if args.details_open else ""
+        summary = f"<details{open_attr}>\n<summary>{label}</summary>\n\n{summary}\n\n</details>"
 
     if args.summary_output:
         out_path = Path(args.summary_output)
