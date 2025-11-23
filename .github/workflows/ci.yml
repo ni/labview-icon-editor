@@ -44,40 +44,6 @@ jobs:
           fetch-depth: 0
       - name: Summarize TRW checklist CSV
         run: python3 .github/scripts/summarize_requirements.py --csv docs/requirements/Requirements.csv --rows 5 --title "Requirements Checklist" --repo "${{ github.repository }}" --summary-output "${GITHUB_STEP_SUMMARY:-}"
-      - name: Add TRW checklist summary table
-        run: |
-          python3 - <<'PY'
-          import csv
-          import os
-          from pathlib import Path
-          from textwrap import shorten
-
-          path = Path("docs/requirements/TRW_Verification_Checklist.csv")
-          rows = list(csv.reader(path.open("r", encoding="utf-8", newline="")))
-          summary = ["### TRW Verification Checklist", ""]
-          if not rows:
-              summary.append(f"{path} is empty.")
-          else:
-              header, body = rows[0], rows[1:]
-              summary.append(f"- File: `{path}`")
-              summary.append(f"- Rows: {len(rows)} (1 header + {len(body)} data)")
-              summary.append(f"- Columns: {len(header)}")
-              summary.append("")
-              sample = body[:5]
-              if sample:
-                  summary.append("| " + " | ".join(header) + " |")
-                  summary.append("| " + " | ".join(["---"] * len(header)) + " |")
-                  for row in sample:
-                      cells = [shorten(val, width=50, placeholder=\"...\") for val in row]
-                      summary.append("| " + " | ".join(cells) + " |")
-                  summary.append("")
-
-          text = "\n".join(summary)
-          if os.environ.get("GITHUB_STEP_SUMMARY"):
-              Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text(text + "\n", encoding="utf-8")
-          else:
-              print(text)
-          PY
 
   test-compute-version-bump:
     name: Test compute-version bump selection (matrix)
