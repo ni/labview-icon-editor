@@ -43,7 +43,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Summarize TRW checklist CSV
-        run: python3 .github/scripts/summarize_requirements.py --csv docs/requirements/Requirements.csv --rows 5 --title "Requirements Checklist" --repo "${{ github.repository }}" --output "${GITHUB_STEP_SUMMARY:-}"
+        run: python3 .github/scripts/summarize_requirements.py --csv docs/requirements/Requirements.csv --rows 5 --title "Requirements Checklist" --repo "${{ github.repository }}" --summary-output "${GITHUB_STEP_SUMMARY:-}"
       - name: Add TRW checklist summary table
         run: |
           python3 - <<'PY'
