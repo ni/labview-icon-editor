@@ -487,6 +487,72 @@ jobs:
           "changed_vipc=$changed" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
           Write-Host ("VIPC changed? {0}" -f $changed)
 
+      - name: Print VIPC dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vipcRel = $env:VIPC_PATH
+          $vipcFull = Join-Path $env:GITHUB_WORKSPACE $vipcRel
+          if (-not (Test-Path $vipcFull)) {
+            throw "VIPC file not found at '$vipcFull'."
+          }
+          $vipm = Get-Command vipm -ErrorAction SilentlyContinue
+          if (-not $vipm) {
+            throw "vipm CLI is not available on PATH; cannot list VIPC contents."
+          }
+          $out = & vipm list $vipcFull 2>&1
+          $exit = $LASTEXITCODE
+          if ($exit -ne 0) {
+            $joined = ($out -join '; ')
+            throw "vipm list failed for '$vipcFull' (exit $exit). Output: $joined"
+          }
+          Write-Host "VIPC package list:"
+          $out | ForEach-Object { Write-Host "  $_" }
+
+      - name: Summarize VIPC dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vipcRel = $env:VIPC_PATH
+          $vipcFull = Join-Path $env:GITHUB_WORKSPACE $vipcRel
+          if (-not (Test-Path $vipcFull)) {
+            throw "VIPC file not found at '$vipcFull'."
+          }
+          $out = & vipm list $vipcFull 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            $joined = ($out -join '; ')
+            throw "vipm list failed for '$vipcFull'. Output: $joined"
+          }
+          $rows = foreach ($line in $out) {
+            $m = [regex]::Match($line, '^\s*(?<name>.+?)\s+\((?<id>[^ )]+)\s+v(?<ver>[^\)]+)\)')
+            if ($m.Success) {
+              [PSCustomObject]@{
+                Name    = $m.Groups['name'].Value.Trim()
+                Id      = $m.Groups['id'].Value.Trim()
+                Version = $m.Groups['ver'].Value.Trim()
+              }
+            }
+          }
+          if (-not $rows) {
+            Write-Warning "No packages parsed from VIPC list output; skipping summary table."
+            return
+          }
+          $summary = @()
+          $summary += "### VIPC dependencies (x${{ matrix.bits }})"
+          $summary += ""
+          $summary += "| Name | Package Id | Version |"
+          $summary += "| --- | --- | --- |"
+          foreach ($r in $rows) {
+            $summary += ("| {0} | `{1}` | `{2}` |" -f $r.Name, $r.Id, $r.Version)
+          }
+          $summary += ""
+          $summaryText = $summary -join "`n"
+          if ($env:GITHUB_STEP_SUMMARY) {
+            $summaryText | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          } else {
+            Write-Host $summaryText
+          }
+
       - name: Apply VIPC dependencies
         if: steps.detect.outputs.changed_vipc == 'true'
         uses: ./.github/actions/apply-vipc
