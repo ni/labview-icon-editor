@@ -7,7 +7,7 @@ import sys
 import io
 
 
-def build_summary(csv_path: Path, sample_rows: int, title: str, repo: str) -> str:
+def build_summary(csv_path: Path, sample_rows: int, title: str, repo: str, summary_full: bool) -> str:
     def clean(text: str) -> str:
         return text.replace("\r", "").replace("\n", "<br>")
 
@@ -24,7 +24,7 @@ def build_summary(csv_path: Path, sample_rows: int, title: str, repo: str) -> st
     summary.append(f"- Columns: {len(header)}")
     summary.append("")
 
-    sample = body[:sample_rows]
+    sample = body if summary_full else body[:sample_rows]
     if sample:
         summary.append("| " + " | ".join(header) + " |")
         summary.append("| " + " | ".join(["---"] * len(header)) + " |")
@@ -47,6 +47,7 @@ def main():
     parser.add_argument("--rows", type=int, default=5, help="Number of data rows to include in the sample table")
     parser.add_argument("--title", default="Requirements Checklist", help="Title to use for the summary/full outputs")
     parser.add_argument("--repo", default="", help="Repository identifier (e.g., owner/repo) to show alongside the title")
+    parser.add_argument("--summary-full", action="store_true", help="Include the full table in the summary output (ignores --rows for summary)")
     parser.add_argument("--summary-output", default="", help="Path to write summary (e.g., GITHUB_STEP_SUMMARY)")
     parser.add_argument("--full-output", default="", help="Path to write full table markdown (all rows)")
     args = parser.parse_args()
@@ -56,7 +57,7 @@ def main():
         raise SystemExit(f"CSV not found at {csv_path}")
 
     repo = args.repo or os.environ.get("GITHUB_REPOSITORY", "")
-    summary = build_summary(csv_path, args.rows, args.title, repo)
+    summary = build_summary(csv_path, args.rows, args.title, repo, args.summary_full)
 
     if args.summary_output:
         out_path = Path(args.summary_output)
