@@ -1,5 +1,6 @@
 # Repository-wide default owners
 * @svelderrainruiz
+* @gregr-ni
 
 # CI / workflow / automation
 /.github/ @svelderrainruiz
