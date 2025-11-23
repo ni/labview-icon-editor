@@ -12,9 +12,12 @@ Param (
     # Use Package_LabVIEW_Version as the canonical LabVIEW version (alias accepts VIP_LVVersion for compatibility)
     [Parameter(Mandatory)][Alias('VIP_LVVersion')][string]$Package_LabVIEW_Version,
     [Parameter(Mandatory)][ValidateSet('32','64')][string]$SupportedBitness,
-    [Parameter(Mandatory)][string]$RepositoryPath,
-    [Parameter(Mandatory)][string]$VIPCPath
+[Parameter(Mandatory)][string]$RepositoryPath,
+[Parameter(Mandatory)][string]$VIPCPath
 )
+
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 
 Write-Verbose "Script Name: $($MyInvocation.MyCommand.Definition)"
 Write-Verbose "Parameters provided:"
@@ -117,12 +120,62 @@ if (-not $vipmCli) {
 
 $ReportPath = Join-Path $PSScriptRoot 'apply_vipc_report.json'
 Remove-Item -LiteralPath $ReportPath -ErrorAction SilentlyContinue
-$Reports = @()
+$script:Reports = @()
 
 # -------------------------
 # 3) Construct and execute vipm commands
 # -------------------------
 Write-Verbose "Constructing the vipm command arguments..."
+
+function Invoke-VipmCommand {
+    param(
+        [Parameter(Mandatory)][string[]]$Arguments,
+        [Parameter(Mandatory)][string]$Description,
+        [int]$TimeoutSeconds = 600
+    )
+
+    $timeoutMs = [Math]::Max(1000, $TimeoutSeconds * 1000)
+    $psi = [System.Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName = "vipm"
+    $psi.Arguments = ($Arguments -join ' ')
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+
+    Write-Information ("Executing: vipm {0} ({1})" -f ($Arguments -join ' '), $Description) -InformationAction Continue
+
+    $proc = [System.Diagnostics.Process]::new()
+    $proc.StartInfo = $psi
+    if (-not $proc.Start()) {
+        throw "Failed to start vipm for $Description."
+    }
+
+    $stdoutTask = $proc.StandardOutput.ReadToEndAsync()
+    $stderrTask = $proc.StandardError.ReadToEndAsync()
+    $completed = $proc.WaitForExit($timeoutMs)
+    if (-not $completed) {
+        try { $proc.Kill($true) } catch { $proc.Kill() }
+        throw "vipm $Description timed out after $TimeoutSeconds seconds."
+    }
+    $proc.WaitForExit()
+
+    $stdout = $stdoutTask.GetAwaiter().GetResult()
+    $stderr = $stderrTask.GetAwaiter().GetResult()
+
+    $outLines = @()
+    if (-not [string]::IsNullOrWhiteSpace($stdout)) {
+        $outLines += $stdout -split "`r?`n"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($stderr)) {
+        $outLines += $stderr -split "`r?`n"
+    }
+
+    return [pscustomobject]@{
+        ExitCode = $proc.ExitCode
+        Output   = $outLines
+    }
+}
 
 function New-PackageDiff {
     param(
@@ -171,14 +224,13 @@ function Parse-VipmListOutput {
 
 function Get-VipcPackages {
     param([Parameter(Mandatory)][string]$VipcPath)
-    $out = & vipm list $VipcPath 2>&1
-    $exit = $LASTEXITCODE
-    if ($exit -ne 0) {
-        $joined = ($out -join '; ')
-        Write-Error "vipm list failed for VIPC '$VipcPath' (exit $exit). Output: $joined"
-        exit $exit
+    $result = Invoke-VipmCommand -Arguments @("list", $VipcPath) -Description "list expected packages from VIPC '$VipcPath'"
+    if ($result.ExitCode -ne 0) {
+        $joined = ($result.Output -join '; ')
+        Write-Error "vipm list failed for VIPC '$VipcPath' (exit $($result.ExitCode)). Output: $joined"
+        exit $result.ExitCode
     }
-    return Parse-VipmListOutput -Lines $out
+    return Parse-VipmListOutput -Lines $result.Output
 }
 
 function Get-InstalledPackages {
@@ -192,14 +244,13 @@ function Get-InstalledPackages {
         "list",
         "--installed"
     )
-    $out = & vipm @args 2>&1
-    $exit = $LASTEXITCODE
-    if ($exit -ne 0) {
-        $joined = ($out -join '; ')
-        Write-Error "vipm list --installed failed for LabVIEW $LvMajor ($Bitness-bit) (exit $exit). Output: $joined"
-        exit $exit
+    $result = Invoke-VipmCommand -Arguments $args -Description "list installed packages for LabVIEW $LvMajor ($Bitness-bit)"
+    if ($result.ExitCode -ne 0) {
+        $joined = ($result.Output -join '; ')
+        Write-Error ("vipm --labview-version {0} --labview-bitness {1} list --installed failed (exit {2}). Output: {3}" -f $LvMajor, $Bitness, $result.ExitCode, $joined)
+        exit $result.ExitCode
     }
-    return Parse-VipmListOutput -Lines $out
+    return Parse-VipmListOutput -Lines $result.Output
 }
 
 function Write-PackageDiff {
@@ -247,18 +298,32 @@ function Invoke-VipmInstall {
         $VipcPath
     )
 
-    Write-Information ("Executing: vipm {0} (display target: {1})" -f ($vipmArgs -join ' '), $DisplayVersion) -InformationAction Continue
-    $out = & vipm @vipmArgs 2>&1
-    $exit = $LASTEXITCODE
-    if ($exit -ne 0) {
-        $joined = ($out -join '; ')
-        Write-Error "vipm install failed for LabVIEW $DisplayVersion (exit $exit). Output: $joined"
-        exit $exit
+    $result = Invoke-VipmCommand -Arguments $vipmArgs -Description "install VIPC for $DisplayVersion"
+    if ($result.ExitCode -ne 0) {
+        $joined = ($result.Output -join '; ')
+        Write-Error "vipm install failed for LabVIEW $DisplayVersion (exit $($result.ExitCode)). Output: $joined"
+        exit $result.ExitCode
     }
 }
 
 Write-Information "Parsing expected packages from VIPC..." -InformationAction Continue
 $expectedPackages = Get-VipcPackages -VipcPath $ResolvedVIPCPath
+
+# Fail fast on required G CLI version before attempting any installs
+$gcliId = 'wiresmith_technology_lib_g_cli'
+if (-not $expectedPackages.ContainsKey($gcliId)) {
+    throw "VIPC does not specify required package '$gcliId' (G CLI); cannot continue."
+}
+$expectedGcliVersion = $expectedPackages[$gcliId]
+$installedSnapshot = Get-InstalledPackages -LvMajor $Package_LabVIEW_Version -Bitness $SupportedBitness
+if (-not $installedSnapshot.ContainsKey($gcliId)) {
+    throw ("Fail-fast: G CLI package '{0}' is not installed for LabVIEW {1} ({2}-bit); expected version {3}." -f $gcliId, $Package_LabVIEW_Version, $SupportedBitness, $expectedGcliVersion)
+}
+$installedGcliVersion = $installedSnapshot[$gcliId]
+if ($installedGcliVersion -ne $expectedGcliVersion) {
+    throw ("Fail-fast: G CLI package '{0}' version mismatch. Expected {1}, found {2}." -f $gcliId, $expectedGcliVersion, $installedGcliVersion)
+}
+Write-Information ("Validated G CLI ({0}) version {1} is already present; proceeding." -f $gcliId, $installedGcliVersion) -InformationAction Continue
 
 function Apply-ForTarget {
     param(
@@ -284,7 +349,7 @@ function Apply-ForTarget {
     $installedAfter = Get-InstalledPackages -LvMajor $LvMajor -Bitness $SupportedBitness
     $post = Write-PackageDiff -Expected $expectedPackages -Installed $installedAfter -Label "$label (post)"
 
-    $Reports += [ordered]@{
+    $script:Reports += [ordered]@{
         target            = $label
         lvMajor           = $LvMajor
         bitness           = $SupportedBitness
@@ -306,7 +371,12 @@ function Apply-ForTarget {
 
 Apply-ForTarget -LvMajor $Package_LabVIEW_Version -DisplayVersion $VersionLabel
 
-$Reports | ConvertTo-Json -Depth 6 | Set-Content -Path $ReportPath -Encoding UTF8
+$json = ConvertTo-Json -InputObject $Reports -Depth 6
+Set-Content -Path $ReportPath -Value $json -Encoding UTF8
+if (-not (Test-Path -LiteralPath $ReportPath)) {
+    throw "Expected to write apply-vipc report, but file was not found at '$ReportPath'."
+}
+Write-Information ("Wrote apply-vipc report to {0}" -f $ReportPath) -InformationAction Continue
 if ($env:GITHUB_OUTPUT) {
     Add-Content -Path $env:GITHUB_OUTPUT -Value "summary-json=$ReportPath"
 }
