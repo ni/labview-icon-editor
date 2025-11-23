@@ -21,3 +21,6 @@ This repo uses a simple, auditable CLA manifest to track who is cleared to contr
 - Adding a new collaborator or granting write access.
 - When a CLA is superseded (bump `cla_version` and `signed_on`).
 - When evidence storage location changes (update `evidence`).
+
+## Process references
+- CLA signing steps: `docs/cla/signing.md`
