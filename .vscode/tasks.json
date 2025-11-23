@@ -189,7 +189,9 @@
         "--summary-output",
         "${workspaceFolder}/reports/req-summary.md",
         "--full-output",
-        "${workspaceFolder}/reports/req-full.md"
+        "${workspaceFolder}/reports/req-full.md",
+        "--json-output",
+        "${workspaceFolder}/reports/requirements.json"
       ],
       "options": {
         "cwd": "${workspaceFolder}"

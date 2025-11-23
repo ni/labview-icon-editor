@@ -5,6 +5,34 @@ from pathlib import Path
 from textwrap import shorten
 import sys
 import io
+import json
+
+REQUIRED_HEADERS = [
+    "ID",
+    "Section",
+    "Requirement Statement",
+    "Type",
+    "Priority",
+    "Verification Methods (from SRS)",
+    "Primary Method (select)",
+    "Acceptance Criteria",
+    "Agent Procedure (step-by-step)",
+    "Evidence to Collect",
+    "Owner/Role",
+    "Phase/Gate",
+    "Status",
+    "Date Last Updated",
+    "Test Case ID / Link",
+    "Upstream Trace",
+    "Downstream Trace",
+    "Notes",
+]
+
+
+def validate_header(header: list[str]) -> None:
+    missing = [h for h in REQUIRED_HEADERS if h not in header]
+    if missing:
+        raise SystemExit(f"CSV missing required columns: {', '.join(missing)}")
 
 
 def build_summary(csv_path: Path, sample_rows: int, title: str, repo: str, summary_full: bool) -> str:
@@ -19,6 +47,7 @@ def build_summary(csv_path: Path, sample_rows: int, title: str, repo: str, summa
         return "\n".join(summary)
 
     header, body = rows[0], rows[1:]
+    validate_header(header)
     summary.append(f"- File: `{csv_path}`")
     summary.append(f"- Rows: {len(rows)} (1 header + {len(body)} data)")
     summary.append(f"- Columns: {len(header)}")
@@ -50,6 +79,7 @@ def main():
     parser.add_argument("--summary-full", action="store_true", help="Include the full table in the summary output (ignores --rows for summary)")
     parser.add_argument("--summary-output", default="", help="Path to write summary (e.g., GITHUB_STEP_SUMMARY)")
     parser.add_argument("--full-output", default="", help="Path to write full table markdown (all rows)")
+    parser.add_argument("--json-output", default="", help="Path to write full requirements as JSON")
     args = parser.parse_args()
 
     csv_path = Path(args.csv)
@@ -72,6 +102,7 @@ def main():
             def clean(text: str) -> str:
                 return text.replace("\r", "").replace("\n", "<br>")
             header, body = rows[0], rows[1:]
+            validate_header(header)
             full_lines = []
             header_title = f"{args.title} ({repo})" if repo else args.title
             full_lines.append(f"### {header_title} (Full)")
@@ -85,6 +116,18 @@ def main():
             out_path.write_text("\n".join(full_lines), encoding="utf-8")
         else:
             out_path.write_text(f"{csv_path} is empty.\n", encoding="utf-8")
+
+    if args.json_output:
+        out_path = Path(args.json_output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        rows = list(csv.reader(csv_path.open("r", encoding="utf-8", newline="")))
+        if rows:
+            header, body = rows[0], rows[1:]
+            validate_header(header)
+            records = [dict(zip(header, row)) for row in body]
+            out_path.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")
+        else:
+            out_path.write_text("[]", encoding="utf-8")
 
     if not args.summary_output and not args.full_output:
         sys.stdout.write(summary + "\n")
