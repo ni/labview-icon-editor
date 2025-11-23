@@ -539,6 +539,7 @@ jobs:
           $summary += ("| SHA256 | `{0}` |" -f "${{ steps.apply_vipc.outputs.vipc_sha256 }}")
           $summary += ("| Size (bytes) | `{0}` |" -f "${{ steps.apply_vipc.outputs.vipc_size_bytes }}")
           $summary += ("| Last write (UTC) | `{0}` |" -f "${{ steps.apply_vipc.outputs.vipc_last_write_utc }}")
+          $summary += ("| Git commit | `{0}` |" -f "${{ steps.apply_vipc.outputs.vipc_git_commit }}")
           $summary += ""
           $summaryText = $summary -join "`n"
           if ($env:GITHUB_STEP_SUMMARY) {

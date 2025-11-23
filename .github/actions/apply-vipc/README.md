@@ -40,6 +40,7 @@ Ensure a runner has all required LabVIEW packages installed before building or t
 | `vipc_sha256` | SHA256 hash of the applied `.vipc` file. |
 | `vipc_size_bytes` | Size (bytes) of the applied `.vipc` file. |
 | `vipc_last_write_utc` | Last write timestamp (UTC) of the applied `.vipc` file. |
+| `vipc_git_commit` | Git commit hash for the applied `.vipc` file (last change to that path). |
 
 ---
 

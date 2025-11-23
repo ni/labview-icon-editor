@@ -82,7 +82,27 @@ catch {
 
 $vipcItem = Get-Item -LiteralPath $ResolvedVIPCPath -ErrorAction Stop
 $vipcHash = (Get-FileHash -LiteralPath $ResolvedVIPCPath -Algorithm SHA256 -ErrorAction Stop).Hash
-Write-Information ("Using VIPC '{0}' (size: {1} bytes, last write UTC: {2:o}, sha256: {3})" -f $vipcItem.FullName, $vipcItem.Length, $vipcItem.LastWriteTimeUtc, $vipcHash) -InformationAction Continue
+$vipcGitCommit = $null
+try {
+    $gitCmd = Get-Command git -ErrorAction Stop
+    Push-Location -LiteralPath $ResolvedRepositoryPath
+    try {
+        $commit = & $gitCmd.Path log -1 --format=%H -- $VIPCPath 2>$null
+        if (-not [string]::IsNullOrWhiteSpace($commit)) {
+            $vipcGitCommit = $commit.Trim()
+        }
+        else {
+            Write-Warning "Unable to determine git commit for VIPC path '$VIPCPath'."
+        }
+    }
+    finally {
+        Pop-Location
+    }
+}
+catch {
+    Write-Warning "Could not resolve git commit for VIPC path '$VIPCPath': $($_.Exception.Message)"
+}
+Write-Information ("Using VIPC '{0}' (size: {1} bytes, last write UTC: {2:o}, sha256: {3}, git commit: {4})" -f $vipcItem.FullName, $vipcItem.Length, $vipcItem.LastWriteTimeUtc, $vipcHash, ($vipcGitCommit ?? 'unknown')) -InformationAction Continue
 
 # -------------------------
 # 2) Build LabVIEW Version Strings
@@ -388,6 +408,7 @@ if ($env:GITHUB_OUTPUT) {
         ("vipc_sha256={0}" -f $vipcHash)
         ("vipc_size_bytes={0}" -f $vipcItem.Length)
         ("vipc_last_write_utc={0:o}" -f $vipcItem.LastWriteTimeUtc)
+        ("vipc_git_commit={0}" -f ($vipcGitCommit ?? 'unknown'))
     ) | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 }
 

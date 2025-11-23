@@ -33,6 +33,9 @@ outputs:
   vipc_last_write_utc:
     description: 'Last write time (UTC) of the applied .vipc file.'
     value: ${{ steps.apply.outputs.vipc_last_write_utc }}
+  vipc_git_commit:
+    description: 'Git commit hash of the applied .vipc file (last change to the file).'
+    value: ${{ steps.apply.outputs.vipc_git_commit }}
 inputs:
   package_labview_version:
     description: 'LabVIEW version to target (derived from VIPB)'
