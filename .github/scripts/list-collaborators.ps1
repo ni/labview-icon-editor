@@ -50,13 +50,31 @@ function Get-PermissionLabel {
 
 $page = 1
 $all = @()
+$perPage = 100
+$maxPages = 50 # cap to avoid runaway loops
 while ($true) {
-    $uri = "https://api.github.com/repos/$owner/$name/collaborators?per_page=100&page=$page"
-    $resp = Invoke-RestMethod -Uri $uri -Headers $headers -Method Get
+    if ($page -gt $maxPages) {
+        throw "Aborting: exceeded $maxPages pages while listing collaborators for $Repo."
+    }
+
+    $uri = "https://api.github.com/repos/$owner/$name/collaborators?per_page=$perPage&page=$page"
+    try {
+        $resp = Invoke-RestMethod -Uri $uri -Headers $headers -Method Get -TimeoutSec 30
+    }
+    catch {
+        $msg = $_.Exception.Message
+        if ($_.ErrorDetails -and $_.ErrorDetails.Message) {
+            $msg = $_.ErrorDetails.Message
+        }
+        throw ("GitHub API request failed for {0}: {1}" -f $uri, $msg)
+    }
+
     if ($resp) {
         $all += @($resp)
     }
-    if (-not $resp -or @($resp).Count -lt 100) { break }
+
+    $count = @($resp).Count
+    if (-not $resp -or $count -lt $perPage) { break }
     $page++
 }
 
@@ -66,10 +84,21 @@ if (-not $all) {
 }
 
 $rows = foreach ($c in $all) {
+    $nameVal = ''
+    $hasName = $c.PSObject.Properties['name']
+    if ($hasName) {
+        $nameVal = $c.name
+    }
+    $permVal = $null
+    if ($c.PSObject.Properties['permissions']) {
+        $permVal = $c.permissions
+    }
+    $permission = Get-PermissionLabel $permVal
+
     [pscustomobject]@{
         Login      = $c.login
-        Name       = $c.name
-        Permission = Get-PermissionLabel $c.permissions
+        Name       = $nameVal
+        Permission = $permission
         Type       = $c.type
     }
 }

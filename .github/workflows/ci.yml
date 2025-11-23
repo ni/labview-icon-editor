@@ -420,6 +420,23 @@ jobs:
           if (-not $env:GH_REPO) { throw "GITHUB_REPOSITORY is not set." }
           pwsh -NoProfile -File $script -Repo $env:GH_REPO -Token $env:GH_TOKEN
 
+      - name: Template sample secrets file
+        shell: pwsh
+        env:
+          SAMPLE_SECRET: ${{ secrets.SAMPLE_SECRET }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tmpl = Join-Path $env:GITHUB_WORKSPACE "docs/config/appsettings.template.json"
+          $out  = Join-Path $env:GITHUB_WORKSPACE "docs/config/appsettings.json"
+          $script = Join-Path $env:GITHUB_WORKSPACE ".github/scripts/template-secrets.ps1"
+          if (-not (Test-Path $script)) { throw "template-secrets.ps1 not found at $script" }
+          if (-not (Test-Path $tmpl)) { throw "Template file not found at $tmpl" }
+          if (-not $env:SAMPLE_SECRET) { throw "SAMPLE_SECRET is not set." }
+          pwsh -NoProfile -File $script `
+            -TemplatePath $tmpl `
+            -OutputPath $out `
+            -Keys SAMPLE_SECRET
+
   apply-deps:
     name: Apply VIPC (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x${{ matrix.bits }})
     needs: [verify-checklist-sync, resolve-labview-version, ps-coverage, version]
