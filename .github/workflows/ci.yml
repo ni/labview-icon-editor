@@ -53,6 +53,15 @@ jobs:
             reports/requirements.json
             reports/requirements.html
           if-no-files-found: error
+      - name: Comment links on PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            Requirements report for this PR:
+            - Summary: (see Checks → Requirements job summary)
+            - HTML: [requirements.html (download artifact)](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - JSON: [requirements.json (download artifact)](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
   test-compute-version-bump:
     name: Test compute-version bump selection (matrix)
