@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Ensure CODEOWNERS exists and has default owner
+      - name: Ensure CODEOWNERS exists and has required owners
         shell: bash
         run: |
           set -euo pipefail
@@ -33,8 +33,15 @@ jobs:
             echo "$file is empty" >&2
             exit 1
           fi
-          if ! grep -Eq '^\*\s+@' "$file"; then
-            echo "Default owner entry (*) missing or malformed in $file" >&2
-            exit 1
-          fi
-          echo "$file looks valid (default owner present)."
+          declare -a required=(
+            '*'
+            '/.github/'
+            '/docs/'
+          )
+          for pat in "${required[@]}"; do
+            if ! grep -Eq "^${pat}[[:space:]]+@" "$file"; then
+              echo "Required pattern '${pat}' with at least one @owner is missing in $file" >&2
+              exit 1
+            fi
+          done
+          echo "$file looks valid (default owner and required scoped entries present)."

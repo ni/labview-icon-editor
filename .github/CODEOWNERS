@@ -1,6 +1,8 @@
 # Repository-wide default owners
 * @svelderrainruiz
 
-# Scoped ownership (override default for specific areas as needed)
+# CI / workflow / automation
 /.github/ @svelderrainruiz
-/docs/ @svelderrainruiz
+
+# Documentation
+/docs/** @svelderrainruiz
