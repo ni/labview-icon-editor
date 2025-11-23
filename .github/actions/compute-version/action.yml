@@ -41,6 +41,12 @@ runs:
         fetch-depth: 0
         fetch-tags: true
 
+    - name: Ensure tags are fetched
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        git fetch --tags --force --prune
+
     - name: Determine bump type
       id: bump_type
       uses: actions/github-script@v7
