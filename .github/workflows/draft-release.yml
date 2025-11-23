@@ -83,3 +83,18 @@ jobs:
             echo "No files found under $root to upload." >&2
             exit 1
           fi
+
+      - name: Append requirements links to release notes
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.tag.outputs.tag }}"
+          repo="${GITHUB_REPOSITORY}"
+          # Fetch current body
+          current=$(gh release view "$tag" --repo "$repo" --json body --jq .body)
+          line="Requirements: [requirements.html](https://github.com/${repo}/releases/download/${tag}/requirements.html) | [requirements.json](https://github.com/${repo}/releases/download/${tag}/requirements.json)"
+          tmp=$(mktemp)
+          printf "%s\n\n%s\n" "${current:-}" "$line" > "$tmp"
+          gh release edit "$tag" --repo "$repo" --notes-file "$tmp"
