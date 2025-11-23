@@ -80,6 +80,10 @@ catch {
     exit 1
 }
 
+$vipcItem = Get-Item -LiteralPath $ResolvedVIPCPath -ErrorAction Stop
+$vipcHash = (Get-FileHash -LiteralPath $ResolvedVIPCPath -Algorithm SHA256 -ErrorAction Stop).Hash
+Write-Information ("Using VIPC '{0}' (size: {1} bytes, last write UTC: {2:o}, sha256: {3})" -f $vipcItem.FullName, $vipcItem.Length, $vipcItem.LastWriteTimeUtc, $vipcHash) -InformationAction Continue
+
 # -------------------------
 # 2) Build LabVIEW Version Strings
 # -------------------------
@@ -378,7 +382,13 @@ if (-not (Test-Path -LiteralPath $ReportPath)) {
 }
 Write-Information ("Wrote apply-vipc report to {0}" -f $ReportPath) -InformationAction Continue
 if ($env:GITHUB_OUTPUT) {
-    Add-Content -Path $env:GITHUB_OUTPUT -Value "summary-json=$ReportPath"
+    @(
+        "summary-json=$ReportPath"
+        ("vipc_path={0}" -f $ResolvedVIPCPath)
+        ("vipc_sha256={0}" -f $vipcHash)
+        ("vipc_size_bytes={0}" -f $vipcItem.Length)
+        ("vipc_last_write_utc={0:o}" -f $vipcItem.LastWriteTimeUtc)
+    ) | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 }
 
 Write-Information "Successfully applied dependencies to LabVIEW." -InformationAction Continue

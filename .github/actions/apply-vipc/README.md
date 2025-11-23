@@ -32,6 +32,15 @@ Ensure a runner has all required LabVIEW packages installed before building or t
 | `repository_path` | **Yes** | `${{ github.workspace }}` | Root path of the repository on disk. |
 | `vipc_path` | **Yes** | `Tooling/deployment/runner_dependencies.vipc` | Path (relative to `repository_path`) of the container to apply. |
 
+## Outputs
+| Name | Description |
+|------|-------------|
+| `summary-json` | Path to the apply-vipc summary JSON (package diff and verification results). |
+| `vipc_path` | Resolved path to the applied `.vipc` file. |
+| `vipc_sha256` | SHA256 hash of the applied `.vipc` file. |
+| `vipc_size_bytes` | Size (bytes) of the applied `.vipc` file. |
+| `vipc_last_write_utc` | Last write timestamp (UTC) of the applied `.vipc` file. |
+
 ---
 
 ## Quick-start

@@ -21,6 +21,18 @@ outputs:
   summary-json:
     description: 'Path to the apply-vipc summary JSON (package diff and verification results).'
     value: ${{ steps.apply.outputs.summary-json }}
+  vipc_path:
+    description: 'Resolved path to the .vipc file that was applied.'
+    value: ${{ steps.apply.outputs.vipc_path }}
+  vipc_sha256:
+    description: 'SHA256 hash of the applied .vipc file.'
+    value: ${{ steps.apply.outputs.vipc_sha256 }}
+  vipc_size_bytes:
+    description: 'Size in bytes of the applied .vipc file.'
+    value: ${{ steps.apply.outputs.vipc_size_bytes }}
+  vipc_last_write_utc:
+    description: 'Last write time (UTC) of the applied .vipc file.'
+    value: ${{ steps.apply.outputs.vipc_last_write_utc }}
 inputs:
   package_labview_version:
     description: 'LabVIEW version to target (derived from VIPB)'
