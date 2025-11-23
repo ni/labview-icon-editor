@@ -636,7 +636,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Wait for other ci.yml runs to finish
-        uses: softprops/turnstyle@v1
+        uses: softprops/turnstyle@v1.1.3
         with:
           poll-interval-seconds: 30
         env:
