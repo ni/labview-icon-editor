@@ -557,7 +557,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $path = "${{ steps.apply_vipc.outputs.summary-json }}"
+          $path = "${{ steps.apply_vipc.outputs['summary-json'] }}"
           if (Test-Path $path) {
             "report_path=$path" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
           } else {

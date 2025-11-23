@@ -412,4 +412,19 @@ if ($env:GITHUB_OUTPUT) {
     ) | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 }
 
+if ($env:GITHUB_STEP_SUMMARY) {
+    $summary = @()
+    $summary += "### Applied VIPC file"
+    $summary += ""
+    $summary += "| Field | Value |"
+    $summary += "| --- | --- |"
+    $summary += ("| Path | `{0}` |" -f $ResolvedVIPCPath)
+    $summary += ("| SHA256 | `{0}` |" -f $vipcHash)
+    $summary += ("| Size (bytes) | `{0}` |" -f $vipcItem.Length)
+    $summary += ("| Last write (UTC) | `{0}` |" -f $vipcItem.LastWriteTimeUtc.ToString("o"))
+    $summary += ("| Git commit | `{0}` |" -f ($vipcGitCommit ?? 'unknown'))
+    $summary += ""
+    $summary -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+}
+
 Write-Information "Successfully applied dependencies to LabVIEW." -InformationAction Continue
