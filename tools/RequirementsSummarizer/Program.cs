@@ -62,6 +62,8 @@ internal static class Program
         var sortFields = (GetArg("--sort") ?? string.Empty)
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToList();
+        var sectionDetails = HasFlag("--section-details");
+        var sectionDetailsOpen = HasFlag("--section-details-open");
 
         if (!File.Exists(csvPath))
         {
@@ -119,7 +121,7 @@ internal static class Program
         }
         var finalList = ordered?.ToList() ?? filtered;
 
-        string summaryText = $"### {headerTitle}\n\n" + RenderMarkdownSummary(csvPath, headerTitle, header, body, finalList, rowsParam, summaryFull);
+        string summaryText = $"### {headerTitle}\n\n" + RenderMarkdownSummary(csvPath, headerTitle, header, body, finalList, rowsParam, summaryFull, sectionDetails, sectionDetailsOpen);
         if (details)
         {
             var label = string.IsNullOrWhiteSpace(detailsLabel) ? headerTitle : detailsLabel!;
@@ -224,7 +226,7 @@ internal static class Program
         return sb.ToString();
     }
 
-    private static string RenderMarkdownSummary(string csvPath, string headerTitle, string[] header, List<Requirement> all, List<Requirement> filtered, int rowsParam, bool summaryFull)
+    private static string RenderMarkdownSummary(string csvPath, string headerTitle, string[] header, List<Requirement> all, List<Requirement> filtered, int rowsParam, bool summaryFull, bool sectionDetails, bool sectionDetailsOpen)
     {
         var sb = new StringBuilder();
         sb.AppendLine($"- File: `{csvPath}`");
@@ -238,9 +240,24 @@ internal static class Program
 
         foreach (var g in grouped)
         {
-            sb.AppendLine($"#### Section: {g.Key} ({g.Count()})");
+            if (sectionDetails)
+            {
+                var openAttr = sectionDetailsOpen ? " open" : string.Empty;
+                sb.AppendLine($"<details{openAttr}>");
+                sb.AppendLine($"<summary>Section: {g.Key} ({g.Count()})</summary>");
+                sb.AppendLine();
+            }
+            else
+            {
+                sb.AppendLine($"#### Section: {g.Key} ({g.Count()})");
+            }
             var take = summaryFull ? g : g.Take(rowsParam);
             sb.Append(RenderMarkdownTable(header, take));
+            if (sectionDetails)
+            {
+                sb.AppendLine("</details>");
+                sb.AppendLine();
+            }
         }
         return sb.ToString();
     }

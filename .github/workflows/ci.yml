@@ -43,7 +43,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Summarize TRW checklist CSV
-        run: dotnet run --project tools/RequirementsSummarizer/RequirementsSummarizer.csproj -- --csv docs/requirements/Requirements.csv --rows 5 --summary-full --details --details-label "Requirements (full table)" --title "Requirements Checklist" --repo "${{ github.repository }}" --summary-output "${GITHUB_STEP_SUMMARY:-}" --full-output "${{ github.workspace }}/reports/req-full.md" --json-output "${{ github.workspace }}/reports/requirements.json" --html-output "${{ github.workspace }}/reports/requirements.html"
+        run: dotnet run --project tools/RequirementsSummarizer/RequirementsSummarizer.csproj -- --csv docs/requirements/Requirements.csv --rows 5 --summary-full --details --section-details --section-details-open --details-label "Requirements (full table)" --title "Requirements Checklist" --repo "${{ github.repository }}" --summary-output "${GITHUB_STEP_SUMMARY:-}" --full-output "${{ github.workspace }}/reports/req-full.md" --json-output "${{ github.workspace }}/reports/requirements.json" --html-output "${{ github.workspace }}/reports/requirements.html"
       - name: Upload requirements artifacts
         uses: actions/upload-artifact@v4
         with:
