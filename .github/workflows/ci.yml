@@ -445,6 +445,44 @@ jobs:
           "changed_vipc=$changed" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
           Write-Host ("VIPC changed? {0}" -f $changed)
 
+      - name: Summarize VIPC file (skip apply)
+        if: steps.detect.outputs.changed_vipc != 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vipcRel = $env:VIPC_PATH
+          if ([string]::IsNullOrWhiteSpace($vipcRel)) {
+            throw "VIPC_PATH is not set."
+          }
+          $vipcFull = Join-Path $env:GITHUB_WORKSPACE $vipcRel
+          if (-not (Test-Path $vipcFull)) {
+            throw "VIPC file not found at '$vipcFull'."
+          }
+          $commit = ""
+          try {
+            $commit = git log -1 --format=%H -- $vipcRel 2>$null
+          } catch {
+            Write-Warning "git log failed for '$vipcRel': $($_.Exception.Message)"
+          }
+          if ([string]::IsNullOrWhiteSpace($commit)) { $commit = "unknown" }
+
+          $vipcLeaf = Split-Path -Leaf $vipcRel
+          $bitLabel = "x${{ matrix.bits }}"
+          $summary = @()
+          $summary += ("### {0} ({1})" -f $vipcLeaf, $bitLabel)
+          $summary += ""
+          $summary += "| Field | Value |"
+          $summary += "| --- | --- |"
+          $summary += ("| Path | `{0}` |" -f $vipcFull)
+          $summary += ("| Repo path | `{0}` |" -f $vipcRel)
+          $summary += ("| Git commit | `{0}` |" -f $commit)
+          $summary += ""
+          $summaryText = $summary -join "`n"
+          if ($env:GITHUB_STEP_SUMMARY) {
+            $summaryText | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+          Write-Host $summaryText
+
       - name: Print VIPC dependencies
         shell: pwsh
         run: |
