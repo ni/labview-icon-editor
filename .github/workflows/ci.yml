@@ -36,75 +36,14 @@ on:
 
 jobs:
   verify-checklist-sync:
-    name: TRW checklist CSV (informational)
+    name: Requirements
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Summarize TRW checklist CSV
-        run: |
-          python3 - <<'PY'
-          import csv
-          from pathlib import Path
-
-          path = Path("docs/requirements/TRW_Verification_Checklist.csv")
-          rows = list(csv.reader(path.open("r", encoding="utf-8", newline="")))
-          if not rows:
-              print(f"{path} is empty.")
-              raise SystemExit(0)
-
-          header, body = rows[0], rows[1:]
-          total_rows = len(rows)
-          total_data_rows = len(body)
-          cols = len(header)
-          keep_head, keep_tail = 10, 5
-          sample = body
-          ellipsis_row = None
-          if total_data_rows > keep_head + keep_tail:
-              ellipsis_row = ["…"] * cols
-              sample = body[:keep_head] + [ellipsis_row] + body[-keep_tail:]
-
-          def widths_for(headers, data):
-              widths = [len(h) for h in headers]
-              for row in data:
-                  for i in range(cols):
-                      if i < len(row):
-                          widths[i] = max(widths[i], len(row[i]))
-              # cap overly long cells for readability
-              return [min(w, 60) for w in widths]
-
-          widths = widths_for(header, sample)
-
-          def trunc(text, width):
-              if len(text) <= width:
-                  return text
-              if width <= 1:
-                  return text[:width]
-              return text[: width - 1] + "…"
-
-          def fmt(row):
-              cells = []
-              for i in range(cols):
-                  val = row[i] if i < len(row) else ""
-                  cells.append(trunc(val, widths[i]).ljust(widths[i]))
-              return "| " + " | ".join(cells) + " |"
-
-          sep = "|-" + "-|-".join("-" * w for w in widths) + "-|"
-
-          print(f"File: {path}")
-          print(f"Rows: {total_rows} (1 header + {total_data_rows} data), Columns: {cols}")
-          if ellipsis_row:
-              print(f"Showing first {keep_head} and last {keep_tail} data rows (middle collapsed).")
-          else:
-              print("Showing all rows.")
-          print()
-          print(fmt(header))
-          print(sep)
-          for row in sample:
-              print(fmt(row))
-          PY
-
+        run: python3 .github/scripts/summarize_requirements.py --csv docs/requirements/Requirements.csv --rows 5 --title "Requirements Checklist" --repo "${{ github.repository }}" --output "${GITHUB_STEP_SUMMARY:-}"
       - name: Add TRW checklist summary table
         run: |
           python3 - <<'PY'
@@ -129,7 +68,7 @@ jobs:
                   summary.append("| " + " | ".join(header) + " |")
                   summary.append("| " + " | ".join(["---"] * len(header)) + " |")
                   for row in sample:
-                      cells = [shorten(val, width=50, placeholder=\"…\") for val in row]
+                      cells = [shorten(val, width=50, placeholder=\"...\") for val in row]
                       summary.append("| " + " | ".join(cells) + " |")
                   summary.append("")
 

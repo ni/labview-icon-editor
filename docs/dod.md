@@ -57,3 +57,4 @@ Expected artifacts: lychee report, RTM CSV, XLSX, unit test results, RTM coverag
 EXIT CRITERIA
 
 All gates green on PR to release/* and final tag vX.Y.Z produced; artifacts present; no broken links; RTM validated; LabVIEW env status vars = `success`; performance samples recorded or waived per baseline policy.
+

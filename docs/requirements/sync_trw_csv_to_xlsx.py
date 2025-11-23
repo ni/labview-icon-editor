@@ -5,7 +5,7 @@ all other workbook parts (styles, themes, properties).
 
 Usage:
   python3 docs/requirements/sync_trw_csv_to_xlsx.py \
-    --csv docs/requirements/TRW_Verification_Checklist.csv \
+    --csv docs/requirements/Requirements.csv \
     --xlsx docs/requirements/TRW_Verification_Checklist.xlsx
 """
 
@@ -115,7 +115,7 @@ def regenerate_xlsx(csv_path: Path, xlsx_path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Regenerate XLSX from CSV for the TRW verification checklist.")
-    parser.add_argument("--csv", type=Path, default=Path("docs/requirements/TRW_Verification_Checklist.csv"))
+    parser.add_argument("--csv", type=Path, default=Path("docs/requirements/Requirements.csv"))
     parser.add_argument("--xlsx", type=Path, default=Path("docs/requirements/TRW_Verification_Checklist.xlsx"))
     args = parser.parse_args()
 

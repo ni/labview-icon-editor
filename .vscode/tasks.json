@@ -171,6 +171,31 @@
         "cwd": "${workspaceFolder}"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Summarize TRW checklist",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "${workspaceFolder}/.github/scripts/summarize_requirements.py",
+        "--csv",
+        "${workspaceFolder}/docs/requirements/Requirements.csv",
+        "--rows",
+        "5",
+        "--title",
+        "Requirements Checklist",
+        "--repo",
+        "${env:GITHUB_REPOSITORY}",
+        "--summary-output",
+        "${workspaceFolder}/reports/req-summary.md",
+        "--full-output",
+        "${workspaceFolder}/reports/req-full.md"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Generate TRW checklist summary and full markdown under reports/."
     }
   ]
 }
