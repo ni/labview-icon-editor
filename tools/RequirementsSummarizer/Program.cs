@@ -100,6 +100,7 @@ internal static class Program
         var body = rawRows.Skip(1)
             .Select(row => new Requirement(header.Zip(row, (h, v) => (h, v)).ToDictionary(t => t.h, t => t.v)))
             .ToList();
+        var displayHeaders = header.Where(h => !string.Equals(h, "Section", StringComparison.OrdinalIgnoreCase)).ToArray();
 
         IEnumerable<Requirement> Filtered(IEnumerable<Requirement> items)
         {
@@ -121,7 +122,7 @@ internal static class Program
         }
         var finalList = ordered?.ToList() ?? filtered;
 
-        string summaryText = $"### {headerTitle}\n\n" + RenderMarkdownSummary(csvPath, headerTitle, header, body, finalList, rowsParam, summaryFull, sectionDetails, sectionDetailsOpen);
+        string summaryText = $"### {headerTitle}\n\n" + RenderMarkdownSummary(csvPath, headerTitle, displayHeaders, body, finalList, rowsParam, summaryFull, sectionDetails, sectionDetailsOpen);
         if (details)
         {
             var label = string.IsNullOrWhiteSpace(detailsLabel) ? headerTitle : detailsLabel!;
@@ -145,7 +146,7 @@ internal static class Program
             var fullSb = new StringBuilder();
             fullSb.AppendLine($"### {headerTitle} (Full)");
             fullSb.AppendLine();
-            fullSb.Append(RenderMarkdownTable(header, body));
+            fullSb.Append(RenderMarkdownTable(displayHeaders, body));
             File.WriteAllText(fullOutput, fullSb.ToString(), Encoding.UTF8);
         }
 
@@ -163,7 +164,7 @@ internal static class Program
         if (!string.IsNullOrEmpty(htmlOutput))
         {
             Directory.CreateDirectory(Path.GetDirectoryName(htmlOutput)!);
-            var html = RenderHtml(headerTitle, header, finalList);
+            var html = RenderHtml(headerTitle, displayHeaders, finalList);
             File.WriteAllText(htmlOutput, html, Encoding.UTF8);
         }
 
