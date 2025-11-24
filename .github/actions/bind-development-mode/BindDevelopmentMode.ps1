@@ -143,6 +143,54 @@ if (-not $Force -and (Test-Path -LiteralPath $previousSummaryPath)) {
     }
 }
 
+$installedStates = New-Object System.Collections.Generic.List[object]
+function Get-LocalHostEntries {
+    param([string]$IniPath)
+    $entries = @()
+    $lines = Get-Content -LiteralPath $IniPath -ErrorAction Stop
+    if ($lines -isnot [System.Array]) { $lines = @($lines) }
+    $pattern = 'LocalHost\.LibraryPaths\d*\s*=\s*(?<val>.*)'
+    foreach ($line in $lines) {
+        $m = [regex]::Match($line, $pattern, 'IgnoreCase')
+        if (-not $m.Success) { continue }
+        $val = $m.Groups['val'].Value.Trim()
+        if (-not [string]::IsNullOrWhiteSpace($val)) {
+            $entries += ([System.IO.Path]::GetFullPath($val))
+        }
+    }
+    return $entries
+}
+
+foreach ($root in @('C:\Program Files\National Instruments','C:\Program Files (x86)\National Instruments')) {
+    if (-not (Test-Path $root)) { continue }
+    $archHint = if ($root -like '*x86*') { '32' } else { '64' }
+    Get-ChildItem -Path $root -Directory -Filter 'LabVIEW *' -ErrorAction SilentlyContinue | ForEach-Object {
+        $iniCandidate = Join-Path $_.FullName 'LabVIEW.ini'
+        if (-not (Test-Path $iniCandidate)) { return }
+        try {
+            $entries = Get-LocalHostEntries -IniPath $iniCandidate
+            $installedStates.Add([pscustomobject]@{
+                arch    = $archHint
+                version = $_.Name.TrimStart('LabVIEW ').Trim()
+                ini     = $iniCandidate
+                entries = $entries
+            })
+        }
+        catch {}
+    }
+}
+
+if ($installedStates.Count -gt 0) {
+    Write-Host "Installed LabVIEW INI tokens:"
+    foreach ($state in $installedStates) {
+        $first = if ($state.entries.Count -gt 0) { $state.entries[0] } else { '(no entries)' }
+        Write-Host ("  {0}-bit {1}: {2}" -f $state.arch, $state.version, $first)
+    }
+}
+else {
+    Write-Host "Installed LabVIEW INI tokens: none found under Program Files."
+}
+
 $bitnessList = if ($Bitness -eq 'both') { @('32','64') } else { @($Bitness) }
 $results = New-Object System.Collections.Generic.List[object]
 $hadFailure = $false

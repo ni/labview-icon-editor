@@ -13,10 +13,10 @@
     "bitness": "64",
     "available": true,
     "expected_path": "C:\\repos\\labview-icon-editor-final-fork",
-    "current_path": "",
+    "current_path": "C:\\repos\\labview-icon-editor-final-fork",
     "post_path": "C:\\repos\\labview-icon-editor-final-fork",
     "action": "bind",
     "status": "success",
-    "message": "Bound development mode (token set and packed libs cleared)"
+    "message": "Already bound"
   }
 ]
