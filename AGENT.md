@@ -226,16 +226,28 @@ agent:
 - Open PR tagged `release-notes` for human review.
 
 ### 7.5 Dev-Mode Bind Requires Force (integration agent)
-- **Trigger:** User shares bind output showing `[OTHER-REPO]/[OTHER]` for the VIPB version/bitness or errors like “use -Force to overwrite.”
+- **Trigger:** User shares bind output showing `[OTHER-REPO]/[OTHER]` for the VIPB version/bitness or errors like "use -Force to overwrite."
 - **Diagnose:** Read `reports/dev-mode-bind.json`; note current_path/post_path per bitness, anomalies (other-repo tokens, double-rooted paths), and the VIPB-targeted LabVIEW version.
 - **Respond:**  
   - Recommend rerun with Force to rebind to this repo:  
-    - VS Code: Terminal → Run Task → “Dev Mode (interactive bind/unbind)” → bind + Force (bitness as needed).  
+    - VS Code: Terminal → Run Task → "Dev Mode (interactive bind/unbind)" → bind + Force (bitness as needed).  
     - CLI: `pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath . -Mode bind -Bitness both -Force`  
   - If other repos might rely on existing bindings, ask for confirmation before forcing.  
   - For malformed/double-rooted tokens, suggest unbind + Force for the affected version/bitness.  
 - **Reference:** Link the user to `docs/troubleshooting/bind-dev-mode-force.md` and `reports/dev-mode-bind.json` for details.
 - **Historical artifacts:** Encourage storing timestamped bind JSONs as artifacts (not in git) under a predictable path (e.g., `artifacts/dev-mode-bind/YYYYMMDD-HHMMZ.json`). Use history to spot recurring root causes (e.g., runner path tokens, missing INIs, double-rooted paths) and refine guidance/runbooks.
+
+### 7.6 Dev-Mode Natural-Language Intents (guarded)
+- **Trigger phrase:** `/devmode unbind 2023 64-bit and bind 2023 32-bit` (requires `/devmode` or `agent:` prefix to avoid accidental execution).
+- **Intent parsing:** Use regex `(?i)\b(bind|unbind)\s+(20\d{2})\s+(32|64|both)[- ]?bit\b` and split on `and`/`,` to collect up to 3 intents. Each intent yields `{mode, year, bitness}`.
+- **Guards before execution:**  
+  - Force only when the phrase includes `force`/`overwrite`; otherwise refuse to overwrite other-repo tokens.  
+  - Read `reports/dev-mode-bind.json`; if `expected_path` ≠ repo root or LabVIEW.ini missing for the requested bitness, stop and ask for confirmation.  
+  - If VIPB-derived version ≠ requested year, warn and require confirmation.  
+  - If `current_path` already matches for the bitness, skip that intent.
+- **Execution mapping:** For each approved intent, run `.github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath . -Mode <bind|unbind> -Bitness <32|64|both>` plus `-Force` only when allowed. Execute intents sequentially.
+- **Post-check:** Reload `reports/dev-mode-bind.json`; return a per-bitness summary (expected_path, current_path, action, status, message).
+- **Safety:** Cap at 3 intents per request; log the parsed intents and whether Force was applied; ignore phrases without the required prefix.
 
 ---
 

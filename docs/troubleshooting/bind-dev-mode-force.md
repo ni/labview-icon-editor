@@ -17,12 +17,22 @@ Use this when the bind task fails because LabVIEW is already pointed at another 
 ## Diagnosis
 - The canonical LabVIEW.ini for the VIPB version/bitness contains a LocalHost.LibraryPaths entry that points to a different checkout or malformed path. The bind helper refuses to overwrite without Force to avoid clobbering another repo.
 
-## Remediation
-1) Overwrite the tokens with Force:
-   - VS Code: Terminal → Run Task → **Dev Mode (interactive bind/unbind)** → choose **bind**, set bitness (32/64/both), enable **Force**.
-   - CLI: `pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath . -Mode bind -Bitness both -Force`
-2) If other repos rely on the existing binding, confirm before forcing.
-3) Clean suspicious/double-rooted tokens by running unbind with **Force** for the affected version/bitness if not needed.
+## Action required (choose one path)
+1) Visual Studio Code Task
+   - Terminal -> Run Task -> **Dev Mode (interactive bind/unbind)**.
+   - Choose **bind**, set bitness (32/64/both), enable **Force** to overwrite the other path.
+   - Rerun the task or inspect `reports/dev-mode-bind.json` to confirm `current_path` matches this repo.
+
+2) CODEX Agent Prompt
+   - Use the block in [Paste to your CODEX Agent](#paste-to-your-codex-agent) with the console log/JSON.
+   - Ask the agent to recommend the Force rebind steps and to call out any warnings before overwriting.
+
+3) Manual (CLI)
+   - `pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath . -Mode bind -Bitness both -Force`
+   - Scope with `-Bitness 32` or `-Bitness 64` if you do not want to overwrite both entries.
+
+- If other repos rely on the existing binding, confirm before forcing.
+- Clean suspicious/double-rooted tokens by running unbind with **Force** for the affected version/bitness if not needed.
 
 ## Artifacts
 - JSON summary: `reports/dev-mode-bind.json` (contains per-bitness status, paths, messages).

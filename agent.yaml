@@ -41,8 +41,16 @@ capabilities:
   - id: dependency_advice
     enabled: true
   - id: apply_changes
-    enabled: false
-    rationale: Managed mode shall require explicit human approval before enabling automated writes.
+    enabled: true
+    rationale: Enabled for dev-mode intent execution with approval gates and safety limits.
+  - id: dev_mode_intents
+    enabled: true
+    description: Parse and execute guarded dev-mode bind/unbind intents from constrained natural-language phrases.
+    limits:
+      max_intents_per_request: 3
+      allow_force_default: false
+    tools:
+      - shell_command
 
 tools:
   - id: shell_command
@@ -52,6 +60,7 @@ tools:
       - python
       - node
       - bash
+      - pwsh
     deny:
       - curl
       - wget
