@@ -73,6 +73,7 @@ Write-Host "Output dir:      $OutputDirectory"
 $worktreeAdded = $false
 $devModeConfigured = @()
 
+$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 try {
     git -C $SourceRepoPath rev-parse --verify $Ref | Out-Null
 
@@ -179,3 +180,6 @@ finally {
         Write-Host "Keeping worktree at $WorktreePath (per -KeepWorktree)."
     }
 }
+
+$stopwatch.Stop()
+Write-Host ("Total duration: {0:N1} seconds" -f ($stopwatch.Elapsed.TotalSeconds))
