@@ -109,6 +109,22 @@
       "problemMatcher": []
     },
     {
+      "label": "Build/Package VIP (both PPLs, no CI gate)",
+      "detail": "Builds 32-bit and 64-bit PPLs and packages the VI Package locally (skips CI gate).",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "& { & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"vip+lvlibp\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"both\" }"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
       "label": "Draft GitHub Release (CI artifacts)",
       "detail": "Dispatches draft-release.yml to create a draft release from CI artifacts by run ID.",
       "type": "shell",
