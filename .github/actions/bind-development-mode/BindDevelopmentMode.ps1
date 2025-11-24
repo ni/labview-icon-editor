@@ -211,16 +211,30 @@ if ($installedStates.Count -gt 0) {
             continue
         }
         $entryList = @($state.entries)
-        $first = if (-not $entryList -or $entryList.Count -eq 0) { '(no LocalHost.LibraryPaths entries)' } else { Format-TokenPath $entryList[0] }
-        Write-Host ("  {0}-bit {1}: {2}" -f $arch, $state.version, $first)
+        if (-not $entryList -or $entryList.Count -eq 0) {
+            Write-Host ("  {0}-bit {1}: (no LocalHost.LibraryPaths entries)" -f $arch, $state.version)
+            continue
+        }
+        $firstRaw = $entryList[0]
+        $first = Format-TokenPath $firstRaw
+        $norm = Normalize-PathLower $firstRaw
+        $tag = if ($norm -eq $expectedNorm) { ' [this repo]' } else { ' [other repo]' }
+        Write-Host ("  {0}-bit {1}: {2}{3}" -f $arch, $state.version, $first, $tag)
     }
 
     if ($otherStates.Count -gt 0) {
         Write-Host "=== Other installed LabVIEW INI tokens ==="
         foreach ($state in ($otherStates | Sort-Object arch,version)) {
             $entryList = @($state.entries)
-            $first = if (-not $entryList -or $entryList.Count -eq 0) { '(no LocalHost.LibraryPaths entries)' } else { Format-TokenPath $entryList[0] }
-            Write-Host ("  {0}-bit {1}: {2}" -f $state.arch, $state.version, $first)
+            if (-not $entryList -or $entryList.Count -eq 0) {
+                Write-Host ("  {0}-bit {1}: (no LocalHost.LibraryPaths entries)" -f $state.arch, $state.version)
+                continue
+            }
+            $firstRaw = $entryList[0]
+            $first = Format-TokenPath $firstRaw
+            $norm = Normalize-PathLower $firstRaw
+            $tag = if ($norm -eq $expectedNorm) { ' [this repo]' } else { ' [other repo]' }
+            Write-Host ("  {0}-bit {1}: {2}{3}" -f $state.arch, $state.version, $first, $tag)
         }
     }
 }
