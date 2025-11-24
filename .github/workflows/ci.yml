@@ -1,5 +1,10 @@
 name: CI Pipeline (Composite)
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 concurrency:
   # Enforce one run at a time per branch/PR to avoid overlapping fixes on the same feature branch.
   # Deduplicate by commit (PR head SHA when available); cancel older runs for the same commit.
@@ -54,7 +59,7 @@ jobs:
             reports/requirements.html
           if-no-files-found: error
       - name: Comment links on PR
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           message: |
