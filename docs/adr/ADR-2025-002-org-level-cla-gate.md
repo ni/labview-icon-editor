@@ -44,4 +44,4 @@ We adopt **Option A**: a manifest-driven, reusable `cla-gate` workflow that repo
 - [ ] Update this repository to replace local CLA checks with a call to `cla-gate` and protect `develop/main/release/*/feature/*` branches with the `cla-gate` status check.  
 - [ ] Document the CLA intake process (issue template + manifest update PR) at the org level and link to it from this repo’s contributor docs.
 
-> Traceability: CLA-001–CLA-005 in `docs/requirements/requirements.csv`, CI tests for the reusable `cla-gate` workflow, and branch protection rules that require `cla-gate` on protected branches.
+> Traceability: CLA-001–CLA-010 in `docs/requirements/requirements.csv`, CI tests for the reusable `cla-gate` workflow, and branch protection rules that require `cla-gate` on protected branches.
