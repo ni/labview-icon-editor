@@ -139,10 +139,10 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - The workflow was a Pull Request run; `draft-release.yml` is not triggered automatically.
 
 **Solution**:
-1. Trigger `draft-release.yml` with the successful CI run ID to generate a draft release and upload artifacts.
-2. If you need auto-release on push, add logic to call `draft-release.yml` (or another release workflow) from the desired branch events.
+1. Trigger `draft-release.yml` with the successful `ci.yml` run ID to generate a draft release and upload artifacts from that run.
+2. If you need auto-release on push, add logic to invoke `draft-release.yml` (or another release workflow) from the desired branch events.
 3. For manual releases, download artifacts from the CI run and attach them in GitHub Releases.
-3. Confirm you have “Read and write” permissions for Actions in your repo settings.
+4. Confirm you have “Read and write” permissions for Actions in your repo settings.
 
 ---
 
@@ -179,8 +179,8 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - The script that checks for alpha/beta/rc might not be updated for your custom naming.
 
 **Solution**:
-1. Rename your branch to the correct pattern: `release-beta/2.0`, `release-rc/2.0`, etc.  
-2. If you changed naming conventions, update your workflow logic to detect them (e.g., a RegEx match).
+1. Ensure the branch matches `release-alpha/*`, `release-beta/*`, or `release-rc/*` so `compute-version` applies the right suffix.  
+2. If you use custom naming, update the branch-detection logic in `ci.yml` to map to the desired suffix behavior.
 
 ---
 
@@ -194,9 +194,9 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - The branch name might not match exactly `hotfix/` (e.g., `hotfix-2.0` without a slash).
 
 **Solution**:
-1. Ensure your code checks for `hotfix/` prefix, not `hotfix-`.  
-2. Confirm you’re merging into main or the correct base.  
-3. Verify the build logs to see how the workflow computed the version and tag.
+1. Ensure your branch matches `hotfix/*` and let `compute-version` derive the tag (format `v<MAJOR>.<MINOR>.<PATCH>.<BUILD>`).  
+2. Confirm merges go into the intended base (e.g., `main`); suffix logic for alpha/beta/rc should not apply to hotfix.  
+3. Review the `compute-version` step in `ci.yml` to see how the version/tag was computed.
 
 ---
 
@@ -239,13 +239,13 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - You see “Add-Member … already exists” errors, or your `Package Version` keys get overwritten unexpectedly.
 
 **Possible Causes**:
-- The script is re-adding or re-initializing the same JSON fields multiple times without using `-Force`.  
-- Another function in the pipeline modifies the same subobject.
+- The display-info generation step (in `ci.yml` under build-vip) rehydrates JSON; additional manual mutations can collide.
+- Scripts re-add or re-init the same JSON fields multiple times without checking existence.
 
 **Solution**:
-1. Update your script to **conditionally** add fields only if they’re missing, or directly assign the property if it already exists.  
-2. If needed, specify `Add-Member -Force` (though recommended approach is to check existence first).  
-3. Ensure you only do the “Package Version” injection once in your pipeline.
+1. Let the `display-info` step populate JSON; avoid extra mutations unless needed.  
+2. If you must mutate JSON, check for existence before adding, or assign directly instead of re-adding members.  
+3. Ensure “Package Version” injection happens once; avoid parallel rewrites.
 
 ---
 
