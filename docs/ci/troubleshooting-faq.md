@@ -88,7 +88,7 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 **Solution**:
 1. Make sure the label is exactly `major`, `minor`, or `patch` in lowercase (unless your workflow script also checks for capitalized labels).  
 2. Confirm you’re actually using a Pull Request event (not a direct push).  
-3. Check the CI Pipeline (Composite) logs for the **version** job’s “Determine bump type” step (from `.github/actions/compute-version`).
+3. Check the CI Pipeline logs for the **version** job’s “Determine bump type” step (from `.github/actions/compute-version`).
 
 ---
 

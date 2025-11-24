@@ -4,7 +4,7 @@ _Generated: 2025-11-20_
 
 ## TRW-001  9.1 Workflow Triggering & Scope
 
-**Requirement:** The workflow **shall run only** in response to a `workflow_run` of the upstream workflow named **CI Pipeline (Composite)**.
+**Requirement:** The workflow **shall run only** in response to a `workflow_run` of the upstream workflow named **CI Pipeline**.
 
 **Type / Priority:** Functional / High
 
@@ -13,11 +13,11 @@ _Generated: 2025-11-20_
 **Primary Method (select):** Inspection
 
 **Acceptance Criteria:**
-- Only `workflow_run` is declared with `workflows: [CI Pipeline (Composite)]` and `types: [completed]`.
+- Only `workflow_run` is declared with `workflows: [CI Pipeline]` and `types: [completed]`.
 
 **Agent Procedure:**
 - Open `.github/workflows/draft-release.yml`.
-- Verify `on.workflow_run.workflows` includes `CI Pipeline (Composite)` and `on.workflow_run.types` includes `completed`.
+- Verify `on.workflow_run.workflows` includes `CI Pipeline` and `on.workflow_run.types` includes `completed`.
 - Confirm no other event triggers (`push`, `pull_request`, schedule) are defined for this workflow.
 **Evidence to Collect:** Workflow YAML snippet showing the `on: workflow_run` section.; Screenshot or log of event payload proving trigger source.
 
@@ -29,7 +29,7 @@ _Generated: 2025-11-20_
 **Test Case ID / Link:**   
 **Upstream Trace:**   
 **Downstream Trace:**   
-**Notes:** Derived from SRS line 109; Verified .github/workflows/draft-release.yml allows only workflow_run from CI Pipeline (Composite) with type completed; no other triggers.
+**Notes:** Derived from SRS line 109; Verified .github/workflows/draft-release.yml allows only workflow_run from CI Pipeline with type completed; no other triggers.
 
 ---
 

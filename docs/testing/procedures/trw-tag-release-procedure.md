@@ -7,7 +7,7 @@
 
 ## Start Conditions
 - Environment: GitHub UI access with permissions to view CI runs; target branch under test available with upstream CI completion.
-- Pre-conditions: At least two upstream `CI Pipeline (Composite)` runs ready—one successful `workflow_run` from an allowed branch and one from a disallowed branch or failed conclusion.
+- Pre-conditions: At least two upstream `CI Pipeline` runs ready—one successful `workflow_run` from an allowed branch and one from a disallowed branch or failed conclusion.
 - Data: URLs for upstream runs and corresponding downstream draft-release runs (or reruns).
 
 ## Procedure Steps (ordered)

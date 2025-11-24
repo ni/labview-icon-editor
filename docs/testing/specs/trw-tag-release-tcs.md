@@ -9,7 +9,7 @@
 ## Coverage Items
 | ID | Description |
 | --- | --- |
-| R1 | Event is `workflow_run` from `CI Pipeline (Composite)` | Workflow starts; other events are rejected. |
+| R1 | Event is `workflow_run` from `CI Pipeline` | Workflow starts; other events are rejected. |
 | R2 | `workflow_run.conclusion == success` | Proceed; otherwise exit before tag/release. |
 | R3 | `workflow_run.event == push` | Proceed; otherwise exit. |
 | R4 | `head_branch` in allowlist (`main`, `develop`, `release-alpha/*`, `release-beta/*`, `release-rc/*` plus extensions) | Proceed; otherwise exit with no-op. |
