@@ -347,11 +347,41 @@ try {
     }
 
     # Rename .lvlibp -> lv_icon_x64.lvlibp
-    Write-Verbose "Renaming .lvlibp file to lv_icon_x64.lvlibp..."
-    Invoke-ScriptSafe -ScriptPath $RenameFile -ArgumentMap @{
-        CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
-        NewFilename     = 'lv_icon_x64.lvlibp'
-    }
+        Write-Verbose "Renaming .lvlibp file to lv_icon_x64.lvlibp..."
+        Invoke-ScriptSafe -ScriptPath $RenameFile -ArgumentMap @{
+            CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
+            NewFilename     = 'lv_icon_x64.lvlibp'
+        }
+
+        # 7.2) Stage neutral and suffixed PPLs for post-install selector
+        try {
+            $pplDir    = Join-Path $RepositoryPath 'resource\plugins'
+            $pplX64    = Join-Path $pplDir 'lv_icon_x64.lvlibp'
+            $pplX86    = Join-Path $pplDir 'lv_icon_x86.lvlibp'
+            $neutral   = Join-Path $pplDir 'lv_icon.lvlibp'
+            $win64Copy = Join-Path $pplDir 'lv_icon.lvlibp.windows_x64'
+            $win86Copy = Join-Path $pplDir 'lv_icon.lvlibp.windows_x86'
+
+            if (Test-Path -LiteralPath $pplX64) {
+                Copy-Item -LiteralPath $pplX64 -Destination $neutral -Force
+                Copy-Item -LiteralPath $pplX64 -Destination $win64Copy -Force
+                Write-Information "Staged neutral and windows_x64 PPLs at $pplDir" -InformationAction Continue
+            }
+            else {
+                Write-Warning "x64 PPL not found at $pplX64; skipping neutral/windows_x64 staging."
+            }
+
+            if (Test-Path -LiteralPath $pplX86) {
+                Copy-Item -LiteralPath $pplX86 -Destination $win86Copy -Force
+                Write-Information "Staged windows_x86 PPL at $pplDir" -InformationAction Continue
+            }
+            else {
+                Write-Warning "x86 PPL not found at $pplX86; skipping windows_x86 staging."
+            }
+        }
+        catch {
+            Write-Warning "Failed to stage neutral/suffixed PPL copies: $($_.Exception.Message)"
+        }
 
     # -------------------------------------------------------------------------
     # 8) Construct the JSON for "Company Name" & "Author Name", plus version

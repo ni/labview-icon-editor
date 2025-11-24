@@ -116,6 +116,26 @@ catch {
 $LogDirectory = Join-Path -Path $ResolvedRepositoryPath -ChildPath "builds/logs"
 New-Item -ItemType Directory -Path $LogDirectory -Force | Out-Null
 
+# 3b) Preflight VIPB structure before invoking vipm to avoid opaque parser errors/timeouts
+try {
+    [xml]$vipbXml = Get-Content -LiteralPath $ResolvedVIPBPath -Raw
+}
+catch {
+    Write-Error ("Failed to load VIPB XML at {0}: {1}" -f $ResolvedVIPBPath, $_.Exception.Message)
+    exit 1
+}
+
+if (-not $vipbXml.VI_Package_Builder_Settings -or -not $vipbXml.VI_Package_Builder_Settings.Library_General_Settings) {
+    Write-Error ("VIPB is missing VI_Package_Builder_Settings/Library_General_Settings: {0}" -f $ResolvedVIPBPath)
+    exit 1
+}
+
+$pkgLvFromVipb = [string]$vipbXml.VI_Package_Builder_Settings.Library_General_Settings.Package_LabVIEW_Version
+if ([string]::IsNullOrWhiteSpace($pkgLvFromVipb)) {
+    Write-Error ("VIPB missing Package_LabVIEW_Version: {0}" -f $ResolvedVIPBPath)
+    exit 1
+}
+
 # 3) Resolve LabVIEW version from VIPB to ensure determinism, overriding any inbound value
 $versionScriptCandidates = @(
     (Join-Path $ResolvedRepositoryPath 'scripts/get-package-lv-version.ps1'),
