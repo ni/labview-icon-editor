@@ -136,7 +136,7 @@ catch {
 
 $lvVersion = $null
 try {
-    $lvVersion = pwsh -NoProfile -File $versionScript -RepositoryPath $RepositoryPath
+    $lvVersion = & $versionScript -RepositoryPath $RepositoryPath
 }
 catch {
     if (-not $precheckError) { $precheckError = $_ }
