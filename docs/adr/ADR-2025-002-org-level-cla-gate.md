@@ -16,7 +16,7 @@ We need a consistent, auditable way to ensure that contributors across many repo
   CLA validation is done manually by reviewers or legal/compliance, without a CI-enforced gate.
 
 ## Decision
-We adopt **Option A**: a manifest-driven, reusable `cla-gate` workflow that repositories can call via `workflow_call`. The gate **shall** be org-agnostic: it does not hardcode an organization and instead accepts inputs for the manifest repository/path and token. A manifest may be scoped per org or per repository; policy drift across manifests is acceptable, and the gate simply enforces the manifest it is pointed to. A `cla-manifest` repository **shall** be the source of truth for CLA status for the scope it serves, and the shared `cla-automation` (or equivalent) repository **shall** host the reusable CLA gate workflow and associated validation scripts. Individual repositories, including this one, **shall** integrate the gate by adding a small workflow that invokes `cla-gate` on pull requests into protected branches and by requiring the `cla-gate` check to pass via branch protection rules. The gate **shall** fail closed when it cannot retrieve or validate the manifest.
+We adopt **Option A**: a manifest-driven, reusable `cla-gate` workflow that repositories can call via `workflow_call`. The gate **shall** be org-agnostic: it does not hardcode an organization and instead accepts inputs for the manifest repository/path and token. A manifest may be scoped per org or per repository; policy drift across manifests is acceptable, and the gate simply enforces the manifest it is pointed to. A manifest repository (org-wide or repo-specific) **shall** be the source of truth for CLA status for the scope it serves, and the shared `cla-automation` (or equivalent) repository **shall** host the reusable CLA gate workflow and associated validation scripts. Individual repositories, including this one, **shall** integrate the gate by adding a small workflow that invokes `cla-gate` on pull requests into protected branches and by requiring the `cla-gate` check to pass via branch protection rules. The gate **shall** fail closed when it cannot retrieve or validate the manifest.
 
 ## Requirements
 - **CLA-001**: The organization **shall** maintain a single `cla-manifest` repository as the authoritative source of CLA status, with each record including at minimum: `github`, `cla_type`, `cla_version`, `signed_on`, `status` (e.g., active/superseded/inactive), and an `evidence_ref`.  
@@ -34,7 +34,7 @@ We adopt **Option A**: a manifest-driven, reusable `cla-gate` workflow that repo
 - **+** CLA policy becomes consistent and enforceable across all participating repositories, with a single manifest and one implementation of gate logic to maintain.  
 - **+** Compliance, security, and legal teams can audit and update CLA status in one place without per-repo changes.  
 - **+** Projects can opt in with minimal configuration (a short workflow that calls the reusable gate and a branch protection rule).  
-- **–** There is upfront work to create and secure the central manifest and automation repositories and to migrate existing per-repo CLA logic.  
+- **–** There is upfront work to create and secure manifest and automation repositories (org-wide or per-repo) and to migrate existing CLA logic.  
 - **–** The CLA gate introduces a hard dependency on the manifest and automation repos being available; failures there **shall block** merges until resolved (by design).  
 
 ## Follow-ups
