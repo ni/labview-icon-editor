@@ -14,7 +14,7 @@
 **When to write an ADR**
 - Choosing significant technologies, patterns, protocols, data models.
 - Changes that affect quality attributes (security, reliability, performance, maintainability, cost).
-- Standards and policies teams must follow.
+- Standards and policies teams shall follow.
 
 **Good practice**
 - Keep decisions small and focused; prefer several small ADRs to one omnibus record.
