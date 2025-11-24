@@ -37,6 +37,7 @@ We adopt **Option A**: a manifest-driven, reusable `cla-gate` workflow that repo
 - **–** There is upfront work to create and secure manifest and automation repositories (org-wide or per-repo) and to migrate existing CLA logic.  
 - **–** The CLA gate introduces a hard dependency on the manifest and automation repos being available; failures there **shall block** merges until resolved (by design).  
 - **–** Fork PRs and private manifests require careful token handling (read-only token or public manifest); missing access **shall** cause the gate to fail closed on protected branches.  
+- **–** Maintaining multiple manifests (per-org or per-repo) can increase audit overhead and drift; each manifest **shall** still be protected (CODEOWNERS + branch protection) to limit risk.  
 
 ## Follow-ups
 - [ ] Create an org-level `cla-manifest` repository with a documented JSON schema, governance rules, and CI validation.  
