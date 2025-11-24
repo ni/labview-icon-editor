@@ -16,3 +16,13 @@
 # Build output
 /resource/plugins/lv_icon.lvlibp
 *.xml
+
+# .NET build output
+tools/RequirementsSummarizer/bin/
+tools/RequirementsSummarizer/obj/
+
+# Generated requirement reports (artifact outputs)
+reports/req-summary.md
+reports/req-full.md
+reports/requirements.json
+reports/requirements.html

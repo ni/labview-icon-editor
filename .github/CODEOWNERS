@@ -1,0 +1,9 @@
+# Repository-wide default owners (team-first with individual fallbacks)
+* @labview-icon-editor/maintainers @svelderrainruiz @gregr-ni
+
+# CI / workflow / automation
+/.github/ @labview-icon-editor/maintainers @svelderrainruiz
+
+# Documentation
+/docs/ @labview-icon-editor/docs @svelderrainruiz
+/docs/cla/ @labview-icon-editor/docs @svelderrainruiz

@@ -6,94 +6,173 @@
 #        Removes existing packed libraries, adds INI tokens, prepares LabVIEW
 #        sources for both 32-bit and 64-bit environments, and closes LabVIEW.
 #
-#    .PARAMETER RelativePath
+#    .PARAMETER RepositoryPath
 #        Path to the repository root.
 #
 #    .EXAMPLE
-#        .\Set_Development_Mode.ps1 -RelativePath "C:\\labview-icon-editor"
+#        .\Set_Development_Mode.ps1 -RepositoryPath "C:\\labview-icon-editor"
 #
 #>
 
 param(
     [Parameter(Mandatory = $true)]
     [ValidateScript({ Test-Path $_ })]
-    [string]$RelativePath
+    [string]$RepositoryPath,
+
+    # Optional override; if not provided we read Package_LabVIEW_Version from the repo .vipb
+    [Parameter(Mandatory = $false)]
+    [string]$Package_LabVIEW_Version,
+
+    # Limit work to a single bitness (default 64-bit)
+    [Parameter(Mandatory = $false)]
+    [ValidateSet('32','64')]
+    [string]$SupportedBitness = '64'
 )
 
 # Define LabVIEW project name
 $LabVIEW_Project = 'lv_icon_editor'
-$Build_Spec      = 'Editor Packed Library'
 
 # Determine the directory where this script is located
 $ScriptDirectory = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
-Write-Host "Script Directory: $ScriptDirectory"
+Write-Information "Script Directory: $ScriptDirectory" -InformationAction Continue
+
+# Normalize repository path early and re-validate
+$RepositoryPath = (Resolve-Path -LiteralPath $RepositoryPath).Path
+if (-not (Test-Path -LiteralPath $RepositoryPath)) {
+    throw "RepositoryPath '$RepositoryPath' does not exist."
+}
 
 # Build paths to the helper scripts
 $AddTokenScript = Join-Path -Path $ScriptDirectory -ChildPath '..\add-token-to-labview\AddTokenToLabVIEW.ps1'
 $PrepareScript  = Join-Path -Path $ScriptDirectory -ChildPath '..\prepare-labview-source\Prepare_LabVIEW_source.ps1'
 $CloseScript    = Join-Path -Path $ScriptDirectory -ChildPath '..\close-labview\Close_LabVIEW.ps1'
 
-Write-Host "AddTokenToLabVIEW script: $AddTokenScript"
-Write-Host "Prepare_LabVIEW_source script: $PrepareScript"
-Write-Host "Close_LabVIEW script: $CloseScript"
+Write-Information "AddTokenToLabVIEW script: $AddTokenScript" -InformationAction Continue
+Write-Information "Prepare_LabVIEW_source script: $PrepareScript" -InformationAction Continue
+Write-Information "Close_LabVIEW script: $CloseScript" -InformationAction Continue
 
 # Helper function to execute scripts and stop on error
-function Execute-Script {
+function Invoke-ScriptSafe {
     param(
-        [string]$ScriptCommand
+        [string]$ScriptPath,
+        [hashtable]$ArgumentMap,
+        [string[]]$ArgumentList
     )
-    Write-Host "Executing: $ScriptCommand"
+    if (-not $ScriptPath) { throw "ScriptPath is required" }
+    if (-not (Test-Path -LiteralPath $ScriptPath)) { throw "ScriptPath '$ScriptPath' not found" }
+
+    $render = if ($ArgumentMap) {
+        ($ArgumentMap.GetEnumerator() | ForEach-Object { "-$($_.Key) $($_.Value)" }) -join ' '
+    } else {
+        ($ArgumentList -join ' ')
+    }
+    Write-Information ("Executing: {0} {1}" -f $ScriptPath, $render) -InformationAction Continue
     try {
-        Invoke-Expression $ScriptCommand -ErrorAction Stop
-        if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
-            Write-Error "Error occurred while executing: $ScriptCommand. Exit code: $LASTEXITCODE"
-            exit $LASTEXITCODE
+        if ($ArgumentMap) {
+            & $ScriptPath @ArgumentMap
+        } elseif ($ArgumentList) {
+            & $ScriptPath @ArgumentList
+        } else {
+            & $ScriptPath
         }
     }
     catch {
-        Write-Error "Error occurred while executing: $ScriptCommand. Exiting."
-        Write-Error $_.Exception.Message
-        exit 1
+        $msg = "Error occurred while executing: $ScriptPath $($ArgumentList -join ' '). Exiting."
+        if ($_.Exception) { $msg += " Inner: $($_.Exception.Message)" }
+        if ($_.InvocationInfo) { $msg += " At: $($_.InvocationInfo.PositionMessage)" }
+        Write-Error $msg
+        throw
     }
 }
 
+# Extract LabVIEW version from the repo's VIPB (Package_LabVIEW_Version)
+function Get-LabVIEWVersionFromVipb {
+    param(
+        [Parameter(Mandatory)][string]$RootPath
+    )
+
+    $vipb = Get-ChildItem -Path $RootPath -Filter *.vipb -File -Recurse | Select-Object -First 1
+    if (-not $vipb) {
+        throw "No .vipb file found under $RootPath"
+    }
+
+    $text = Get-Content -LiteralPath $vipb.FullName -Raw
+    $match = [regex]::Match($text, '<Package_LabVIEW_Version>(?<ver>[^<]+)</Package_LabVIEW_Version>', 'IgnoreCase')
+    if (-not $match.Success) {
+        throw "Unable to locate Package_LabVIEW_Version in $($vipb.FullName)"
+    }
+
+    $raw = $match.Groups['ver'].Value
+    # Expect formats like '21.0 (64-bit)'
+    $verMatch = [regex]::Match($raw, '^(?<majmin>\d{2}\.\d)')
+    if (-not $verMatch.Success) {
+        throw "Unable to parse LabVIEW version from '$raw' in $($vipb.FullName)"
+    }
+    $maj = [int]($verMatch.Groups['majmin'].Value.Split('.')[0])
+    # Convert 21 -> 2021, 23 -> 2023, etc.
+    $lvVersion = if ($maj -ge 20) { "20$maj" } else { $maj.ToString() }
+    return $lvVersion
+}
+
 try {
+    # Always resolve from VIPB to ensure determinism; ignore inbound overrides
+    $Package_LabVIEW_Version = & (Join-Path $PSScriptRoot '..\..\..\scripts\get-package-lv-version.ps1') -RepositoryPath $RepositoryPath
+    Write-Information ("Detected LabVIEW version from VIPB: {0}" -f $Package_LabVIEW_Version) -InformationAction Continue
+
+    $targetBitness = $SupportedBitness
+    Write-Information ("Targeting bitness: {0}-bit" -f $targetBitness) -InformationAction Continue
+
+    # Ensure the INI token VI exists before attempting g-cli
+    $iniTokenVi = Join-Path -Path $RepositoryPath -ChildPath 'Tooling\deployment\Create_LV_INI_Token.vi'
+    if (-not (Test-Path -LiteralPath $iniTokenVi)) {
+        throw "Missing Create_LV_INI_Token.vi at expected path: $iniTokenVi"
+    }
+
+    # Quick g-cli sanity (helps diagnose missing or broken installs)
+    $gcli = Get-Command g-cli -ErrorAction SilentlyContinue
+    if (-not $gcli) {
+        throw "g-cli is not available on PATH; install g-cli before running development-mode tasks."
+    }
+    $probe = & g-cli --help 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "g-cli --help failed with exit code $LASTEXITCODE. Output: $($probe -join '; ')"
+    }
+
     # Remove existing packed libraries (if the folder exists)
-    $PluginsPath = Join-Path -Path $RelativePath -ChildPath 'resource\plugins'
+    $PluginsPath = Join-Path -Path $RepositoryPath -ChildPath 'resource\plugins'
     if (Test-Path $PluginsPath) {
         # Build and execute the removal command only if the plugins folder exists
-        # Wrap the plugins path in single quotes to avoid issues with spaces or special characters
-        $RemoveCommand = "Get-ChildItem -Path '$PluginsPath' -Filter '*.lvlibp' | Remove-Item -Force"
-        Execute-Script $RemoveCommand
+        # Remove via pipeline to avoid IE
+        Get-ChildItem -Path $PluginsPath -Filter '*.lvlibp' -ErrorAction SilentlyContinue | Remove-Item -Force
     }
     else {
-        Write-Host "No 'resource\\plugins' directory found at $PluginsPath; skipping removal of packed libraries."
+        Write-Information "No 'resource\plugins' directory found at $PluginsPath; skipping removal of packed libraries." -InformationAction Continue
     }
 
-    # 32-bit actions
-    $Command1 = "& `"$AddTokenScript`" -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`""
-    Execute-Script $Command1
+    $arch = $targetBitness
 
-    $Command2 = "& `"$PrepareScript`" -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`" -LabVIEW_Project `"$LabVIEW_Project`" -Build_Spec 'Editor Packed Library'"
-    Execute-Script $Command2
+    Invoke-ScriptSafe -ScriptPath $AddTokenScript -ArgumentMap @{
+        Package_LabVIEW_Version   = $Package_LabVIEW_Version
+        SupportedBitness          = $arch
+        RepositoryPath            = $RepositoryPath
+    }
 
-    $Command3 = "& `"$CloseScript`" -MinimumSupportedLVVersion 2021 -SupportedBitness 32"
-    Execute-Script $Command3
+    Invoke-ScriptSafe -ScriptPath $PrepareScript -ArgumentMap @{
+        Package_LabVIEW_Version   = $Package_LabVIEW_Version
+        SupportedBitness          = $arch
+        RepositoryPath            = $RepositoryPath
+        LabVIEW_Project           = $LabVIEW_Project
+        Build_Spec                = 'Editor Packed Library'
+    }
 
-    # 64-bit actions
-    $Command4 = "& `"$AddTokenScript`" -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`""
-    Execute-Script $Command4
-
-    $Command5 = "& `"$PrepareScript`" -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`" -LabVIEW_Project `"$LabVIEW_Project`" -Build_Spec 'Editor Packed Library'"
-    Execute-Script $Command5
-
-    $Command6 = "& `"$CloseScript`" -MinimumSupportedLVVersion 2021 -SupportedBitness 64"
-    Execute-Script $Command6
-
+    Invoke-ScriptSafe -ScriptPath $CloseScript -ArgumentMap @{
+        Package_LabVIEW_Version   = $Package_LabVIEW_Version
+        SupportedBitness          = $arch
+    }
 }
 catch {
     Write-Error "An unexpected error occurred during script execution: $($_.Exception.Message)"
     exit 1
 }
 
-Write-Host "All scripts executed successfully." -ForegroundColor Green
+Write-Information "All scripts executed successfully." -InformationAction Continue

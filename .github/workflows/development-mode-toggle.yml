@@ -9,6 +9,16 @@ on:
         type: string
         required: true
         default: "enable"
+      bitness:
+        description: "Target LabVIEW bitness (32 or 64)."
+        type: string
+        required: false
+        default: "64"
+      runner_labels:
+        description: "JSON array of runner labels (default: [\"self-hosted-windows-lv\"]). Override in forks with a differently labeled LabVIEW runner."
+        type: string
+        required: false
+        default: "[\"self-hosted-windows-lv\"]"
 
   # 2) Triggered manually from the Actions tab
   workflow_dispatch:
@@ -21,22 +31,27 @@ on:
         options:
           - enable
           - disable
+      bitness:
+        description: "Target LabVIEW bitness (32 or 64)."
+        required: false
+        default: "64"
+        type: choice
+        options:
+          - "32"
+          - "64"
+      runner_labels:
+        description: "JSON array of runner labels (default: [\"self-hosted-windows-lv\"]). Override in forks with a differently labeled LabVIEW runner."
+        required: false
+        default: "[\"self-hosted-windows-lv\"]"
+        type: string
 
 jobs:
   toggle-dev-mode:
-    #
-    # -- FULLY DYNAMIC JOB NAME --
-    #
-    # If triggered by 'workflow_dispatch', read `github.event.inputs.mode`.
-    # Otherwise (workflow_call), read `inputs.mode`.
-    # Then display "Enable Dev Mode" or "Disable Dev Mode."
-    #
     name: ${{ 
       github.event_name == 'workflow_dispatch' && 
         (github.event.inputs.mode == 'enable' && 'Enable Dev Mode' || 'Disable Dev Mode') || 
         (inputs.mode == 'enable' && 'Enable Dev Mode' || 'Disable Dev Mode') }}
-
-    runs-on: [self-hosted-windows-lv]
+    runs-on: ${{ fromJson( github.event_name == 'workflow_dispatch' && github.event.inputs.runner_labels || inputs.runner_labels ) }}
 
     steps:
       - name: Checkout repository
@@ -61,17 +76,26 @@ jobs:
         shell: pwsh
         run: |
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-            if ('${{ github.event.inputs.mode }}' -eq 'enable') {
-              ./.github/actions/set-development-mode/Set_Development_Mode.ps1 -RelativePath $env:GITHUB_WORKSPACE
+            $mode    = '${{ github.event.inputs.mode }}'
+            $bitness = '${{ github.event.inputs.bitness }}'
+          }
+          else {
+            $mode    = '${{ inputs.mode }}'
+            $bitness = '${{ inputs.bitness }}'
+          }
+
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            if ($mode -eq 'enable') {
+              ./.github/actions/set-development-mode/Set_Development_Mode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
             } else {
-              ./.github/actions/revert-development-mode/RevertDevelopmentMode.ps1 -RelativePath $env:GITHUB_WORKSPACE
+              ./.github/actions/revert-development-mode/RevertDevelopmentMode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
             }
           }
           else {
-            if ('${{ inputs.mode }}' -eq 'enable') {
-              ./.github/actions/set-development-mode/Set_Development_Mode.ps1 -RelativePath $env:GITHUB_WORKSPACE
+            if ($mode -eq 'enable') {
+              ./.github/actions/set-development-mode/Set_Development_Mode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
             } else {
-              ./.github/actions/revert-development-mode/RevertDevelopmentMode.ps1 -RelativePath $env:GITHUB_WORKSPACE
+              ./.github/actions/revert-development-mode/RevertDevelopmentMode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
             }
           }
       #
@@ -86,8 +110,10 @@ jobs:
           # Determine final mode for the JSON output
           if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
             $mode = '${{ github.event.inputs.mode }}'
+            $bitness = '${{ github.event.inputs.bitness }}'
           } else {
             $mode = '${{ inputs.mode }}'
+            $bitness = '${{ inputs.bitness }}'
           }
 
           $actor     = '${{ github.actor }}'
@@ -103,6 +129,7 @@ jobs:
           # Pretty-printed JSON (multi-line)
           $jsonObject = [ordered]@{
             mode      = $mode
+            bitness   = $bitness
             timestamp = $timestamp
             actor     = $actor
             pr_number = $prNumber

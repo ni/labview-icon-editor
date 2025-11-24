@@ -1,0 +1,239 @@
+name: DoD Aggregator / dod
+on:
+  pull_request:
+    branches: [ main, develop, release/*, feature/*, hotfix/* ]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  dod-aggregator:
+    runs-on: ubuntu-latest
+    env:
+      LV2021_X64_STATUS: ${{ vars.LV2021_X64_STATUS || 'warning' }}
+      LV2021_X86_STATUS: ${{ vars.LV2021_X86_STATUS || 'warning' }}
+      LV_UTF_LICENSE_STATUS: ${{ vars.LV_UTF_LICENSE_STATUS || 'warning' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Set run id variable
+        id: runvars
+        run: echo "run_id=${GITHUB_RUN_ID:-local}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate RTM paths
+        id: rtm_validate
+        run: python3 .github/scripts/validate_rtm.py
+        continue-on-error: true
+
+      - name: Enforce RTM coverage thresholds
+        id: rtm_coverage
+        run: python3 .github/scripts/check_rtm_coverage.py
+        continue-on-error: true
+
+      - name: Generate test case specifications
+        id: generate_tcs
+        run: python3 .github/scripts/generate_test_case_spec.py
+
+      - name: Generate test data readiness report
+        id: data_readiness
+        run: python3 .github/scripts/generate_test_data_readiness.py --run-id "${{ steps.runvars.outputs.run_id }}"
+        continue-on-error: true
+
+      - name: Generate test environment readiness report
+        id: env_readiness
+        run: python3 .github/scripts/generate_test_env_readiness.py --run-id "${{ steps.runvars.outputs.run_id }}"
+        continue-on-error: true
+
+      - name: Enforce LabVIEW environment status on release branches
+        id: env_gate_release
+        if: always()
+        continue-on-error: true
+        env:
+          LV2021_X64_STATUS: ${{ env.LV2021_X64_STATUS }}
+          LV2021_X86_STATUS: ${{ env.LV2021_X86_STATUS }}
+          LV_UTF_LICENSE_STATUS: ${{ env.LV_UTF_LICENSE_STATUS }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+        run: |
+          ref="${GITHUB_REF_NAME:-}"
+          base="${GITHUB_BASE_REF:-}"
+          is_release=0
+          if [[ "$ref" == release/* || "$base" == release/* ]]; then
+            is_release=1
+            echo "Release ref detected (ref_name=${ref:-none}, base_ref=${base:-none})"
+          else
+            echo "Non-release ref (ref_name=${ref:-none}, base_ref=${base:-none}); LabVIEW env statuses are informational."
+          fi
+
+          echo "release_ref=${is_release}" >> "$GITHUB_OUTPUT"
+
+          fail=0
+          for pair in \
+            "LV2021_X64_STATUS:${LV2021_X64_STATUS}" \
+            "LV2021_X86_STATUS:${LV2021_X86_STATUS}" \
+            "LV_UTF_LICENSE_STATUS:${LV_UTF_LICENSE_STATUS}"
+          do
+            name="${pair%%:*}"
+            status="${pair#*:}"
+            status_lower="${status,,}"
+            echo "${name}=${status}"
+            if [[ $is_release -eq 1 && "$status_lower" != "success" ]]; then
+              echo "Release env gate failure: ${name}=${status}" >&2
+              fail=1
+            fi
+          done
+
+          if [[ $fail -ne 0 ]]; then
+            exit 1
+          fi
+
+      - name: Lint ADRs and agent config language
+        id: adr_lint
+        run: python3 .github/scripts/lint_requirements_language.py
+        continue-on-error: true
+
+      - name: Lychee link checker
+        id: linkcheck
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: >
+            --verbose
+            --no-progress
+            --max-concurrency 4
+            --accept 200,204,206,429
+            --exclude-all-private
+            docs/**/*.md README.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Build DoD summary
+        if: always()
+        env:
+          RTM_VALIDATE: ${{ steps.rtm_validate.outcome }}
+          RTM_COVERAGE: ${{ steps.rtm_coverage.outcome }}
+          ADR_LINT: ${{ steps.adr_lint.outcome }}
+          LINKCHECK: ${{ steps.linkcheck.outcome }}
+          ENV_GATE: ${{ steps.env_gate_release.outcome }}
+          RELEASE_REF: ${{ steps.env_gate_release.outputs.release_ref }}
+          LV2021_X64_STATUS: ${{ env.LV2021_X64_STATUS }}
+          LV2021_X86_STATUS: ${{ env.LV2021_X86_STATUS }}
+          LV_UTF_LICENSE_STATUS: ${{ env.LV_UTF_LICENSE_STATUS }}
+        run: |
+          summary="dod-summary.txt"
+          {
+            echo "DoD Aggregator summary"
+            echo "Test Plan: docs/testing/test-plan.md (§7.2 context/risk/schedule)"
+            echo "RTM paths: ${RTM_VALIDATE}"
+            echo "RTM coverage: ${RTM_COVERAGE}"
+            echo "Test case specs: ${{ steps.generate_tcs.outcome }}"
+            echo "Data readiness: ${{ steps.data_readiness.outcome }}"
+            echo "Env readiness: ${{ steps.env_readiness.outcome }}"
+            echo "LabVIEW env gate: ${ENV_GATE} (release_ref=${RELEASE_REF:-0}, x64=${LV2021_X64_STATUS}, x86=${LV2021_X86_STATUS}, utf=${LV_UTF_LICENSE_STATUS})"
+            echo "ADR lint: ${ADR_LINT}"
+            echo "Docs link check: ${LINKCHECK}"
+          } > "$summary"
+          cat "$summary"
+
+      - name: Generate test execution log
+        if: always()
+        id: exec_log
+        env:
+          RTM_VALIDATE: ${{ steps.rtm_validate.outcome }}
+          RTM_COVERAGE: ${{ steps.rtm_coverage.outcome }}
+          GENERATE_TCS: ${{ steps.generate_tcs.outcome }}
+          DATA_READINESS: ${{ steps.data_readiness.outcome }}
+          ENV_READINESS: ${{ steps.env_readiness.outcome }}
+          ADR_LINT: ${{ steps.adr_lint.outcome }}
+          LINKCHECK: ${{ steps.linkcheck.outcome }}
+        run: python3 .github/scripts/generate_test_execution_log.py --run-id "${{ steps.runvars.outputs.run_id }}"
+
+      - name: Upload DoD summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dod-summary
+          path: dod-summary.txt
+
+      - name: Upload test case specifications
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-case-specs
+          path: docs/testing/specs/*.md
+          if-no-files-found: warn
+
+      - name: Upload test procedures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-procedures
+          path: docs/testing/procedures/*.md
+          if-no-files-found: warn
+
+      - name: Upload test data readiness
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-data-readiness
+          path: reports/test-data-readiness-*.md
+          if-no-files-found: warn
+
+      - name: Upload test environment readiness
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-env-readiness
+          path: reports/test-env-readiness-*.md
+          if-no-files-found: warn
+
+      - name: Upload test execution log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-execution-log
+          path: reports/test-execution-log-*.md
+          if-no-files-found: warn
+
+      - name: Fail if any gate failed
+        if: always()
+        env:
+          RTM_VALIDATE: ${{ steps.rtm_validate.outcome }}
+          RTM_COVERAGE: ${{ steps.rtm_coverage.outcome }}
+          GENERATE_TCS: ${{ steps.generate_tcs.outcome }}
+          DATA_READINESS: ${{ steps.data_readiness.outcome }}
+          ENV_READINESS: ${{ steps.env_readiness.outcome }}
+          EXEC_LOG: ${{ steps.exec_log.outcome }}
+          ADR_LINT: ${{ steps.adr_lint.outcome }}
+          LINKCHECK: ${{ steps.linkcheck.outcome }}
+          ENV_GATE: ${{ steps.env_gate_release.outcome }}
+        run: |
+          fail=0
+          outcomes=(
+            "RTM_VALIDATE:${RTM_VALIDATE}"
+            "RTM_COVERAGE:${RTM_COVERAGE}"
+            "GENERATE_TCS:${GENERATE_TCS}"
+            "DATA_READINESS:${DATA_READINESS}"
+            "ENV_READINESS:${ENV_READINESS}"
+            "ENV_GATE:${ENV_GATE}"
+            "EXEC_LOG:${EXEC_LOG}"
+            "ADR_LINT:${ADR_LINT}"
+            "LINKCHECK:${LINKCHECK}"
+          )
+
+          for pair in "${outcomes[@]}"; do
+            name="${pair%%:*}"
+            outcome="${pair#*:}"
+            if [ "$outcome" != "success" ]; then
+              echo "$name outcome: $outcome"
+              fail=1
+            fi
+          done
+          if [ $fail -ne 0 ]; then
+            echo "DoD Aggregator failed because one or more gates failed." >&2
+            exit 1
+          fi

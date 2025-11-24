@@ -8,6 +8,12 @@ outputs:
   VERSION:
     description: "Full version string"
     value: ${{ steps.next_version.outputs.VERSION }}
+  IS_FIRST_RELEASE:
+    description: "true when no existing tag was found (initial release)"
+    value: ${{ steps.last_tag.outputs.is_first_release }}
+  VERSION_STRING:
+    description: "Full version string (alias)"
+    value: ${{ steps.next_version.outputs.VERSION }}
   MAJOR:
     description: "Major version"
     value: ${{ steps.next_version.outputs.MAJOR }}
@@ -20,6 +26,9 @@ outputs:
   BUILD:
     description: "Commit-based build number"
     value: ${{ steps.inc_build.outputs.new_build_number }}
+  BUILD_NUMBER:
+    description: "Commit-based build number (alias)"
+    value: ${{ steps.inc_build.outputs.new_build_number }}
   IS_PRERELEASE:
     description: "Whether the version is a prerelease"
     value: ${{ steps.next_version.outputs.IS_PRERELEASE }}
@@ -30,6 +39,20 @@ runs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+        fetch-tags: true
+
+    - name: Mark workspace as safe for git
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $root = Resolve-Path .
+        git config --global --add safe.directory "$root"
+
+    - name: Ensure tags are fetched
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        git fetch --tags --force --prune
 
     - name: Determine bump type
       id: bump_type
@@ -39,24 +62,74 @@ runs:
         script: |
           const allowed = ['major', 'minor', 'patch'];
           let bump = 'none';
+          const releasePatterns = [/^release-alpha\//, /^release-beta\//, /^release-rc\//, /^release\//];
+          const branchFromRef = (ref) => (ref || '').replace(/^refs\/heads\//, '');
+          const branch = branchFromRef(context.ref) ||
+                         (context.payload.workflow_run && context.payload.workflow_run.head_branch) ||
+                         branchFromRef(context.payload.ref);
           if (context.event_name === 'pull_request') {
             const labels = context.payload.pull_request.labels.map(l => l.name.toLowerCase());
             const found = labels.filter(l => allowed.includes(l));
+            core.info(`PR labels: ${labels.join(', ') || '(none)'}`);
             if (found.length > 1) {
-              core.setFailed(`Conflicting release labels detected: ${found.join(', ')}`);
+              core.setFailed(`Exactly one release label required (major/minor/patch); found: ${found.join(', ')}`);
               return;
             }
             bump = found[0] || 'patch';
+            core.info(`Selected bump type: ${bump}`);
+          } else {
+            core.info(`Non-PR event (${context.event_name}); branch=${branch || '(unknown)'}`);
+            const isRelease = branch && releasePatterns.some((re) => re.test(branch));
+            if (isRelease) {
+              bump = 'patch';
+              core.info('Release branch detected; defaulting bump type to patch.');
+            } else {
+              bump = 'patch';
+              core.info('Defaulting bump type to patch for non-PR events.');
+            }
           }
           core.setOutput('bump_type', bump);
+
+    - name: Find last reachable tag
+      id: last_tag
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $script = Join-Path -Path $PWD -ChildPath ".github/actions/compute-version/Get-LastTag.ps1"
+        $tag = ''
+        $isFirst = $false
+        if (Test-Path $script) {
+          $info = & $script -AsJson -RequireTag | ConvertFrom-Json
+          $tag = $info.LastTag
+          $isFirst = [bool]$info.IsFirstRelease
+        }
+        else {
+          # Backward compatible fallback when helper script is unavailable (older branch)
+          try {
+            $tag = git describe --tags --abbrev=0 2>$null
+            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($tag)) {
+              $tag = ''
+            }
+          } catch {
+            $tag = ''
+          }
+          $isFirst = [string]::IsNullOrWhiteSpace($tag)
+          if ($isFirst) {
+            throw "No git tags were found. Create the first semantic version tag (for example, v0.1.0) so versioning can derive MAJOR/MINOR/PATCH."
+          }
+        }
+        Write-Information "Last reachable tag: $tag" -InformationAction Continue
+        "last_tag=$tag" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+        "is_first_release=$isFirst" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
 
     - name: Determine build number
       id: inc_build
       shell: pwsh
       run: |
-        git fetch --unshallow 2>$null || Write-Host "Already a full clone."
+        $ErrorActionPreference = 'Stop'
+        git fetch --unshallow 2>$null || Write-Information "Already a full clone." -InformationAction Continue
         $count = git rev-list --count HEAD
-        Write-Host "Commit-based build number => $count"
+        Write-Information "Build number = commits from repository root => $count" -InformationAction Continue
         "new_build_number=$count" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
 
     - name: Compute version string
@@ -65,36 +138,60 @@ runs:
       env:
         BUMP_TYPE:    ${{ steps.bump_type.outputs.bump_type }}
         BUILD_NUMBER: ${{ steps.inc_build.outputs.new_build_number }}
+        LAST_TAG:     ${{ steps.last_tag.outputs.last_tag }}
+        HEAD_BRANCH:  ${{ github.event.workflow_run.head_branch || github.ref_name }}
       run: |
-        $latestRaw = git describe --tags --abbrev=0 2>$null
-        if ($LASTEXITCODE -ne 0) {
-          Write-Host "No existing tags were found; defaulting to 0.0.0."
-          $latestRaw = ''
+        $ErrorActionPreference = 'Stop'
+
+        function TagExists([string]$tag) {
+          $null = git rev-parse -q --verify "refs/tags/$tag" 2>$null
+          $exists = $LASTEXITCODE -eq 0
           $global:LASTEXITCODE = 0
+          return $exists
         }
-        if ([string]::IsNullOrWhiteSpace($latestRaw)) {
-          $maj=0; $min=1; $pat=0
+
+        $lastTag = $Env:LAST_TAG
+        if ([string]::IsNullOrWhiteSpace($lastTag)) {
+          throw "No git tags were found. Create the first semantic version tag (for example, v0.1.0) so versioning can derive MAJOR/MINOR/PATCH."
         }
-        else {
-          $latest = $latestRaw.Trim().TrimStart('v') -replace '-build.*'
-          $parts = $latest.Split('.')
-          $maj = [int]$parts[0]
-          $min = if ($parts.Length -gt 1) { [int]$parts[1] } else { 0 }
-          $pat = if ($parts.Length -gt 2) { [int]$parts[2] } else { 0 }
+
+        $tagMatch = [regex]::Match($lastTag.Trim(), '^(?:refs/tags/)?v?(?<maj>\d+)\.(?<min>\d+)\.(?<pat>\d+)')
+        if (-not $tagMatch.Success) {
+          throw ("Last tag '{0}' is not a semantic version (expected vMAJOR.MINOR.PATCH[...]). Create or fix the latest tag so versioning can proceed." -f $lastTag)
         }
+
+        $maj = [int]$tagMatch.Groups['maj'].Value
+        $min = [int]$tagMatch.Groups['min'].Value
+        $pat = [int]$tagMatch.Groups['pat'].Value
+        Write-Information ("Using semantic version from latest tag: v{0}.{1}.{2}" -f $maj, $min, $pat) -InformationAction Continue
+
         switch ($env:BUMP_TYPE) {
           'major' { $maj++; $min=0; $pat=0 }
           'minor' { $min++; $pat=0 }
           'patch' { $pat++ }
         }
-        $branch = $Env:GITHUB_REF -replace '^refs/heads/',''
+        $branch = if (-not [string]::IsNullOrWhiteSpace($Env:HEAD_BRANCH)) {
+          $Env:HEAD_BRANCH
+        } else {
+          $Env:GITHUB_REF -replace '^refs/heads/',''
+        }
+        Write-Information "Using branch for suffix rules: $branch" -InformationAction Continue
         $suffix = ''
         if ($branch -like 'release-alpha/*') { $suffix = "alpha.$($Env:BUILD_NUMBER)" }
         elseif ($branch -like 'release-beta/*')  { $suffix = "beta.$($Env:BUILD_NUMBER)" }
         elseif ($branch -like 'release-rc/*')    { $suffix = "rc.$($Env:BUILD_NUMBER)" }
-        $version = if ($suffix) { "v$maj.$min.$pat-$suffix-build$($Env:BUILD_NUMBER)" } else { "v$maj.$min.$pat-build$($Env:BUILD_NUMBER)" }
+        $buildNumber = [int]$Env:BUILD_NUMBER
+        $version = if ($suffix) { "v$maj.$min.$pat-$suffix-build$buildNumber" } else { "v$maj.$min.$pat-build$buildNumber" }
+        # Ensure we do not reuse an existing tag (strip build suffix for the tag name). Bump patch until free.
+        $baseTag = $version -replace '-build\d+$',''
+        while (TagExists $baseTag) {
+          Write-Information ("Tag {0} already exists; auto-bumping patch." -f $baseTag) -InformationAction Continue
+          $pat++
+          $version = if ($suffix) { "v$maj.$min.$pat-$suffix-build$buildNumber" } else { "v$maj.$min.$pat-build$buildNumber" }
+          $baseTag = $version -replace '-build\d+$',''
+        }
         $isPre  = if ($suffix) { 'true' } else { 'false' }
-        Write-Host "Computed version => $version"
+        Write-Information "Computed version => $version" -InformationAction Continue
         "VERSION=$version"      | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
         "MAJOR=$maj"            | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
         "MINOR=$min"            | Out-File -FilePath $Env:GITHUB_OUTPUT -Append

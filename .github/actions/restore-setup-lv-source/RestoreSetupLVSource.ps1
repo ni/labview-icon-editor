@@ -6,13 +6,13 @@
     Calls RestoreSetupLVSource.vi via g-cli to unzip the LabVIEW Icon API and
     remove the Localhost.LibraryPaths token from the LabVIEW INI file.
 
-.PARAMETER MinimumSupportedLVVersion
+.PARAMETER Package_LabVIEW_Version
     LabVIEW version used to run g-cli.
 
 .PARAMETER SupportedBitness
     Bitness of the LabVIEW environment ("32" or "64").
 
-.PARAMETER RelativePath
+.PARAMETER RepositoryPath
     Path to the repository root.
 
 .PARAMETER LabVIEW_Project
@@ -22,33 +22,36 @@
     Build specification name within the project.
 
 .EXAMPLE
-    .\RestoreSetupLVSource.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "C:\labview-icon-editor" -LabVIEW_Project "lv_icon_editor" -Build_Spec "Editor Packed Library"
+    .\RestoreSetupLVSource.ps1 -Package_LabVIEW_Version "2021" -SupportedBitness "64" -RepositoryPath "C:\labview-icon-editor" -LabVIEW_Project "lv_icon_editor" -Build_Spec "Editor Packed Library"
 #>
 param(
-    [string]$MinimumSupportedLVVersion,
+    [Alias('MinimumSupportedLVVersion')]
+    [string]$Package_LabVIEW_Version,
+    [ValidateSet('32','64')]
     [string]$SupportedBitness,
-    [string]$RelativePath,
+    [string]$RepositoryPath,
     [string]$LabVIEW_Project,
     [string]$Build_Spec
 )
 
-# Construct the command
-$script = @"
-g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v "$RelativePath\Tooling\RestoreSetupLVSource.vi" -- "$RelativePath\$LabVIEW_Project.lvproj" "$Build_Spec"
-"@
+$ErrorActionPreference = 'Stop'
 
-Write-Output "Executing the following command:"
-Write-Output $script
+$gcliArgs = @(
+    '--lv-ver', $Package_LabVIEW_Version,
+    '--arch', $SupportedBitness,
+    '-v', "$RepositoryPath\Tooling\RestoreSetupLVSource.vi",
+    '--',
+    "$RepositoryPath\$LabVIEW_Project.lvproj",
+    "$Build_Spec"
+)
 
-# Execute the command and check for errors
-try {
-    Invoke-Expression $script
+Write-Information ("Executing g-cli: {0}" -f ($gcliArgs -join ' ')) -InformationAction Continue
+& g-cli @gcliArgs
 
-    # Check the exit code of the executed command
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "Unzip vi.lib/LabVIEW Icon API from LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit) and remove localhost.library path from ini file"
-    }
-} catch {
-    Write-Host ""
+if ($LASTEXITCODE -eq 0) {
+    Write-Information "Unzipped vi.lib/LabVIEW Icon API and removed localhost.library path from ini file." -InformationAction Continue
     exit 0
 }
+
+Write-Warning "g-cli exited with $LASTEXITCODE during restore."
+exit $LASTEXITCODE

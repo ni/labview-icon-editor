@@ -23,4 +23,4 @@ if (-not (Test-Path $directory)) {
     New-Item -ItemType Directory -Path $directory -Force | Out-Null
 }
 Set-Content -Path $fullPath -Value $notes
-Write-Host "Release notes written to $fullPath"
+Write-Information "Release notes written to $fullPath" -InformationAction Continue

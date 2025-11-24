@@ -5,7 +5,7 @@ Runs **`Build.ps1`** to clean, compile, and package the LabVIEW Icon Editor.
 ## Inputs
 | Name | Required | Example | Description |
 |------|----------|---------|-------------|
-| `relative_path` | **Yes** | `${{ github.workspace }}` | Repository root on disk. |
+| `repository_path` | **Yes** | `${{ github.workspace }}` | Repository root on disk. |
 | `major` | **Yes** | `1` | Major version number. |
 | `minor` | **Yes** | `0` | Minor version number. |
 | `patch` | **Yes** | `0` | Patch version number. |
@@ -19,7 +19,7 @@ Runs **`Build.ps1`** to clean, compile, and package the LabVIEW Icon Editor.
 ```yaml
 - uses: ./.github/actions/build
   with:
-    relative_path: ${{ github.workspace }}
+    repository_path: ${{ github.workspace }}
     major: 1
     minor: 0
     patch: 0

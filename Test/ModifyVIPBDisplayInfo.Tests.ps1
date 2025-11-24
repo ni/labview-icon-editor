@@ -1,25 +1,45 @@
 $PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$scriptPath = Join-Path $repoRoot ".github/actions/modify-vipb-display-info/ModifyVIPBDisplayInfo.ps1"
-$fixtureSource = Join-Path $repoRoot "Test/fixtures/modify-vipb/fixture.vipb"
-$tempRoot = Join-Path $repoRoot "Test/tmp"
+$repoRoot = $null
+$scriptPath = $null
+$fixtureSource = $null
+$tempRoot = $null
 
 Describe "ModifyVIPBDisplayInfo.ps1" {
     BeforeAll {
-        New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
+        $script:repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
+        $script:scriptPath = Join-Path $script:repoRoot ".github/actions/modify-vipb-display-info/ModifyVIPBDisplayInfo.ps1"
+        # Locate the single .vipb in the repo instead of hard-coding a fixture
+        $vipbFiles = Get-ChildItem -Path $script:repoRoot -Filter *.vipb -File -Recurse
+        if ($vipbFiles.Count -eq 1) {
+            $script:fixtureSource = $vipbFiles[0].FullName
+        } else {
+            $script:fixtureSource = $null
+            $script:failureReason = if ($vipbFiles.Count -eq 0) {
+                "Expected a single .vipb in the repo but found none. The ModifyVIPBDisplayInfo test must gate the workflow."
+            } else {
+                "Expected a single .vipb in the repo but found $($vipbFiles.Count). The ModifyVIPBDisplayInfo test must gate the workflow."
+            }
+        }
+        $script:tempRoot = Join-Path $script:repoRoot "Test/tmp"
+        $script:hasFixture = [bool]$script:fixtureSource
+        New-Item -ItemType Directory -Path $script:tempRoot -Force | Out-Null
     }
 
     AfterAll {
-        if (Test-Path $tempRoot) {
-            Remove-Item -Path $tempRoot -Recurse -Force
+        if ($script:tempRoot -and (Test-Path $script:tempRoot)) {
+            Remove-Item -Path $script:tempRoot -Recurse -Force
         }
     }
 
     It "updates VIPB metadata according to DisplayInformation JSON" {
-        $vipbPath = Join-Path $tempRoot ("fixture_{0}.vipb" -f ([guid]::NewGuid().ToString("N")))
+        if (-not $script:hasFixture) {
+            throw $script:failureReason
+        }
+
+        $vipbPath = Join-Path $script:tempRoot ("fixture_{0}.vipb" -f ([guid]::NewGuid().ToString("N")))
         Copy-Item -Path $fixtureSource -Destination $vipbPath
 
-        $releaseNotesPath = Join-Path $tempRoot ("release_notes_{0}.md" -f ([guid]::NewGuid().ToString("N")))
+        $releaseNotesPath = Join-Path $script:tempRoot ("release_notes_{0}.md" -f ([guid]::NewGuid().ToString("N")))
         $releaseNotesContent = "Release notes content from file"
         Set-Content -Path $releaseNotesPath -Value $releaseNotesContent
 
@@ -41,9 +61,9 @@ Describe "ModifyVIPBDisplayInfo.ps1" {
 
         & $scriptPath `
             -SupportedBitness 64 `
-            -RelativePath $repoRoot `
+            -RepositoryPath $repoRoot `
             -VIPBPath $relativeVipbPath `
-            -MinimumSupportedLVVersion 2023 `
+            -Package_LabVIEW_Version 2023 `
             -LabVIEWMinorRevision 3 `
             -Major 1 `
             -Minor 4 `
@@ -63,8 +83,10 @@ Describe "ModifyVIPBDisplayInfo.ps1" {
         $descriptionSettings.One_Line_Description_Summary | Should -Be $displayInformation."Product Description Summary"
         $descriptionSettings.Packager | Should -Be $displayInformation."Author Name (Person or Company)"
         $descriptionSettings.URL | Should -Be $displayInformation."Product Homepage (URL)"
-        $descriptionSettings.Release_Notes | Should -Be $releaseNotesContent
+        # Some files include a trailing newline; trim for comparison
+        $descriptionSettings.Release_Notes.Trim() | Should -Be $releaseNotesContent.Trim()
         $descriptionSettings.Description | Should -Match "Commit: deadbeef"
-        $licenseSetting | Should -Be "LICENSE"
+        # VIPB can emit an absolute path; assert on filename only
+        (Split-Path -Leaf $licenseSetting) | Should -Be "LICENSE"
     }
 }

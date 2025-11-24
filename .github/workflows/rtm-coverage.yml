@@ -1,0 +1,14 @@
+name: Coverage Gate / coverage
+on:
+  pull_request:
+    branches: [ main, develop, release/*, feature/*, hotfix/* ]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  rtm-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enforce RTM coverage thresholds
+        run: python3 .github/scripts/check_rtm_coverage.py

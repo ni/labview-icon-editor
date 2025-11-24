@@ -1,0 +1,80 @@
+name: CLA Intake
+description: Collect required info for Contributor License Agreement review
+title: "[CLA] Add contributor: "
+labels: ["cla-intake"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please fill out all required fields. Do not attach the signed CLA document here; provide a link or document ID in the evidence field.
+
+  - type: input
+    id: github
+    attributes:
+      label: GitHub handle
+      description: The exact GitHub username to authorize.
+      placeholder: octocat
+    validations:
+      required: true
+
+  - type: dropdown
+    id: cla_type
+    attributes:
+      label: CLA type
+      description: Which CLA applies to this contributor?
+      options:
+        - individual
+        - corporate
+    validations:
+      required: true
+
+  - type: input
+    id: cla_version
+    attributes:
+      label: CLA version
+      description: Identifier of the signed CLA (e.g., v1.0).
+      placeholder: v1.0
+    validations:
+      required: true
+
+  - type: input
+    id: signed_on
+    attributes:
+      label: Signed on (ISO date)
+      description: Date the CLA was signed (YYYY-MM-DD).
+      placeholder: 2025-01-01
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence location
+      description: Link or document ID where the signed CLA is stored (do not upload the document here).
+      placeholder: https://example.com/cla/record-id
+    validations:
+      required: true
+
+  - type: input
+    id: email
+    attributes:
+      label: Contact email (optional)
+      placeholder: name@example.com
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes (optional)
+      description: Anything reviewers should know (affiliation, exceptions, etc.).
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: reviewer_ack
+    attributes:
+      label: Reviewer confirmation
+      options:
+        - label: I am a Contributor License Reviewer and confirm the evidence was inspected.
+          required: true

@@ -1,0 +1,13 @@
+{
+  "contributors": [
+    {
+      "github": "svelderrainruiz",
+      "cla_type": "individual",
+      "cla_version": "v1.0",
+      "signed_on": "2025-01-01",
+      "email": "name@example.com",
+      "evidence": "https://example.com/cla/svelderrainruiz",
+      "notes": "Example entry; replace with real metadata."
+    }
+  ]
+}

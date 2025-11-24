@@ -11,23 +11,31 @@ runs:
     - name: Run Build_lvlibp.ps1
       shell: pwsh
       run: |
+        $candidates = @(
+          "$env:GITHUB_WORKSPACE/scripts/get-package-lv-version.ps1",
+          "$env:GITHUB_WORKSPACE/.github/scripts/get-package-lv-version.ps1",
+          "${{ github.action_path }}/../../scripts/get-package-lv-version.ps1"
+        )
+        $verScript = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+        if (-not $verScript) {
+          throw "Unable to locate get-package-lv-version.ps1. Checked: $($candidates -join ', ')"
+        }
+
+        $lvVer = pwsh -NoProfile -File $verScript -RepositoryPath "${{ inputs.repository_path }}"
         & "${{ github.action_path }}/Build_lvlibp.ps1" `
-          -MinimumSupportedLVVersion ${{ inputs.minimum_supported_lv_version }} `
+          -Package_LabVIEW_Version $lvVer `
           -SupportedBitness ${{ inputs.supported_bitness }} `
-          -RelativePath "${{ inputs.relative_path }}" `
+          -RepositoryPath "${{ inputs.repository_path }}" `
           -Major ${{ inputs.major }} `
           -Minor ${{ inputs.minor }} `
           -Patch ${{ inputs.patch }} `
           -Build ${{ inputs.build }} `
           -Commit "${{ inputs.commit }}"
 inputs:
-  minimum_supported_lv_version:
-    description: 'LabVIEW major version'
-    required: true
   supported_bitness:
     description: '32 or 64'
     required: true
-  relative_path:
+  repository_path:
     description: 'Workspace root path'
     required: true
   major:

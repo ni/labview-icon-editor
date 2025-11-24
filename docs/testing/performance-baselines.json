@@ -1,0 +1,28 @@
+[
+  {
+    "scenario": "LabVIEW unit tests",
+    "architecture": "test-2021-x64",
+    "metric": "unit_tests_duration_s",
+    "unit": "s",
+    "baseline_value": 120.0,
+    "tolerance_pct": 0.10,
+    "source": "Unit tests (g-cli) aggregate",
+    "tag": "v0-local",
+    "commit": "baseline",
+    "timestamp_utc": "2025-11-21T00:00:00Z",
+    "notes": "Placeholder baseline; replace with actual measured median from CI."
+  },
+  {
+    "scenario": "LabVIEW unit tests",
+    "architecture": "test-2021-x86",
+    "metric": "unit_tests_duration_s",
+    "unit": "s",
+    "baseline_value": 120.0,
+    "tolerance_pct": 0.10,
+    "source": "Unit tests (g-cli) aggregate",
+    "tag": "v0-local",
+    "commit": "baseline",
+    "timestamp_utc": "2025-11-21T00:00:00Z",
+    "notes": "Placeholder baseline; replace with actual measured median from CI."
+  }
+]

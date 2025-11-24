@@ -1,6 +1,6 @@
 # Composite GitHub Actions
 
-This repository defines several reusable [composite actions](https://docs.github.com/actions/creating-actions/creating-a-composite-action) in [`.github/actions`](../../../.github/actions). These actions wrap common LabVIEW build and test tasks and can be called from workflows in this or other repositories. Workflows such as [`.github/workflows/ci-composite.yml`](../../../.github/workflows/ci-composite.yml) rely on the [`build-lvlibp`](../../../.github/actions/build-lvlibp) and [`build-vi-package`](../../../.github/actions/build-vi-package) actions for their build steps.
+This repository defines several reusable [composite actions](https://docs.github.com/actions/creating-actions/creating-a-composite-action) in [`.github/actions`](../../../.github/actions). These actions wrap common LabVIEW build and test tasks and can be called from workflows in this or other repositories. Workflows such as [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) rely on the [`build-lvlibp`](../../../.github/actions/build-lvlibp) and [`build-vip`](../../../.github/actions/build-vip) actions for their build steps.
 
 | Action | Description |
 |---|---|
@@ -9,7 +9,7 @@ This repository defines several reusable [composite actions](https://docs.github
 | [auto-issue-branch](../../../.github/actions/auto-issue-branch) | Automatically creates branches for issues with required metadata; used by [auto-issue-branch workflow](../../../.github/workflows/auto-issue-branch.yml). |
 | [build](../../../.github/actions/build) | **Deprecated**: previously orchestrated the full build and packaging process. |
 | [build-lvlibp](../../../.github/actions/build-lvlibp) | Creates the editor packed library. |
-| [build-vi-package](../../../.github/actions/build-vi-package) | Updates a VIPB file and builds the VI package. |
+| [build-vip](../../../.github/actions/build-vip) | Updates a VIPB file and builds the VI package. |
 | [close-labview](../../../.github/actions/close-labview) | Gracefully shuts down a LabVIEW instance after build steps to free runner resources. |
 | [compute-version](../../../.github/actions/compute-version) | Determines the semantic version from commit history and labels. |
 | [generate-release-notes](../../../.github/actions/generate-release-notes) | Generates a `release_notes.md` summarizing recent commits for use in changelogs or release drafts. |

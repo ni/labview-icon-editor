@@ -1,0 +1,18 @@
+[
+  {
+    "scenario": "Sample - editor startup (ms)",
+    "architecture": "test-2021-x64",
+    "metric": "editor_startup_ms",
+    "unit": "ms",
+    "value": 1525,
+    "source": "Manual run via Measure-Command"
+  },
+  {
+    "scenario": "Sample - VIPB metadata update (ms)",
+    "architecture": "test-2021-x86",
+    "metric": "modify_vipb_metadata_ms",
+    "unit": "ms",
+    "value": 790,
+    "source": "Test/ModifyVIPBDisplayInfo.Tests.ps1"
+  }
+]

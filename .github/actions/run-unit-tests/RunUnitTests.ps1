@@ -7,10 +7,10 @@
       - Table-based test results
       - Color-coded pass/fail
       - Non-zero exit if g-cli fails or if any test fails
-      - Automatic search for exactly one *.lvproj file by moving up the folder hierarchy 
+      - Automatic search for exactly one *.lvproj file by moving up the folder hierarchy
         until just before the drive root.
 
-.PARAMETER MinimumSupportedLVVersion
+.PARAMETER Package_LabVIEW_Version
     LabVIEW minimum supported version (e.g., "2021").
 
 .PARAMETER SupportedBitness
@@ -21,21 +21,26 @@
     This script *requires* that g-cli and LabVIEW be compatible with the OS.
 #>
 
+[Diagnostics.CodeAnalysis.SuppressMessage("PSReviewUnusedParameter","Package_LabVIEW_Version",Justification="Used in nested functions and g-cli invocation")]
+[Diagnostics.CodeAnalysis.SuppressMessage("PSReviewUnusedParameter","SupportedBitness",Justification="Used in nested functions and g-cli invocation")]
 param(
-    [Parameter(Mandatory=$true)]
+    [Alias('MinimumSupportedLVVersion')]
     [string]
-    $MinimumSupportedLVVersion,
+    $Package_LabVIEW_Version = "",
 
     [Parameter(Mandatory=$true)]
     [ValidateSet("32","64")]
     [string]
-    $SupportedBitness
+    $SupportedBitness,
+
+    [string]
+    $AbsoluteProjectPath
 )
 
 # --------------------------------------------------------------------
-# 1) Locate exactly one .lvproj file by searching upward from $PSScriptRoot
+# 1) Locate exactly one .lvproj file (use provided path when available, else search upward)
 # --------------------------------------------------------------------
-Write-Host "Starting directory for .lvproj search: $PSScriptRoot"
+Write-Information "Starting directory for .lvproj search: $PSScriptRoot" -InformationAction Continue
 
 function Get-SingleLvproj {
     param(
@@ -45,7 +50,7 @@ function Get-SingleLvproj {
     $currentDir = $StartFolder
 
     while ($true) {
-        Write-Host "Searching '$currentDir' for *.lvproj files..."
+        Write-Information "Searching '$currentDir' for *.lvproj files..." -InformationAction Continue
         $lvprojFiles = Get-ChildItem -Path $currentDir -Filter '*.lvproj' -File -ErrorAction SilentlyContinue
 
         if ($lvprojFiles.Count -eq 1) {
@@ -54,14 +59,14 @@ function Get-SingleLvproj {
         }
         elseif ($lvprojFiles.Count -gt 1) {
             # Found multiple .lvproj files
-            Write-Error "Error: Multiple .lvproj files found in '$currentDir'. Please ensure only one .lvproj is present."
-            $lvprojFiles | ForEach-Object { Write-Host " - $_.FullName" }
-            return $null
+            $list = $lvprojFiles | ForEach-Object { " - {0}" -f $_.FullName }
+            throw ("Multiple .lvproj files found in '{0}' (count={1}). Ensure only one is present. Found:{2}{3}" -f `
+                    $currentDir, $lvprojFiles.Count, [Environment]::NewLine, ($list -join [Environment]::NewLine))
         }
-        
+
         # If none found, move one level up
         $parentDir = Split-Path -Path $currentDir -Parent
-        
+
         # If we've reached or are about to reach the drive root, stop searching
         $driveRoot = [System.IO.Path]::GetPathRoot($currentDir)
         if ($parentDir -eq $currentDir -or $parentDir -eq $driveRoot) {
@@ -73,13 +78,25 @@ function Get-SingleLvproj {
     }
 }
 
-$AbsoluteProjectPath = Get-SingleLvproj -StartFolder $PSScriptRoot
+if ([string]::IsNullOrWhiteSpace($AbsoluteProjectPath)) {
+    $AbsoluteProjectPath = Get-SingleLvproj -StartFolder $PSScriptRoot
+}
+else {
+    if (-not (Test-Path $AbsoluteProjectPath)) {
+        throw "Provided project path does not exist: $AbsoluteProjectPath"
+    }
+    $AbsoluteProjectPath = (Resolve-Path $AbsoluteProjectPath).Path
+}
 
 if (-not $AbsoluteProjectPath) {
     # We failed to find exactly one .lvproj in any ancestor up to the level before root
     exit 3
 }
-Write-Host "Using LabVIEW project file: $AbsoluteProjectPath"
+Write-Information "Using LabVIEW project file: $AbsoluteProjectPath" -InformationAction Continue
+if ([string]::IsNullOrWhiteSpace($Package_LabVIEW_Version)) {
+    throw "LabVIEW version is required but was not provided. Ensure the composite action supplies inputs.labview_version or LABVIEW_VERSION."
+}
+Write-Information ("Using LabVIEW version provided by workflow: {0}" -f $Package_LabVIEW_Version) -InformationAction Continue
 
 # Script-level variables to track exit states
 $Script:OriginalExitCode = 0
@@ -89,13 +106,13 @@ $Script:TestsHadFailures = $false
 $ReportPath = Join-Path -Path $PSScriptRoot -ChildPath "UnitTestReport.xml"
 
 # --------------------------  SETUP  --------------------------
-function Setup {
-    Write-Host "=== Setup ==="
+function Invoke-Setup {
+    Write-Information "=== Setup ===" -InformationAction Continue
     $reportDir = Split-Path -Parent $ReportPath
     if (-not (Test-Path $reportDir)) {
         try {
             New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
-            Write-Host "Created report directory: $reportDir"
+            Write-Information "Created report directory: $reportDir" -InformationAction Continue
         }
         catch {
             Write-Warning ("Could not create report directory {0}: {1}" -f $reportDir, $_.Exception.Message)
@@ -104,26 +121,26 @@ function Setup {
     if (Test-Path $ReportPath) {
         try {
             Remove-Item $ReportPath -Force -ErrorAction Stop
-            Write-Host "Deleted existing UnitTestReport.xml."
+            Write-Information "Deleted existing UnitTestReport.xml." -InformationAction Continue
         }
         catch {
             Write-Warning "Could not remove UnitTestReport.xml: $($_.Exception.Message)"
         }
     }
     else {
-        Write-Host "No existing UnitTestReport.xml found. Continuing..."
+        Write-Information "No existing UnitTestReport.xml found. Continuing..." -InformationAction Continue
     }
 }
 
 # ------------------------  MAIN SEQUENCE  ----------------------
-function MainSequence {
-    Write-Host "`n=== MainSequence ==="
-    Write-Host "Running unit tests for LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)"
-    Write-Host "Project Path: $AbsoluteProjectPath"
-    Write-Host "Report will be saved at: $ReportPath"
+function Invoke-MainSequence {
+    Write-Information "`n=== MainSequence ===" -InformationAction Continue
+    Write-Information "Running unit tests for LabVIEW $Package_LabVIEW_Version ($SupportedBitness-bit)" -InformationAction Continue
+    Write-Information "Project Path: $AbsoluteProjectPath" -InformationAction Continue
+    Write-Information "Report will be saved at: $ReportPath" -InformationAction Continue
 
-    Write-Host "`nExecuting g-cli command..."
-    & g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness lunit -- -r "$ReportPath" "$AbsoluteProjectPath"
+    Write-Information "`nExecuting g-cli command..." -InformationAction Continue
+    & g-cli --lv-ver $Package_LabVIEW_Version --arch $SupportedBitness lunit -- -r "$ReportPath" "$AbsoluteProjectPath"
 
     $script:OriginalExitCode = $LASTEXITCODE
     if ($script:OriginalExitCode -ne 0) {
@@ -211,7 +228,7 @@ function MainSequence {
                $col3.PadRight($maxStatus) + "  " +
                $col4.PadRight($maxTime) + "  " +
                $col5.PadRight($maxAssert))
-    Write-Host $header
+Write-Information $header -InformationAction Continue
 
     # Output test results in color
     foreach ($res in $results) {
@@ -222,25 +239,25 @@ function MainSequence {
                  $res.Assertions.PadRight($maxAssert))
 
         if ($res.Status -eq "Passed") {
-            Write-Host $line -ForegroundColor Green
+            Write-Information $line -InformationAction Continue
         }
         elseif ($res.Status -eq "Skipped") {
-            Write-Host $line -ForegroundColor Yellow
+            Write-Information $line -InformationAction Continue
         }
         else {
-            Write-Host $line -ForegroundColor Red
+            Write-Warning $line
         }
     }
 }
 
 # --------------------------  CLEANUP  --------------------------
-function Cleanup {
-    Write-Host "`n=== Cleanup ==="
+function Invoke-Cleanup {
+    Write-Information "`n=== Cleanup ===" -InformationAction Continue
     # If everything passed (and g-cli was OK), delete the report
     if (($script:OriginalExitCode -eq 0) -and (-not $script:TestsHadFailures)) {
         try {
             Remove-Item $ReportPath -Force -ErrorAction Stop
-            Write-Host "`nAll tests passed. Deleted UnitTestReport.xml."
+            Write-Information "`nAll tests passed. Deleted UnitTestReport.xml." -InformationAction Continue
         }
         catch {
             Write-Warning "Failed to delete $($ReportPath): $($_.Exception.Message)"
@@ -250,8 +267,8 @@ function Cleanup {
 
 # -------------------  EXECUTION FLOW  -------------------
 try {
-    Setup
-    MainSequence
+    Invoke-Setup
+    Invoke-MainSequence
 }
 catch {
     if ($Script:OriginalExitCode -eq 0) {
@@ -262,7 +279,7 @@ catch {
 }
 finally {
     try {
-        Cleanup
+        Invoke-Cleanup
     }
     catch {
         Write-Warning ("Cleanup failed: {0}" -f $_.Exception.Message)

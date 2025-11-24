@@ -1,0 +1,29 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{07C2787E-EAC7-C090-1BA3-A61EC2A24D84}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RequirementsSummarizer", "tools\RequirementsSummarizer\RequirementsSummarizer.csproj", "{F55BAB5D-3A0E-C9B7-D686-131AA3F936BF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F55BAB5D-3A0E-C9B7-D686-131AA3F936BF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F55BAB5D-3A0E-C9B7-D686-131AA3F936BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F55BAB5D-3A0E-C9B7-D686-131AA3F936BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F55BAB5D-3A0E-C9B7-D686-131AA3F936BF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{F55BAB5D-3A0E-C9B7-D686-131AA3F936BF} = {07C2787E-EAC7-C090-1BA3-A61EC2A24D84}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {88F39E80-7903-41B1-BA9E-305F4B156AA3}
+	EndGlobalSection
+EndGlobal

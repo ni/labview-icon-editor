@@ -7,13 +7,13 @@
     update the LabVIEW configuration, ensuring the project is ready for
     subsequent build steps.
 
-.PARAMETER MinimumSupportedLVVersion
+.PARAMETER Package_LabVIEW_Version
     LabVIEW version used by g-cli.
 
 .PARAMETER SupportedBitness
     Target bitness of the LabVIEW environment ("32" or "64").
 
-.PARAMETER RelativePath
+.PARAMETER RepositoryPath
     Path to the repository root containing the project.
 
 .PARAMETER LabVIEW_Project
@@ -23,12 +23,13 @@
     Name of the build specification to prepare.
 
 .EXAMPLE
-    .\Prepare_LabVIEW_source.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "C:\labview icon editor" -LabVIEW_Project "lv_icon_editor" -Build_Spec "Editor Packed Library"
+    .\Prepare_LabVIEW_source.ps1 -Package_LabVIEW_Version "2021" -SupportedBitness "64" -RepositoryPath "C:\labview icon editor" -LabVIEW_Project "lv_icon_editor" -Build_Spec "Editor Packed Library"
 #>
 
 param(
-    [Parameter(Mandatory = $true)]
-    [string]$MinimumSupportedLVVersion,
+[Parameter(Mandatory = $true)]
+[Alias('MinimumSupportedLVVersion')]
+[string]$Package_LabVIEW_Version,
 
     [Parameter(Mandatory = $true)]
     [ValidateSet("32", "64", IgnoreCase = $true)]
@@ -36,7 +37,7 @@ param(
 
     [Parameter(Mandatory = $true)]
     [ValidateScript({ Test-Path $_ })]
-    [string]$RelativePath,
+    [string]$RepositoryPath,
 
     [Parameter(Mandatory = $true)]
     [string]$LabVIEW_Project,
@@ -45,34 +46,36 @@ param(
     [string]$Build_Spec
 )
 
-# Ensure paths with spaces are enclosed in double quotes
-$escapedRelativePath = "`"$RelativePath`""
-$escapedLabVIEWProjectPath = "`"$RelativePath\$LabVIEW_Project.lvproj`""
-$escapedBuildSpec = "`"$Build_Spec`""
+$ErrorActionPreference = 'Stop'
 
-# Construct the command
-$script = @"
-g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v `"$RelativePath\Tooling\PrepareIESource.vi`" -- LabVIEW Localhost.LibraryPaths `"$RelativePath\$LabVIEW_Project.lvproj`" $Build_Spec
-"@
-
-Write-Output "Executing the following command:"
-Write-Output $script
-
-try {
-    # Execute the command and check for errors
-    Invoke-Expression $script
-
-    # Check the exit code
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "Success: Process completed."
-        Write-Host "Unzipping vi.lib/LabVIEW Icon API from LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)."
-        Write-Host "Removing localhost.library path from ini file."
-    } else {
-        throw "Error: Command execution failed with exit code $LASTEXITCODE."
-    }
-} catch {
-    Write-Error "An error occurred during execution: $_"
-    Write-Error "Please check the parameters and ensure the command is valid."
-    exit 1
+$projectPath = if ([System.IO.Path]::IsPathRooted($LabVIEW_Project)) {
+    $LabVIEW_Project
+} else {
+    Join-Path -Path $RepositoryPath -ChildPath "$LabVIEW_Project.lvproj"
 }
+if (-not (Test-Path -LiteralPath $projectPath)) {
+    throw "LabVIEW project not found at $projectPath"
+}
+
+$gcliArgs = @(
+'--lv-ver', $Package_LabVIEW_Version,
+    '--arch', $SupportedBitness,
+    '-v', "$RepositoryPath\Tooling\PrepareIESource.vi",
+    '--',
+    'LabVIEW',
+    'Localhost.LibraryPaths',
+    $projectPath,
+    $Build_Spec
+)
+
+Write-Information ("Executing g-cli: {0}" -f ($gcliArgs -join ' ')) -InformationAction Continue
+& g-cli @gcliArgs
+
+if ($LASTEXITCODE -eq 0) {
+    Write-Information "Success: Process completed. Unzipped vi.lib/LabVIEW Icon API and updated INI." -InformationAction Continue
+    exit 0
+}
+
+Write-Error "Command execution failed with exit code $LASTEXITCODE."
+exit $LASTEXITCODE
 

@@ -12,12 +12,23 @@ runs:
     - name: Run Close_LabVIEW.ps1
       shell: pwsh
       run: |
+        $ErrorActionPreference = 'Stop'
+        $repo = "${{ inputs.repository_path }}"
+        $candidates = @(
+          (Join-Path $repo 'scripts/get-package-lv-version.ps1'),
+          (Join-Path $repo '.github/scripts/get-package-lv-version.ps1')
+        )
+        $lvScript = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+        if (-not $lvScript) {
+          throw "Unable to locate get-package-lv-version.ps1 under '$repo/scripts' or '$repo/.github/scripts'."
+        }
+        $lvVer = pwsh -NoProfile -File $lvScript -RepositoryPath $repo
         & "${{ github.action_path }}/Close_LabVIEW.ps1" `
-          -MinimumSupportedLVVersion ${{ inputs.minimum_supported_lv_version }} `
+          -Package_LabVIEW_Version $lvVer `
           -SupportedBitness ${{ inputs.supported_bitness }}
 inputs:
-  minimum_supported_lv_version:
-    description: 'LabVIEW major version'
+  repository_path:
+    description: 'Workspace root path'
     required: true
   supported_bitness:
     description: '32 or 64'

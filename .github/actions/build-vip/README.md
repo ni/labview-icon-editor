@@ -6,9 +6,8 @@ Runs **`build_vip.ps1`** to update a `.vipb` file's display info and build the V
 | Name | Required | Example | Description |
 |------|----------|---------|-------------|
 | `supported_bitness` | **Yes** | `64` | Target LabVIEW bitness. |
-| `relative_path` | **Yes** | `${{ github.workspace }}` | Repository root path. |
+| `repository_path` | **Yes** | `${{ github.workspace }}` | Repository root path (used to resolve LabVIEW version from the VIPB). |
 | `vipb_path` | **Yes** | `Tooling/deployment/NI Icon editor.vipb` | Path to the VIPB file. |
-| `minimum_supported_lv_version` | **Yes** | `2021` | LabVIEW major version. |
 | `labview_minor_revision` | No (defaults to `3`) | `3` | LabVIEW minor revision. |
 | `major` | **Yes** | `1` | Major version component. |
 | `minor` | **Yes** | `0` | Minor version component. |
@@ -23,9 +22,8 @@ Runs **`build_vip.ps1`** to update a `.vipb` file's display info and build the V
 - uses: ./.github/actions/build-vip
   with:
     supported_bitness: 64
-    relative_path: ${{ github.workspace }}
+    repository_path: ${{ github.workspace }}
     vipb_path: Tooling/deployment/NI Icon editor.vipb
-    minimum_supported_lv_version: 2024
     major: 1
     minor: 0
     patch: 0

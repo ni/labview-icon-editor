@@ -5,9 +5,8 @@ Runs **`Prepare_LabVIEW_source.ps1`** to unpack and configure project sources be
 ## Inputs
 | Name | Required | Example | Description |
 |------|----------|---------|-------------|
-| `minimum_supported_lv_version` | **Yes** | `2021` | LabVIEW major version. |
 | `supported_bitness` | **Yes** | `32` or `64` | Target LabVIEW bitness. |
-| `relative_path` | **Yes** | `${{ github.workspace }}` | Repository root path. |
+| `repository_path` | **Yes** | `${{ github.workspace }}` | Repository root path (used to resolve LabVIEW version from the VIPB). |
 | `labview_project` | **Yes** | `lv_icon_editor` | Project name (no extension). |
 | `build_spec` | **Yes** | `Editor Packed Library` | Build specification name. |
 
@@ -15,9 +14,8 @@ Runs **`Prepare_LabVIEW_source.ps1`** to unpack and configure project sources be
 ```yaml
 - uses: ./.github/actions/prepare-labview-source
   with:
-    minimum_supported_lv_version: 2024
     supported_bitness: 64
-    relative_path: ${{ github.workspace }}
+    repository_path: ${{ github.workspace }}
     labview_project: lv_icon_editor
     build_spec: "Editor Packed Library"
 ```

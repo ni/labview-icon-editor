@@ -1,0 +1,30 @@
+name: Docs Link Check / lychee
+on:
+  pull_request:
+    branches: [ main, develop, release/*, feature/*, hotfix/* ]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  linkcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lychee link checker
+        uses: lycheeverse/lychee-action@v1
+        with:
+          args: >
+            --verbose
+            --no-progress
+            --max-concurrency 4
+            --accept 200,204,206,429
+            --exclude-all-private
+            docs/**/*.md README.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload lychee report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lychee-report
+          path: ./lychee/*.json

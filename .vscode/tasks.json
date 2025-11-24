@@ -1,0 +1,209 @@
+{
+  "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "vipArtifactPath",
+      "type": "promptString",
+      "description": "Path to the built .vip (file/folder/pattern)",
+      "default": "builds/VI Package/"
+    },
+    {
+      "id": "minLv",
+      "type": "promptString",
+      "description": "Minimum LabVIEW version (major.minor)",
+      "default": "21.0"
+    },
+    {
+      "id": "buildMode",
+      "type": "pickString",
+      "description": "Artifact type: VIP + lvlibp builds, or single-arch VIP only",
+      "options": [
+        "vip+lvlibp",
+        "vip-single"
+      ],
+      "default": "vip+lvlibp"
+    },
+    {
+      "id": "devModeBitness",
+      "type": "pickString",
+      "description": "Target LabVIEW bitness for dev-mode tasks",
+      "options": [
+        "32",
+        "64"
+      ],
+      "default": "64"
+    },
+    {
+      "id": "lvlibpBitness",
+      "type": "pickString",
+      "description": "Bitness for building the lvlibp",
+      "options": [
+        "32",
+        "64"
+      ],
+      "default": "64"
+    },
+    {
+      "id": "semverMajor",
+      "type": "promptString",
+      "description": "Major version",
+      "default": "0"
+    },
+    {
+      "id": "semverMinor",
+      "type": "promptString",
+      "description": "Minor version",
+      "default": "1"
+    },
+    {
+      "id": "semverPatch",
+      "type": "promptString",
+      "description": "Patch version",
+      "default": "0"
+    },
+    {
+      "id": "buildNumber",
+      "type": "promptString",
+      "description": "Build number",
+      "default": "1"
+    },
+  ],
+  "tasks": [
+    {
+      "label": "Analyze VI Package (Pester)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/.github/actions/analyze-vi-package/run-local.ps1",
+        "-VipArtifactPath",
+        "${input:vipArtifactPath}",
+        "-MinLabVIEW",
+        "${input:minLv}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build/Package VIP",
+      "detail": "Choose artifact type via buildMode: vip+lvlibp (full pipeline) or vip-single (single-arch package)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "& { & \"${workspaceFolder}/scripts/check-ci-gate.ps1\" -WorkflowFile \".github/workflows/ci.yml\" -RepositoryPath \"${workspaceFolder}\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"${input:buildMode}\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"${input:lvlibpBitness}\" }"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "GH_TOKEN": "${env:GH_TOKEN}",
+          "GITHUB_TOKEN": "${env:GITHUB_TOKEN}"
+        }
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Draft GitHub Release (CI artifacts)",
+      "detail": "Dispatches draft-release.yml to create a draft release from CI artifacts by run ID.",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "& { $runId = & \"${workspaceFolder}/scripts/check-ci-gate.ps1\" -WorkflowFile \".github/workflows/ci.yml\" -RepositoryPath \"${workspaceFolder}\" -Quiet -ReturnRunId; if ($LASTEXITCODE -ne 0 -or -not $runId) { exit $LASTEXITCODE }; gh workflow run draft-release.yml -f run_id=$runId }"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "GH_TOKEN": "${env:GH_TOKEN}",
+          "GITHUB_TOKEN": "${env:GITHUB_TOKEN}"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build lvlibp (LabVIEW)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "& { $ver = & \"${workspaceFolder}/scripts/get-package-lv-version.ps1\" -RepositoryPath \"${workspaceFolder}\"; & \"${workspaceFolder}/.github/actions/build-lvlibp/Build_lvlibp.ps1\" -Package_LabVIEW_Version $ver -SupportedBitness \"${input:lvlibpBitness}\" -RepositoryPath \"${workspaceFolder}\" -Major 0 -Minor 0 -Patch 0 -Build 0 -Commit \"manual\" }"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Set Dev Mode (LabVIEW)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/.github/actions/set-development-mode/run-dev-mode.ps1",
+        "-SupportedBitness",
+        "${input:devModeBitness}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Revert Dev Mode (LabVIEW)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/.github/actions/revert-development-mode/run-dev-mode.ps1",
+        "-SupportedBitness",
+        "${input:devModeBitness}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Requirements checklist",
+      "type": "shell",
+      "command": "python",
+      "args": [
+        "dotnet",
+        "run",
+        "--project",
+        "${workspaceFolder}/tools/RequirementsSummarizer/RequirementsSummarizer.csproj",
+        "--csv",
+        "${workspaceFolder}/docs/requirements/Requirements.csv",
+        "--rows",
+        "5",
+        "--title",
+        "Requirements Checklist",
+        "--repo",
+        "${env:GITHUB_REPOSITORY}",
+        "--section-details",
+        "--summary-output",
+        "${workspaceFolder}/reports/req-summary.md",
+        "--full-output",
+        "${workspaceFolder}/reports/req-full.md",
+        "--json-output",
+        "${workspaceFolder}/reports/requirements.json",
+        "--html-output",
+        "${workspaceFolder}/reports/requirements.html"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Generate TRW checklist summary and full markdown under reports/."
+    }
+  ]
+}

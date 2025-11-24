@@ -75,7 +75,7 @@ It eliminates confusion around versioning, keeps everything in one pipeline, and
 - (Optional) Additional Windows components (like .NET or Visual Studio) if your pipeline references them.
 
 ### 2.3 Additional Software & Tools
-- **Build Tools**: The composite workflow uses the `build-lvlibp` and `build-vi-package` GitHub actions to compile libraries and create the `.vip` package.
+- **Build Tools**: The composite workflow uses the `build-lvlibp` and `build-vip` GitHub actions to compile libraries and create the `.vip` package.
 - **Chocolatey** or other package managers only if your script references them.
 - The workflow interacts with GitHub using built-in actions; no `gh` CLI is required.
 
@@ -93,19 +93,20 @@ It eliminates confusion around versioning, keeps everything in one pipeline, and
 ## 3. **Action Configuration & Usage**
 
 ### 3.1 How the Action Is Triggered
-The `build-vi-package` directory defines a **composite action**. It does not listen for events on its own; instead, the CI workflow in [`ci-composite.yml`](../../../.github/workflows/ci-composite.yml) invokes it.
-That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. The `issue-status` and `changes` jobs run on GitHub-hosted `ubuntu-latest`. Subsequent jobs that require LabVIEW—`apply-deps`, `version`, `test`, `build-ppl`, and `build-vi-package`—execute on a self-hosted Windows runner (`self-hosted-windows-lv`). Only Windows-specific jobs (e.g., `test`, `build-ppl`, `build-vi-package`) require the self-hosted runner. Linux support is considered a future or custom expansion: you would need to extend the matrix and provide a corresponding runner label (for example, `self-hosted-linux-lv`). Pushes are limited to `main`, `develop`, `release-alpha/*`, `release-beta/*`, `release-rc/*`, `feature/*`, `hotfix/*`, and `issue-*` branches, and pull requests must target one of those branches. However, `build-vi-package` executes only if the `issue-status` job allows the pipeline to continue: the source branch name must contain `issue-<number>` (for example, `issue-123` or `feature/issue-123`) and the linked issue's Status must be **In Progress**. For pull requests, the `issue-status` gate evaluates the PR’s head branch before running the `version` and `build-ppl` jobs, which depend on this gate.
+The `build-vip` directory defines a **composite action**. It does not listen for events on its own; instead, the CI workflow in [`ci.yml`](../../../.github/workflows/ci.yml) invokes it.
+That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. The `issue-status` and `changes` jobs run on GitHub-hosted `ubuntu-latest`. Subsequent jobs that require LabVIEW—`apply-deps`, `version`, `test`, `build-ppl`, and `build-vip`—execute on a self-hosted Windows runner (`self-hosted-windows-lv`). Only Windows-specific jobs (e.g., `test`, `build-ppl`, `build-vip`) require the self-hosted runner. Linux support is considered a future or custom expansion: you would need to extend the matrix and provide a corresponding runner label (for example, `self-hosted-linux-lv`). Pushes are limited to `main`, `develop`, `release-alpha/*`, `release-beta/*`, `release-rc/*`, `feature/*`, `hotfix/*`, and `issue-*` branches, and pull requests must target one of those branches. However, `build-vip` executes only if the `issue-status` job allows the pipeline to continue: the source branch name must contain `issue-<number>` (for example, `issue-123` or `feature/issue-123`) and the linked issue's Status must be **In Progress**. For pull requests, the `issue-status` gate evaluates the PR’s head branch before running the `version` and `build-ppl` jobs, which depend on this gate.
 
 ### 3.2 Configurable Inputs / Parameters
-`ci-composite.yml` calls this action and provides all required inputs automatically. When invoking
-`build-vi-package` from another workflow, supply the following parameters
-(see [action.yml](../../../.github/actions/build-vi-package/action.yml) for details):
+`ci.yml` calls this action and provides all required inputs automatically. When invoking
+`build-vip` from another workflow, supply the following parameters
+(see [action.yml](../../../.github/actions/build-vip/action.yml) for details):
 
 | Input | Description |
 | --- | --- |
 | `supported_bitness` | `32` or `64`; selects the VI Package bitness. |
-| `minimum_supported_lv_version` | LabVIEW major version. |
 | `labview_minor_revision` | LabVIEW minor revision (defaults to `3`). |
+| `repository_path` | Workspace root path. |
+| `vipb_path` | Path to the VIPB file (relative to the workspace). |
 | `major` | Major version component. |
 | `minor` | Minor version component. |
 | `patch` | Patch version component. |
@@ -113,12 +114,13 @@ That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Th
 | `commit` | Commit identifier. |
 | `release_notes_file` | Path to release notes file. |
 | `display_information_json` | DisplayInformation JSON string. |
+| `fail_on_multiple_vips` | If `true`, fail when more than one `.vip` is found post-build. |
 
-The action automatically uses the first `.vipb` file found in `.github/actions/build-vi-package`.
+The action reads the LabVIEW major version from the repository’s VIPB via `scripts/get-package-lv-version.ps1`, so no LabVIEW-version input or override is accepted. The default CI workflow points `vipb_path` to the auto-detected VIPB in the repo.
 
 The `major`, `minor`, and `patch` inputs are derived from pull-request labels (`major`,
 `minor`, `patch`) by the `version` job (which runs the `compute-version` action) in
-`ci-composite.yml`. If a pull request lacks these labels, the `compute-version` action
+`ci.yml`. If a pull request lacks these labels, the `compute-version` action
 defaults to bumping the patch version. For direct pushes without labels, the version
 components remain unchanged and only the build number increases.
 
@@ -160,7 +162,7 @@ components remain unchanged and only the build number increases.
      - semantic-version components (`major`, `minor`, `patch`, `build`),
      - repository-derived metadata (company/author names, homepage URL, and description), and
      - the markdown release notes captured from `Tooling/deployment/release_notes.md`.
-   - Runs the `build-vi-package` action to generate the final `.vip` file with those values embedded.
+   - Runs the `build-vip` action to generate the final `.vip` file with those values embedded.
 
 6. **Capture & Upload Artifacts**
    - Uploads the generated `.vip` as an ephemeral artifact for the current Actions run.
@@ -203,7 +205,7 @@ components remain unchanged and only the build number increases.
 1. **Actions Versions**
    - This workflow references certain actions, like `actions/checkout@v4` or `actions/github-script@v7`. Keep an eye on updates or deprecations. Update to a newer checkout version when the action itself is revised. Some internal actions—such as `compute-version`—may still pin different releases for compatibility, so mixing versions is expected.
 2. **Build Actions**
-   - If your LabVIEW project evolves or you add steps, keep the `build-lvlibp` and `build-vi-package` actions up to date.
+   - If your LabVIEW project evolves or you add steps, keep the `build-lvlibp` and `build-vip` actions up to date.
 3. **Windows Runner Updates**  
    - Ensure your self-hosted runner OS is patched and has any new LabVIEW versions if your project updates.
 
@@ -242,7 +244,7 @@ components remain unchanged and only the build number increases.
 
 ### 7.3 Working on a Release Branch
 - **Scenario**: You branch off `release-rc/1.2`.
-- **Action**: The workflow appends `-rc.<commitCount>` each time you commit to that pre-release branch, e.g. `v1.2.0-rc.50-build50`. Branches named `release-alpha/1.2` or `release-beta/1.2` would similarly append `-alpha.<commitCount>` or `-beta.<commitCount>`; these patterns correspond to the `release-alpha/*`, `release-beta/*`, and `release-rc/*` rules in `ci-composite.yml`.
+- **Action**: The workflow appends `-rc.<commitCount>` each time you commit to that pre-release branch, e.g. `v1.2.0-rc.50-build50`. Branches named `release-alpha/1.2` or `release-beta/1.2` would similarly append `-alpha.<commitCount>` or `-beta.<commitCount>`; these patterns correspond to the `release-alpha/*`, `release-beta/*`, and `release-rc/*` rules in `ci.yml`.
 - **Result**: Merging `release-rc/1.2` back to `main` finalizes `v1.2.0-build51`.
 
 ### 7.4 Manually Triggering (workflow_dispatch)
@@ -257,7 +259,7 @@ components remain unchanged and only the build number increases.
 
 
 ### 8.1 Fork Testing
-1. **Fork the Repo**: Copy `.github/workflows/ci-composite.yml` to your fork.
+1. **Fork the Repo**: Copy `.github/workflows/ci.yml` to your fork.
 2. **Push Changes**: Create or modify a branch in your fork.
 3. **Open PR (optional)**: If you label it, watch the logs to see if the version increments properly.
 4. **Check Artifacts**: Ensure a `.vip` file is built and uploaded as an artifact for your run.
@@ -272,8 +274,8 @@ components remain unchanged and only the build number increases.
   ```yaml
   - uses: ./.github/actions/run-unit-tests
     with:
-      minimum_supported_lv_version: ${{ matrix['lv-version'] }}
-      supported_bitness:            ${{ matrix.bitness }}
+      repository_path: ${{ github.workspace }}
+      supported_bitness: ${{ matrix.bitness }}
   ```
 - Ensure they pass before building the `.vip`. If they fail, the script can exit with a non-zero code, stopping the workflow run.
 
@@ -282,7 +284,7 @@ components remain unchanged and only the build number increases.
 ### 9.1 Common Error Scenarios
 
 1. **No .vip Found**
-   - Ensure the `build-vi-package` action completed successfully and produced the artifact.
+   - Ensure the `build-vip` action completed successfully and produced the artifact.
    - Check action logs for errors in the packaging steps.
 
 2. **LabVIEW Licensing Failure**

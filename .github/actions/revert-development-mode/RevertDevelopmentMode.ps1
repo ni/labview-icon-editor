@@ -6,16 +6,26 @@
     Restores the packaged LabVIEW sources for both 32-bit and 64-bit
     environments and closes any running LabVIEW instances.
 
-.PARAMETER RelativePath
+.PARAMETER RepositoryPath
     Path to the repository root.
 
 .EXAMPLE
-    .\RevertDevelopmentMode.ps1 -RelativePath "C:\labview-icon-editor"
+    .\RevertDevelopmentMode.ps1 -RepositoryPath "C:\labview-icon-editor"
 #>
 
 param(
     [Parameter(Mandatory = $true)]
-    [string]$RelativePath
+    [ValidateScript({ Test-Path $_ })]
+    [string]$RepositoryPath,
+
+    # Optional override; if not provided we read Package_LabVIEW_Version from the repo .vipb
+    [Parameter(Mandatory = $false)]
+    [string]$Package_LabVIEW_Version,
+
+    # Limit work to a single bitness (default 64-bit)
+    [Parameter(Mandatory = $false)]
+    [ValidateSet('32','64')]
+    [string]$SupportedBitness = '64'
 )
 
 # Define LabVIEW project name
@@ -23,60 +33,78 @@ $LabVIEW_Project = 'lv_icon_editor'
 
 # Determine the directory where this script is located
 $ScriptDirectory = Split-Path -Parent -Path $MyInvocation.MyCommand.Definition
-Write-Host "Script Directory: $ScriptDirectory"
+Write-Information "Script Directory: $ScriptDirectory" -InformationAction Continue
+
+# Normalize repository path early and re-validate
+$RepositoryPath = (Resolve-Path -LiteralPath $RepositoryPath).Path
+if (-not (Test-Path -LiteralPath $RepositoryPath)) {
+    throw "RepositoryPath '$RepositoryPath' does not exist."
+}
 
 # Helper function to execute scripts and stop on error
-function Execute-Script {
+function Invoke-ScriptSafe {
     param(
-        [string]$ScriptCommand
+        [string]$ScriptPath,
+        [hashtable]$ArgumentMap,
+        [string[]]$ArgumentList
     )
-    Write-Host "Executing: $ScriptCommand"
-    try {
-        # Execute the command
-        Invoke-Expression $ScriptCommand -ErrorAction Stop
+    if (-not $ScriptPath) { throw "ScriptPath is required" }
+    if (-not (Test-Path -LiteralPath $ScriptPath)) { throw "ScriptPath '$ScriptPath' not found" }
 
-        # Check for errors in the script execution
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "Error occurred while executing: $ScriptCommand. Exit code: $LASTEXITCODE"
-            exit $LASTEXITCODE
+    $render = if ($ArgumentMap) {
+        ($ArgumentMap.GetEnumerator() | ForEach-Object { "-$($_.Key) $($_.Value)" }) -join ' '
+    } else {
+        ($ArgumentList -join ' ')
+    }
+    Write-Information ("Executing: {0} {1}" -f $ScriptPath, $render) -InformationAction Continue
+    try {
+        if ($ArgumentMap) {
+            & $ScriptPath @ArgumentMap
+        } elseif ($ArgumentList) {
+            & $ScriptPath @ArgumentList
+        } else {
+            & $ScriptPath
         }
     } catch {
-        Write-Error "Error occurred while executing: $ScriptCommand. Exiting."
-        Write-Error $_.Exception.Message
-        exit 1
+        $msg = "Error occurred while executing: $ScriptPath $($ArgumentList -join ' '). Exiting."
+        if ($_.Exception) { $msg += " Inner: $($_.Exception.Message)" }
+        if ($_.InvocationInfo) { $msg += " At: $($_.InvocationInfo.PositionMessage)" }
+        Write-Error $msg
+        throw
     }
 }
 
 # Sequential script execution with error handling
 try {
+    # Always resolve from VIPB to ensure determinism; ignore inbound overrides
+    $Package_LabVIEW_Version = & (Join-Path $PSScriptRoot '..\..\..\scripts\get-package-lv-version.ps1') -RepositoryPath $RepositoryPath
+    Write-Information ("Detected LabVIEW version from VIPB: {0}" -f $Package_LabVIEW_Version) -InformationAction Continue
+
+    $targetBitness = $SupportedBitness
+    Write-Information ("Targeting bitness: {0}-bit" -f $targetBitness) -InformationAction Continue
     # Build the script paths
-    $RestoreScript = Join-Path -Path $ScriptDirectory -ChildPath 'RestoreSetupLVSource.ps1'
-    $CloseScript = Join-Path -Path $ScriptDirectory -ChildPath 'Close_LabVIEW.ps1'
+    $RestoreScript = Join-Path -Path $ScriptDirectory -ChildPath '..\restore-setup-lv-source\RestoreSetupLVSource.ps1'
+    $CloseScript   = Join-Path -Path $ScriptDirectory -ChildPath '..\close-labview\Close_LabVIEW.ps1'
 
-    # Restore setup for LabVIEW 2021 (32-bit)
-    $Command1 = "& `"$RestoreScript`" -MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RelativePath `"$RelativePath`" -LabVIEW_Project `"$LabVIEW_Project`" -Build_Spec `'Editor Packed Library`'"
+    $arch = $targetBitness
 
-    Execute-Script $Command1
+    Invoke-ScriptSafe -ScriptPath $RestoreScript -ArgumentMap @{
+        MinimumSupportedLVVersion = $Package_LabVIEW_Version
+        SupportedBitness          = $arch
+        RepositoryPath            = $RepositoryPath
+        LabVIEW_Project           = $LabVIEW_Project
+        Build_Spec                = 'Editor Packed Library'
+    }
 
-    # Close LabVIEW 2021 (32-bit)
-    $Command2 = "& `"$CloseScript`" -MinimumSupportedLVVersion 2021 -SupportedBitness 32"
-
-    Execute-Script $Command2
-
-    # Restore setup for LabVIEW 2021 (64-bit)
-    $Command3 = "& `"$RestoreScript`" -MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RelativePath `"$RelativePath`" -LabVIEW_Project `"$LabVIEW_Project`" -Build_Spec `'Editor Packed Library`'"
-
-    Execute-Script $Command3
-
-    # Close LabVIEW 2021 (64-bit)
-    $Command4 = "& `"$CloseScript`" -MinimumSupportedLVVersion 2021 -SupportedBitness 64"
-
-    Execute-Script $Command4
+    Invoke-ScriptSafe -ScriptPath $CloseScript -ArgumentMap @{
+        MinimumSupportedLVVersion = $Package_LabVIEW_Version
+        SupportedBitness          = $arch
+    }
 
 } catch {
     Write-Error "An unexpected error occurred during script execution: $($_.Exception.Message)"
     exit 1
 }
 
-Write-Host "All scripts executed successfully." -ForegroundColor Green
+Write-Information "All scripts executed successfully." -InformationAction Continue
 

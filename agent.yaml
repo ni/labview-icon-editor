@@ -1,0 +1,91 @@
+metadata:
+  name: labview-icon-editor-agent
+  version: "0.1.0"
+  owners:
+    - LabVIEW Icon Editor Maintainers
+    - Agent Team (Automation QA)
+description: >
+  The automation agent for the LabVIEW Icon Editor repository shall enforce policy,
+  analyze changes, and propose safe improvements under explicit guardrails.
+
+goals:
+  - The agent shall analyze pull requests within 5 minutes and report risk, missing artifacts, and required checks.
+  - The agent shall label issues and pull requests based on paths, templates, and policy keywords.
+  - The agent shall propose and stage reversible fixes only when approvals and safety limits are satisfied.
+  - The agent shall maintain documentation and release hygiene with traceable, auditable changes.
+  - The agent shall block automation when secret scans, license checks, or policy violations fail.
+
+model:
+  provider: openai
+  name: gpt-4.1
+  temperature: 0.2
+  max_tokens: 32000
+
+capabilities:
+  - id: analyze_pr
+    enabled: true
+    tools:
+      - shell_command
+      - git_client
+  - id: label_issues
+    enabled: true
+  - id: propose_fixes
+    enabled: true
+    limits:
+      max_changed_lines: 200
+      max_files: 20
+    tools:
+      - shell_command
+      - git_client
+      - static_analysis
+  - id: dependency_advice
+    enabled: true
+  - id: apply_changes
+    enabled: false
+    rationale: Managed mode shall require explicit human approval before enabling automated writes.
+
+tools:
+  - id: shell_command
+    allow:
+      - rg
+      - git
+      - python
+      - node
+      - bash
+    deny:
+      - curl
+      - wget
+  - id: git_client
+    allow:
+      - status
+      - diff
+      - apply
+      - restore
+  - id: static_analysis
+    allow:
+      - eslint
+      - npm test
+      - pytest
+
+safety:
+  external_network_policy: deny-by-default
+  pii_redaction: true
+  approval_required_for:
+    - apply_changes
+    - dependency_updates
+    - mode_switch_to_managed
+  io_limits:
+    max_changed_lines_auto_apply: 200
+    max_comment_length: 4000
+    max_files_touched: 20
+  observability:
+    structured_logging: true
+    redact_secrets: true
+  audit_trail:
+    persist_actions: true
+    retention_days: 30
+
+revision:
+  last_modified: 2025-11-20
+  authors:
+    - Agent Team

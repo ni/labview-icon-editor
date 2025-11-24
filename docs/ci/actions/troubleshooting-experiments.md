@@ -51,7 +51,7 @@ Review the scan results in the GitHub Actions logs for your experiment branch. I
 Your experiment branch still has a “NoCI” label after an admin ran the “approve-experiment” action, and CI jobs aren’t triggering automatically.
 
 **Cause**
-The “approve-experiment” process might not automatically remove the “NoCI” label from the branch, or the label was added manually and not cleared. The `ci-composite` workflow skips all jobs when this label is present.
+The “approve-experiment” process might not automatically remove the “NoCI” label from the branch, or the label was added manually and not cleared. The `ci` workflow skips all jobs when this label is present.
 
 **Solution (One Paragraph)**
 First, verify in the Actions log that the approve step completed successfully. If CI is still skipped due to the “NoCI” label, remove that label from the experiment branch via the GitHub UI (you need maintainer permissions to edit labels). Once the label is cleared, the `issue-status` job will permit subsequent jobs to run. Going forward, ensure that the experiment branch has an “ApprovedCI” indicator (if used) or simply no “NoCI” label. This will allow normal CI workflows (like build/test) to run on pushes to that branch.

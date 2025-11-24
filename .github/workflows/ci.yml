@@ -1,0 +1,1234 @@
+name: CI Pipeline (Composite)
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  # Enforce one run at a time per branch/PR to avoid overlapping fixes on the same feature branch.
+  # Deduplicate by commit (PR head SHA when available); cancel older runs for the same commit.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+env:
+  MIN_LABVIEW_POLICY: "21.0"
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - release/*
+  pull_request:
+    branches:
+      - main
+      - develop
+      - release/*
+      - feature/*
+      - hotfix/*
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  workflow_dispatch:
+    inputs:
+      dispatch_tag:
+        description: "Expected tag for this run (optional, for dispatched builds)"
+        required: false
+        type: string
+
+jobs:
+  verify-checklist-sync:
+    name: Requirements
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Summarize TRW checklist CSV
+        run: dotnet run --project tools/RequirementsSummarizer/RequirementsSummarizer.csproj -- --csv docs/requirements/requirements.csv --rows 5 --summary-full --details --section-details --details-label "Requirements (full table)" --title "Requirements Checklist" --repo "${{ github.repository }}" --summary-output "${GITHUB_STEP_SUMMARY:-}" --full-output "${{ github.workspace }}/reports/req-full.md" --json-output "${{ github.workspace }}/reports/requirements.json" --html-output "${{ github.workspace }}/reports/requirements.html"
+      - name: Upload requirements artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: requirements-full-table
+          path: |
+            reports/req-full.md
+            reports/requirements.json
+            reports/requirements.html
+          if-no-files-found: error
+      - name: Comment links on PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            Requirements report for this PR:
+            - Summary: (see Checks → Requirements job summary)
+            - HTML: [requirements.html (download artifact)](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - JSON: [requirements.json (download artifact)](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  test-compute-version-bump:
+    name: Test compute-version bump selection (matrix)
+    needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: none-defaults-to-patch
+            labels: ""
+            expected: patch
+            should_fail: false
+            ref: refs/heads/main
+            event_name: pull_request
+            expected_is_prerelease: false
+          - name: major-label
+            labels: "major"
+            expected: major
+            should_fail: false
+            ref: refs/heads/main
+            event_name: pull_request
+            expected_is_prerelease: false
+          - name: minor-label
+            labels: "minor"
+            expected: minor
+            should_fail: false
+            ref: refs/heads/main
+            event_name: pull_request
+            expected_is_prerelease: false
+          - name: patch-label
+            labels: "patch"
+            expected: patch
+            should_fail: false
+            ref: refs/heads/main
+            event_name: pull_request
+            expected_is_prerelease: false
+          - name: multiple-labels-fail
+            labels: "major,patch"
+            expected: ""
+            should_fail: true
+            ref: refs/heads/main
+            event_name: pull_request
+            expected_is_prerelease: false
+          - name: release-alpha-defaults-patch
+            labels: ""
+            expected: patch
+            should_fail: false
+            ref: refs/heads/release-alpha/1.2
+            event_name: push
+            expected_is_prerelease: true
+          - name: release-beta-defaults-patch
+            labels: ""
+            expected: patch
+            should_fail: false
+            ref: refs/heads/release-beta/1.2
+            event_name: push
+            expected_is_prerelease: true
+          - name: release-rc-defaults-patch
+            labels: ""
+            expected: patch
+            should_fail: false
+            ref: refs/heads/release-rc/1.2
+            event_name: push
+            expected_is_prerelease: true
+          - name: release-defaults-patch
+            labels: ""
+            expected: patch
+            should_fail: false
+            ref: refs/heads/release/1.2
+            event_name: push
+            expected_is_prerelease: true
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          LABELS: ${{ matrix.labels }}
+          EXPECTED: ${{ matrix.expected }}
+          SHOULD_FAIL: ${{ matrix.should_fail }}
+          REF: ${{ matrix.ref }}
+          EVENT_NAME: ${{ matrix.event_name }}
+          EXPECTED_IS_PRERELEASE: ${{ matrix.expected_is_prerelease }}
+        with:
+          script: |
+            const labels = (process.env.LABELS || '').split(',').map(s => s.trim()).filter(Boolean);
+            const expected = process.env.EXPECTED || '';
+            const shouldFail = (process.env.SHOULD_FAIL || 'false').toLowerCase() === 'true';
+            const ref = process.env.REF || '';
+            const eventName = process.env.EVENT_NAME || 'pull_request';
+            const expectedPre = (process.env.EXPECTED_IS_PRERELEASE || 'false').toLowerCase() === 'true';
+            const allowed = ['major', 'minor', 'patch'];
+            const found = labels.filter(l => allowed.includes(l));
+            core.info(`Labels: ${labels.join(', ') || '(none)'} | ref=${ref} | event=${eventName}`);
+            core.info(`Allowed labels found: ${found.join(', ') || '(none)'}`);
+            if (found.length > 1) {
+              if (shouldFail) {
+                core.info('Multiple labels detected as expected; computation should fail.');
+                return;
+              }
+              core.setFailed(`Unexpected multiple labels found: ${found.join(', ')}`);
+              return;
+            }
+            const isRelease = /^refs\/heads\/release(-alpha|-beta|-rc)?\//.test(ref);
+            let bump = found[0] || 'patch';
+            let isPrerelease = false;
+            if (eventName !== 'pull_request' && isRelease && !found.length) {
+              bump = 'patch';
+              core.info('Release branch detected outside PR; bump forced to patch.');
+              isPrerelease = true;
+            } else if (eventName !== 'pull_request' && isRelease && found.length) {
+              isPrerelease = true;
+            }
+            core.info(`Selected bump: ${bump}; expected: ${expected}; IS_PRERELEASE=${isPrerelease} (expected ${expectedPre})`);
+            if (shouldFail) {
+              core.setFailed(`Expected failure due to multiple labels, but only one/none were present (selected ${bump}).`);
+              return;
+            }
+            if (bump !== expected) {
+              core.setFailed(`Bump selection mismatch: expected ${expected}, got ${bump}.`);
+            }
+            if (isPrerelease !== expectedPre) {
+              core.setFailed(`IS_PRERELEASE mismatch: expected ${expectedPre}, got ${isPrerelease}.`);
+            }
+
+  test-tag-existence-check:
+    name: Test tag existence check logic
+    needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Simulate tag existence/mismatch scenarios
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          origin="$tmp/origin.git"
+          work="$tmp/work"
+          git init --bare "$origin" >/dev/null
+          git init "$work" >/dev/null
+          cd "$work"
+          git config user.email "ci@example.com"
+          git config user.name "CI Bot"
+          echo "one" > file.txt
+          git add file.txt
+          git commit -m "commit1" >/dev/null
+          git remote add origin "$origin"
+          head_sha=$(git rev-parse HEAD)
+          tag="v1.0.0.0"
+
+          # Case 1: tag not present remotely
+          remote_sha=$(git ls-remote --tags origin "$tag" | awk '{print $1}' | head -1)
+          if [ -n "${remote_sha:-}" ]; then
+            echo "Expected no remote tag, but found: $remote_sha" >&2
+            exit 1
+          fi
+          echo "No remote tag found as expected."
+
+          # Push commit and tag to origin
+          git push origin HEAD:refs/heads/main >/dev/null
+          git tag "$tag"
+          git push origin "$tag" >/dev/null
+          remote_sha=$(git ls-remote --tags origin "$tag" | awk '{print $1}' | head -1)
+          if [ "$remote_sha" != "$head_sha" ]; then
+            echo "Remote tag SHA ($remote_sha) does not match head ($head_sha) after tagging." >&2
+            exit 1
+          fi
+          echo "Remote tag points to head as expected."
+
+          # Case 2: mismatch detection (remote tag on old commit)
+          echo "two" >> file.txt
+          git add file.txt
+          git commit -m "commit2" >/dev/null
+          new_head=$(git rev-parse HEAD)
+          remote_sha=$(git ls-remote --tags origin "$tag" | awk '{print $1}' | head -1)
+          if [ "$remote_sha" = "$new_head" ]; then
+            echo "Expected mismatch (remote tag should stay on old commit) but matched new head." >&2
+            exit 1
+          fi
+          echo "Mismatch detected as expected: remote tag $remote_sha vs new head $new_head."
+  enforce-verify-checklist-needs:
+    name: Enforce jobs depend on verify-checklist-sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check job dependencies include verify-checklist-sync
+        run: |
+          python3 - <<'PY'
+          import sys
+          try:
+            import yaml  # type: ignore
+          except ImportError:
+            import subprocess
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "pyyaml"])
+            import yaml  # type: ignore
+          from pathlib import Path
+
+          data = yaml.safe_load(Path(".github/workflows/ci.yml").read_text())
+          jobs = data.get("jobs", {})
+          exempt = {"verify-checklist-sync", "enforce-verify-checklist-needs"}
+          missing = []
+          for name, job in jobs.items():
+            if name in exempt:
+              continue
+            needs = job.get("needs")
+            if needs is None:
+              missing.append(name)
+              continue
+            needs_list = [needs] if isinstance(needs, str) else list(needs)
+            if "verify-checklist-sync" not in needs_list:
+              missing.append(name)
+          if missing:
+            print("These jobs must declare needs: verify-checklist-sync ->", ", ".join(sorted(missing)), file=sys.stderr)
+            sys.exit(1)
+          PY
+
+  rtm-gates:
+    name: RTM validation and coverage gate
+    needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Validate RTM
+        run: python3 .github/scripts/validate_rtm.py
+      - name: Enforce RTM coverage thresholds
+        run: python3 .github/scripts/check_rtm_coverage.py
+      - name: Generate ISO 29119-3 test status (PR)
+        if: github.event_name == 'pull_request'
+        run: python3 .github/scripts/generate_test_status.py --mode status --run-id "${{ github.run_id }}"
+      - name: Upload PR test status artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-status-${{ github.run_id }}
+          path: |
+            reports/test-status-${{ github.run_id }}.md
+            reports/test-results-${{ github.run_id }}.json
+          if-no-files-found: error
+      - name: Generate test report (push/tag)
+        if: github.event_name != 'pull_request'
+        run: python3 .github/scripts/generate_test_report.py
+      - name: Upload test report artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-${{ github.run_id }}
+          path: test-report.md
+          if-no-files-found: error
+
+  docs-quality:
+    name: Docs link check and ADR lint
+    needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Lint ADRs and agent language
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          python3 .github/scripts/lint_requirements_language.py 2>&1 | tee reports/adr-lint.log
+          exit "${PIPESTATUS[0]}"
+      - name: Prepare lychee output directory
+        run: mkdir -p lychee
+      - name: Lychee link checker
+        uses: lycheeverse/lychee-action@v1
+        with:
+          format: json
+          output: ./lychee/report.json
+          args: >
+            --verbose
+            --no-progress
+            --max-concurrency 4
+            --accept 200,204,206,429
+            --exclude-all-private
+            docs/**/*.md README.md
+          fail: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload ADR lint log
+        uses: actions/upload-artifact@v4
+        with:
+          name: adr-lint
+          path: reports/adr-lint.log
+          if-no-files-found: error
+      - name: Upload lychee report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lychee-report
+          path: lychee/report.json
+          if-no-files-found: error
+
+  resolve-labview-version:
+    name: Resolve LabVIEW version from VIPB
+    needs: [verify-checklist-sync]
+    runs-on: ubuntu-latest
+    outputs:
+      minimum_supported_lv_version: ${{ steps.read.outputs.lv_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: read
+        name: Gate minimum LabVIEW policy vs VIPB
+        shell: pwsh
+        env:
+          EXPECTED_MIN_LV: ${{ env.MIN_LABVIEW_POLICY }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          function Normalize-LVVersion([string]$raw) {
+            if ([string]::IsNullOrWhiteSpace($raw)) { throw "Version string is empty." }
+            $match = [regex]::Match($raw, '(?<maj>\d{2,4})')
+            if (-not $match.Success) { throw "Unable to parse LabVIEW major version from '$raw'." }
+            $maj = [int]$match.Groups['maj'].Value
+            if ($maj -lt 100) { $maj = 2000 + $maj }
+            return $maj.ToString()
+          }
+
+          $derivedRaw = & "$env:GITHUB_WORKSPACE/scripts/get-package-lv-version.ps1" -RepositoryPath "$env:GITHUB_WORKSPACE"
+          $derived = Normalize-LVVersion $derivedRaw
+          $expected = Normalize-LVVersion $env:EXPECTED_MIN_LV
+
+          if ($derived -ne $expected) {
+            throw ("MIN_LABVIEW_POLICY '{0}' (normalized {1}) does not match VIPB-derived {2} (normalized {3})." -f $env:EXPECTED_MIN_LV, $expected, $derivedRaw, $derived)
+          }
+
+          "lv_version=$derived" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host ("LabVIEW version check passed: env policy {0} == VIPB {1} (normalized {2})." -f $env:EXPECTED_MIN_LV, $derivedRaw, $derived)
+
+  list-collaborators:
+    name: List Repo Collaborators
+    needs: [verify-checklist-sync]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: List collaborators and permissions
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $script = Join-Path $env:GITHUB_WORKSPACE ".github/scripts/list-collaborators.ps1"
+          if (-not (Test-Path $script)) { throw "Script not found at $script" }
+          if (-not $env:GH_TOKEN) { throw "GITHUB_TOKEN is not available." }
+          if (-not $env:GH_REPO) { throw "GITHUB_REPOSITORY is not set." }
+          pwsh -NoProfile -File $script -Repo $env:GH_REPO -Token $env:GH_TOKEN
+
+  apply-deps:
+    name: Apply VIPC (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x${{ matrix.bits }})
+    needs: [verify-checklist-sync, resolve-labview-version, ps-coverage, version]
+    runs-on: self-hosted-windows-lv
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - bits: "64"
+          - bits: "32"
+    env:
+      VIPC_PATH: ".github/actions/apply-vipc/runner_dependencies.vipc"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: detect
+        name: Setup - detect VIPC changes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vipcRel = $env:VIPC_PATH
+          if ([string]::IsNullOrWhiteSpace($vipcRel)) {
+            throw "VIPC_PATH is not set."
+          }
+          $vipcFull = Join-Path $env:GITHUB_WORKSPACE $vipcRel
+          if (-not (Test-Path $vipcFull)) {
+            throw "VIPC file not found at '$vipcFull'."
+          }
+
+          $changed = $false
+          try {
+            $diff = git diff --name-only HEAD~1..HEAD 2>$null
+            if ($diff) {
+              $changed = ($diff -contains $vipcRel)
+            }
+          } catch {
+            Write-Warning "git diff failed; falling back to status."
+          }
+          if (-not $changed) {
+            $status = git status --short -- $vipcRel 2>$null
+            if ($status) { $changed = $true }
+          }
+
+          $vipm = Get-Command vipm -ErrorAction SilentlyContinue
+          $hasVipmCli = [bool]$vipm
+
+          "changed_vipc=$($changed.ToString().ToLowerInvariant())" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "has_vipm_cli=$($hasVipmCli.ToString().ToLowerInvariant())" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          Write-Host ("VIPC changed? {0}" -f $changed)
+          Write-Host ("vipm CLI present? {0}" -f $hasVipmCli)
+
+      - name: Summarize VIPC file (skip apply)
+        if: steps.detect.outputs.changed_vipc != 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vipcRel = $env:VIPC_PATH
+          if ([string]::IsNullOrWhiteSpace($vipcRel)) {
+            throw "VIPC_PATH is not set."
+          }
+          $vipcFull = Join-Path $env:GITHUB_WORKSPACE $vipcRel
+          if (-not (Test-Path $vipcFull)) {
+            throw "VIPC file not found at '$vipcFull'."
+          }
+          $commit = ""
+          $author = ""
+          try {
+            $commit = git log -1 --format=%H -- $vipcRel 2>$null
+            $author = git log -1 --format=%an -- $vipcRel 2>$null
+          } catch {
+            Write-Warning "git log failed for '$vipcRel': $($_.Exception.Message)"
+          }
+          if ([string]::IsNullOrWhiteSpace($commit)) { $commit = "unknown" }
+          if ([string]::IsNullOrWhiteSpace($author)) { $author = "unknown" }
+
+          $vipcLeaf = Split-Path -Leaf $vipcRel
+          $bitLabel = "x${{ matrix.bits }}"
+          $summary = @()
+          $summary += ("### {0} ({1})" -f $vipcLeaf, $bitLabel)
+          $summary += ""
+          $summary += "| Field | Value |"
+          $summary += "| --- | --- |"
+          $summary += ("| Path | `{0}` |" -f $vipcFull)
+          $summary += ("| Git commit | `{0}` |" -f $commit)
+          $summary += ("| Git author | `{0}` |" -f $author)
+          $summary += ""
+          $summaryText = $summary -join "`n"
+          if ($env:GITHUB_STEP_SUMMARY) {
+            $summaryText | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+          Write-Host $summaryText
+
+      - name: Skip VIPC operations (vipm CLI missing)
+        if: steps.detect.outputs.has_vipm_cli != 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $msg = "vipm CLI not found on PATH; skipping VIPC listing and application steps."
+          Write-Warning $msg
+          if ($env:GITHUB_STEP_SUMMARY) {
+            $summary = @()
+            $summary += "### VIPC dependencies (x${{ matrix.bits }})"
+            $summary += ""
+            $summary += $msg
+            $summary += ""
+            $summary -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+
+      - name: Print VIPC dependencies
+        if: steps.detect.outputs.has_vipm_cli == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vipcRel = $env:VIPC_PATH
+          $vipcFull = Join-Path $env:GITHUB_WORKSPACE $vipcRel
+          if (-not (Test-Path $vipcFull)) {
+            throw "VIPC file not found at '$vipcFull'."
+          }
+          $vipm = Get-Command vipm -ErrorAction SilentlyContinue
+          if (-not $vipm) {
+            throw "vipm CLI is not available on PATH; cannot list VIPC contents."
+          }
+          $out = & vipm list $vipcFull 2>&1
+          $exit = $LASTEXITCODE
+          if ($exit -ne 0) {
+            $joined = ($out -join '; ')
+            throw "vipm list failed for '$vipcFull' (exit $exit). Output: $joined"
+          }
+          Write-Host "VIPC package list:"
+          $out | ForEach-Object { Write-Host "  $_" }
+
+      - name: Summarize VIPC dependencies
+        if: steps.detect.outputs.has_vipm_cli == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vipcRel = $env:VIPC_PATH
+          $vipcFull = Join-Path $env:GITHUB_WORKSPACE $vipcRel
+          if (-not (Test-Path $vipcFull)) {
+            throw "VIPC file not found at '$vipcFull'."
+          }
+          $out = & vipm list $vipcFull 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            $joined = ($out -join '; ')
+            throw "vipm list failed for '$vipcFull'. Output: $joined"
+          }
+          $rows = foreach ($line in $out) {
+            $m = [regex]::Match($line, '^\s*(?<name>.+?)\s+\((?<id>[^ )]+)\s+v(?<ver>[^\)]+)\)')
+            if ($m.Success) {
+              [PSCustomObject]@{
+                Name    = $m.Groups['name'].Value.Trim()
+                Id      = $m.Groups['id'].Value.Trim()
+                Version = $m.Groups['ver'].Value.Trim()
+              }
+            }
+          }
+          if (-not $rows) {
+            Write-Warning "No packages parsed from VIPC list output; skipping summary table."
+            return
+          }
+          $summary = @()
+          $summary += "### VIPC dependencies (x${{ matrix.bits }})"
+          $summary += ""
+          $summary += "| Name | Package Id | Version |"
+          $summary += "| --- | --- | --- |"
+          foreach ($r in $rows) {
+            $summary += ("| {0} | `{1}` | `{2}` |" -f $r.Name, $r.Id, $r.Version)
+          }
+          $summary += ""
+          $summaryText = $summary -join "`n"
+          if ($env:GITHUB_STEP_SUMMARY) {
+            $summaryText | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          } else {
+            Write-Host $summaryText
+          }
+
+      - name: Apply VIPC dependencies
+        if: steps.detect.outputs.changed_vipc == 'true' && steps.detect.outputs.has_vipm_cli == 'true'
+        id: apply_vipc
+        uses: ./.github/actions/apply-vipc
+        with:
+          package_labview_version: ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
+          supported_bitness: ${{ matrix.bits }}
+          repository_path: ${{ github.workspace }}
+          vipc_path: ${{ env.VIPC_PATH }}
+
+      - name: Summarize applied VIPC file
+        if: steps.detect.outputs.changed_vipc == 'true' && steps.detect.outputs.has_vipm_cli == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = "${{ steps.apply_vipc.outputs.vipc_path }}"
+          if ([string]::IsNullOrWhiteSpace($path)) {
+            throw "apply-vipc output 'vipc_path' is empty."
+          }
+          $vipcLeaf = Split-Path -Leaf $path
+          $bitLabel = "x${{ matrix.bits }}"
+          $summary = @()
+          $summary += ("### {0} ({1})" -f $vipcLeaf, $bitLabel)
+          $summary += ""
+          $summary += "| Field | Value |"
+          $summary += "| --- | --- |"
+          $summary += ("| Path | `{0}` |" -f $path)
+          $summary += ("| SHA256 | `{0}` |" -f "${{ steps.apply_vipc.outputs.vipc_sha256 }}")
+          $summary += ("| Size (bytes) | `{0}` |" -f "${{ steps.apply_vipc.outputs.vipc_size_bytes }}")
+          $summary += ("| Last write (UTC) | `{0}` |" -f "${{ steps.apply_vipc.outputs.vipc_last_write_utc }}")
+          $summary += ("| Git commit | `{0}` |" -f "${{ steps.apply_vipc.outputs.vipc_git_commit }}")
+          $summary += ("| Git author | `{0}` |" -f "${{ steps.apply_vipc.outputs.vipc_git_author }}")
+          $summary += ""
+          $summaryText = $summary -join "`n"
+          if ($env:GITHUB_STEP_SUMMARY) {
+            $summaryText | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+          Write-Host $summaryText
+
+      - name: Skip apply (no VIPC changes)
+        if: steps.detect.outputs.changed_vipc != 'true'
+        run: echo "No .vipc changes detected; skipping dependency application."
+
+      - id: report
+        if: steps.detect.outputs.changed_vipc == 'true' && steps.detect.outputs.has_vipm_cli == 'true'
+        name: Capture report path
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = "${{ steps.apply_vipc.outputs['summary-json'] }}"
+          if (Test-Path $path) {
+            "report_path=$path" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          } else {
+            Write-Warning "apply_vipc_report.json not found after apply step."
+          }
+
+      - name: Upload apply VIPC report
+        if: steps.report.outputs.report_path
+        uses: actions/upload-artifact@v4
+        with:
+          name: apply-vipc-report-x${{ matrix.bits }}
+          path: ${{ steps.report.outputs.report_path }}
+          if-no-files-found: error
+
+  check-library-paths:
+    name: Check LocalHost.LibraryPaths (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }})
+    needs: [verify-checklist-sync, apply-deps, resolve-labview-version]
+    runs-on: self-hosted-windows-lv
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate LocalHost.LibraryPaths entries (64-bit)
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/read-library-paths.ps1" `
+            -RepositoryPath "$env:GITHUB_WORKSPACE" `
+            -SupportedBitness 64 `
+            -FailOnMissing
+      - name: Validate LocalHost.LibraryPaths entries (32-bit)
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/read-library-paths.ps1" `
+            -RepositoryPath "$env:GITHUB_WORKSPACE" `
+            -SupportedBitness 32 `
+            -FailOnMissing
+
+  version:
+    name: Compute Version
+    needs: [serialize-before-version, verify-checklist-sync]
+    runs-on: self-hosted-windows-lv
+    outputs:
+      VERSION:       ${{ steps.compute.outputs.VERSION }}
+      MAJOR:         ${{ steps.compute.outputs.MAJOR }}
+      MINOR:         ${{ steps.compute.outputs.MINOR }}
+      PATCH:         ${{ steps.compute.outputs.PATCH }}
+      BUILD:         ${{ steps.compute.outputs.BUILD }}
+      IS_PRERELEASE: ${{ steps.compute.outputs.IS_PRERELEASE }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: compute
+        uses: ./.github/actions/compute-version
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  serialize-before-version:
+    name: Serialize workflow before Compute Version
+    needs: [verify-checklist-sync, enforce-verify-checklist-needs, rtm-gates, docs-quality, ps-coverage]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for other ci.yml runs to finish
+        uses: softprops/turnstyle@v3.2.1
+        with:
+          poll-interval-seconds: 30
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  missing-in-project-x64:
+    name: Test Missing-In-Project (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x64)
+    needs: [verify-checklist-sync, apply-deps, check-library-paths, resolve-labview-version]
+    runs-on: self-hosted-windows-lv
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          clean: true
+      - uses: ./.github/actions/missing-in-project
+        with:
+          lv-ver:       ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
+          arch:         "64"
+      - name: Detect unexpected workspace changes (x64)
+        id: guard_x64
+        if: always()
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/report-lvproj-diffs.ps1" `
+            -Label "missing-in-project-x64" `
+            -DiffPrefix "x64" `
+            -Workspace "$env:GITHUB_WORKSPACE"
+      - name: Upload lvproj diffs (x64, if any)
+        if: always() && steps.guard_x64.outputs.found_diff == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lvproj-diffs-x64
+          path: post_mip_dirty_x64_*.diff
+          if-no-files-found: ignore
+
+  missing-in-project-x86:
+    name: Test Missing-In-Project (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x86)
+    needs: [verify-checklist-sync, missing-in-project-x64, check-library-paths, resolve-labview-version, apply-deps]
+    runs-on: self-hosted-windows-lv
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          clean: true
+      - uses: ./.github/actions/missing-in-project
+        with:
+          lv-ver:       ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
+          arch:         "32"
+      - name: Detect unexpected workspace changes (x86)
+        id: guard_x86
+        if: always()
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/report-lvproj-diffs.ps1" `
+            -Label "missing-in-project-x86" `
+            -DiffPrefix "x86" `
+            -Workspace "$env:GITHUB_WORKSPACE"
+      - name: Upload lvproj diffs (x86, if any)
+        if: always() && steps.guard_x86.outputs.found_diff == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lvproj-diffs-x86
+          path: post_mip_dirty_x86_*.diff
+          if-no-files-found: ignore
+
+  test-x64:
+    name: Run Unit Tests (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x64)
+    needs: [verify-checklist-sync, missing-in-project-x86, resolve-labview-version]
+    runs-on: self-hosted-windows-lv
+    env:
+      LABVIEW_VERSION: ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
+    steps:
+      - uses: ./.github/actions/run-unit-tests
+        with:
+          repository_path: ${{ github.workspace }}
+          supported_bitness:            "64"
+          labview_version:  ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
+      - if: always()
+        name: Close LabVIEW ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} 64-bit after unit tests
+        uses: ./.github/actions/close-labview
+        with:
+          repository_path: ${{ github.workspace }}
+          supported_bitness: 64
+      - name: Upload unit test report (x64)
+        id: check_report_x64
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path '.github/actions/run-unit-tests/UnitTestReport.xml') {
+            "found_report=true" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+          } else {
+            "found_report=false" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+      - name: Upload unit test report (x64)
+        if: always() && steps.check_report_x64.outputs.found_report == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-unit-test-report-64bit
+          path: .github/actions/run-unit-tests/UnitTestReport.xml
+          if-no-files-found: ignore
+
+  test-x86:
+    name: Run Unit Tests (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x86)
+    needs: [verify-checklist-sync, test-x64, resolve-labview-version]
+    runs-on: self-hosted-windows-lv
+    env:
+      LABVIEW_VERSION: ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
+    steps:
+      - uses: ./.github/actions/run-unit-tests
+        with:
+          repository_path: ${{ github.workspace }}
+          supported_bitness:            "32"
+          labview_version:  ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
+      - if: always()
+        name: Close LabVIEW ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} 32-bit after unit tests
+        uses: ./.github/actions/close-labview
+        with:
+          repository_path: ${{ github.workspace }}
+          supported_bitness: 32
+      - name: Upload unit test report (x86)
+        id: check_report_x86
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path '.github/actions/run-unit-tests/UnitTestReport.xml') {
+            "found_report=true" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+          } else {
+            "found_report=false" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+      - name: Upload unit test report (x86)
+        if: always() && steps.check_report_x86.outputs.found_report == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-unit-test-report-32bit
+          path: .github/actions/run-unit-tests/UnitTestReport.xml
+          if-no-files-found: ignore
+
+  publish-performance-and-portability:
+    name: Publish Performance/Portability JSON
+    needs: [verify-checklist-sync, test-x86]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download unit test reports
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Build performance/portability reports
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          repo = "${{ github.event.repository.name || 'labview-icon-editor' }}"
+
+          reports = {
+              "test-x64": Path(f"artifacts/{repo}-unit-test-report-64bit/UnitTestReport.xml"),
+              "test-x86": Path(f"artifacts/{repo}-unit-test-report-32bit/UnitTestReport.xml"),
+          }
+
+          perf_entries = []
+          port_entries = []
+
+          for arch, path in reports.items():
+              note = ""
+              status = "fail"
+              duration = None
+
+              if path.exists():
+                  try:
+                      tree = ET.parse(path)
+                      duration = sum(float(tc.get("time") or 0.0) for tc in tree.findall(".//testcase"))
+                      status = "pass"
+                      note = "Unit tests completed"
+                  except Exception as exc:
+                      note = f"Failed to parse UnitTestReport.xml: {exc}"
+              else:
+                  note = "UnitTestReport.xml not found"
+
+              if duration is not None:
+                  perf_entries.append(
+                      {
+                          "scenario": "LabVIEW unit tests",
+                          "architecture": arch,
+                          "metric": "unit_tests_duration_s",
+                          "unit": "s",
+                          "value": round(duration, 3),
+                          "source": str(path),
+                      }
+                  )
+
+              port_entries.append(
+                  {
+                      "architecture": arch,
+                      "status": status,
+                      "notes": note,
+                  }
+              )
+
+          out_dir = Path("reports")
+          out_dir.mkdir(parents=True, exist_ok=True)
+          (out_dir / "performance-measurements.json").write_text(json.dumps(perf_entries, indent=2))
+          (out_dir / "portability-status.json").write_text(json.dumps(port_entries, indent=2))
+          print("Performance entries:", json.dumps(perf_entries, indent=2))
+          print("Portability entries:", json.dumps(port_entries, indent=2))
+          PY
+      - name: Upload performance/portability reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-reports-json
+          path: |
+            reports/performance-measurements.json
+            reports/portability-status.json
+
+  ps-coverage:
+    name: PowerShell Tests & Coverage
+    needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Pester 5.7.1
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -Scope CurrentUser -Force -RequiredVersion 5.7.1
+          Install-Module powershell-yaml -Scope CurrentUser -Force
+      - name: Run Pester with coverage
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $coverageTargets = @(
+            '.github/actions/add-token-to-labview/LocalhostLibraryPaths.ps1',
+            '.github/actions/set-development-mode/run-dev-mode.ps1',
+            '.github/actions/set-development-mode/Set_Development_Mode.ps1',
+            '.github/actions/prepare-labview-source/Prepare_LabVIEW_source.ps1',
+            '.github/actions/build/Build.ps1',
+            'scripts/read-library-paths.ps1',
+            'scripts/show-ini.ps1',
+            'scripts/verify-dev-mode-state.ps1'
+          )
+          $pesterConfig = New-PesterConfiguration
+          $pesterConfig.Run.Container = New-PesterContainer -Path 'Test'
+          $pesterConfig.TestResult.Enabled = $true
+          $pesterConfig.TestResult.OutputPath = 'pester-results.xml'
+          $pesterConfig.CodeCoverage.Enabled = $true
+          $pesterConfig.CodeCoverage.Path = $coverageTargets
+          $pesterConfig.CodeCoverage.OutputPath = 'coverage.xml'
+          $pesterConfig.CodeCoverage.OutputFormat = 'JaCoCo'
+          $pesterConfig.Run.PassThru = $true
+          $pesterConfig.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $pesterConfig
+      - name: Upload Pester results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-pester-results
+          path: pester-results.xml
+      - name: Upload Pester coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-pester-coverage
+          path: coverage.xml
+
+  build-ppl-x86:
+    name: Build 32-bit Packed Library (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }})
+    needs: [verify-checklist-sync, build-ppl-x64, version, resolve-labview-version]
+    runs-on: self-hosted-windows-lv
+    steps:
+      - uses: ./.github/actions/build-lvlibp
+        with:
+          supported_bitness: 32
+          repository_path: ${{ github.workspace }}
+          major: ${{ needs.version.outputs.MAJOR }}
+          minor: ${{ needs.version.outputs.MINOR }}
+          patch: ${{ needs.version.outputs.PATCH }}
+          build: ${{ needs.version.outputs.BUILD }}
+          commit: ${{ github.sha }}
+      - if: always()
+        uses: ./.github/actions/close-labview
+        with:
+          repository_path: ${{ github.workspace }}
+          supported_bitness: 32
+      - uses: ./.github/actions/rename-file
+        with:
+          current_filename: ${{ github.workspace }}/resource/plugins/lv_icon.lvlibp
+          new_filename: ${{ github.workspace }}/resource/plugins/lv_icon_x86.lvlibp
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-32bit
+          path: resource/plugins/lv_icon_x86.lvlibp
+
+  build-ppl-x64:
+    name: Build 64-bit Packed Library (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }})
+    needs: [verify-checklist-sync, test-x86, version, resolve-labview-version]
+    runs-on: self-hosted-windows-lv
+    steps:
+      - uses: ./.github/actions/build-lvlibp
+        with:
+          supported_bitness: 64
+          repository_path: ${{ github.workspace }}
+          major: ${{ needs.version.outputs.MAJOR }}
+          minor: ${{ needs.version.outputs.MINOR }}
+          patch: ${{ needs.version.outputs.PATCH }}
+          build: ${{ needs.version.outputs.BUILD }}
+          commit: ${{ github.sha }}
+      - if: always()
+        uses: ./.github/actions/close-labview
+        with:
+          repository_path: ${{ github.workspace }}
+          supported_bitness: 64
+      - uses: ./.github/actions/rename-file
+        with:
+          current_filename: ${{ github.workspace }}/resource/plugins/lv_icon.lvlibp
+          new_filename: ${{ github.workspace }}/resource/plugins/lv_icon_x64.lvlibp
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-64bit
+          path: resource/plugins/lv_icon_x64.lvlibp
+
+  build-vip:
+    name: Build VI Package
+    # Chain after 32-bit build, which already depends on 64-bit, to enforce x64 -> x86 -> build-vip ordering
+    needs: [verify-checklist-sync, build-ppl-x86, version]
+    outputs:
+      vip_artifact: ${{ steps.build-vip.outputs.vip_artifact }}
+      vip_path: ${{ steps.build-vip.outputs.vip_path }}
+      release_notes_artifact: ${{ steps.release-notes.outputs.artifact_name }}
+    runs-on: self-hosted-windows-lv
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Generate release notes
+        id: release-notes
+        uses: ./.github/actions/generate-release-notes
+        # output_path defaults to Tooling/deployment/release_notes.md
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-32bit
+          path: resource/plugins
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-64bit
+          path: resource/plugins
+      - name: Generate display information JSON
+        id: display-info
+        shell: pwsh
+        env:
+          RELEASE_NOTES_PATH: ${{ github.workspace }}/Tooling/deployment/release_notes.md
+          REPO_NAME: ${{ github.event.repository.name }}
+          REPO_DESCRIPTION: ${{ github.event.repository.description }}
+          REPO_URL: ${{ github.event.repository.html_url }}
+          COMPANY: ${{ github.repository_owner }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          $releaseNotes = if (Test-Path $Env:RELEASE_NOTES_PATH) {
+            Get-Content -Raw -Path $Env:RELEASE_NOTES_PATH
+          } else {
+            "Release notes file not generated."
+          }
+
+          $productName = if ([string]::IsNullOrWhiteSpace($Env:REPO_NAME)) {
+            $Env:REPOSITORY
+          } else {
+            $Env:REPO_NAME
+          }
+
+          $description = if ([string]::IsNullOrWhiteSpace($Env:REPO_DESCRIPTION)) {
+            "$($Env:REPO_NAME) VI Package build for $($Env:REPOSITORY)."
+          } else {
+            $Env:REPO_DESCRIPTION
+          }
+
+          $info = @{
+            "Package Version" = @{
+              "major" = ${{ needs.version.outputs.MAJOR }}
+              "minor" = ${{ needs.version.outputs.MINOR }}
+              "patch" = ${{ needs.version.outputs.PATCH }}
+              "build" = ${{ needs.version.outputs.BUILD }}
+            }
+            "Product Name" = $productName
+            "Company Name" = $Env:COMPANY
+            "Author Name (Person or Company)" = $Env:REPOSITORY
+            "Product Homepage (URL)" = if ([string]::IsNullOrWhiteSpace($Env:REPO_URL)) {
+              "https://github.com/$($Env:REPOSITORY)"
+            } else {
+              $Env:REPO_URL
+            }
+            "Legal Copyright" = "© $(Get-Date -Format yyyy) $($Env:COMPANY)"
+            "License Agreement Name" = "LICENSE"
+            "Product Description Summary" = $description
+            "Product Description" = $description
+            "Release Notes - Change Log" = $releaseNotes
+          }
+
+          $json = $info | ConvertTo-Json -Depth 5 -Compress
+          "json=$json" >> $Env:GITHUB_OUTPUT
+      - uses: ./.github/actions/modify-vipb-display-info
+        with:
+          supported_bitness: 64
+          repository_path: ${{ github.workspace }}
+          vipb_path: Tooling/deployment/NI Icon editor.vipb
+          labview_minor_revision: 3
+          major: ${{ needs.version.outputs.MAJOR }}
+          minor: ${{ needs.version.outputs.MINOR }}
+          patch: ${{ needs.version.outputs.PATCH }}
+          build: ${{ needs.version.outputs.BUILD }}
+          commit: ${{ github.sha }}
+          release_notes_file: ${{ github.workspace }}/Tooling/deployment/release_notes.md
+          display_information_json: ${{ steps.display-info.outputs.json }}
+      - id: build-vip
+        uses: ./.github/actions/build-vip
+        with:
+          supported_bitness: 64
+          repository_path: ${{ github.workspace }}
+          vipb_path: Tooling/deployment/NI Icon editor.vipb
+          labview_minor_revision: 3
+          major: ${{ needs.version.outputs.MAJOR }}
+          minor: ${{ needs.version.outputs.MINOR }}
+          patch: ${{ needs.version.outputs.PATCH }}
+          build: ${{ needs.version.outputs.BUILD }}
+          commit: ${{ github.sha }}
+          release_notes_file: ${{ github.workspace }}/Tooling/deployment/release_notes.md
+          display_information_json: ${{ steps.display-info.outputs.json }}
+      - if: always()
+        uses: ./.github/actions/close-labview
+        with:
+          repository_path: ${{ github.workspace }}
+          supported_bitness: 64
+      - name: Validate tag matches computed version (if provided)
+        if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.dispatch_tag != ''
+        shell: pwsh
+        env:
+          EXPECTED_TAG: v${{ needs.version.outputs.MAJOR }}.${{ needs.version.outputs.MINOR }}.${{ needs.version.outputs.PATCH }}.${{ needs.version.outputs.BUILD }}
+          REF_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          INPUT_TAG: ${{ github.event.inputs.dispatch_tag || '' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $provided = if (-not [string]::IsNullOrWhiteSpace($Env:INPUT_TAG)) { $Env:INPUT_TAG } else { $Env:REF_TAG }
+          if ([string]::IsNullOrWhiteSpace($provided)) {
+            Write-Host 'No tag provided; skipping validation.'
+            exit 0
+          }
+          if ($provided -ne $Env:EXPECTED_TAG) {
+            Write-Error ("Provided tag '{0}' does not match computed tag '{1}'." -f $provided, $Env:EXPECTED_TAG)
+          } else {
+            Write-Host ("Tag validation ok: {0}" -f $provided)
+          }
+
+  analyze-vip:
+    name: Analyze VI Package
+    needs: [verify-checklist-sync, build-vip]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record analyze job start
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = "timings"
+          New-Item -ItemType Directory -Path $dir -Force | Out-Null
+          $path = Join-Path $dir "analyze-vip.txt"
+          "job=analyze-vip" | Out-File -FilePath $path -Encoding utf8
+          "server_time_start=$(Get-Date -Format o)" | Out-File -FilePath $path -Encoding utf8 -Append
+          "run_id=${{ github.run_id }}" | Out-File -FilePath $path -Encoding utf8 -Append
+          "ref=${{ github.ref }}" | Out-File -FilePath $path -Encoding utf8 -Append
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-vip.outputs.vip_artifact }}
+          path: builds/VI Package
+      - name: Locate downloaded VI package
+        id: locate-downloaded-vip
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = "builds/VI Package"
+          $vip = Get-ChildItem -Path $dir -Filter *.vip -File -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $vip) {
+            Write-Error "No .vip found under '$dir' after artifact download."
+          }
+          "vip_path=$($vip.FullName)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+      - name: Analyze built VI package
+        id: analyze-vip
+        uses: ./.github/actions/analyze-vi-package
+        with:
+          vip_artifact_path: ${{ steps.locate-downloaded-vip.outputs.vip_path }}
+          min_labview: ${{ env.MIN_LABVIEW_POLICY }}
+      - name: Upload VI package analysis results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-vip-analysis-junit
+          path: ${{ steps.analyze-vip.outputs.junit }}
+      - name: Record analyze job end and upload timing
+        if: always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = "timings/analyze-vip.txt"
+          if (-not (Test-Path $path)) {
+            Write-Error "Timing file missing at $path"
+          }
+          "server_time_end=$(Get-Date -Format o)" | Out-File -FilePath $path -Encoding utf8 -Append
+        # Upload timing as its own artifact for duration analysis
+      - name: Upload analyze timing
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-analyze-vip-timing
+          path: timings/analyze-vip.txt

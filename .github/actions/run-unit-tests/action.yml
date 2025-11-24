@@ -11,13 +11,70 @@ runs:
     - name: Run RunUnitTests.ps1
       shell: pwsh
       run: |
-        & "${{ github.action_path }}/RunUnitTests.ps1" `
-          -MinimumSupportedLVVersion ${{ inputs.minimum_supported_lv_version }} `
-          -SupportedBitness ${{ inputs.supported_bitness }}
+        $ErrorActionPreference = 'Stop'
+        Set-StrictMode -Version Latest
+
+        $repo = Resolve-Path "${{ inputs.repository_path }}"
+        $actionRoot = Resolve-Path "${{ github.action_path }}"
+        $scriptPath = Join-Path $actionRoot "RunUnitTests.ps1"
+
+        $lvVer = "${{ inputs.labview_version }}"
+        $versionSource = 'inputs.labview_version'
+        if ([string]::IsNullOrWhiteSpace($lvVer)) {
+          $lvVer = $Env:LABVIEW_VERSION
+          $versionSource = 'LABVIEW_VERSION'
+        }
+
+        if ([string]::IsNullOrWhiteSpace($lvVer)) {
+          throw "LabVIEW version not provided. Set inputs.labview_version or the LABVIEW_VERSION environment variable."
+        }
+
+        Write-Host "Using LabVIEW version ($versionSource): $lvVer"
+        Write-Host "RunUnitTests.ps1 resolved path: $scriptPath"
+
+        # Resolve project file: use input when provided, otherwise auto-detect (prefer root-level)
+        $pf = "${{ inputs.project-file }}"
+        if (-not [string]::IsNullOrWhiteSpace($pf)) {
+          if (-not [System.IO.Path]::IsPathRooted($pf)) {
+            $pf = Join-Path $repo $pf
+          }
+          if (-not (Test-Path $pf)) {
+            throw "Project file not found: $pf"
+          }
+        } else {
+          $candidates = @(Get-ChildItem -Path $repo -Filter *.lvproj -File -Recurse)
+          if (-not $candidates) {
+            throw "No .lvproj files found under $repo. Provide inputs.project-file."
+          }
+          $rootProjects = @($candidates | Where-Object { $_.Directory.FullName -eq $repo })
+          if ($rootProjects.Count -eq 1) {
+            $candidates = @($rootProjects[0])
+          } elseif ($rootProjects.Count -gt 1) {
+            $candidates = $rootProjects
+          }
+          if ($candidates.Count -gt 1) {
+            $list = $candidates | ForEach-Object { " - $($_.FullName)" } | Out-String
+            throw "Multiple .lvproj files found; set inputs.project-file to disambiguate. Candidates:`n$list"
+          }
+          $pf = $candidates[0].FullName
+        }
+
+        & $scriptPath `
+          -Package_LabVIEW_Version $lvVer `
+          -SupportedBitness ${{ inputs.supported_bitness }} `
+          -AbsoluteProjectPath $pf
 inputs:
-  minimum_supported_lv_version:
-    description: 'LabVIEW major version'
+  repository_path:
+    description: 'Workspace root path'
     required: true
   supported_bitness:
     description: '32 or 64'
     required: true
+  labview_version:
+    description: 'LabVIEW version to use (must be supplied via this input or the LABVIEW_VERSION env; action fails when missing).'
+    required: false
+    default: ""
+  project-file:
+    description: 'Optional path to .lvproj; if omitted, auto-detect (preferring repo root, error on multiple/none).'
+    required: false
+    default: ""

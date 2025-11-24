@@ -1,0 +1,28 @@
+[
+  {
+    "scenario": "Sample - editor startup (ms)",
+    "architecture": "test-2021-x64",
+    "metric": "editor_startup_ms",
+    "unit": "ms",
+    "baseline_value": 1500,
+    "tolerance_pct": 0.10,
+    "source": "Manual run via Measure-Command",
+    "tag": "vX.Y.Z",
+    "commit": "abcdef0",
+    "timestamp_utc": "2025-11-20T00:00:00Z",
+    "notes": "Template entry; replace with actual measurement before release."
+  },
+  {
+    "scenario": "Sample - VIPB metadata update (ms)",
+    "architecture": "test-2021-x86",
+    "metric": "modify_vipb_metadata_ms",
+    "unit": "ms",
+    "baseline_value": 800,
+    "tolerance_pct": 0.10,
+    "source": "Test/ModifyVIPBDisplayInfo.Tests.ps1",
+    "tag": "vX.Y.Z",
+    "commit": "abcdef0",
+    "timestamp_utc": "2025-11-20T00:00:00Z",
+    "notes": "Template entry; replace with actual measurement before release."
+  }
+]
