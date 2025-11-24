@@ -9,6 +9,6 @@ jobs:
   rtm-validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: ./.github/actions/checkout
       - name: Validate RTM
         run: python3 .github/scripts/validate_rtm.py

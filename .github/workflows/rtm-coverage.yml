@@ -9,6 +9,6 @@ jobs:
   rtm-coverage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: ./.github/actions/checkout
       - name: Enforce RTM coverage thresholds
         run: python3 .github/scripts/check_rtm_coverage.py
