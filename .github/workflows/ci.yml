@@ -1052,14 +1052,19 @@ jobs:
         with:
           repository_path: ${{ github.workspace }}
           supported_bitness: 32
-      - uses: ./.github/actions/rename-file
-        with:
-          current_filename: ${{ github.workspace }}/resource/plugins/lv_icon.lvlibp
-          new_filename: ${{ github.workspace }}/resource/plugins/lv_icon_x86.lvlibp
+      - name: Stage PPL outputs (x86)
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = "$env:GITHUB_WORKSPACE/resource/plugins"
+          $source = Join-Path $dir 'lv_icon.lvlibp'
+          if (-not (Test-Path $source)) {
+            throw "Expected PPL at $source after build-lvlibp (x86)."
+          }
+          Copy-Item -LiteralPath $source -Destination (Join-Path $dir 'lv_icon.lvlibp.windows_x86') -Force
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-32bit
-          path: resource/plugins/lv_icon_x86.lvlibp
+          path: resource/plugins/lv_icon.lvlibp.windows_x86
 
   build-ppl-x64:
     name: Build 64-bit Packed Library (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }})
@@ -1083,14 +1088,21 @@ jobs:
         with:
           repository_path: ${{ github.workspace }}
           supported_bitness: 64
-      - uses: ./.github/actions/rename-file
-        with:
-          current_filename: ${{ github.workspace }}/resource/plugins/lv_icon.lvlibp
-          new_filename: ${{ github.workspace }}/resource/plugins/lv_icon_x64.lvlibp
+      - name: Stage PPL outputs (x64)
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = "$env:GITHUB_WORKSPACE/resource/plugins"
+          $source = Join-Path $dir 'lv_icon.lvlibp'
+          if (-not (Test-Path $source)) {
+            throw "Expected PPL at $source after build-lvlibp (x64)."
+          }
+          Copy-Item -LiteralPath $source -Destination (Join-Path $dir 'lv_icon.lvlibp.windows_x64') -Force
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-64bit
-          path: resource/plugins/lv_icon_x64.lvlibp
+          path: |
+            resource/plugins/lv_icon.lvlibp
+            resource/plugins/lv_icon.lvlibp.windows_x64
 
   build-vip:
     name: Build VI Package
@@ -1142,12 +1154,12 @@ jobs:
         if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-32bit
-          path: resource/plugins
+          path: .
       - uses: actions/download-artifact@v4
         if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-64bit
-          path: resource/plugins
+          path: .
       - name: Generate display information JSON
         id: display-info
         if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
