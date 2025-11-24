@@ -494,13 +494,15 @@
     {
       "label": "Dev Mode Bind (force clean)",
       "type": "shell",
-      "detail": "Unbind with Force then bind with Force for both bitnesses; use when tokens point elsewhere",
+      "detail": "Unbind + bind with Force for both bitnesses; use when tokens point elsewhere",
       "group": "Dev Mode",
       "command": "pwsh",
       "args": [
         "-NoProfile",
-        "-Command",
-        "& { Write-Host 'Dev Mode Bind (force clean): running unbind/bind with Force for both bitnesses'; pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '${workspaceFolder}' -Mode unbind -Bitness both -Force; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '${workspaceFolder}' -Mode bind -Bitness both -Force }"
+        "-File",
+        "${workspaceFolder}/scripts/dev-mode-force-clean.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
