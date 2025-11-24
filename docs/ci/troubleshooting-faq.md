@@ -118,8 +118,10 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - Another step re-applied the `Set_Development_Mode.ps1` script.
 
 **Solution**:
-1. Manually run the “Development Mode Toggle” workflow with `mode=disable`.  
-2. Confirm your pipeline sequence: typically, dev mode is enabled for debugging only, then disabled prior to final builds.
+1. Run the bind/unbind helper in unbind mode: `BindDevelopmentMode.ps1 -Mode unbind -Bitness both -RepositoryPath <repo> [-Force]` (or the composite `.github/actions/bind-development-mode` with `mode: unbind`).  
+2. Check `reports/dev-mode-bind.json` for per-bitness status; `json_path` is surfaced even on failure.  
+3. If the INI token points to another repo, rerun with `-Force` to clear it intentionally.  
+4. Confirm your pipeline sequence: enable dev mode only when needed, then unbind before final builds.
 
 ---
 

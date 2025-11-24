@@ -19,6 +19,7 @@ This repository defines several reusable [composite actions](https://docs.github
 | [rename-file](../../../.github/actions/rename-file) | Renames a file on disk. |
 | [restore-setup-lv-source](../../../.github/actions/restore-setup-lv-source) | Reverts prepared sources back to their packaged state. |
 | [revert-development-mode](../../../.github/actions/revert-development-mode) | Restores the repository after development mode. |
+| [bind-development-mode](../../../.github/actions/bind-development-mode) | Binds/unbinds dev mode per bitness, emits JSON status, and supports dry-run/force (BIND-001..BIND-014). |
 | [run-unit-tests](../../../.github/actions/run-unit-tests) | Executes LabVIEW unit tests via g-cli. |
 | [set-development-mode](../../../.github/actions/set-development-mode) | Configures the repository for development mode. |
 
