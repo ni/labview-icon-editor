@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$RepositoryPath = (Get-Location).Path,
-    [string]$VipbPath
+    [string]$VipbPath,
+    [switch]$SkipConfirm
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,10 +41,12 @@ Closing LabVIEW – `Close_LabVIEW.ps1` runs `g-cli QuitLabVIEW` so no running i
 
 In summary, development mode rewrites the LabVIEW INIs, clears any packed state, and restarts LabVIEW to operate on your source tree.
 "@
-$continue = Read-Host "Continue with unbind/bind sequence after reviewing the note? (y/N)"
-if (-not ($continue -match '^(?i:y|yes)$')) {
-    Write-Host "Operation cancelled."
-    exit 1
+if (-not $SkipConfirm) {
+    $continue = Read-Host "Continue with unbind/bind sequence after reviewing the note? (y/N)"
+    if (-not ($continue -match '^(?i:y|yes)$')) {
+        Write-Host "Operation cancelled."
+        exit 1
+    }
 }
 
 & $bindScript -RepositoryPath $repo -Mode unbind -Bitness both -Force

@@ -511,6 +511,8 @@
         "${workspaceFolder}",
         "-VipbPath",
         "${input:vipbPath}"
+        ,
+        "-SkipConfirm"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
