@@ -225,6 +225,17 @@ agent:
 - Generate Markdown in `CHANGELOG.md` (unreleased section).  
 - Open PR tagged `release-notes` for human review.
 
+### 7.5 Dev-Mode Bind Requires Force (integration agent)
+- **Trigger:** User shares bind output showing `[OTHER-REPO]/[OTHER]` for the VIPB version/bitness or errors like “use -Force to overwrite.”
+- **Diagnose:** Read `reports/dev-mode-bind.json`; note current_path/post_path per bitness, anomalies (other-repo tokens, double-rooted paths), and the VIPB-targeted LabVIEW version.
+- **Respond:**  
+  - Recommend rerun with Force to rebind to this repo:  
+    - VS Code: Terminal → Run Task → “Dev Mode (interactive bind/unbind)” → bind + Force (bitness as needed).  
+    - CLI: `pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath . -Mode bind -Bitness both -Force`  
+  - If other repos might rely on existing bindings, ask for confirmation before forcing.  
+  - For malformed/double-rooted tokens, suggest unbind + Force for the affected version/bitness.  
+- **Reference:** Link the user to `docs/troubleshooting/bind-dev-mode-force.md` and `reports/dev-mode-bind.json` for details.
+
 ---
 
 ## 8. Verification & Validation
