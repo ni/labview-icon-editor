@@ -367,8 +367,10 @@
       "command": "pwsh",
       "args": [
         "-NoProfile",
-        "-Command",
-        "& { docker compose -f \"${workspaceFolder}/Tooling/docker/vipm/docker-compose.yml\" run --rm vipm-labview vipm help }"
+        "-File",
+        "${workspaceFolder}/Tooling/docker/vipm/test-vipm.ps1",
+        "-RepositoryRoot",
+        "${workspaceFolder}"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
