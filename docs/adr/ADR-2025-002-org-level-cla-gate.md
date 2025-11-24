@@ -45,6 +45,6 @@ We adopt **Option A**: a manifest-driven, reusable `cla-gate` workflow that repo
 - [ ] Create an org-level `cla-automation` (or similar) repository exposing a reusable `cla-gate` workflow via `workflow_call`, plus a validator script.  
 - [ ] Update this repository to replace local CLA checks with a call to `cla-gate` and protect `develop/main/release/*/feature/*` branches with the `cla-gate` status check.  
 - [ ] Document the CLA intake process (issue template + manifest update PR) at the org level and link to it from this repo’s contributor docs.
- - [ ] Add documentation snippets for fork-friendly `cla-gate` usage that set `manifest_repo`/`manifest_path` inputs without hardcoding an org, and explain token requirements for public vs. private manifests.
+- [ ] Add documentation snippets for fork-friendly `cla-gate` usage that set `manifest_repo`/`manifest_path` inputs without hardcoding an org, and explain token requirements for public vs. private manifests.
 
-> Traceability: CLA-001–CLA-010 in `docs/requirements/requirements.csv`, CI tests for the reusable `cla-gate` workflow, and branch protection rules that require `cla-gate` on protected branches.
+> Traceability: CLA-001–CLA-011 in `docs/requirements/requirements.csv`, CI tests for the reusable `cla-gate` workflow, and branch protection rules that require `cla-gate` on protected branches.
