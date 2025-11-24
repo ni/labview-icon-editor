@@ -100,7 +100,9 @@ $repoPathNormalized = [System.IO.Path]::GetFullPath($RepositoryPath).TrimEnd('\'
 $mismatched = @()
 foreach ($entry in $entries) {
     Write-Host ("[{0}] {1}" -f $index, $entry)
-    $value = ($entry -split '=',2)[1]
+    $valueRaw = ($entry -split '=',2)[1]
+    # Trim surrounding quotes from INI values before comparing paths
+    $value = $valueRaw.Trim('"')
     $valuePath = [System.IO.Path]::GetFullPath($value).TrimEnd('\','/')
     if ($valuePath -ne $repoPathNormalized) {
         $mismatched += $value
