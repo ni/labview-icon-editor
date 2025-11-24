@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: ./.github/actions/checkout
         with:
-          fetch-depth: 0
+          fetch_depth: 0
 
       - name: Compute version
         id: version

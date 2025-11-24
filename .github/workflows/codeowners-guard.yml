@@ -19,7 +19,7 @@ jobs:
     name: Validate CODEOWNERS
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: ./.github/actions/checkout
       - name: Ensure CODEOWNERS exists and has required owners
         shell: bash
         run: |
