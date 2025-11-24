@@ -302,8 +302,9 @@ inputs:
     description: 'Workspace root path'
     required: true
   vipb_path:
-    description: 'Path to the VIPB file (relative to workspace)'
-    required: true
+    description: 'Path to the VIPB file (relative to workspace). Leave blank to auto-discover a single .vipb under repository_path.'
+    required: false
+    default: ''
   labview_minor_revision:
     description: 'LabVIEW minor revision (0 or 3)'
     required: false

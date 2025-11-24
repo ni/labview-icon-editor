@@ -332,7 +332,6 @@ jobs:
         with:
           supported_bitness: 64
           repository_path: ${{ github.workspace }}
-          vipb_path: Tooling/deployment/NI Icon editor.vipb
           labview_minor_revision: 3
           major: 0
           minor: 0
@@ -1178,7 +1177,6 @@ jobs:
         with:
           supported_bitness: 64
           repository_path: ${{ github.workspace }}
-          vipb_path: Tooling/deployment/NI Icon editor.vipb
           labview_minor_revision: 3
           major: ${{ needs.version.outputs.MAJOR }}
           minor: ${{ needs.version.outputs.MINOR }}
@@ -1193,7 +1191,6 @@ jobs:
         with:
           supported_bitness: 64
           repository_path: ${{ github.workspace }}
-          vipb_path: Tooling/deployment/NI Icon editor.vipb
           labview_minor_revision: 3
           major: ${{ needs.version.outputs.MAJOR }}
           minor: ${{ needs.version.outputs.MINOR }}

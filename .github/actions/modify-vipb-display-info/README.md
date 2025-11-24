@@ -7,7 +7,7 @@ Execute **`ModifyVIPBDisplayInfo.ps1`** to merge metadata into a `.vipb` file be
 |------|----------|---------|-------------|
 | `supported_bitness` | **Yes** | `64` | Target LabVIEW bitness. |
 | `repository_path` | **Yes** | `${{ github.workspace }}` | Repository root path (used to resolve LabVIEW version from the VIPB). |
-| `vipb_path` | **Yes** | `Tooling/deployment/NI Icon editor.vipb` | Path to the VIPB file. |
+| `vipb_path` | No (auto) | _auto-discovered_ | Path to the VIPB file. Leave blank to auto-discover a single `.vipb` under `repository_path`. |
 | `labview_minor_revision` | No (defaults to `3`) | `3` | LabVIEW minor revision. |
 | `major` | **Yes** | `1` | Major version component. |
 | `minor` | **Yes** | `0` | Minor version component. |
@@ -23,7 +23,6 @@ Execute **`ModifyVIPBDisplayInfo.ps1`** to merge metadata into a `.vipb` file be
   with:
     supported_bitness: 64
     repository_path: ${{ github.workspace }}
-    vipb_path: Tooling/deployment/NI Icon editor.vipb
     major: 1
     minor: 0
     patch: 0

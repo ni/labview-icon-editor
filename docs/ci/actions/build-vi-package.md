@@ -106,7 +106,7 @@ That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Th
 | `supported_bitness` | `32` or `64`; selects the VI Package bitness. |
 | `labview_minor_revision` | LabVIEW minor revision (defaults to `3`). |
 | `repository_path` | Workspace root path. |
-| `vipb_path` | Path to the VIPB file (relative to the workspace). |
+| `vipb_path` | Path to the VIPB file (relative to the workspace). Leave blank to auto-discover a single `.vipb` under `repository_path`. |
 | `major` | Major version component. |
 | `minor` | Minor version component. |
 | `patch` | Patch version component. |
@@ -116,7 +116,7 @@ That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Th
 | `display_information_json` | DisplayInformation JSON string. |
 | `fail_on_multiple_vips` | If `true`, fail when more than one `.vip` is found post-build. |
 
-The action reads the LabVIEW major version from the repository’s VIPB via `scripts/get-package-lv-version.ps1`, so no LabVIEW-version input or override is accepted. The default CI workflow points `vipb_path` to the auto-detected VIPB in the repo.
+The action reads the LabVIEW major version from the repository’s VIPB via `scripts/get-package-lv-version.ps1`, so no LabVIEW-version input or override is accepted. If `vipb_path` is omitted or invalid, the action auto-discovers the single `.vipb` under `repository_path`.
 
 The `major`, `minor`, and `patch` inputs are derived from pull-request labels (`major`,
 `minor`, `patch`) by the `version` job (which runs the `compute-version` action) in

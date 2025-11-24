@@ -89,4 +89,58 @@ Describe "ModifyVIPBDisplayInfo.ps1" {
         # VIPB can emit an absolute path; assert on filename only
         (Split-Path -Leaf $licenseSetting) | Should -Be "LICENSE"
     }
+
+    It "auto-discovers the VIPB when the provided path is missing" {
+        if (-not $script:hasFixture) {
+            throw $script:failureReason
+        }
+
+        $tempRepo = Join-Path $script:tempRoot ("auto_repo_{0}" -f ([guid]::NewGuid().ToString("N")))
+        New-Item -ItemType Directory -Path $tempRepo -Force | Out-Null
+
+        $vipbLeaf = Split-Path -Leaf $fixtureSource
+        $vipbPath = Join-Path $tempRepo $vipbLeaf
+        Copy-Item -Path $fixtureSource -Destination $vipbPath
+
+        $releaseNotesPath = Join-Path $tempRepo ("release_notes_{0}.md" -f ([guid]::NewGuid().ToString("N")))
+        $releaseNotesContent = "Auto-discovery release notes content"
+        Set-Content -Path $releaseNotesPath -Value $releaseNotesContent
+
+        $displayInformation = [ordered]@{
+            "Company Name"                 = "svelderrainruiz"
+            "Product Name"                 = "labview-icon-editor"
+            "Product Description Summary"  = "Source for LabVIEW's icon editor"
+            "Product Description"          = "Source for LabVIEW's icon editor"
+            "Author Name (Person or Company)" = "svelderrainruiz/labview-icon-editor"
+            "Product Homepage (URL)"       = "https://github.com/svelderrainruiz/labview-icon-editor"
+            "Legal Copyright"              = "© 2025 svelderrainruiz"
+            "License Agreement Name"       = "LICENSE"
+            "Release Notes - Change Log"   = $releaseNotesContent
+            "Package Version"              = @{ major = 2; minor = 0; patch = 0; build = 42 }
+        }
+
+        $displayInformationJson = $displayInformation | ConvertTo-Json -Depth 5
+
+        & $scriptPath `
+            -SupportedBitness 64 `
+            -RepositoryPath $tempRepo `
+            -VIPBPath "missing/path/to/vipb.vipb" `
+            -Package_LabVIEW_Version 2023 `
+            -LabVIEWMinorRevision 3 `
+            -Major 2 `
+            -Minor 0 `
+            -Patch 0 `
+            -Build 42 `
+            -Commit "cafebabe" `
+            -ReleaseNotesFile $releaseNotesPath `
+            -DisplayInformationJSON $displayInformationJson
+
+        $vipbXml = [xml](Get-Content -Raw -Path $vipbPath)
+        $generalSettings = $vipbXml.VI_Package_Builder_Settings.Library_General_Settings
+        $descriptionSettings = $vipbXml.VI_Package_Builder_Settings.Advanced_Settings.Description
+
+        $generalSettings.Library_Version | Should -Be "2.0.0.42"
+        $descriptionSettings.Release_Notes.Trim() | Should -Be $releaseNotesContent.Trim()
+        $descriptionSettings.Description | Should -Match "Commit: cafebabe"
+    }
 }

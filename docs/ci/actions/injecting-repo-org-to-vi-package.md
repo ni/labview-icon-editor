@@ -95,7 +95,6 @@ jobs:
           "json=$($info | ConvertTo-Json -Depth 5 -Compress)" >> $Env:GITHUB_OUTPUT
       - uses: ./.github/actions/modify-vipb-display-info
         with:
-          vipb_path: .github/actions/build-vip/NI Icon editor.vipb
           labview_minor_revision: 3
           repository_path: ${{ github.workspace }}
           supported_bitness: 64
@@ -110,7 +109,6 @@ jobs:
         with:
           labview_minor_revision: 3
           repository_path: ${{ github.workspace }}
-          vipb_path: .github/actions/build-vip/NI Icon editor.vipb
           supported_bitness: 64
           major: ${{ needs.version.outputs.MAJOR }}
           minor: ${{ needs.version.outputs.MINOR }}
@@ -121,7 +119,7 @@ jobs:
           display_information_json: ${{ steps.display-info.outputs.json }}
 ```
 
-> **Note:** `build-vip` runs outside the bitness matrix because the Icon Editor ships only a 64-bit VI Package; packaging the 32-bit output would duplicate artifacts. The LabVIEW major version is resolved automatically from the repo’s VIPB via `scripts/get-package-lv-version.ps1`, so no version override is needed.
+> **Note:** Both actions auto-discover the single `.vipb` in the repository, so `vipb_path` is optional. `build-vip` runs outside the bitness matrix because the Icon Editor ships only a 64-bit VI Package; packaging the 32-bit output would duplicate artifacts. The LabVIEW major version is resolved automatically from the repo’s VIPB via `scripts/get-package-lv-version.ps1`, so no version override is needed.
 
 **Key points**:
 - **`${{ github.repository_owner }}`** is the **organization** (or user) that owns the repo.

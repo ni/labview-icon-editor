@@ -140,27 +140,66 @@ function Write-ErrorPayload {
     exit 1
 }
 
+function Resolve-VipbPath {
+    param(
+        [string]$RepositoryPath,
+        [string]$VIPBPath
+    )
+
+    $repoPath = $RepositoryPath
+    if ($RepositoryPath -is [System.Management.Automation.PathInfo]) {
+        $repoPath = $RepositoryPath.ProviderPath
+    }
+
+    if ([string]::IsNullOrWhiteSpace($repoPath) -or -not (Test-Path -LiteralPath $repoPath)) {
+        Write-ErrorPayload -Error "RepositoryPath is missing or invalid." -Path $RepositoryPath
+    }
+
+    # Prefer an explicitly provided path when it exists
+    if (-not [string]::IsNullOrWhiteSpace($VIPBPath)) {
+        try {
+            $candidate = $VIPBPath
+            if (-not [System.IO.Path]::IsPathRooted($candidate)) {
+                $candidate = Join-Path -Path $repoPath -ChildPath $candidate -ErrorAction Stop
+            }
+            $resolved = Resolve-Path -LiteralPath $candidate -ErrorAction Stop
+            return $resolved.ProviderPath
+        }
+        catch {
+            Write-Information ("VIPBPath '{0}' not found; attempting discovery under {1}" -f $VIPBPath, $repoPath) -InformationAction Continue
+        }
+    }
+
+    # Auto-discover a single VIPB in the repository
+    $vipbFiles = Get-ChildItem -Path $repoPath -Filter *.vipb -File -Recurse
+    if (-not $vipbFiles -or $vipbFiles.Count -eq 0) {
+        Write-ErrorPayload -Error "No VIPB file found under repository." -Path $repoPath
+    }
+    if ($vipbFiles.Count -gt 1) {
+        $paths = $vipbFiles | ForEach-Object { $_.FullName }
+        Write-ErrorPayload -Error "Multiple VIPB files found; specify VIPBPath to disambiguate." -Details ($paths -join '; ') -Path $repoPath
+    }
+
+    Write-Information ("Auto-discovered VIPB at {0}" -f $vipbFiles[0].FullName) -InformationAction Continue
+    return $vipbFiles[0].FullName
+}
+
 # 1) Resolve paths
 try {
     $ResolvedRepositoryPath = Resolve-Path -Path $RepositoryPath -ErrorAction Stop
-    $ResolvedVIPBPath = Join-Path -Path $ResolvedRepositoryPath -ChildPath $VIPBPath -ErrorAction Stop
 }
 catch {
-    Write-ErrorPayload -Error "Error resolving paths. Ensure RepositoryPath and VIPBPath are valid." `
+    Write-ErrorPayload -Error "Error resolving RepositoryPath." `
         -Details $_.Exception.Message `
-        -Context "RepositoryPath=$RepositoryPath; VIPBPath=$VIPBPath"
+        -Context "RepositoryPath=$RepositoryPath"
 }
 
 # Early validation: verify inputs exist and required JSON keys are present before heavy work
 if (-not $RepositoryPath -or -not (Test-Path -LiteralPath $RepositoryPath)) {
     Write-ErrorPayload -Error "RepositoryPath is missing or invalid." -Path $RepositoryPath
 }
-if (-not $VIPBPath) {
-    Write-ErrorPayload -Error "VIPBPath is required." -Context "VIPBPath not provided"
-}
-if (-not (Test-Path -LiteralPath $ResolvedVIPBPath)) {
-    Write-ErrorPayload -Error "VIPBPath does not exist." -Path $ResolvedVIPBPath
-}
+
+$ResolvedVIPBPath = Resolve-VipbPath -RepositoryPath $ResolvedRepositoryPath -VIPBPath $VIPBPath
 if (-not $ReleaseNotesFile) {
     Write-ErrorPayload -Error "ReleaseNotesFile path is required." -Context "ReleaseNotesFile not provided"
 }
