@@ -226,20 +226,26 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-#
-# Move the produced VIP into the expected output directory for downstream steps
-#
+# Move or confirm the produced VIP is under builds/VI Package for downstream steps
 $outputDir = Join-Path -Path $ResolvedRepositoryPath -ChildPath "builds/VI Package"
 New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 $vipbDir = Split-Path -Parent $ResolvedVIPBPath
-$vipProduced = Get-ChildItem -Path $vipbDir -Filter *.vip -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-if ($vipProduced) {
-    $destPath = Join-Path -Path $outputDir -ChildPath $vipProduced.Name
-    Move-Item -LiteralPath $vipProduced.FullName -Destination $destPath -Force
-    Write-Information ("Moved built VIP to {0}" -f $destPath) -InformationAction Continue
+
+$vipProduced = Get-ChildItem -Path $outputDir -Filter *.vip -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $vipProduced) {
+    $vipProduced = Get-ChildItem -Path $vipbDir -Filter *.vip -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($vipProduced) {
+        $destPath = Join-Path -Path $outputDir -ChildPath $vipProduced.Name
+        Move-Item -LiteralPath $vipProduced.FullName -Destination $destPath -Force
+        Write-Information ("Moved built VIP to {0}" -f $destPath) -InformationAction Continue
+    }
 }
-else {
-    Write-Warning "vipm build succeeded but no .vip was found beside the VIPB; downstream locate step may fail."
+elseif ($vipProduced) {
+    Write-Information ("Built VIP already present at {0}" -f $vipProduced.FullName) -InformationAction Continue
+}
+
+if (-not $vipProduced) {
+    Write-Warning "vipm build succeeded but no .vip was found; downstream locate step may fail."
 }
 
 Write-Information "Successfully built VI package: $ResolvedVIPBPath" -InformationAction Continue
