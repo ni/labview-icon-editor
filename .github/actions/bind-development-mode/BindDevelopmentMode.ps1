@@ -20,7 +20,7 @@ Set-StrictMode -Version Latest
 function Normalize-PathLower {
     param([string]$Path)
     if ([string]::IsNullOrWhiteSpace($Path)) { return '' }
-    return ([System.IO.Path]::GetFullPath($Path)).TrimEnd('\\','/').ToLowerInvariant()
+    return ([System.IO.Path]::GetFullPath($Path)).TrimEnd([char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)).ToLowerInvariant()
 }
 
 function Get-ExpectedTokenPath {
@@ -179,7 +179,8 @@ else {
         $currentNorm = Normalize-PathLower $res.current_path
         $expectedMatch = ($state.Paths | ForEach-Object { Normalize-PathLower $_ }) -contains $expectedNorm
         $hasAnyPath = $state.Paths.Count -gt 0
-        $hasPackedLibs = Test-Path -LiteralPath (Join-Path $pluginsPath '*.lvlibp')
+        # Detect packed libraries (files or folders) to decide if re-binding is needed even when the token matches.
+        $hasPackedLibs = Test-Path -Path (Join-Path $pluginsPath '*.lvlibp')
 
         if ($Mode -eq 'status') {
             $res.status = 'success'
@@ -337,14 +338,46 @@ if (-not (Test-Path -LiteralPath $parent)) {
 
 $results | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $JsonOutputPath -Encoding utf8
 
-Write-Host "Development mode bind/unbind summary (mode=$Mode, repo=$RepositoryPath)"
-foreach ($r in $results) {
-    $msg = "bitness=$($r.bitness); action=$($r.action); status=$($r.status); current=$($r.current_path); post=$($r.post_path); msg=$($r.message)"
-    Write-Host $msg
+$hasStyle = $PSStyle -ne $null
+$palette = @{
+    head  = if ($hasStyle) { $PSStyle.Foreground.Cyan }         else { '' }
+    ok    = if ($hasStyle) { $PSStyle.Foreground.BrightGreen }  else { '' }
+    warn  = if ($hasStyle) { $PSStyle.Foreground.BrightYellow } else { '' }
+    fail  = if ($hasStyle) { $PSStyle.Foreground.BrightRed }    else { '' }
+    path  = if ($hasStyle) { $PSStyle.Foreground.BrightBlack }  else { '' }
+    reset = if ($hasStyle) { $PSStyle.Reset }                   else { '' }
 }
-Write-Host "JSON summary: $JsonOutputPath"
 
-$exitFail = $results | Where-Object { $_.status -in @('fail','blocked') }
+function Get-StatusVisual {
+    param([string]$Status)
+    switch ($Status) {
+        'success' { return @{ color = $palette.ok;   glyph = 'OK ' } }
+        'dry-run' { return @{ color = $palette.warn; glyph = 'DRY' } }
+        'skip'    { return @{ color = $palette.warn; glyph = 'SKP' } }
+        default   { return @{ color = $palette.fail; glyph = 'ERR' } }
+    }
+}
+
+Write-Host ("{0}==== Dev Mode ({1} {2}) ===={3}" -f $palette.head, $Mode, $Bitness, $palette.reset)
+foreach ($r in $results) {
+    $visual = Get-StatusVisual -Status $r.status
+    $pathOut = if (-not [string]::IsNullOrWhiteSpace($r.post_path)) { $r.post_path } else { $r.current_path }
+    $msg = if (-not [string]::IsNullOrWhiteSpace($r.message)) { "; msg=$($r.message)" } else { '' }
+    Write-Host ("{0}[{1}] bitness={2,-2} action={3,-6} status={4,-7}{5} {6}{7}{8}{9}" -f
+        $visual.color,
+        $visual.glyph,
+        $r.bitness,
+        $r.action,
+        $r.status,
+        $palette.reset,
+        $palette.path,
+        $pathOut,
+        $palette.reset,
+        $msg)
+}
+Write-Host ("{0}JSON:{1} {2}{3}{4}" -f $palette.head, $palette.reset, $palette.path, $JsonOutputPath, $palette.reset)
+
+$exitFail = @($results | Where-Object { $_.status -in @('fail','blocked') })
 if ($exitFail.Count -gt 0) {
     exit 1
 }

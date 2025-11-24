@@ -1,0 +1,22 @@
+[
+  {
+    "bitness": "32",
+    "available": true,
+    "expected_path": "C:\\repos\\labview-icon-editor-final-fork",
+    "current_path": "C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor",
+    "post_path": "C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor",
+    "action": "status",
+    "status": "success",
+    "message": "Status only"
+  },
+  {
+    "bitness": "64",
+    "available": true,
+    "expected_path": "C:\\repos\\labview-icon-editor-final-fork",
+    "current_path": "C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor",
+    "post_path": "C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor",
+    "action": "status",
+    "status": "success",
+    "message": "Status only"
+  }
+]

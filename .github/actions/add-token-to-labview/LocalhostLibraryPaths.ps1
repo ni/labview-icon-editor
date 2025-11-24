@@ -48,7 +48,7 @@ function Clear-StaleLibraryPaths {
     $cleaned = @()
     $removed = @()
     $seen    = @{}
-    $repoNorm = [System.IO.Path]::GetFullPath($RepositoryRoot).TrimEnd('\','/').ToLowerInvariant()
+    $repoNorm = [System.IO.Path]::GetFullPath($RepositoryRoot).TrimEnd([char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)).ToLowerInvariant()
 
     foreach ($line in $lines) {
         if (-not ($line -match $pattern)) {
@@ -62,7 +62,7 @@ function Clear-StaleLibraryPaths {
             $removed += $line
             continue
         }
-        $valNorm = ([System.IO.Path]::GetFullPath($value)).TrimEnd('\','/').ToLowerInvariant()
+        $valNorm = ([System.IO.Path]::GetFullPath($value)).TrimEnd([char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)).ToLowerInvariant()
 
         $shouldRemove =
             ($line -like "*actions-runner*actions-runner*") -or
@@ -75,7 +75,7 @@ function Clear-StaleLibraryPaths {
 
         # If Force with a TargetPath is supplied, remove entries that do not match the target
         if ($Force -and $TargetPath) {
-            $targetNorm = [System.IO.Path]::GetFullPath($TargetPath).TrimEnd('\\','/').ToLowerInvariant()
+            $targetNorm = [System.IO.Path]::GetFullPath($TargetPath).TrimEnd([char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)).ToLowerInvariant()
             if ($valNorm -ne $targetNorm) {
                 $removed += $line
                 continue
@@ -103,7 +103,7 @@ function Add-LibraryPathToken {
     $lvIniPath = Resolve-LVIniPath -LvVersion $LvVersion -Arch $Arch
     if (-not $lvIniPath) { return }
 
-    $normToken = [System.IO.Path]::GetFullPath($TokenPath).TrimEnd('\','/').ToLowerInvariant()
+    $normToken = [System.IO.Path]::GetFullPath($TokenPath).TrimEnd([char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)).ToLowerInvariant()
     $lines = Get-Content -LiteralPath $lvIniPath -ErrorAction Stop -Encoding UTF8
     if ($lines -isnot [System.Array]) {
         $lines = @($lines)
@@ -131,7 +131,7 @@ function Add-LibraryPathToken {
         $m = [regex]::Match($line, $pattern, 'IgnoreCase')
         if (-not $m.Success) { continue }
 
-        $valNorm = ([System.IO.Path]::GetFullPath($m.Groups['val'].Value)).TrimEnd('\','/').ToLowerInvariant()
+        $valNorm = ([System.IO.Path]::GetFullPath($m.Groups['val'].Value)).TrimEnd([char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)).ToLowerInvariant()
         if ($valNorm -eq $normToken) {
             $removeIndices.Add($i)
             continue
