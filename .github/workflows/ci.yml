@@ -46,7 +46,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
       - name: Summarize TRW checklist CSV
         run: dotnet run --project tools/RequirementsSummarizer/RequirementsSummarizer.csproj -- --csv docs/requirements/requirements.csv --rows 5 --summary-full --details --section-details --details-label "Requirements (full table)" --title "Requirements Checklist" --repo "${{ github.repository }}" --summary-output "${GITHUB_STEP_SUMMARY:-}" --full-output "${{ github.workspace }}/reports/req-full.md" --json-output "${{ github.workspace }}/reports/requirements.json" --html-output "${{ github.workspace }}/reports/requirements.html"
       - name: Upload requirements artifacts
@@ -250,7 +250,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
       - name: Check job dependencies include verify-checklist-sync
         run: |
           python3 - <<'PY'
@@ -326,7 +326,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
       - name: Run build-vip in simulate mode (no vipm)
         uses: ./.github/actions/build-vip
         with:
@@ -398,7 +398,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
       - id: read
         name: Gate minimum LabVIEW policy vs VIPB
         shell: pwsh
@@ -434,7 +434,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: List collaborators and permissions
         shell: pwsh
@@ -704,7 +704,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
       - name: Validate LocalHost.LibraryPaths entries (64-bit)
         shell: pwsh
         run: |
@@ -985,7 +985,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
       - name: Install Pester 5.7.1
         shell: pwsh
         run: |
