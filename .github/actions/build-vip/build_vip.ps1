@@ -74,14 +74,29 @@ param (
 # 1) Resolve paths
 try {
     $ResolvedRepositoryPath = Resolve-Path -Path $RepositoryPath -ErrorAction Stop
-    if ([System.IO.Path]::IsPathRooted($VIPBPath)) {
+
+    if ([string]::IsNullOrWhiteSpace($VIPBPath)) {
+        $ResolvedVIPBPath = $null
+    }
+    elseif ([System.IO.Path]::IsPathRooted($VIPBPath)) {
         $ResolvedVIPBPath = Resolve-Path -Path $VIPBPath -ErrorAction Stop
     }
     else {
         $ResolvedVIPBPath = Join-Path -Path $ResolvedRepositoryPath -ChildPath $VIPBPath -ErrorAction Stop
     }
+
+    # If the resolved path points to a directory (e.g., empty input), treat it as unset so we trigger discovery
+    if ($ResolvedVIPBPath -and (Test-Path -LiteralPath $ResolvedVIPBPath)) {
+        $item = Get-Item -LiteralPath $ResolvedVIPBPath -ErrorAction SilentlyContinue
+        if ($item -and $item.PSIsContainer) {
+            $ResolvedVIPBPath = $null
+        }
+    }
+
     Write-Verbose "RepositoryPath resolved to $ResolvedRepositoryPath"
-    Write-Verbose "VIPBPath resolved to $ResolvedVIPBPath"
+    if ($ResolvedVIPBPath) {
+        Write-Verbose "VIPBPath resolved to $ResolvedVIPBPath"
+    }
     if ($Commit) {
         Write-Verbose "Embedding commit metadata: $Commit" -Verbose:$VerbosePreference
     }
@@ -96,15 +111,15 @@ catch {
     exit 1
 }
 
-# If provided VIPBPath doesn't exist, attempt to auto-discover the single .vipb in the repo
-if (-not (Test-Path -LiteralPath $ResolvedVIPBPath)) {
+# If VIPBPath is unset/invalid, attempt to auto-discover the single .vipb in the repo
+if (-not $ResolvedVIPBPath -or -not (Test-Path -LiteralPath $ResolvedVIPBPath)) {
     $candidates = Get-ChildItem -Path $ResolvedRepositoryPath -Filter *.vipb -File -Recurse
     if (-not $candidates -or $candidates.Count -eq 0) {
-        Write-Error "VIPB not found at '$ResolvedVIPBPath' and no .vipb files discovered under $ResolvedRepositoryPath."
+        Write-Error ("VIPB not found{0} and no .vipb files discovered under {1}." -f (if ($ResolvedVIPBPath) { " at '$ResolvedVIPBPath'" } else { "" }), $ResolvedRepositoryPath)
         exit 1
     }
     if ($candidates.Count -gt 1) {
-        Write-Error ("VIPB not found at '{0}' and multiple .vipb files discovered: {1}. Specify vipb_path explicitly." -f $ResolvedVIPBPath, ($candidates | ForEach-Object { $_.FullName } -join '; '))
+        Write-Error ("VIPB not found{0} and multiple .vipb files discovered: {1}. Specify vipb_path explicitly." -f (if ($ResolvedVIPBPath) { " at '$ResolvedVIPBPath'" } else { "" }), ($candidates | ForEach-Object { $_.FullName } -join '; '))
         exit 1
     }
     $ResolvedVIPBPath = $candidates[0].FullName
