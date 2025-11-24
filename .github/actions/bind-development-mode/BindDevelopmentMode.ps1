@@ -654,10 +654,9 @@ $( $anomalyLines -join "`n")
 - $JsonOutputPath
 
 ## Paste to your CODEX Agent
-Copy/paste the block below (replace `<log>` with your console output):
+Copy/paste this block to the agent (the console output above is the log to use):
 
-You are the integration agent. Dev-mode bind failed because LabVIEW.ini points to another path. Here is the console log:
-<log>
+You are the integration agent. Dev-mode bind failed because LabVIEW.ini points to another path. Use the console output above and `reports/dev-mode-bind.json` to diagnose.
 
 What you should do:
 1) Diagnose using the log and `reports/dev-mode-bind.json` (paths, statuses, anomalies).
