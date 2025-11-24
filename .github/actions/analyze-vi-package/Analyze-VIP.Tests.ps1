@@ -12,10 +12,32 @@ $vipPath = $env:VIP_PATH
 if (-not $vipPath -or -not (Test-Path -LiteralPath $vipPath -PathType Leaf)) {
     $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
     $vipDir = Join-Path $repoRoot 'builds\VI Package'
-    $fallback = Get-ChildItem -Path $vipDir -Filter *.vip -File -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    if ($fallback) {
-        $vipPath = $fallback.FullName
-        Write-Information ("VIP_PATH not set; using latest VIP under {0}: {1}" -f $vipDir, $vipPath) -InformationAction Continue
+    # Try deterministic filename based on latest tag + commit count (matches Build.ps1 naming).
+    $tagVersion = '0.1.0'
+    try {
+        $tag = git -C $repoRoot describe --tags --abbrev=0 2>$null
+        if ($tag -and ($tag -match 'v?(\d+)\.(\d+)\.(\d+)')) {
+            $tagVersion = "{0}.{1}.{2}" -f $Matches[1], $Matches[2], $Matches[3]
+        }
+    } catch {}
+    $commitCount = $null
+    try {
+        $commitCount = git -C $repoRoot rev-list --count HEAD 2>$null
+    } catch {}
+    if ($commitCount) {
+        $deterministicName = "ni_icon_editor-{0}.{1}.vip" -f $tagVersion, $commitCount
+        $candidate = Join-Path $vipDir $deterministicName
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            $vipPath = $candidate
+            Write-Information ("VIP_PATH not set; using deterministic VIP {0}" -f $vipPath) -InformationAction Continue
+        }
+    }
+    if (-not $vipPath) {
+        $fallback = Get-ChildItem -Path $vipDir -Filter *.vip -File -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if ($fallback) {
+            $vipPath = $fallback.FullName
+            Write-Information ("VIP_PATH not set; using latest VIP under {0}: {1}" -f $vipDir, $vipPath) -InformationAction Continue
+        }
     }
 }
 if (-not $vipPath -or -not (Test-Path -LiteralPath $vipPath -PathType Leaf)) {
