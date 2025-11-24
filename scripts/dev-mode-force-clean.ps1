@@ -21,10 +21,15 @@ if (-not $VipbPath) {
         throw "No .vipb files found under $deployment; specify -VipbPath."
     }
     $VipbPath = $candidates[0].FullName
-}
+} 
 else {
     $VipbPath = (Resolve-Path -LiteralPath $VipbPath).Path
 }
+
+$reportsDir = Join-Path $repo 'reports'
+if (-not (Test-Path $reportsDir)) { New-Item -ItemType Directory -Path $reportsDir | Out-Null }
+$vipbRecord = Join-Path $reportsDir 'vipb-path.txt'
+Set-Content -LiteralPath $vipbRecord -Value $VipbPath -Encoding UTF8
 
 Write-Host "Dev Mode Bind (force clean): clearing LocalHost.LibraryPaths entries from the canonical LabVIEW INIs in Program Files / Program Files (x86) and unbinding both bitnesses (Force)"
 Write-Host "Using VIPB: $VipbPath"
