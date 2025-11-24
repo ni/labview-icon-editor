@@ -67,6 +67,18 @@
       "type": "promptString",
       "description": "Author name for Build.ps1",
       "default": "Local Developer"
+    },
+    {
+      "id": "devmodePhrase",
+      "type": "promptString",
+      "description": "Dev-mode intent phrase (e.g., /devmode bind 2021 both force)",
+      "default": "/devmode bind 2021 both force"
+    },
+    {
+      "id": "devmodeForcePhrase",
+      "type": "promptString",
+      "description": "Dev-mode intent phrase for force overwrite",
+      "default": "/devmode bind 2021 both force"
     }
   ],
   "tasks": [
@@ -411,6 +423,50 @@
         "-Bitness",
         "both",
         "-Force"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev Mode Bind (check + run)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/tools/DevModeAgentCli/DevModeAgentCli.csproj",
+        "--",
+        "--phrase",
+        "${input:devmodePhrase}",
+        "--repo",
+        "${workspaceFolder}",
+        "--summary",
+        "${workspaceFolder}/reports/dev-mode-bind.json",
+        "--execute"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev Mode Bind (force overwrite)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/tools/DevModeAgentCli/DevModeAgentCli.csproj",
+        "--",
+        "--phrase",
+        "${input:devmodeForcePhrase}",
+        "--repo",
+        "${workspaceFolder}",
+        "--summary",
+        "${workspaceFolder}/reports/dev-mode-bind.json",
+        "--execute"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
