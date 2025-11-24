@@ -185,16 +185,11 @@ if (-not $vipmCli) {
     exit 1
 }
 
-$outputDir = Join-Path -Path $ResolvedRepositoryPath -ChildPath "builds/VI Package"
-New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
-
 $vipmArgs = @(
     "build",
     $ResolvedVIPBPath,
     "--labview-version", $Package_LabVIEW_Version.ToString(),
-    "--labview-bitness", $SupportedBitness,
-    "--timeout", "300",
-    "--output", $outputDir
+    "--labview-bitness", $SupportedBitness
 )
 
 $prettyCommand = "vipm " + ($vipmArgs -join ' ')
@@ -229,6 +224,22 @@ if ($LASTEXITCODE -ne 0) {
     }
     $errorObject | ConvertTo-Json -Depth 10
     exit 1
+}
+
+#
+# Move the produced VIP into the expected output directory for downstream steps
+#
+$outputDir = Join-Path -Path $ResolvedRepositoryPath -ChildPath "builds/VI Package"
+New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
+$vipbDir = Split-Path -Parent $ResolvedVIPBPath
+$vipProduced = Get-ChildItem -Path $vipbDir -Filter *.vip -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if ($vipProduced) {
+    $destPath = Join-Path -Path $outputDir -ChildPath $vipProduced.Name
+    Move-Item -LiteralPath $vipProduced.FullName -Destination $destPath -Force
+    Write-Information ("Moved built VIP to {0}" -f $destPath) -InformationAction Continue
+}
+else {
+    Write-Warning "vipm build succeeded but no .vip was found beside the VIPB; downstream locate step may fail."
 }
 
 Write-Information "Successfully built VI package: $ResolvedVIPBPath" -InformationAction Continue

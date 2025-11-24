@@ -111,10 +111,12 @@ foreach ($entry in $entries) {
 }
 
 if ($mismatched.Count -gt 0) {
-    $example = $mismatched | Select-Object -First 1
-    Write-Warning ("Found LocalHost.LibraryPaths entries that do not point to this repo (example: {0}). Consider running 'Revert Dev Mode (LabVIEW)' then 'Set Dev Mode (LabVIEW)' for bitness {1} to refresh the path." -f $example, $SupportedBitness)
+    $taskHint = "VS Code tasks: 'Revert Dev Mode (LabVIEW)' then 'Set Dev Mode (LabVIEW)' for bitness {0}".ToString() -f $SupportedBitness
+    foreach ($badPath in $mismatched) {
+        Write-Warning ("Found LocalHost.LibraryPaths entry that does not point to this repo: {0}. {1} (Terminal -> Run Task) to refresh the INI, then rerun your build." -f $badPath, $taskHint)
+    }
     if ($FailOnMissing) {
-        Write-Error "LocalHost.LibraryPaths entries are not pointing to this repo."
+        Write-Error "LocalHost.LibraryPaths entries are not pointing to this repo. Run the dev-mode tasks noted above and retry."
         exit 3
     }
 }
