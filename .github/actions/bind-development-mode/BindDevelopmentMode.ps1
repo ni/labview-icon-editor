@@ -609,6 +609,10 @@ if ($anomalies.Count -gt 0) {
 
 # Emit a markdown summary when Force is needed (current run) to aid troubleshooting.
 if ($forceNeededThisRun) {
+    $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+    $artifactDir = Join-Path $RepositoryPath "artifacts/dev-mode-bind"
+    if (-not (Test-Path $artifactDir)) { New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null }
+
     $targetLines = @()
     foreach ($arch in @('32','64')) {
         $state = ($installedStates | Where-Object { $_.version -like "$lvVersion*" -and $_.arch -eq $arch } | Select-Object -First 1)
@@ -668,12 +672,12 @@ What you should do:
     Write-Host $md
 
     try {
-        $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-        $artifactDir = Join-Path $RepositoryPath "artifacts/dev-mode-bind"
-        $artifactPath = Join-Path $artifactDir ("dev-mode-bind-{0}.json" -f $timestamp)
-        if (-not (Test-Path $artifactDir)) { New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null }
-        Copy-Item -LiteralPath $JsonOutputPath -Destination $artifactPath -Force
-        Write-Host ("Artifact saved: {0}" -f $artifactPath)
+        $artifactJson = Join-Path $artifactDir ("dev-mode-bind-{0}.json" -f $timestamp)
+        $artifactMd   = Join-Path $artifactDir ("dev-mode-bind-{0}.md" -f $timestamp)
+        Copy-Item -LiteralPath $JsonOutputPath -Destination $artifactJson -Force
+        Set-Content -LiteralPath $artifactMd -Value $md -Encoding UTF8
+        Write-Host ("Artifact saved: {0}" -f $artifactJson)
+        Write-Host ("Log saved:      {0}" -f $artifactMd)
     }
     catch {
         Write-Verbose ("Failed to save artifact copy: {0}" -f $_.Exception.Message)
