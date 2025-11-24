@@ -360,6 +360,20 @@
         "cwd": "${workspaceFolder}"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Test VIPM Docker",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "& { docker compose -f \"${workspaceFolder}/Tooling/docker/vipm/docker-compose.yml\" run --rm vipm-labview vipm help }"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
     }
   ]
 }
