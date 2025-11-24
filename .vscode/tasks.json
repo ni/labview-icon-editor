@@ -55,6 +55,18 @@
       "type": "promptString",
       "description": "Build number",
       "default": "1"
+    },
+    {
+      "id": "companyName",
+      "type": "promptString",
+      "description": "Company name for Build.ps1",
+      "default": "LabVIEW-Community-CI-CD"
+    },
+    {
+      "id": "authorName",
+      "type": "promptString",
+      "description": "Author name for Build.ps1",
+      "default": "Local Developer"
     }
   ],
   "tasks": [
@@ -110,6 +122,41 @@
         "'{}'",
         "-Simulate",
         "-SkipPPLCheck"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build (isolated worktree)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/worktree-build.ps1",
+        "-SourceRepoPath",
+        "${workspaceFolder}",
+        "-Ref",
+        "HEAD",
+        "-SupportedBitness",
+        "${input:devModeBitness}",
+        "-LvlibpBitness",
+        "${input:lvlibpBitness}",
+        "-Major",
+        "${input:semverMajor}",
+        "-Minor",
+        "${input:semverMinor}",
+        "-Patch",
+        "${input:semverPatch}",
+        "-Build",
+        "${input:buildNumber}",
+        "-CompanyName",
+        "${input:companyName}",
+        "-AuthorName",
+        "${input:authorName}"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
