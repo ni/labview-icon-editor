@@ -31,6 +31,9 @@ if (-not (Test-Path $reportsDir)) { New-Item -ItemType Directory -Path $reportsD
 $vipbRecord = Join-Path $reportsDir 'vipb-path.txt'
 Set-Content -LiteralPath $vipbRecord -Value $VipbPath -Encoding UTF8
 
+ $startTime = Get-Date
+ $metaPath = Join-Path $reportsDir 'dev-mode-force-clean.json'
+
 Write-Host "Dev Mode Bind (force clean): clearing LocalHost.LibraryPaths entries from the canonical LabVIEW INIs in Program Files / Program Files (x86) and unbinding both bitnesses (Force)"
 Write-Host "Using VIPB: $VipbPath"
 Write-Host @"
@@ -58,3 +61,13 @@ if (-not $SkipConfirm) {
 
 Write-Host "Dev Mode Bind (force clean): writing this repo into LocalHost.LibraryPaths for both bitnesses, prepping sources, and rerunning binder validation (Force)"
 & $bindScript -RepositoryPath $repo -Mode bind -Bitness both -Force
+
+$endTime = Get-Date
+$duration = $endTime - $startTime
+$meta = @{
+    VipbPath   = $VipbPath
+    StartTime  = $startTime.ToString("o")
+    EndTime    = $endTime.ToString("o")
+    Duration   = $duration.TotalSeconds
+}
+$meta | ConvertTo-Json | Set-Content -LiteralPath $metaPath -Encoding UTF8

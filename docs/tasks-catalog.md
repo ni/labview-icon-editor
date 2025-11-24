@@ -4,7 +4,7 @@ Generated from `scripts/tasks-coverage.json`. Run `python scripts/generate-tasks
 
 ## Task List
 - Dev Mode Bind (check + run) — Intent CLI plan+execute for dev-mode bind; default phrase `/devmode bind 2021 both force`
-- Dev Mode Bind (force overwrite) — Intent CLI with Force to overwrite existing tokens (only when INI points elsewhere; uses VIPB at `${input:vipbPath}`)
+- Dev Mode Bind (force overwrite) — Intent CLI with Force to overwrite existing tokens (only when INI points elsewhere)
 - Dev Mode (interactive bind/unbind) — Guided PowerShell helper with prompts
 - Revert Dev Mode (LabVIEW) — Unbind/reset dev mode for the selected bitness
 - Set Dev Mode (LabVIEW) — Prep dev mode for a chosen bitness
@@ -29,7 +29,7 @@ Mark cells by setting coverage entries in `scripts/tasks-coverage.json` (e.g., `
 
 | Task | 2020 win | 2020 linux | 2021 win | 2021 linux | 2022 win | 2022 linux | 2023 win | 2023 linux | 2024 win | 2024 linux | 2025 win | 2025 linux | 2026 win | 2026 linux |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Dev Mode Bind (check + run) | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
+| Dev Mode Bind (check + run) | [ ] | [ ] | [x] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
 | Dev Mode Bind (force overwrite) | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
 | Dev Mode (interactive bind/unbind) | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |
 | Revert Dev Mode (LabVIEW) | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] | [ ] |

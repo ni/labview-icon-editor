@@ -5,7 +5,7 @@
       "description": "Intent CLI plan+execute for dev-mode bind; default phrase `/devmode bind 2021 both force`",
       "coverage": {
         "2021": {
-          "win": "fail"
+          "win": "pass"
         }
       }
     },
