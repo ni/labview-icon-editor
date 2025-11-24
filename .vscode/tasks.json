@@ -386,8 +386,10 @@
       "command": "pwsh",
       "args": [
         "-NoProfile",
-        "-Command",
-        "& { $repo='${workspaceFolder}'; $defaultMode='bind'; $defaultBitness='both'; $mode=Read-Host \"Mode (bind/unbind/status) [$defaultMode]\"; if ([string]::IsNullOrWhiteSpace($mode)) { $mode=$defaultMode }; $bit=Read-Host \"Bitness (32/64/both) [$defaultBitness]\"; if ([string]::IsNullOrWhiteSpace($bit)) { $bit=$defaultBitness }; $forceResp=Read-Host 'Force? (y/N)'; $forceFlag = if ($forceResp -match '^(?i:y|yes)$') { '-Force' } else { '' }; $dryResp=Read-Host 'Dry run? (y/N)'; $dryFlag = if ($dryResp -match '^(?i:y|yes)$') { '-DryRun' } else { '' }; Write-Host \"Running bind helper: mode=$mode bitness=$bit force=$([bool]$forceFlag) dry=$([bool]$dryFlag)\"; $cmd = \"& '${workspaceFolder}/.github/actions/bind-development-mode/BindDevelopmentMode.ps1' -RepositoryPath '$repo' -Mode $mode -Bitness $bit $forceFlag $dryFlag\"; Invoke-Expression $cmd }"
+        "-File",
+        "${workspaceFolder}/.github/actions/bind-development-mode/RunInteractiveBind.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
