@@ -7,6 +7,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$global:LASTEXITCODE = 0
 Set-StrictMode -Version Latest
 
 $repo = (Resolve-Path -LiteralPath $RepositoryPath -ErrorAction Stop).ProviderPath
@@ -21,7 +22,10 @@ if (-not (Test-Path -LiteralPath $build))   { throw "Missing run-build-or-packag
 if (-not (Test-Path -LiteralPath $analyze)) { throw "Missing analyze runner at $analyze" }
 
 $minLv = & $getVer -RepositoryPath $repo
-if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($minLv)) {
+if ($null -ne $global:LASTEXITCODE -and $LASTEXITCODE -ne 0) {
+    throw "Failed to derive LabVIEW version from VIPB under $repo (exit $LASTEXITCODE)."
+}
+if ([string]::IsNullOrWhiteSpace($minLv)) {
     throw "Failed to derive LabVIEW version from VIPB under $repo."
 }
 
@@ -37,7 +41,7 @@ if (-not $SkipCIGate) {
 }
 
 & $build -BuildMode 'vip+lvlibp' -WorkspacePath $repo -LabVIEWMinorRevision 3 -LvlibpBitness $Bitness
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if ($null -ne $global:LASTEXITCODE -and $LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 & $analyze -VipArtifactPath $vipDir -MinLabVIEW $minLv
 exit $LASTEXITCODE
