@@ -12,4 +12,5 @@ if (-not (Test-Path -LiteralPath $envPath)) {
 }
 
 $composeFile = Join-Path -Path $RepositoryRoot -ChildPath 'Tooling/docker/vipm/docker-compose.yml'
+docker compose -f $composeFile build vipm-labview
 docker compose -f $composeFile run --rm vipm-labview vipm help

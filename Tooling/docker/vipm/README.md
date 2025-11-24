@@ -18,7 +18,7 @@ Lightweight helper to run VIPM CLI inside NI's LabVIEW container. Useful for ins
 - (Experimental) Build from VIPB on Linux: `vipm build /workspace/path/to/your.vipb`
 
 ## VS Code task
-- Run task “Test VIPM Docker” (calls `Tooling/docker/vipm/test-vipm.ps1`) to build the image if needed and execute `vipm help` inside the container. It will auto-create an empty `.env` if missing; supply credentials in `.env` for activation/installs.
+- Run task “Test VIPM Docker” (calls `Tooling/docker/vipm/test-vipm.ps1`) to build the image if needed and execute `vipm help` inside the container. It will auto-create an empty `.env` if missing; supply credentials in `.env` for activation/installs. The script now builds before running to avoid pull errors.
 
 ## Caveats
 - Base image: `nationalinstruments/labview:2025q3patch1-linux`; expect differences from our Windows/LabVIEW 2021 pipeline.
