@@ -53,11 +53,16 @@ catch {
 # -------------------------
 try {
     Write-Verbose "Attempting to resolve the repository path..."
-    $ResolvedRepositoryPath = Resolve-Path -Path $RepositoryPath -ErrorAction Stop
+    $ResolvedRepositoryPath = (Resolve-Path -LiteralPath $RepositoryPath -ErrorAction Stop).Path
     Write-Verbose "ResolvedRepositoryPath: $ResolvedRepositoryPath"
 
     Write-Verbose "Building full path for the .vipc file..."
-    $ResolvedVIPCPath = Join-Path -Path $ResolvedRepositoryPath -ChildPath $VIPCPath -ErrorAction Stop
+    if ([System.IO.Path]::IsPathRooted($VIPCPath)) {
+        $ResolvedVIPCPath = [System.IO.Path]::GetFullPath($VIPCPath)
+    }
+    else {
+        $ResolvedVIPCPath = Join-Path -Path $ResolvedRepositoryPath -ChildPath $VIPCPath -ErrorAction Stop
+    }
     Write-Verbose "ResolvedVIPCPath:     $ResolvedVIPCPath"
 
     # Verify that the .vipc file actually exists
