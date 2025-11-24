@@ -42,11 +42,17 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$CompanyName,
 
-    [Parameter(Mandatory = $true)]
+[Parameter(Mandatory = $true)]
     [string]$AuthorName
 )
 
 $ReleaseNotesFile = Join-Path $RepositoryPath 'Tooling\deployment\release_notes.md'
+$helpersPath = Join-Path $RepositoryPath 'scripts/build-helpers.psm1'
+if (-not (Test-Path -LiteralPath $helpersPath)) {
+    Write-Error "Helper module not found at $helpersPath"
+    exit 1
+}
+Import-Module -Name $helpersPath -Force
 
 # Helper function to verify a file/folder path exists
 function Test-PathExistence {
@@ -202,7 +208,7 @@ try {
     }
 
     # Derive LabVIEW version from VIPB as the first consumer step
-    $lvVersion = Get-LabVIEWVersionFromVipb -RootPath $RepositoryPath
+    $lvVersion = Get-LabVIEWVersionOrFail -RepoPath $RepositoryPath
     Write-Information ("Using LabVIEW version from VIPB: {0}" -f $lvVersion) -InformationAction Continue
 
     # Validate needed folders after version is known
@@ -214,16 +220,7 @@ try {
     Test-PathExistence $ActionsPath "Actions folder"
 
     # Ensure VIPC dependencies exist (mirrors CI prep). Only use the canonical VIPC under .github/actions/apply-vipc.
-    $vipcPath = Join-Path $RepositoryPath ".github\actions\apply-vipc\runner_dependencies.vipc"
-    $vipcLegacy = Join-Path $RepositoryPath "Tooling\deployment\runner_dependencies.vipc"
-
-    if (-not (Test-Path -LiteralPath $vipcPath)) {
-        if (Test-Path -LiteralPath $vipcLegacy) {
-            Write-Warning "Found legacy VIPC at $vipcLegacy but ignoring it. Build uses canonical VIPC at $vipcPath to stay aligned with CI; copy or link the canonical file into place."
-        }
-        Write-Error "Missing canonical runner_dependencies.vipc at $vipcPath. Cannot apply dependencies; run packaging prep or fetch the canonical VIPC."
-        exit 1
-    }
+    $vipcPath = Get-CanonicalVipcPath -RepoPath $RepositoryPath
 
     # 1) Clean up old .lvlibp in the plugins folder
     Write-Information "Cleaning up old .lvlibp files in plugins folder..." -InformationAction Continue

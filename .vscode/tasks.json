@@ -2,18 +2,6 @@
   "version": "2.0.0",
   "inputs": [
     {
-      "id": "vipArtifactPath",
-      "type": "promptString",
-      "description": "Path to the built .vip (file/folder/pattern)",
-      "default": "builds/VI Package/"
-    },
-    {
-      "id": "minLv",
-      "type": "promptString",
-      "description": "Minimum LabVIEW version (major.minor)",
-      "default": "21.0"
-    },
-    {
       "id": "buildMode",
       "type": "pickString",
       "description": "Artifact type: VIP + lvlibp builds, or single-arch VIP only",
@@ -77,7 +65,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "& { & \"${workspaceFolder}/scripts/check-ci-gate.ps1\" -WorkflowFile \".github/workflows/ci.yml\" -RepositoryPath \"${workspaceFolder}\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"${input:buildMode}\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"${input:lvlibpBitness}\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/.github/actions/analyze-vi-package/run-local.ps1\" -VipArtifactPath \"${input:vipArtifactPath}\" -MinLabVIEW \"${input:minLv}\" }"
+        "& { $minLv = & \"${workspaceFolder}/scripts/get-package-lv-version.ps1\" -RepositoryPath \"${workspaceFolder}\"; if ($LASTEXITCODE -ne 0 -or -not $minLv) { exit 1 }; & \"${workspaceFolder}/scripts/check-ci-gate.ps1\" -WorkflowFile \".github/workflows/ci.yml\" -RepositoryPath \"${workspaceFolder}\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"${input:buildMode}\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"${input:lvlibpBitness}\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/.github/actions/analyze-vi-package/run-local.ps1\" -VipArtifactPath \"${workspaceFolder}/builds/VI Package/\" -MinLabVIEW $minLv }"
       ],
       "options": {
         "cwd": "${workspaceFolder}",
@@ -96,7 +84,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "& { & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"vip+lvlibp\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"both\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/.github/actions/analyze-vi-package/run-local.ps1\" -VipArtifactPath \"${input:vipArtifactPath}\" -MinLabVIEW \"${input:minLv}\" }"
+        "& { $minLv = & \"${workspaceFolder}/scripts/get-package-lv-version.ps1\" -RepositoryPath \"${workspaceFolder}\"; if ($LASTEXITCODE -ne 0 -or -not $minLv) { exit 1 }; & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"vip+lvlibp\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"both\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/.github/actions/analyze-vi-package/run-local.ps1\" -VipArtifactPath \"${workspaceFolder}/builds/VI Package/\" -MinLabVIEW $minLv }"
       ],
       "options": {
         "cwd": "${workspaceFolder}"

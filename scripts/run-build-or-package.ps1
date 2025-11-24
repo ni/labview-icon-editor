@@ -13,6 +13,12 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+$helpersPath = Join-Path -Path $PSScriptRoot -ChildPath "build-helpers.psm1"
+if (-not (Test-Path -LiteralPath $helpersPath)) {
+    throw "Helper module not found at $helpersPath"
+}
+Import-Module -Name $helpersPath -Force
+
 function Resolve-PathSafe {
     param([string]$Path)
     if ([string]::IsNullOrWhiteSpace($Path)) { return $null }
@@ -191,34 +197,11 @@ $AuthorName = if ($PSBoundParameters.ContainsKey('AuthorName') -and -not [string
 $buildScript = Join-Path -Path $ws -ChildPath ".github/actions/build/Build.ps1"
 $singleScript = Join-Path -Path $ws -ChildPath "scripts/build-vip-single-arch.ps1"
 $buildLvlibpScript = Join-Path -Path $ws -ChildPath ".github/actions/build-lvlibp/Build_lvlibp.ps1"
-function Assert-DevModePaths {
-    param(
-        [string]$Repo,
-        [string]$Arch,
-        [switch]$WarnOnly
-    )
-    $pathsScript = Join-Path -Path $ws -ChildPath "scripts/read-library-paths.ps1"
-    if (-not (Test-Path -LiteralPath $pathsScript)) { return }
-    if ($WarnOnly) {
-        & $pathsScript -RepositoryPath $Repo -SupportedBitness $Arch
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning ("LocalHost.LibraryPaths preflight failed for {0}-bit (non-blocking). Please run 'Revert Dev Mode (LabVIEW)' then 'Set Dev Mode (LabVIEW)' for bitness {0} to refresh the path." -f $Arch)
-        }
-    }
-    else {
-        & $pathsScript -RepositoryPath $Repo -SupportedBitness $Arch -FailOnMissing
-        if ($LASTEXITCODE -ne 0) {
-            $msg = "LocalHost.LibraryPaths preflight failed for $Arch-bit. Please run 'Revert Dev Mode (LabVIEW)' then 'Set Dev Mode (LabVIEW)' for bitness $Arch to refresh the path."
-            throw $msg
-        }
-    }
-}
-
 switch ($BuildMode) {
     'vip+lvlibp' {
         if ($LvlibpBitness -eq '32') {
             Write-Information "LvlibpBitness=32 with buildMode=vip+lvlibp: building 32-bit lvlibp and packaging a single-arch VIP (no 64-bit steps will run)." -InformationAction Continue
-            Assert-DevModePaths -Repo $repo -Arch '32'
+            Assert-DevModePaths -RepoPath $repo -Bitness '32'
             if (-not (Test-Path -LiteralPath $buildLvlibpScript)) {
                 throw "Build_lvlibp.ps1 not found at $buildLvlibpScript"
             }
@@ -242,11 +225,11 @@ switch ($BuildMode) {
         else {
             # Enforce selected bitness preflight; if building both, check both arches
             if ($LvlibpBitness -eq 'both') {
-                Assert-DevModePaths -Repo $repo -Arch '64'
-                Assert-DevModePaths -Repo $repo -Arch '32'
+                Assert-DevModePaths -RepoPath $repo -Bitness '64'
+                Assert-DevModePaths -RepoPath $repo -Bitness '32'
             }
             else {
-                Assert-DevModePaths -Repo $repo -Arch '64'
+                Assert-DevModePaths -RepoPath $repo -Bitness '64'
             }
             & $buildScript -RepositoryPath $repo -Major $semver.Major -Minor $semver.Minor -Patch $semver.Patch -Build $buildNumber -LabVIEWMinorRevision $LabVIEWMinorRevision -Commit $commitHash -CompanyName $CompanyName -AuthorName $AuthorName -LvlibpBitness $LvlibpBitness -VIPBPath $resolvedVipb
         }
