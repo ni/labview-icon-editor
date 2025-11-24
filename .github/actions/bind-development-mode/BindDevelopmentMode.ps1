@@ -23,6 +23,19 @@ function Normalize-PathLower {
     return ([System.IO.Path]::GetFullPath($Path)).TrimEnd([char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)).ToLowerInvariant()
 }
 
+function Format-TokenPath {
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return '(no entries)' }
+    $p = $Path.Trim('"')
+    try {
+        $full = [System.IO.Path]::GetFullPath($p)
+        return $full
+    }
+    catch {
+        return $p
+    }
+}
+
 function Get-ExpectedTokenPath {
     param([string]$Repo)
     $project = Get-ChildItem -Path $Repo -Filter *.lvproj -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -126,7 +139,9 @@ catch {
 }
 $vipbFile = Get-ChildItem -Path $RepositoryPath -Filter *.vipb -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
 $vipbMsg = if ($vipbFile) { $vipbFile.FullName } else { 'not found' }
+Write-Host ("=== Context ===")
 Write-Host ("LabVIEW version: {0} (from VIPB: {1}; via {2})" -f $lvVersion, $vipbMsg, $versionScript)
+Write-Host ("Bind request   : mode={0}, bitness={1}" -f $Mode, $Bitness)
 
 # Surface a reminder from the prior run if it recommended Force so users see it before choosing a task/flags.
 $previousSummaryPath = Join-Path -Path $RepositoryPath -ChildPath 'reports/dev-mode-bind.json'
@@ -181,15 +196,16 @@ foreach ($root in @('C:\Program Files\National Instruments','C:\Program Files (x
 }
 
 if ($installedStates.Count -gt 0) {
-    Write-Host "Installed LabVIEW INI tokens:"
+    Write-Host "=== Installed LabVIEW INI tokens ==="
     foreach ($state in $installedStates) {
         $entryList = @($state.entries)
         $first = if ($entryList -and $entryList.Count -gt 0) { $entryList[0] } else { '(no entries)' }
-        Write-Host ("  {0}-bit {1}: {2}" -f $state.arch, $state.version, $first)
+        Write-Host ("  {0}-bit {1}: {2}" -f $state.arch, $state.version, (Format-TokenPath $first))
     }
 }
 else {
-    Write-Host "Installed LabVIEW INI tokens: none found under Program Files."
+    Write-Host "=== Installed LabVIEW INI tokens ==="
+    Write-Host "  none found under Program Files."
 }
 
 $bitnessList = if ($Bitness -eq 'both') { @('32','64') } else { @($Bitness) }
