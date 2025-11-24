@@ -387,11 +387,13 @@ Write-Host ("{0}Totals:{1} success={2} fail={3} skip={4} dry-run={5}" -f $palett
 
 $hintLines = New-Object System.Collections.Generic.List[string]
 if (@($results | Where-Object { $_.status -eq 'fail' -and $_.message -match 'use -Force' }).Count -gt 0) {
-    $hintLines.Add("Next: rerun bind with -Force if this repo should own dev mode, or run unbind with -Force to clear the other token.")
+    $hintLines.Add("1) Open VS Code > Terminal > Run Task, pick 'Dev Mode (interactive bind/unbind)'.")
+    $hintLines.Add("2) Choose bind + Force to overwrite, or unbind + Force to clear the other token (same as BindDevelopmentMode.ps1 flags).")
 }
 if ($hintLines.Count -gt 0) {
+    Write-Host ("{0}Next steps:{1}" -f $palette.head, $palette.reset)
     foreach ($line in $hintLines) {
-        Write-Host ("{0}Hint:{1} {2}" -f $palette.head, $palette.reset, $line)
+        Write-Host ("  {0}" -f $line)
     }
 }
 

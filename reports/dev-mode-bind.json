@@ -5,9 +5,9 @@
     "expected_path": "C:\\repos\\labview-icon-editor-final-fork",
     "current_path": "C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor",
     "post_path": "C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor",
-    "action": "status",
-    "status": "success",
-    "message": "Status only"
+    "action": "bind",
+    "status": "fail",
+    "message": "LocalHost.LibraryPaths points to another path (C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor); use -Force to overwrite."
   },
   {
     "bitness": "64",
@@ -15,8 +15,8 @@
     "expected_path": "C:\\repos\\labview-icon-editor-final-fork",
     "current_path": "C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor",
     "post_path": "C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor",
-    "action": "status",
-    "status": "success",
-    "message": "Status only"
+    "action": "bind",
+    "status": "fail",
+    "message": "LocalHost.LibraryPaths points to another path (C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor); use -Force to overwrite."
   }
 ]
