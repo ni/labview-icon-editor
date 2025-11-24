@@ -492,6 +492,26 @@
       "isBackground": false
     },
     {
+      "label": "Dev Mode Bind (force clean)",
+      "type": "shell",
+      "detail": "Unbind with Force then bind with Force for both bitnesses; use when tokens point elsewhere",
+      "group": "Dev Mode",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "& { pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '${workspaceFolder}' -Mode unbind -Bitness both -Force; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '${workspaceFolder}' -Mode bind -Bitness both -Force }"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "isBackground": false
+    },
+    {
       "label": "Revert Dev Mode (LabVIEW)",
       "type": "shell",
       "command": "pwsh",
