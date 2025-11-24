@@ -77,6 +77,46 @@
       "problemMatcher": []
     },
     {
+      "label": "Build/Package VIP (simulate)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/.github/actions/build-vip/build_vip.ps1",
+        "-SupportedBitness",
+        "64",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-VIPBPath",
+        "Tooling/deployment/labview-icon-editor.vipb",
+        "-Package_LabVIEW_Version",
+        "2021",
+        "-LabVIEWMinorRevision",
+        "3",
+        "-Major",
+        "0",
+        "-Minor",
+        "0",
+        "-Patch",
+        "0",
+        "-Build",
+        "0",
+        "-Commit",
+        "manual",
+        "-ReleaseNotesFile",
+        "Tooling/deployment/release_notes.md",
+        "-DisplayInformationJSON",
+        "{}",
+        "-Simulate"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
       "label": "Build/Package VIP",
       "type": "shell",
       "command": "pwsh",

@@ -124,7 +124,8 @@ runs:
           -Build ${{ inputs.build }} `
           -Commit "${{ inputs.commit }}" `
           -ReleaseNotesFile "${{ inputs.release_notes_file }}" `
-          -DisplayInformationJSON $displayInformationJson
+          -DisplayInformationJSON $displayInformationJson `
+          -Simulate ${{ inputs.simulate }}
 
     - name: Dump vipm build logs on failure
       if: failure()
@@ -331,3 +332,7 @@ inputs:
     description: 'If true, fail when multiple .vip files exist after the build step'
     required: false
     default: 'true'
+  simulate:
+    description: 'If true, run preflights only and skip vipm build'
+    required: false
+    default: 'false'

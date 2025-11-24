@@ -64,6 +64,8 @@ param (
     [string]$Commit,
     [string]$ReleaseNotesFile,
 
+    [switch]$Simulate,
+
     [Parameter(Mandatory=$true)]
     [string]$DisplayInformationJSON
 )
@@ -231,6 +233,11 @@ $vipmArgs = @(
 $prettyCommand = "vipm " + ($vipmArgs -join ' ')
 Write-Output "Base build command:"
 Write-Output $prettyCommand
+
+if ($Simulate) {
+    Write-Host "Simulate mode enabled: skipping vipm build. Preflight passed, would run command above." -ForegroundColor Yellow
+    exit 0
+}
 
 $logFile = Join-Path -Path $LogDirectory -ChildPath "vipm-build-attempt-1.log"
 Write-Information "Starting vipm build. Log: $logFile" -InformationAction Continue
