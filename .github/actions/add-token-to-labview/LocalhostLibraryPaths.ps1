@@ -88,7 +88,7 @@ function Clear-StaleLibraryPaths {
     if ($removed.Count -gt 0) {
         Set-Content -LiteralPath $lvIniPath -Value ($cleaned -join "`r`n")
         $sample = $removed | Select-Object -First 1
-        Write-Warning ("Removed {0} LocalHost.LibraryPaths entries from {1}. Example removed entry: {2}" -f $removed.Count, $lvIniPath, $sample)
+        Write-Warning ("Removed {0} LocalHost.LibraryPaths entries from {1}. Example removed entry: {2}. If you still need that path, re-bind it explicitly for the intended repo/bitness." -f $removed.Count, $lvIniPath, $sample)
     }
 }
 

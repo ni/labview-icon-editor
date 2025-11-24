@@ -6,6 +6,19 @@ Describe "BindDevelopmentMode.ps1 JSON output and requirement coverage" {
         $scriptPath = (Resolve-Path (Join-Path $PSScriptRoot '..\.github\actions\bind-development-mode\BindDevelopmentMode.ps1')).Path
         $repoRoot = Join-Path $TestDrive 'repo'
         New-Item -ItemType Directory -Path (Join-Path $repoRoot 'scripts') -Force | Out-Null
+        function New-StubVipb {
+            param([string]$RepoPath)
+            $vipbPath = Join-Path $RepoPath 'stub.vipb'
+            $xml = @"
+<?xml version="1.0" encoding="UTF-8"?>
+<VI_Package_Builder_Settings>
+  <Library_General_Settings>
+    <Package_LabVIEW_Version>21.0 (64-bit)</Package_LabVIEW_Version>
+  </Library_General_Settings>
+</VI_Package_Builder_Settings>
+"@
+            Set-Content -LiteralPath $vipbPath -Value $xml -Encoding UTF8
+        }
         # Provide a stub version script so bind helper can resolve LV version
         $versionScript = @"
 param([string]`$RepositoryPath)
@@ -14,6 +27,7 @@ param([string]`$RepositoryPath)
         Set-Content -LiteralPath (Join-Path $repoRoot 'scripts\get-package-lv-version.ps1') -Value $versionScript -Encoding UTF8
         # Minimal lvproj so expected path resolves to lvproj parent
         New-Item -ItemType File -Path (Join-Path $repoRoot 'lv_icon_editor.lvproj') -Force | Out-Null
+        New-StubVipb -RepoPath $repoRoot
         New-Item -ItemType Directory -Path (Join-Path $repoRoot 'Tooling\deployment') -Force | Out-Null
         New-Item -ItemType File -Path (Join-Path $repoRoot 'Tooling\deployment\Create_LV_INI_Token.vi') -Force | Out-Null
 
@@ -51,6 +65,7 @@ param([string]`$RepositoryPath)
         New-Item -ItemType Directory -Path (Join-Path $repoPacked 'scripts') -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $repoPacked 'scripts\get-package-lv-version.ps1') -Value $versionScript -Encoding UTF8
         New-Item -ItemType File -Path (Join-Path $repoPacked 'lv_icon_editor.lvproj') -Force | Out-Null
+        New-StubVipb -RepoPath $repoPacked
         New-Item -ItemType Directory -Path (Join-Path $repoPacked 'Tooling\deployment') -Force | Out-Null
         New-Item -ItemType File -Path (Join-Path $repoPacked 'Tooling\deployment\Create_LV_INI_Token.vi') -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $repoPacked 'resource\plugins') -Force | Out-Null
@@ -109,5 +124,30 @@ param([string]`$RepositoryPath)
         $data = Get-Content -LiteralPath $jsonOut -Raw | ConvertFrom-Json
         $data[0].status | Should -Be 'success'
         $data[0].post_path | Should -Be ''
+    }
+
+    It "prints a reminder when the previous summary suggested Force and Force is not used" {
+        $hintRepo = Join-Path $TestDrive 'repo-hint'
+        New-Item -ItemType Directory -Path (Join-Path $hintRepo 'scripts') -Force | Out-Null
+        New-Item -ItemType Directory -Path (Join-Path $hintRepo 'reports') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $hintRepo 'scripts\get-package-lv-version.ps1') -Value $versionScript -Encoding UTF8
+        New-Item -ItemType File -Path (Join-Path $hintRepo 'lv_icon_editor.lvproj') -Force | Out-Null
+
+        $iniHint = Join-Path $TestDrive 'LabVIEW_hint.ini'
+        Set-Content -LiteralPath $iniHint -Value @("LocalHost.LibraryPaths1=C:\other\repo")
+        $env:ALLOW_NONCANONICAL_LV_INI_PATH = '1'
+        $env:TEST_LV_INI_PATH = $iniHint
+
+        $prevSummary = @(
+            @{ bitness = '64'; status = 'fail'; message = 'LocalHost.LibraryPaths points to another path; use -Force to overwrite.' }
+        )
+        $prevPath = Join-Path $hintRepo 'reports\dev-mode-bind.json'
+        $prevSummary | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $prevPath -Encoding UTF8
+        New-StubVipb -RepoPath $hintRepo
+
+        $jsonOut = Join-Path $hintRepo 'reports\dev-mode-bind-out.json'
+        $output = & { & $scriptPath -RepositoryPath $hintRepo -Mode status -Bitness 64 -JsonOutputPath $jsonOut 3>&1 }
+        $LASTEXITCODE | Should -Be 0
+        ($output -join "`n") | Should -Match 'Reminder: last dev-mode run suggested using Force'
     }
 }
