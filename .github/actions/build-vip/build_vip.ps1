@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Resolves paths, merges version details into DisplayInformation JSON, and
-    calls g-cli to modify the VIPB file and create the final VI package.
+    calls vipm CLI to build the final VI package.
 
 .PARAMETER SupportedBitness
     LabVIEW bitness for the build ("32" or "64").
@@ -178,72 +178,54 @@ else {
     $jsonObj.'Package Version'.build = $Build
 }
 
-# 5) Construct reusable g-cli arguments
-$gcliArgs = @(
-    "--lv-ver", $Package_LabVIEW_Version.ToString(),
-    "--arch", $SupportedBitness,
-    "--connect-timeout", "120000",
-    "--kill",
-    "--kill-timeout", "20000",
-    "--verbose",
-    "vipb", "--",
-    "--buildspec", $ResolvedVIPBPath,
-    "-v", "$Major.$Minor.$Patch.$Build",
-    "--release-notes", $ResolvedReleaseNotesFile,
-    "--timeout", "300"
+# 5) Execute vipm build with retries and log capture
+$vipmCli = Get-Command vipm -ErrorAction SilentlyContinue
+if (-not $vipmCli) {
+    Write-Error "vipm CLI is not available on PATH; cannot build the VI package."
+    exit 1
+}
+
+$outputDir = Join-Path -Path $ResolvedRepositoryPath -ChildPath "builds/VI Package"
+New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
+
+$vipmArgs = @(
+    "build",
+    $ResolvedVIPBPath,
+    "--labview-version", $Package_LabVIEW_Version.ToString(),
+    "--labview-bitness", $SupportedBitness,
+    "--timeout", "300",
+    "--output", $outputDir
 )
 
-$prettyCommand = "g-cli " + ($gcliArgs -join ' ')
+$prettyCommand = "vipm " + ($vipmArgs -join ' ')
 Write-Output "Base build command:"
 Write-Output $prettyCommand
 
-# 6) Execute the commands with retries and log capture
-$maxAttempts = 3
-$retryDelaySeconds = 15
-$success = $false
-$attemptLogs = @()
+$logFile = Join-Path -Path $LogDirectory -ChildPath "vipm-build-attempt-1.log"
+Write-Information "Starting vipm build. Log: $logFile" -InformationAction Continue
 
-for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-    $logFile = Join-Path -Path $LogDirectory -ChildPath ("gcli-build-attempt-{0}.log" -f $attempt)
-    $attemptLogs += $logFile
-    Write-Information "Starting g-cli build attempt $attempt of $maxAttempts. Logs: $logFile" -InformationAction Continue
-
-    try {
-        & g-cli @gcliArgs 2>&1 | Tee-Object -FilePath $logFile
-    }
-    catch {
-        $_ | Out-String | Tee-Object -FilePath $logFile -Append | Out-Null
-        $LASTEXITCODE = 1
-    }
-
-    if ($LASTEXITCODE -eq 0) {
-        $success = $true
-        break
-    }
-
-    if ($attempt -lt $maxAttempts) {
-        Write-Warning "g-cli attempt $attempt failed with exit code $LASTEXITCODE. Retrying in $retryDelaySeconds seconds..."
-        Start-Sleep -Seconds $retryDelaySeconds
-    }
+try {
+    & vipm @vipmArgs 2>&1 | Tee-Object -FilePath $logFile
+}
+catch {
+    $_ | Out-String | Tee-Object -FilePath $logFile -Append | Out-Null
+    $LASTEXITCODE = 1
 }
 
-if (-not $success) {
-    for ($i = 0; $i -lt $attemptLogs.Count; $i++) {
-        $log = $attemptLogs[$i]
-        if (Test-Path $log) {
-            Write-Information ("---- g-cli build log attempt {0} ({1}) ----" -f ($i + 1), $log) -InformationAction Continue
-            Get-Content -Path $log | ForEach-Object { Write-Information $_ -InformationAction Continue }
-            Write-Information ("---- end g-cli build log attempt {0} ----" -f ($i + 1)) -InformationAction Continue
-        }
-        else {
-            Write-Warning ("g-cli build log for attempt {0} not found at {1}" -f ($i + 1), $log)
-        }
+if ($LASTEXITCODE -ne 0) {
+    if (Test-Path $logFile) {
+        Write-Information ("---- vipm build log ({0}) ----" -f $logFile) -InformationAction Continue
+        Get-Content -Path $logFile | ForEach-Object { Write-Information $_ -InformationAction Continue }
+        Write-Information ("---- end vipm build log ({0}) ----" -f $logFile) -InformationAction Continue
+    }
+    else {
+        Write-Warning ("vipm build log not found at {0}" -f $logFile)
     }
 
     $errorObject = [PSCustomObject]@{
-        error      = "g-cli failed after $maxAttempts attempt(s)."
-        exitCode   = $LASTEXITCODE
-        logs       = $attemptLogs
+        error    = "vipm build failed."
+        exitCode = $LASTEXITCODE
+        logs     = @($logFile)
     }
     $errorObject | ConvertTo-Json -Depth 10
     exit 1

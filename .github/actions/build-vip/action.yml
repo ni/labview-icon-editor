@@ -19,50 +19,29 @@ runs:
         fetch-depth: 0
         clean: false
 
-    - name: Pre-flight LabVIEW availability check
+    - name: Pre-flight vipm CLI check
       shell: pwsh
       run: |
         $ErrorActionPreference = 'Stop'
         $logDir = Join-Path -Path "${{ inputs.repository_path }}" -ChildPath "builds/logs"
         New-Item -ItemType Directory -Path $logDir -Force | Out-Null
-        $logFile = Join-Path -Path $logDir -ChildPath "gcli-preflight.log"
+        $logFile = Join-Path -Path $logDir -ChildPath "vipm-preflight.log"
 
-        $repo = "${{ inputs.repository_path }}"
-        $candidates = @(
-          (Join-Path $repo 'scripts/get-package-lv-version.ps1'),
-          (Join-Path $repo '.github/scripts/get-package-lv-version.ps1')
-        )
-        $lvScript = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-        if (-not $lvScript) {
-          throw "Unable to locate get-package-lv-version.ps1 under '$repo/scripts' or '$repo/.github/scripts'."
+        $vipm = Get-Command vipm -ErrorAction SilentlyContinue
+        if (-not $vipm) {
+          $msg = "vipm CLI not found on PATH; cannot build the VI package."
+          $msg | Tee-Object -FilePath $logFile | Out-Null
+          throw $msg
         }
 
-        $lvVer = pwsh -NoProfile -File $lvScript -RepositoryPath $repo
-        Write-Host ("Resolved LabVIEW version script: {0}" -f $lvScript)
-        Write-Host ("Resolved LabVIEW version: {0}" -f $lvVer)
-        $gcliArgs = @(
-          "--lv-ver", $lvVer,
-          "--arch", "${{ inputs.supported_bitness }}",
-          "--connect-timeout", "60000",
-          "--kill",
-          "--kill-timeout", "5000",
-          "--verbose",
-          "QuitLabVIEW"
-        )
-
-        Write-Host "Pre-flight command: g-cli $($gcliArgs -join ' ')"
-        & g-cli @gcliArgs 2>&1 | Tee-Object -FilePath $logFile | Out-Null
-
-        if ($LASTEXITCODE -ne 0) {
-          if (Test-Path $logFile) {
-            Write-Host "---- g-cli preflight log ($logFile) ----"
-            Get-Content -Path $logFile | ForEach-Object { Write-Host $_ }
-            Write-Host "---- end g-cli preflight log ----"
-          } else {
-            Write-Host "Pre-flight log file not found at $logFile."
-          }
-          Write-Error "Pre-flight g-cli check failed. Inspect $logFile for details."
-          exit $LASTEXITCODE
+        try {
+          $ver = & vipm --version 2>&1
+          $ver | Tee-Object -FilePath $logFile | Out-Null
+          Write-Host ("vipm version: {0}" -f ($ver -join ' '))
+        }
+        catch {
+          $_ | Out-String | Tee-Object -FilePath $logFile -Append | Out-Null
+          throw "Failed to execute 'vipm --version'. Inspect $logFile for details."
         }
 
     - name: Clean previous VI packages
@@ -147,7 +126,7 @@ runs:
           -ReleaseNotesFile "${{ inputs.release_notes_file }}" `
           -DisplayInformationJSON $displayInformationJson
 
-    - name: Dump g-cli build logs on failure
+    - name: Dump vipm build logs on failure
       if: failure()
       shell: pwsh
       run: |
@@ -158,16 +137,19 @@ runs:
           exit 0
         }
 
-        $logs = Get-ChildItem -Path $logDir -Filter "gcli-build-attempt-*.log" -File | Sort-Object Name
+        $logs = Get-ChildItem -Path $logDir -Filter "vipm-build-attempt-*.log" -File | Sort-Object Name
         if (-not $logs) {
-          Write-Host "No g-cli build attempt logs found under $logDir."
+          $logs = Get-ChildItem -Path $logDir -Filter "vipm-preflight.log" -File | Sort-Object Name
+        }
+        if (-not $logs) {
+          Write-Host "No vipm build logs found under $logDir."
           exit 0
         }
 
         foreach ($log in $logs) {
-          Write-Host ("---- g-cli build log ({0}) ----" -f $log.FullName)
+          Write-Host ("---- vipm build log ({0}) ----" -f $log.FullName)
           Get-Content -Path $log.FullName | ForEach-Object { Write-Host $_ }
-          Write-Host ("---- end g-cli build log ({0}) ----" -f $log.FullName)
+          Write-Host ("---- end vipm build log ({0}) ----" -f $log.FullName)
         }
     
     - name: Prepare release notes artifact
@@ -289,11 +271,11 @@ runs:
       run: |
         Write-Error "VIP artifact upload failed after 3 attempts (check network/ECONNRESET)."
 
-    - name: Upload g-cli logs (if present)
+    - name: Upload vipm logs (if present)
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ steps.locate-vip.outputs.vip_artifact }}-gcli-logs
+        name: ${{ steps.locate-vip.outputs.vip_artifact }}-vipm-logs
         path: ${{ inputs.repository_path }}/builds/logs
         if-no-files-found: ignore
 
