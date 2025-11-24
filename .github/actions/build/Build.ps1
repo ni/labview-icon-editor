@@ -213,10 +213,15 @@ try {
     $ActionsPath = Split-Path -Parent $PSScriptRoot
     Test-PathExistence $ActionsPath "Actions folder"
 
-    # Ensure VIPC dependencies exist (mirrors CI prep)
-    $vipcPath = Join-Path $RepositoryPath "Tooling\deployment\runner_dependencies.vipc"
+    # Ensure VIPC dependencies exist (mirrors CI prep). Only use the canonical VIPC under .github/actions/apply-vipc.
+    $vipcPath = Join-Path $RepositoryPath ".github\actions\apply-vipc\runner_dependencies.vipc"
+    $vipcLegacy = Join-Path $RepositoryPath "Tooling\deployment\runner_dependencies.vipc"
+
     if (-not (Test-Path -LiteralPath $vipcPath)) {
-        Write-Error "Missing runner_dependencies.vipc at $vipcPath. Cannot apply dependencies; run packaging prep or fetch the VIPC."
+        if (Test-Path -LiteralPath $vipcLegacy) {
+            Write-Warning "Found legacy VIPC at $vipcLegacy but ignoring it. Build uses canonical VIPC at $vipcPath to stay aligned with CI; copy or link the canonical file into place."
+        }
+        Write-Error "Missing canonical runner_dependencies.vipc at $vipcPath. Cannot apply dependencies; run packaging prep or fetch the canonical VIPC."
         exit 1
     }
 
@@ -253,7 +258,7 @@ try {
             Package_LabVIEW_Version   = $lvVersion
             SupportedBitness          = '32'
             RepositoryPath            = $RepositoryPath
-            VIPCPath                  = 'Tooling\deployment\runner_dependencies.vipc'
+            VIPCPath                  = $vipcPath
         }
 
         # 2.1) Preflight missing items using existing missing-in-project helper (32-bit)
@@ -313,7 +318,7 @@ try {
         Package_LabVIEW_Version   = $lvVersion
         SupportedBitness          = '64'
         RepositoryPath            = $RepositoryPath
-        VIPCPath                  = 'Tooling\deployment\runner_dependencies.vipc'
+        VIPCPath                  = $vipcPath
     }
 
     # 6.1) Ensure LabVIEW 64-bit is closed before building to avoid loaded NIIconEditor collisions
