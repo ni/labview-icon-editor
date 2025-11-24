@@ -668,6 +668,18 @@ What you should do:
     Write-Host $md
 
     try {
+        $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+        $artifactDir = Join-Path $RepositoryPath "artifacts/dev-mode-bind"
+        $artifactPath = Join-Path $artifactDir ("dev-mode-bind-{0}.json" -f $timestamp)
+        if (-not (Test-Path $artifactDir)) { New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null }
+        Copy-Item -LiteralPath $JsonOutputPath -Destination $artifactPath -Force
+        Write-Host ("Artifact saved: {0}" -f $artifactPath)
+    }
+    catch {
+        Write-Verbose ("Failed to save artifact copy: {0}" -f $_.Exception.Message)
+    }
+
+    try {
         $guidePath = Resolve-Path (Join-Path $PSScriptRoot '..\..\docs\troubleshooting\bind-dev-mode-force.md')
         Write-Host ""
         Write-Host "=== Troubleshooting Guide ==="

@@ -235,6 +235,7 @@ agent:
   - If other repos might rely on existing bindings, ask for confirmation before forcing.  
   - For malformed/double-rooted tokens, suggest unbind + Force for the affected version/bitness.  
 - **Reference:** Link the user to `docs/troubleshooting/bind-dev-mode-force.md` and `reports/dev-mode-bind.json` for details.
+- **Historical artifacts:** Encourage storing timestamped bind JSONs as artifacts (not in git) under a predictable path (e.g., `artifacts/dev-mode-bind/YYYYMMDD-HHMMZ.json`). Use history to spot recurring root causes (e.g., runner path tokens, missing INIs, double-rooted paths) and refine guidance/runbooks.
 
 ---
 
