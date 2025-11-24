@@ -38,6 +38,7 @@
       "type": "pickString",
       "description": "Bitness for building the lvlibp",
       "options": [
+        "both",
         "32",
         "64"
       ],

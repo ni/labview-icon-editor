@@ -240,8 +240,14 @@ switch ($BuildMode) {
             & $singleScript -SupportedBitness '32' -RepositoryPath $repo -VIPBPath $resolvedVipb -LabVIEWMinorRevision $LabVIEWMinorRevision -Major $semver.Major -Minor $semver.Minor -Patch $semver.Patch -Build $buildNumber -Commit $commitHash -ReleaseNotesFile (Join-Path $ws "Tooling/deployment/release_notes.md") -DisplayInformationJSON $displayInfo
         }
         else {
-            # Enforce selected bitness preflight; warn on the other arch
-            Assert-DevModePaths -Repo $repo -Arch '64'
+            # Enforce selected bitness preflight; if building both, check both arches
+            if ($LvlibpBitness -eq 'both') {
+                Assert-DevModePaths -Repo $repo -Arch '64'
+                Assert-DevModePaths -Repo $repo -Arch '32'
+            }
+            else {
+                Assert-DevModePaths -Repo $repo -Arch '64'
+            }
             & $buildScript -RepositoryPath $repo -Major $semver.Major -Minor $semver.Minor -Patch $semver.Patch -Build $buildNumber -LabVIEWMinorRevision $LabVIEWMinorRevision -Commit $commitHash -CompanyName $CompanyName -AuthorName $AuthorName -LvlibpBitness $LvlibpBitness -VIPBPath $resolvedVipb
         }
     }
