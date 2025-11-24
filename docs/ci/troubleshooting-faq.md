@@ -69,13 +69,14 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - The build succeeds, but the “Upload artifact” step fails with “File not found” or empty artifact.
 
 **Possible Causes**:
-- The `Build.ps1` script didn’t actually produce a `.vip` file in the expected folder.
-- The workflow’s “paths” setting doesn’t match the output directory.
+- The `build-vip` job (or `build-vip` composite) was skipped because vipm/dep gates failed.
+- The `.vip` file was produced under `builds/VI Package/` but the upload step pointed elsewhere.
+- A prior step failed and never invoked `build-vip`.
 
 **Solution**:
-1. Check your “Build VI Package” job logs to confirm the `.vip` file was created.  
-2. If it’s created in `builds/VI Package/`, ensure the upload step references that folder.  
-3. Verify the version of VI Package Manager or the build scripts aren’t failing silently.
+1. Check the `build-vip` job logs in `ci.yml` to confirm `build-vip` ran (vipm gate not skipped).
+2. Verify the `.vip` was created under `builds/VI Package/` and the upload step targets that path/artifact name.
+3. Ensure vipm is available on the runner (see vipm troubleshooting) and that prior dependencies/jobs passed.
 
 ---
 
@@ -134,12 +135,13 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - The workflow completes, but you see no new release in GitHub’s “Releases” section.
 
 **Possible Causes**:
-- The composite pipeline only uploads artifacts and does not create releases automatically.
-- The build was triggered by a Pull Request, and your workflow logic only creates releases on “push” or merges to main.
+- `ci.yml` only builds/uploads artifacts; releases are created by `draft-release.yml` (workflow_dispatch) when triggered with a CI run ID.
+- The workflow was a Pull Request run; `draft-release.yml` is not triggered automatically.
 
 **Solution**:
-1. Create releases manually through GitHub’s interface or configure a separate workflow to publish them.
-2. Check your workflow triggers if you expect another workflow to handle releases on certain branches.
+1. Trigger `draft-release.yml` with the successful CI run ID to generate a draft release and upload artifacts.
+2. If you need auto-release on push, add logic to call `draft-release.yml` (or another release workflow) from the desired branch events.
+3. For manual releases, download artifacts from the CI run and attach them in GitHub Releases.
 3. Confirm you have “Read and write” permissions for Actions in your repo settings.
 
 ---
@@ -209,8 +211,9 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - The script has no parameter named `lv-ver` or `arch`, so passing `--lv-ver` or `--arch` triggers a parsing error.
 
 **Solution**:
-1. Remove or replace `--lv-ver` and `--arch` with valid single-dash parameters your script actually declares, such as `-Package_LabVIEW_Version 2021` and `-SupportedBitness 64`.  
-2. If you really want `--lv-ver`, you must update the script’s `param()` block to accept that alias.
+1. Use the parameters defined by the script/action you’re calling. For LabVIEW build scripts, prefer single-dash PowerShell params (e.g., `-Package_LabVIEW_Version 2021`, `-SupportedBitness 64`).  
+2. Pass `--` flags only to tools that support them (e.g., `g-cli --lv-ver 2021 --arch 64 -- <VI>`).  
+3. Check the action/script README (e.g., `build-vip`, `bind-development-mode`) for the accepted arguments.
 
 ---
 
@@ -220,13 +223,13 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - The final `.vip` file’s metadata for “Company Name” or “Author Name (Person or Company)” remains empty.
 
 **Possible Causes**:
-- You didn’t pass `-CompanyName` or `-AuthorName` to the `Build.ps1` script.  
-- The JSON creation step is missing or incorrectly references the parameters.
+- You didn’t pass `company_name` / `author_name` to the `build-vip` composite (or `-CompanyName` / `-AuthorName` to `Build.ps1`).
+- The display-info generation step in `ci.yml` is missing or references empty env vars.
 
 **Solution**:
-1. In your GitHub Actions or local call, ensure you specify both `-CompanyName "XYZ Corp"` and `-AuthorName "my-org/repo"`.  
-2. Check that the script’s code block generating `$DisplayInformationJSON` includes these fields.  
-3. Confirm no conflicting code overwrote your JSON after you set it.
+1. In GitHub Actions, ensure `build-vip` receives `company_name` and `author_name` (or env vars used by the display-info step are set).  
+2. For local `Build.ps1`, pass `-CompanyName "XYZ Corp"` and `-AuthorName "my-org/repo"`.  
+3. Check the display-info generation step (in `ci.yml` under build-vip) to confirm it includes these fields and isn’t overwritten later.
 
 ---
 
