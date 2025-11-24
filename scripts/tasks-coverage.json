@@ -1,0 +1,24 @@
+{
+  "tasks": [
+    {"name": "Dev Mode Bind (check + run)", "description": "Intent CLI plan+execute for dev-mode bind; default phrase `/devmode bind 2021 both force`", "coverage": {}},
+    {"name": "Dev Mode Bind (force overwrite)", "description": "Intent CLI with Force to overwrite existing tokens (only when INI points elsewhere)", "coverage": {}},
+    {"name": "Dev Mode (interactive bind/unbind)", "description": "Guided PowerShell helper with prompts", "coverage": {}},
+    {"name": "Revert Dev Mode (LabVIEW)", "description": "Unbind/reset dev mode for the selected bitness", "coverage": {}},
+    {"name": "Set Dev Mode (LabVIEW)", "description": "Prep dev mode for a chosen bitness", "coverage": {}},
+    {"name": "Build/Package VIP (simulate)", "description": "`build_vip.ps1` simulate (64-bit)", "coverage": {}},
+    {"name": "Build/Package VIP", "description": "`run-build-or-package.ps1` with selectable modes (VIP + lvlibp)", "coverage": {}},
+    {"name": "Build pipeline (full simulate)", "description": "`run-build-or-package.ps1` end-to-end simulate (lvlibp both)", "coverage": {}},
+    {"name": "Build (isolated worktree)", "description": "`scripts/worktree-build.ps1` with prompts for bitness/version/company/author", "coverage": {}},
+    {"name": "Build release asset (VI Package x64)", "description": "`scripts/task-build-vip.ps1 -Bitness 64`", "coverage": {}},
+    {"name": "Build release asset (VI Package x86)", "description": "`scripts/task-build-vip.ps1 -Bitness 32`", "coverage": {}},
+    {"name": "Build release asset (VI Package 32 & 64 bits)", "description": "`scripts/task-build-vip.ps1 -Bitness both` (skip CI gate)", "coverage": {}},
+    {"name": "Build PPL (simulate)", "description": "`scripts/run-build-lvlibp-task.ps1` simulate (64-bit)", "coverage": {}},
+    {"name": "Build release asset (Packed Project Library, x64)", "description": "`scripts/run-build-lvlibp-task.ps1 -SupportedBitness 64`", "coverage": {}},
+    {"name": "Build release asset (Packed Project Library, x86)", "description": "`scripts/run-build-lvlibp-task.ps1 -SupportedBitness 32`", "coverage": {}},
+    {"name": "Analyze VI Package (Pester)", "description": "`analyze-vi-package/run-local.ps1` against `builds/VI Package/`", "coverage": {}},
+    {"name": "Requirements", "description": "RequirementsSummarizer (`dotnet run tools/RequirementsSummarizer`) to emit summary/full/json/html", "coverage": {}},
+    {"name": "Draft release", "description": "Checks CI gate, then triggers `draft-release.yml` using the latest CI run ID", "coverage": {}},
+    {"name": "Test VIPM Docker", "description": "`Tooling/docker/vipm/test-vipm.ps1`", "coverage": {}},
+    {"name": "VIPM Docker Smoke", "description": "`Tooling/docker/vipm/smoke-vipm.ps1` for a specified VIPC", "coverage": {}}
+  ]
+}
