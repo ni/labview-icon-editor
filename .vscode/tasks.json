@@ -83,9 +83,8 @@
     {
       "id": "vipbPath",
       "type": "promptString",
-      "description": "Path to the VIPB used by dev-mode (relative to repo root)",
-      "default": "Tooling/deployment/labview-icon-editor.vipb"
-    }
+      "description": "Path to the VIPB used by dev-mode (relative to repo root)"
+    },
   ],
   "tasks": [
     {
