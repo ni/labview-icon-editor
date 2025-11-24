@@ -48,11 +48,17 @@ param(
 
 $ReleaseNotesFile = Join-Path $RepositoryPath 'Tooling\deployment\release_notes.md'
 $helpersPath = Join-Path $RepositoryPath 'scripts/build-helpers.psm1'
+$metaUtilsPath = Join-Path $RepositoryPath 'scripts/build-meta-utils.psm1'
 if (-not (Test-Path -LiteralPath $helpersPath)) {
     Write-Error "Helper module not found at $helpersPath"
     exit 1
 }
 Import-Module -Name $helpersPath -Force
+if (-not (Test-Path -LiteralPath $metaUtilsPath)) {
+    Write-Error "Metadata helper module not found at $metaUtilsPath"
+    exit 1
+}
+Import-Module -Name $metaUtilsPath -Force
 
 # Helper function to verify a file/folder path exists
 function Test-PathExistence {
@@ -210,6 +216,11 @@ try {
     # Derive LabVIEW version from VIPB as the first consumer step
     $lvVersion = Get-LabVIEWVersionOrFail -RepoPath $RepositoryPath
     Write-Information ("Using LabVIEW version from VIPB: {0}" -f $lvVersion) -InformationAction Continue
+
+    $companyResolved = Resolve-CompanyName -CompanyName $CompanyName -RepoPath $RepositoryPath
+    Write-Information ("Using Company Name: {0}" -f $companyResolved) -InformationAction Continue
+    $authorResolved = Resolve-AuthorName -AuthorName $AuthorName -RepoPath $RepositoryPath
+    Write-Information ("Using Author Name: {0}" -f $authorResolved) -InformationAction Continue
 
     # Validate needed folders after version is known
     Test-PathExistence $RepositoryPath "RepositoryPath"
@@ -399,8 +410,8 @@ try {
             "build" = $Build
         }
         "Product Name"                    = "LabVIEW Icon Editor"
-        "Company Name"                    = $CompanyName
-        "Author Name (Person or Company)" = $AuthorName
+        "Company Name"                    = $companyResolved
+        "Author Name (Person or Company)" = $authorResolved
         "Product Homepage (URL)"          = "https://github.com/LabVIEW-Community-CI-CD/labview-icon-editor"
         "Legal Copyright"                 = "LabVIEW-Community-CI-CD"
         "License Agreement Name"          = ""
