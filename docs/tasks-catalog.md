@@ -4,7 +4,7 @@ Generated from `scripts/tasks-coverage.json`. Run `python scripts/generate-tasks
 
 ## Task List
 - Dev Mode Bind (check + run) — Intent CLI plan+execute for dev-mode bind; default phrase `/devmode bind 2021 both force`
-- Dev Mode Bind (force overwrite) — Intent CLI with Force to overwrite existing tokens (only when INI points elsewhere)
+- Dev Mode Bind (force overwrite) — Intent CLI with Force to overwrite existing tokens (only when INI points elsewhere; uses VIPB at `${input:vipbPath}`)
 - Dev Mode (interactive bind/unbind) — Guided PowerShell helper with prompts
 - Revert Dev Mode (LabVIEW) — Unbind/reset dev mode for the selected bitness
 - Set Dev Mode (LabVIEW) — Prep dev mode for a chosen bitness
