@@ -18,9 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: ./.github/actions/checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          fetch_depth: 0
+          set-safe-directory: true
+          fetch-depth: 0
 
       - name: Compute version
         id: version

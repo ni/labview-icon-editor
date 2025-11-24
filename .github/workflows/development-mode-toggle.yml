@@ -55,7 +55,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: ./.github/actions/checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
 
       - name: Log context
         shell: pwsh

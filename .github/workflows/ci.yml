@@ -44,8 +44,9 @@ jobs:
     name: Requirements
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
+          set-safe-directory: true
           fetch-depth: 1
       - name: Summarize TRW checklist CSV
         run: dotnet run --project tools/RequirementsSummarizer/RequirementsSummarizer.csproj -- --csv docs/requirements/requirements.csv --rows 5 --summary-full --details --section-details --details-label "Requirements (full table)" --title "Requirements Checklist" --repo "${{ github.repository }}" --summary-output "${GITHUB_STEP_SUMMARY:-}" --full-output "${{ github.workspace }}/reports/req-full.md" --json-output "${{ github.workspace }}/reports/requirements.json" --html-output "${{ github.workspace }}/reports/requirements.html"
@@ -248,8 +249,9 @@ jobs:
     name: Enforce jobs depend on verify-checklist-sync
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
+          set-safe-directory: true
           fetch-depth: 1
       - name: Check job dependencies include verify-checklist-sync
         run: |
@@ -287,7 +289,9 @@ jobs:
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -324,8 +328,9 @@ jobs:
     needs: [verify-checklist-sync]
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
+          set-safe-directory: true
           fetch-depth: 1
       - name: Run build-vip in simulate mode (no vipm)
         uses: ./.github/actions/build-vip
@@ -348,7 +353,9 @@ jobs:
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -396,8 +403,9 @@ jobs:
     outputs:
       minimum_supported_lv_version: ${{ steps.read.outputs.lv_version }}
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
+          set-safe-directory: true
           fetch-depth: 1
       - id: read
         name: Gate minimum LabVIEW policy vs VIPB
@@ -432,8 +440,9 @@ jobs:
     needs: [verify-checklist-sync]
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
+          set-safe-directory: true
           fetch-depth: 1
 
       - name: List collaborators and permissions
@@ -465,9 +474,10 @@ jobs:
     env:
       VIPC_PATH: ".github/actions/apply-vipc/runner_dependencies.vipc"
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          fetch_depth: 0
+          set-safe-directory: true
+          fetch-depth: 0
 
       - id: detect
         name: Setup - detect VIPC changes
@@ -702,8 +712,9 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
+          set-safe-directory: true
           fetch-depth: 1
       - name: Validate LocalHost.LibraryPaths entries (64-bit)
         shell: pwsh
@@ -735,9 +746,10 @@ jobs:
       BUILD:         ${{ steps.compute.outputs.BUILD }}
       IS_PRERELEASE: ${{ steps.compute.outputs.IS_PRERELEASE }}
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          fetch_depth: 0
+          set-safe-directory: true
+          fetch-depth: 0
       - id: compute
         uses: ./.github/actions/compute-version
         with:
@@ -763,9 +775,10 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          fetch_depth: 0
+          set-safe-directory: true
+          fetch-depth: 0
           clean: true
       - uses: ./.github/actions/missing-in-project
         with:
@@ -796,9 +809,10 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          fetch_depth: 0
+          set-safe-directory: true
+          fetch-depth: 0
           clean: true
       - uses: ./.github/actions/missing-in-project
         with:
@@ -904,7 +918,9 @@ jobs:
     needs: [verify-checklist-sync, test-x86]
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
       - name: Download unit test reports
         uses: actions/download-artifact@v4
         with:
@@ -983,8 +999,9 @@ jobs:
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
+          set-safe-directory: true
           fetch-depth: 1
       - name: Install Pester 5.7.1
         shell: pwsh
@@ -1133,9 +1150,10 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          fetch_depth: 0
+          set-safe-directory: true
+          fetch-depth: 0
       - name: Gate on vipm CLI (skip VI Package build if dependencies cannot be applied)
         id: vipm-gate
         shell: pwsh
@@ -1291,7 +1309,9 @@ jobs:
       run:
         shell: pwsh
     steps:
-      - uses: ./.github/actions/checkout
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
       - name: Record analyze job start
         shell: pwsh
         run: |
