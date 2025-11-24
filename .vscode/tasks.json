@@ -33,6 +33,16 @@
       "default": "64"
     },
     {
+      "id": "lvlibpSingleBitness",
+      "type": "pickString",
+      "description": "Bitness for single-arch lvlibp build",
+      "options": [
+        "32",
+        "64"
+      ],
+      "default": "64"
+    },
+    {
       "id": "semverMajor",
       "type": "promptString",
       "description": "Major version",
@@ -117,7 +127,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "& \"${workspaceFolder}/scripts/run-build-lvlibp-task.ps1\" -RepositoryPath \"${workspaceFolder}\" -SupportedBitness \"${input:lvlibpBitness}\" -Major 0 -Minor 0 -Patch 0 -Build 0 -Commit \"manual\""
+        "& \"${workspaceFolder}/scripts/run-build-lvlibp-task.ps1\" -RepositoryPath \"${workspaceFolder}\" -SupportedBitness \"${input:lvlibpSingleBitness}\" -Major 0 -Minor 0 -Patch 0 -Build 0 -Commit \"manual\""
       ],
       "options": {
         "cwd": "${workspaceFolder}"
