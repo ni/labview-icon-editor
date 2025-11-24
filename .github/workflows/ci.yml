@@ -1169,12 +1169,12 @@ jobs:
         if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-32bit
-          path: .
+          path: resource/plugins
       - uses: actions/download-artifact@v4
         if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-64bit
-          path: .
+          path: resource/plugins
       - name: Generate display information JSON
         id: display-info
         if: steps.vipm-gate.outputs.has_vipm_cli == 'true'

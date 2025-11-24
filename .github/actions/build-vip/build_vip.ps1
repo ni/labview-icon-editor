@@ -174,6 +174,29 @@ $pplDir    = Join-Path $ResolvedRepositoryPath 'resource\plugins'
 $pplNeutral = Join-Path $pplDir 'lv_icon.lvlibp'
 $pplWin64   = Join-Path $pplDir 'lv_icon.lvlibp.windows_x64'
 $pplWin86   = Join-Path $pplDir 'lv_icon.lvlibp.windows_x86'
+
+function Restore-MissingPpls {
+    param(
+        [string[]]$Targets,
+        [string]$SearchRoot
+    )
+
+    $allCandidates = Get-ChildItem -Path $SearchRoot -Filter 'lv_icon.lvlibp*' -File -Recurse -ErrorAction SilentlyContinue
+    foreach ($target in $Targets) {
+        if (Test-Path -LiteralPath $target) { continue }
+        $leaf = Split-Path -Leaf $target
+        $match = $allCandidates | Where-Object { $_.Name -ieq $leaf } | Select-Object -First 1
+        if ($match) {
+            $destDir = Split-Path -Parent $target
+            if (-not (Test-Path -LiteralPath $destDir)) {
+                New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+            }
+            Copy-Item -LiteralPath $match.FullName -Destination $target -Force
+            Write-Information ("Restored missing PPL {0} from {1}" -f $leaf, $match.FullName) -InformationAction Continue
+        }
+    }
+}
+
 if (-not $SkipPPLCheck) {
     $missingPpl = @()
     foreach ($candidate in @($pplNeutral, $pplWin64, $pplWin86)) {
@@ -181,6 +204,17 @@ if (-not $SkipPPLCheck) {
             $missingPpl += $candidate
         }
     }
+
+    if ($missingPpl.Count -gt 0) {
+        Restore-MissingPpls -Targets $missingPpl -SearchRoot $ResolvedRepositoryPath
+        $missingPpl = @()
+        foreach ($candidate in @($pplNeutral, $pplWin64, $pplWin86)) {
+            if (-not (Test-Path -LiteralPath $candidate)) {
+                $missingPpl += $candidate
+            }
+        }
+    }
+
     if ($missingPpl.Count -gt 0) {
         Write-Error ("Missing staged PPL(s) required for post-install selection: {0}" -f ($missingPpl -join '; '))
         exit 1
