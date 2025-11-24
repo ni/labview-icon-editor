@@ -22,27 +22,6 @@
       "default": "64"
     },
     {
-      "id": "lvlibpBitness",
-      "type": "pickString",
-      "description": "Bitness for building the lvlibp",
-      "options": [
-        "both",
-        "32",
-        "64"
-      ],
-      "default": "64"
-    },
-    {
-      "id": "lvlibpSingleBitness",
-      "type": "pickString",
-      "description": "Bitness for single-arch lvlibp build",
-      "options": [
-        "32",
-        "64"
-      ],
-      "default": "64"
-    },
-    {
       "id": "semverMajor",
       "type": "promptString",
       "description": "Major version",
@@ -69,13 +48,32 @@
   ],
   "tasks": [
     {
-      "label": "Build release asset (VI Package single bitness)",
+      "label": "Build release asset (VI Package x64)",
       "type": "shell",
       "command": "pwsh",
       "args": [
         "-NoProfile",
         "-Command",
-        "& { $minLv = & \"${workspaceFolder}/scripts/get-package-lv-version.ps1\" -RepositoryPath \"${workspaceFolder}\"; if ($LASTEXITCODE -ne 0 -or -not $minLv) { exit 1 }; & \"${workspaceFolder}/scripts/check-ci-gate.ps1\" -WorkflowFile \".github/workflows/ci.yml\" -RepositoryPath \"${workspaceFolder}\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"${input:buildMode}\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"${input:lvlibpBitness}\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/.github/actions/analyze-vi-package/run-local.ps1\" -VipArtifactPath \"${workspaceFolder}/builds/VI Package/\" -MinLabVIEW $minLv }"
+        "& { $minLv = & \"${workspaceFolder}/scripts/get-package-lv-version.ps1\" -RepositoryPath \"${workspaceFolder}\"; if ($LASTEXITCODE -ne 0 -or -not $minLv) { exit 1 }; & \"${workspaceFolder}/scripts/check-ci-gate.ps1\" -WorkflowFile \".github/workflows/ci.yml\" -RepositoryPath \"${workspaceFolder}\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"vip+lvlibp\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"64\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/.github/actions/analyze-vi-package/run-local.ps1\" -VipArtifactPath \"${workspaceFolder}/builds/VI Package/\" -MinLabVIEW $minLv }"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "GH_TOKEN": "${env:GH_TOKEN}",
+          "GITHUB_TOKEN": "${env:GITHUB_TOKEN}"
+        }
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build release asset (VI Package x86)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "& { $minLv = & \"${workspaceFolder}/scripts/get-package-lv-version.ps1\" -RepositoryPath \"${workspaceFolder}\"; if ($LASTEXITCODE -ne 0 -or -not $minLv) { exit 1 }; & \"${workspaceFolder}/scripts/check-ci-gate.ps1\" -WorkflowFile \".github/workflows/ci.yml\" -RepositoryPath \"${workspaceFolder}\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"vip+lvlibp\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"32\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/.github/actions/analyze-vi-package/run-local.ps1\" -VipArtifactPath \"${workspaceFolder}/builds/VI Package/\" -MinLabVIEW $minLv }"
       ],
       "options": {
         "cwd": "${workspaceFolder}",
@@ -121,13 +119,27 @@
       "problemMatcher": []
     },
     {
-      "label": "Build release asset (Packed Project Library)",
+      "label": "Build release asset (Packed Project Library, x64)",
       "type": "shell",
       "command": "pwsh",
       "args": [
         "-NoProfile",
         "-Command",
-        "& \"${workspaceFolder}/scripts/run-build-lvlibp-task.ps1\" -RepositoryPath \"${workspaceFolder}\" -SupportedBitness \"${input:lvlibpSingleBitness}\" -Major 0 -Minor 0 -Patch 0 -Build 0 -Commit \"manual\""
+        "& \"${workspaceFolder}/scripts/run-build-lvlibp-task.ps1\" -RepositoryPath \"${workspaceFolder}\" -SupportedBitness \"64\" -Major 0 -Minor 0 -Patch 0 -Build 0 -Commit \"manual\""
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build release asset (Packed Project Library, x86)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "& \"${workspaceFolder}/scripts/run-build-lvlibp-task.ps1\" -RepositoryPath \"${workspaceFolder}\" -SupportedBitness \"32\" -Major 0 -Minor 0 -Patch 0 -Build 0 -Commit \"manual\""
       ],
       "options": {
         "cwd": "${workspaceFolder}"
