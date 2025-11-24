@@ -78,7 +78,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "& { & \"${workspaceFolder}/scripts/check-ci-gate.ps1\" -WorkflowFile \".github/workflows/ci.yml\" -RepositoryPath \"${workspaceFolder}\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"${input:buildMode}\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"${input:lvlibpBitness}\" }"
+        "& { & \"${workspaceFolder}/scripts/check-ci-gate.ps1\" -WorkflowFile \".github/workflows/ci.yml\" -RepositoryPath \"${workspaceFolder}\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"${input:buildMode}\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"${input:lvlibpBitness}\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/.github/actions/analyze-vi-package/run-local.ps1\" -VipArtifactPath \"${input:vipArtifactPath}\" -MinLabVIEW \"${input:minLv}\" }"
       ],
       "options": {
         "cwd": "${workspaceFolder}",
@@ -91,30 +91,6 @@
       "problemMatcher": []
     },
     {
-      "label": "Build/Package VIP + Analyze",
-      "detail": "Runs the build task then analyzes the resulting .vip with the Pester policy suite.",
-      "type": "shell",
-      "dependsOn": [
-        "Build/Package VIP"
-      ],
-      "dependsOrder": "sequence",
-      "command": "pwsh",
-      "args": [
-        "-NoProfile",
-        "-File",
-        "${workspaceFolder}/.github/actions/analyze-vi-package/run-local.ps1",
-        "-VipArtifactPath",
-        "${input:vipArtifactPath}",
-        "-MinLabVIEW",
-        "${input:minLv}"
-      ],
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "problemMatcher": [],
-      "group": "build"
-    },
-    {
       "label": "Build/Package VIP (both PPLs, no CI gate)",
       "detail": "Builds 32-bit and 64-bit PPLs and packages the VI Package locally (skips CI gate).",
       "type": "shell",
@@ -122,7 +98,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "& { & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"vip+lvlibp\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"both\" }"
+        "& { & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"vip+lvlibp\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"both\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/.github/actions/analyze-vi-package/run-local.ps1\" -VipArtifactPath \"${input:vipArtifactPath}\" -MinLabVIEW \"${input:minLv}\" }"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
