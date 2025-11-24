@@ -133,7 +133,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "& { $ver = & \"${workspaceFolder}/scripts/get-package-lv-version.ps1\" -RepositoryPath \"${workspaceFolder}\"; & \"${workspaceFolder}/.github/actions/build-lvlibp/Build_lvlibp.ps1\" -Package_LabVIEW_Version $ver -SupportedBitness \"${input:lvlibpBitness}\" -RepositoryPath \"${workspaceFolder}\" -Major 0 -Minor 0 -Patch 0 -Build 0 -Commit \"manual\" }"
+        "& { $ErrorActionPreference='Stop'; $ver = & \"${workspaceFolder}/scripts/get-package-lv-version.ps1\" -RepositoryPath \"${workspaceFolder}\"; pwsh -NoProfile -File \"${workspaceFolder}/scripts/read-library-paths.ps1\" -RepositoryPath \"${workspaceFolder}\" -SupportedBitness \"${input:lvlibpBitness}\" -FailOnMissing; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/.github/actions/build-lvlibp/Build_lvlibp.ps1\" -Package_LabVIEW_Version $ver -SupportedBitness \"${input:lvlibpBitness}\" -RepositoryPath \"${workspaceFolder}\" -Major 0 -Minor 0 -Patch 0 -Build 0 -Commit \"manual\" }"
       ],
       "options": {
         "cwd": "${workspaceFolder}"

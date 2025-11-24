@@ -176,6 +176,12 @@ try {
         exit 1
     }
 
+    # Hard fail if vipm CLI is missing; do not skip dependency application
+    if (-not (Get-Command vipm -ErrorAction SilentlyContinue)) {
+        Write-Error "vipm CLI not found on PATH; install VIPM CLI and ensure 'vipm' is available before running the build task."
+        exit 1
+    }
+
     # Derive build number from total commits when available
     try {
         git -C $RepositoryPath fetch --unshallow 2>$null | Out-Null
