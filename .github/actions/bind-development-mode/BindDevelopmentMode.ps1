@@ -207,19 +207,31 @@ if ($installedStates.Count -gt 0) {
     foreach ($arch in @('32','64')) {
         $state = $targetStates | Where-Object { $_.arch -eq $arch } | Select-Object -First 1
         if (-not $state) {
-            Write-Host ("  {0}-bit {1}: (not detected under Program Files)" -f $arch, $lvVersion)
+            Write-Host ("  [MISS] {0}-bit {1}: (not detected under Program Files)" -f $arch, $lvVersion)
             continue
         }
         $entryList = @($state.entries)
         if (-not $entryList -or $entryList.Count -eq 0) {
-            Write-Host ("  {0}-bit {1}: (no LocalHost.LibraryPaths entries)" -f $arch, $state.version)
+            Write-Host ("  [NONE] {0}-bit {1}: (no LocalHost.LibraryPaths entries)" -f $arch, $state.version)
             continue
         }
         $firstRaw = $entryList[0]
         $first = Format-TokenPath $firstRaw
         $norm = Normalize-PathLower $firstRaw
-        $tag = if ($norm -eq $expectedNorm) { ' [this repo]' } else { ' [other repo]' }
-        Write-Host ("  {0}-bit {1}: {2}{3}" -f $arch, $state.version, $first, $tag)
+        $tag = if ($norm -eq $expectedNorm) { 'THIS' } else { 'OTHER' }
+        $tagColor = ''
+        $resetColor = ''
+        if ($PSStyle) {
+            switch ($tag) {
+                'THIS'  { $tagColor = $PSStyle.Foreground.BrightGreen }
+                'OTHER' { $tagColor = $PSStyle.Foreground.BrightYellow }
+                'MISS'  { $tagColor = $PSStyle.Foreground.BrightRed }
+                'NONE'  { $tagColor = $PSStyle.Foreground.BrightBlack }
+            }
+            $resetColor = $PSStyle.Reset
+        }
+        $tagRendered = if ($tagColor) { "{0}[{1}]{2}" -f $tagColor, $tag, $resetColor } else { "[{0}]" -f $tag }
+        Write-Host ("  {0} {1}-bit {2}: {3}" -f $tagRendered, $arch, $state.version, $first)
     }
 
     if ($otherStates.Count -gt 0) {
@@ -227,14 +239,26 @@ if ($installedStates.Count -gt 0) {
         foreach ($state in ($otherStates | Sort-Object arch,version)) {
             $entryList = @($state.entries)
             if (-not $entryList -or $entryList.Count -eq 0) {
-                Write-Host ("  {0}-bit {1}: (no LocalHost.LibraryPaths entries)" -f $state.arch, $state.version)
+                Write-Host ("  [NONE] {0}-bit {1}: (no LocalHost.LibraryPaths entries)" -f $state.arch, $state.version)
                 continue
             }
             $firstRaw = $entryList[0]
             $first = Format-TokenPath $firstRaw
             $norm = Normalize-PathLower $firstRaw
-            $tag = if ($norm -eq $expectedNorm) { ' [this repo]' } else { ' [other repo]' }
-            Write-Host ("  {0}-bit {1}: {2}{3}" -f $state.arch, $state.version, $first, $tag)
+            $tag = if ($norm -eq $expectedNorm) { 'THIS' } else { 'OTHER' }
+            $tagColor = ''
+            $resetColor = ''
+            if ($PSStyle) {
+                switch ($tag) {
+                    'THIS'  { $tagColor = $PSStyle.Foreground.BrightGreen }
+                    'OTHER' { $tagColor = $PSStyle.Foreground.BrightYellow }
+                    'MISS'  { $tagColor = $PSStyle.Foreground.BrightRed }
+                    'NONE'  { $tagColor = $PSStyle.Foreground.BrightBlack }
+                }
+                $resetColor = $PSStyle.Reset
+            }
+            $tagRendered = if ($tagColor) { "{0}[{1}]{2}" -f $tagColor, $tag, $resetColor } else { "[{0}]" -f $tag }
+            Write-Host ("  {0} {1}-bit {2}: {3}" -f $tagRendered, $state.arch, $state.version, $first)
         }
     }
 }
