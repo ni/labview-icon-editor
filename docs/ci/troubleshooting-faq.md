@@ -322,7 +322,7 @@ Technically yes, if you don’t rely on alpha/beta/rc branch naming. But the wor
 ### Q8: Why Is My Dev Mode Toggle Not Working Locally?
 
 **Answer**:  
-Use the bind/unbind helper directly instead of the toggle workflow: `pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath <repo> -Mode bind|unbind -Bitness both`. Ensure `g-cli` is on PATH and `Tooling/deployment/Create_LV_INI_Token.vi` exists. If you’re testing against a custom LabVIEW.ini, set `ALLOW_NONCANONICAL_LV_INI_PATH=1` and `TEST_LV_INI_PATH=<path>` (test use only). Check `reports/dev-mode-bind.json` for per-bitness status; run with `-Force` only when overwriting another repo’s token intentionally.
+Use the bind/unbind helper directly instead of the toggle workflow: `pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath <repo> -Mode bind|unbind -Bitness both`. Ensure `g-cli` is on PATH and `Tooling/deployment/Create_LV_INI_Token.vi` exists. The script reads the LabVIEW version from your VIPB and targets the canonical LabVIEW.ini under Program Files; check `reports/dev-mode-bind.json` for per-bitness status and rerun with `-Force` only when overwriting another repo’s token intentionally.
 
 ---
 

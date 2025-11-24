@@ -35,16 +35,15 @@ param([string]`$RepositoryPath)
     }
 
     AfterEach {
-        Remove-Item Env:ALLOW_NONCANONICAL_LV_INI_PATH -ErrorAction SilentlyContinue
-        Remove-Item Env:TEST_LV_INI_PATH -ErrorAction SilentlyContinue
         Remove-Item function:g-cli -ErrorAction SilentlyContinue
+        Remove-Item Function:Resolve-LVIniPath -ErrorAction SilentlyContinue
     }
 
     It "emits JSON with required fields in status mode" {
         Set-Content -LiteralPath $IniPath -Value @("LocalHost.LibraryPaths1=$repoRoot")
-        $env:ALLOW_NONCANONICAL_LV_INI_PATH = '1'
-        $env:TEST_LV_INI_PATH = $IniPath
         $jsonOut = Join-Path $TestDrive 'dev-mode-bind.json'
+
+        Set-Item -Path Function:Resolve-LVIniPath -Value ([scriptblock]::Create("param([string]`$LvVersion,[string]`$Arch) return '$IniPath'"))
 
         & $scriptPath -RepositoryPath $repoRoot -Mode status -Bitness 64 -JsonOutputPath $jsonOut
         $LASTEXITCODE | Should -Be 0
@@ -73,9 +72,9 @@ param([string]`$RepositoryPath)
 
         $iniPathPacked = Join-Path $TestDrive 'LabVIEW_packed.ini'
         Set-Content -LiteralPath $iniPathPacked -Value @("LocalHost.LibraryPaths1=$repoPacked")
-        $env:ALLOW_NONCANONICAL_LV_INI_PATH = '1'
-        $env:TEST_LV_INI_PATH = $iniPathPacked
         $jsonOut = Join-Path $TestDrive 'dev-mode-bind-packed.json'
+
+        Set-Item -Path Function:Resolve-LVIniPath -Value ([scriptblock]::Create("param([string]`$LvVersion,[string]`$Arch) return '$iniPathPacked'"))
 
         function global:g-cli { param([Parameter(ValueFromRemainingArguments = $true)][object[]]$args) $global:LASTEXITCODE = 0 }
         Mock -CommandName Get-Command -MockWith { [pscustomobject]@{ Name = 'g-cli'; Source = 'mock://g-cli' } }
@@ -92,9 +91,9 @@ param([string]`$RepositoryPath)
 
     It "fails unbind without Force when token points elsewhere and reports in JSON" {
         Set-Content -LiteralPath $IniPath -Value @("LocalHost.LibraryPaths1=C:\other\repo")
-        $env:ALLOW_NONCANONICAL_LV_INI_PATH = '1'
-        $env:TEST_LV_INI_PATH = $IniPath
         $jsonOut = Join-Path $TestDrive 'dev-mode-bind-fail.json'
+
+        Set-Item -Path Function:Resolve-LVIniPath -Value ([scriptblock]::Create("param([string]`$LvVersion,[string]`$Arch) return '$IniPath'"))
 
         function global:g-cli { param([Parameter(ValueFromRemainingArguments = $true)][object[]]$args) $global:LASTEXITCODE = 0 }
         Mock -CommandName Get-Command -MockWith { [pscustomobject]@{ Name = 'g-cli'; Source = 'mock://g-cli' } }
@@ -111,9 +110,9 @@ param([string]`$RepositoryPath)
 
     It "forces unbind to clear mismatched token and succeeds" {
         Set-Content -LiteralPath $IniPath -Value @("LocalHost.LibraryPaths1=C:\other\repo")
-        $env:ALLOW_NONCANONICAL_LV_INI_PATH = '1'
-        $env:TEST_LV_INI_PATH = $IniPath
         $jsonOut = Join-Path $TestDrive 'dev-mode-bind-force.json'
+
+        Set-Item -Path Function:Resolve-LVIniPath -Value ([scriptblock]::Create("param([string]`$LvVersion,[string]`$Arch) return '$IniPath'"))
 
         function global:g-cli { param([Parameter(ValueFromRemainingArguments = $true)][object[]]$args) $global:LASTEXITCODE = 0 }
         Mock -CommandName Get-Command -MockWith { [pscustomobject]@{ Name = 'g-cli'; Source = 'mock://g-cli' } }
@@ -135,8 +134,7 @@ param([string]`$RepositoryPath)
 
         $iniHint = Join-Path $TestDrive 'LabVIEW_hint.ini'
         Set-Content -LiteralPath $iniHint -Value @("LocalHost.LibraryPaths1=C:\other\repo")
-        $env:ALLOW_NONCANONICAL_LV_INI_PATH = '1'
-        $env:TEST_LV_INI_PATH = $iniHint
+        Set-Item -Path Function:Resolve-LVIniPath -Value ([scriptblock]::Create("param([string]`$LvVersion,[string]`$Arch) return '$iniHint'"))
 
         $prevSummary = @(
             @{ bitness = '64'; status = 'fail'; message = 'LocalHost.LibraryPaths points to another path; use -Force to overwrite.' }

@@ -82,20 +82,11 @@ Describe "read-library-paths guidance" {
             ('LocalHost.LibraryPaths2={0}' -f (Join-Path $repoRoot 'other'))
         )
 
-        $env:ALLOW_NONCANONICAL_LV_INI_PATH = '1'
-        $warnings = & { & $scriptPath -RepositoryPath $repoRoot -SupportedBitness 64 -IniPath $iniPath 3>&1 } 2>$null
-        Remove-Item Env:ALLOW_NONCANONICAL_LV_INI_PATH -ErrorAction SilentlyContinue
+        Set-Item -Path Function:Resolve-LVIniPath -Value ([scriptblock]::Create("param([string]`$LvVersion,[string]`$Arch) return '$iniPath'"))
+        $warnings = & { & $scriptPath -RepositoryPath $repoRoot -SupportedBitness 64 3>&1 } 2>$null
+        Remove-Item Function:Resolve-LVIniPath -ErrorAction SilentlyContinue
         $warnings | Where-Object { $_ -like '*do not point to this repo*' } | Should -Not -BeNullOrEmpty
         $warnings | Where-Object { $_ -like '*Revert Dev Mode*Set Dev Mode*' } | Should -Not -BeNullOrEmpty
-    }
-
-    It "hard-stops on non-canonical ini path when overrides are not allowed" {
-        $scriptPath = (Resolve-Path (Join-Path $PSScriptRoot '..\scripts\read-library-paths.ps1')).Path
-        $repoRoot   = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-        $iniPath = Join-Path $TestDrive 'LabVIEW.ini'
-        Set-Content -LiteralPath $iniPath -Value @('LocalHost.LibraryPaths1=C:\other')
-
-        { & $scriptPath -RepositoryPath $repoRoot -SupportedBitness 64 -IniPath $iniPath } | Should -Throw
     }
 
     It "throws when FailOnMissing is set and no entries exist" {
@@ -103,13 +94,9 @@ Describe "read-library-paths guidance" {
         $repoRoot   = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
         $iniPath = Join-Path $TestDrive 'LabVIEW_empty.ini'
         Set-Content -LiteralPath $iniPath -Value @("Some=thing")
-        $env:ALLOW_NONCANONICAL_LV_INI_PATH = '1'
-        try {
-            { & $scriptPath -RepositoryPath $repoRoot -SupportedBitness 64 -IniPath $iniPath -FailOnMissing } | Should -Throw
-        }
-        finally {
-            Remove-Item Env:ALLOW_NONCANONICAL_LV_INI_PATH -ErrorAction SilentlyContinue
-        }
+        Set-Item -Path Function:Resolve-LVIniPath -Value ([scriptblock]::Create("param([string]`$LvVersion,[string]`$Arch) return '$iniPath'"))
+        try { { & $scriptPath -RepositoryPath $repoRoot -SupportedBitness 64 -FailOnMissing } | Should -Throw }
+        finally { Remove-Item Function:Resolve-LVIniPath -ErrorAction SilentlyContinue }
     }
 
     It "exits successfully when entries point to the repo" {
@@ -117,20 +104,17 @@ Describe "read-library-paths guidance" {
         $repoRoot   = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
         $iniPath = Join-Path $TestDrive 'LabVIEW_repo.ini'
         Set-Content -LiteralPath $iniPath -Value @("LocalHost.LibraryPaths1=$repoRoot")
-        $env:ALLOW_NONCANONICAL_LV_INI_PATH = '1'
-        try {
-            { & $scriptPath -RepositoryPath $repoRoot -SupportedBitness 64 -IniPath $iniPath } | Should -Not -Throw
-        }
-        finally {
-            Remove-Item Env:ALLOW_NONCANONICAL_LV_INI_PATH -ErrorAction SilentlyContinue
-        }
+        Set-Item -Path Function:Resolve-LVIniPath -Value ([scriptblock]::Create("param([string]`$LvVersion,[string]`$Arch) return '$iniPath'"))
+        try { { & $scriptPath -RepositoryPath $repoRoot -SupportedBitness 64 } | Should -Not -Throw }
+        finally { Remove-Item Function:Resolve-LVIniPath -ErrorAction SilentlyContinue }
     }
 
     It "throws when canonical ini is missing" {
         $scriptPath = (Resolve-Path (Join-Path $PSScriptRoot '..\scripts\read-library-paths.ps1')).Path
         $repoRoot   = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-        Remove-Item Env:ALLOW_NONCANONICAL_LV_INI_PATH -ErrorAction SilentlyContinue
-        { & $scriptPath -RepositoryPath $repoRoot -SupportedBitness 64 } | Should -Throw
+        Set-Item -Path Function:Resolve-LVIniPath -Value ([scriptblock]::Create("param([string]`$LvVersion,[string]`$Arch) { throw 'missing ini' }"))
+        try { { & $scriptPath -RepositoryPath $repoRoot -SupportedBitness 64 } | Should -Throw }
+        finally { Remove-Item Function:Resolve-LVIniPath -ErrorAction SilentlyContinue }
     }
 
     It "emits hint text when missing entries and FailOnMissing is set" {
@@ -138,13 +122,9 @@ Describe "read-library-paths guidance" {
         $repoRoot   = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
         $iniPath = Join-Path $TestDrive 'LabVIEW_missing.ini'
         Set-Content -LiteralPath $iniPath -Value @("Other=keep")
-        $env:ALLOW_NONCANONICAL_LV_INI_PATH = '1'
-        try {
-            { & $scriptPath -RepositoryPath $repoRoot -SupportedBitness 32 -IniPath $iniPath -FailOnMissing } | Should -Throw
-        }
-        finally {
-            Remove-Item Env:ALLOW_NONCANONICAL_LV_INI_PATH -ErrorAction SilentlyContinue
-        }
+        Set-Item -Path Function:Resolve-LVIniPath -Value ([scriptblock]::Create("param([string]`$LvVersion,[string]`$Arch) return '$iniPath'"))
+        try { { & $scriptPath -RepositoryPath $repoRoot -SupportedBitness 32 -FailOnMissing } | Should -Throw }
+        finally { Remove-Item Function:Resolve-LVIniPath -ErrorAction SilentlyContinue }
     }
 
     It "ignores blank or malformed lines" {
@@ -152,13 +132,9 @@ Describe "read-library-paths guidance" {
         $repoRoot   = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
         $iniPath = Join-Path $TestDrive 'LabVIEW_blank.ini'
         Set-Content -LiteralPath $iniPath -Value @("", "LocalHost.LibraryPaths1=$repoRoot", "nonsense")
-        $env:ALLOW_NONCANONICAL_LV_INI_PATH = '1'
-        try {
-            { & $scriptPath -RepositoryPath $repoRoot -SupportedBitness 64 -IniPath $iniPath } | Should -Not -Throw
-        }
-        finally {
-            Remove-Item Env:ALLOW_NONCANONICAL_LV_INI_PATH -ErrorAction SilentlyContinue
-        }
+        Set-Item -Path Function:Resolve-LVIniPath -Value ([scriptblock]::Create("param([string]`$LvVersion,[string]`$Arch) return '$iniPath'"))
+        try { { & $scriptPath -RepositoryPath $repoRoot -SupportedBitness 64 } | Should -Not -Throw }
+        finally { Remove-Item Function:Resolve-LVIniPath -ErrorAction SilentlyContinue }
     }
 
     It "handles multiple repo entries without error" {
@@ -169,13 +145,9 @@ Describe "read-library-paths guidance" {
             "LocalHost.LibraryPaths1=$repoRoot",
             "LocalHost.LibraryPaths2=$repoRoot"
         )
-        $env:ALLOW_NONCANONICAL_LV_INI_PATH = '1'
-        try {
-            { & $scriptPath -RepositoryPath $repoRoot -SupportedBitness 32 -IniPath $iniPath } | Should -Not -Throw
-        }
-        finally {
-            Remove-Item Env:ALLOW_NONCANONICAL_LV_INI_PATH -ErrorAction SilentlyContinue
-        }
+        Set-Item -Path Function:Resolve-LVIniPath -Value ([scriptblock]::Create("param([string]`$LvVersion,[string]`$Arch) return '$iniPath'"))
+        try { { & $scriptPath -RepositoryPath $repoRoot -SupportedBitness 32 } | Should -Not -Throw }
+        finally { Remove-Item Function:Resolve-LVIniPath -ErrorAction SilentlyContinue }
     }
 }
 
@@ -219,37 +191,6 @@ Describe "LocalhostLibraryPaths helpers" {
         $updated | Should -Contain 'LocalHost.LibraryPaths1=C:\other1'
         $updated | Should -Contain 'LocalHost.LibraryPaths2=C:\other2'
         $warnings.Count | Should -Be 0
-    }
-
-    It "throws on non-canonical ini when overrides are disabled" {
-        $iniPath = Join-Path $TestDrive 'LabVIEW_noncanonical.ini'
-        Set-Content -LiteralPath $iniPath -Value @('LocalHost.LibraryPaths1=C:\foo')
-        Remove-Item Env:ALLOW_NONCANONICAL_LV_INI_PATH -ErrorAction SilentlyContinue
-        $env:TEST_LV_INI_PATH = $iniPath
-        try {
-            # re-import to restore canonical Resolve-LVIniPath after prior overrides
-            . (Join-Path $PSScriptRoot '..\.github\actions\add-token-to-labview\LocalhostLibraryPaths.ps1')
-            { Resolve-LVIniPath -LvVersion '2021' -Arch '64' } | Should -Throw
-        }
-        finally {
-            Remove-Item Env:TEST_LV_INI_PATH -ErrorAction SilentlyContinue
-        }
-    }
-
-    It "allows custom ini when overrides are enabled" {
-        $iniPath = Join-Path $TestDrive 'LabVIEW_custom.ini'
-        Set-Content -LiteralPath $iniPath -Value @('LocalHost.LibraryPaths1=C:\foo')
-        $env:ALLOW_NONCANONICAL_LV_INI_PATH = '1'
-        $env:TEST_LV_INI_PATH = $iniPath
-        try {
-            . (Join-Path $PSScriptRoot '..\.github\actions\add-token-to-labview\LocalhostLibraryPaths.ps1')
-            $resolved = Resolve-LVIniPath -LvVersion '2021' -Arch '64'
-            $resolved | Should -Be $iniPath
-        }
-        finally {
-            Remove-Item Env:ALLOW_NONCANONICAL_LV_INI_PATH -ErrorAction SilentlyContinue
-            Remove-Item Env:TEST_LV_INI_PATH -ErrorAction SilentlyContinue
-        }
     }
 
     It "deduplicates identical non-repo entries" {

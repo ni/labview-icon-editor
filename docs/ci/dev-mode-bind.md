@@ -39,7 +39,7 @@ pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 `
 
 ## Failure modes (and how to resolve)
 - **Missing g-cli / Create_LV_INI_Token.vi**: fails precheck; install g-cli and ensure `Tooling/deployment/Create_LV_INI_Token.vi` exists.
-- **LabVIEW.ini not found (bitness)**: status=skip; install the bitness or set `ALLOW_NONCANONICAL_LV_INI_PATH`/`TEST_LV_INI_PATH` for tests only.
+- **LabVIEW.ini not found (bitness)**: status=skip; install the required LabVIEW bitness so the canonical `Program Files` INI exists.
 - **Token points to another repo**: unbind/bind fails unless `-Force`/`force: true` is set; use force intentionally to overwrite.
 - **Packed libs still present after bind**: treated as mismatch; reruns dev-mode prep to clear them.
 - **Bind failure mid-run**: attempts revert; JSON status will be `fail` with diagnostics.
