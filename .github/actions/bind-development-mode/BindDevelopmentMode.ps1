@@ -152,9 +152,11 @@ $previousSummaryPath = Join-Path -Path $RepositoryPath -ChildPath 'reports/dev-m
 if (-not $Force -and (Test-Path -LiteralPath $previousSummaryPath)) {
     try {
         $prevData = Get-Content -LiteralPath $previousSummaryPath -Raw | ConvertFrom-Json
-        $forceSuggested = @($prevData | Where-Object { $_.message -match 'use -Force' }).Count -gt 0
+        $forceEntries = @($prevData | Where-Object { $_.message -match 'use -Force' -and $_.current_path })
+        $forceSuggested = $forceEntries.Count -gt 0
         if ($forceSuggested) {
-            Write-Warning ("Action needed: LabVIEW.ini currently points elsewhere; to bind this repo for LabVIEW {0} you must overwrite that entry. Run the VS Code task 'Dev Mode (interactive bind/unbind)' and choose Force, or rerun this script with -Force." -f $lvVersion)
+            $boundSummary = ($forceEntries | ForEach-Object { "{0}-bit: {1}" -f $_.bitness, $_.current_path } | Select-Object -Unique) -join '; '
+            Write-Warning ("Action needed: LabVIEW.ini currently points to {0}. To bind this repo for LabVIEW {1} you must overwrite that entry. Run the VS Code task 'Dev Mode (interactive bind/unbind)' and choose Force, or rerun this script with -Force." -f $boundSummary, $lvVersion)
         }
     }
     catch {
@@ -213,18 +215,25 @@ if ($installedStates.Count -gt 0) {
         $entryList = @($state.entries)
         if (-not $entryList -or $entryList.Count -eq 0) {
             Write-Host ("  [NONE] {0}-bit {1}: (no LocalHost.LibraryPaths entries)" -f $arch, $state.version)
+            $crossVersion.Add([pscustomobject]@{
+                version = $state.version
+                arch    = $arch
+                tag     = 'NONE'
+                path    = '(no LocalHost.LibraryPaths entries)'
+            })
             continue
         }
         $firstRaw = $entryList[0]
         $first = Format-TokenPath $firstRaw
         $norm = Normalize-PathLower $firstRaw
-        $tag = if ($norm -eq $expectedNorm) { 'THIS' } else { 'OTHER' }
+        # Distinguish bindings to this repo vs other repos.
+        $tag = if ($norm -eq $expectedNorm) { 'THIS-REPO' } else { 'OTHER-REPO' }
         $tagColor = ''
         $resetColor = ''
         if ($PSStyle) {
             switch ($tag) {
-                'THIS'  { $tagColor = $PSStyle.Foreground.BrightGreen }
-                'OTHER' { $tagColor = $PSStyle.Foreground.BrightYellow }
+                'THIS-REPO'  { $tagColor = $PSStyle.Foreground.BrightGreen }
+                'OTHER-REPO' { $tagColor = $PSStyle.Foreground.BrightYellow }
                 'MISS'  { $tagColor = $PSStyle.Foreground.BrightRed }
                 'NONE'  { $tagColor = $PSStyle.Foreground.BrightBlack }
             }
@@ -232,6 +241,12 @@ if ($installedStates.Count -gt 0) {
         }
         $tagRendered = if ($tagColor) { "{0}[{1}]{2}" -f $tagColor, $tag, $resetColor } else { "[{0}]" -f $tag }
         Write-Host ("  {0} {1}-bit {2}: {3}" -f $tagRendered, $arch, $state.version, $first)
+        $crossVersion.Add([pscustomobject]@{
+            version = $state.version
+            arch    = $arch
+            tag     = $tag
+            path    = $first
+        })
     }
 
     if ($otherStates.Count -gt 0) {
@@ -245,13 +260,13 @@ if ($installedStates.Count -gt 0) {
             $firstRaw = $entryList[0]
             $first = Format-TokenPath $firstRaw
             $norm = Normalize-PathLower $firstRaw
-            $tag = if ($norm -eq $expectedNorm) { 'THIS' } else { 'OTHER' }
+            $tag = if ($norm -eq $expectedNorm) { 'THIS-REPO' } else { 'OTHER-REPO' }
             $tagColor = ''
             $resetColor = ''
             if ($PSStyle) {
                 switch ($tag) {
-                    'THIS'  { $tagColor = $PSStyle.Foreground.BrightGreen }
-                    'OTHER' { $tagColor = $PSStyle.Foreground.BrightYellow }
+                    'THIS-REPO'  { $tagColor = $PSStyle.Foreground.BrightGreen }
+                    'OTHER-REPO' { $tagColor = $PSStyle.Foreground.BrightYellow }
                     'MISS'  { $tagColor = $PSStyle.Foreground.BrightRed }
                     'NONE'  { $tagColor = $PSStyle.Foreground.BrightBlack }
                 }
@@ -259,6 +274,12 @@ if ($installedStates.Count -gt 0) {
             }
             $tagRendered = if ($tagColor) { "{0}[{1}]{2}" -f $tagColor, $tag, $resetColor } else { "[{0}]" -f $tag }
             Write-Host ("  {0} {1}-bit {2}: {3}" -f $tagRendered, $state.arch, $state.version, $first)
+            $crossVersion.Add([pscustomobject]@{
+                version = $state.version
+                arch    = $state.arch
+                tag     = $tag
+                path    = $first
+            })
         }
     }
 }
@@ -271,6 +292,8 @@ $bitnessList = if ($Bitness -eq 'both') { @('32','64') } else { @($Bitness) }
 $results = New-Object System.Collections.Generic.List[object]
 $hadFailure = $false
 $missingIniArchs = New-Object System.Collections.Generic.List[string]
+$anomalies = New-Object System.Collections.Generic.List[string]
+$crossVersion = New-Object System.Collections.Generic.List[object]
 
 function New-ResultObject {
     param(
@@ -342,6 +365,7 @@ else {
             $res.post_path = $res.current_path
             $results.Add($res)
             $hadFailure = $true
+            $anomalies.Add("Target version $lvVersion ($arch-bit) currently bound to another path: $($res.current_path)")
             continue
         }
 
@@ -534,6 +558,7 @@ $hintLines = New-Object System.Collections.Generic.List[string]
 if (@($results | Where-Object { $_.status -eq 'fail' -and $_.message -match 'use -Force' }).Count -gt 0) {
     $hintLines.Add("Open VS Code > Terminal > Run Task, pick 'Dev Mode (interactive bind/unbind)'.")
     $hintLines.Add("Choose bind + Force to overwrite, or unbind + Force to clear the other token (same as BindDevelopmentMode.ps1 flags).")
+    $hintLines.Add("CLI: pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '$RepositoryPath' -Mode bind -Bitness both -Force")
 }
 if ($missingIniArchs.Count -gt 0) {
     $archText = ($missingIniArchs | ForEach-Object { "$_-bit" }) -join '/'
@@ -557,6 +582,20 @@ if ($hintLines.Count -gt 0) {
     Write-Host ("{0}Action required:{1}" -f $palette.head, $palette.reset)
     foreach ($line in $hintLines) {
         Write-Host ("  {0}" -f $line)
+    }
+}
+
+if ($crossVersion.Count -gt 0) {
+    $suspicious = $crossVersion | Where-Object { $_.path -match 'C:\\.*C:\\' }
+    if ($suspicious.Count -gt 0) {
+        $anomalies.Add("Suspicious token paths detected (possible double-rooted): " + ($suspicious | ForEach-Object { "{0}-bit {1}: {2}" -f $_.arch, $_.version, $_.path } | Select-Object -First 3 -join '; '))
+    }
+}
+
+if ($anomalies.Count -gt 0) {
+    Write-Host ("{0}Anomalies:{1}" -f $palette.head, $palette.reset)
+    foreach ($a in $anomalies | Select-Object -Unique) {
+        Write-Host ("  {0}" -f $a)
     }
 }
 
