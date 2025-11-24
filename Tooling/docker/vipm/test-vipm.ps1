@@ -1,5 +1,5 @@
 param(
-    [string]$RepositoryRoot = $PSScriptRoot | Split-Path -Parent | Split-Path -Parent | Split-Path -Parent
+    [string]$RepositoryRoot = ($PSScriptRoot | Split-Path -Parent | Split-Path -Parent | Split-Path -Parent)
 )
 
 $ErrorActionPreference = 'Stop'
