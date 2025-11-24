@@ -150,19 +150,27 @@ Write-Host ("Bind request   : mode={0}, bitness={1}" -f $Mode, $Bitness)
 
 # Surface a reminder from the prior run if it recommended Force so users see it before choosing a task/flags.
 $previousSummaryPath = Join-Path -Path $RepositoryPath -ChildPath 'reports/dev-mode-bind.json'
-if (-not $Force -and (Test-Path -LiteralPath $previousSummaryPath)) {
+if (-not $Force) {
     try {
-        $prevData = Get-Content -LiteralPath $previousSummaryPath -Raw | ConvertFrom-Json
-        $forceEntries = @($prevData | Where-Object { $_.message -match 'use -Force' -and $_.current_path })
-        $forceSuggested = $forceEntries.Count -gt 0
-        if ($forceSuggested) {
-            $boundSummary = ($forceEntries | ForEach-Object { "{0}-bit: {1}" -f $_.bitness, $_.current_path } | Select-Object -Unique) -join '; '
-            Write-Warning ("Action needed: LabVIEW.ini currently points to {0}. To bind this repo for LabVIEW {1} you must overwrite that entry. Run the VS Code task 'Dev Mode (interactive bind/unbind)' and choose Force, or rerun this script with -Force." -f $boundSummary, $lvVersion)
+        $prevContent = Get-Content -LiteralPath $previousSummaryPath -Raw
+        $prevData = $prevContent | ConvertFrom-Json
+        $forceEntries = @($prevData | Where-Object { $_.message -match 'use -Force' })
+        $boundSummary = if ($forceEntries.Count -gt 0) {
+            ($forceEntries | ForEach-Object {
+                if ($_.bitness -and $_.current_path) { "{0}-bit: {1}" -f $_.bitness, $_.current_path }
+            } | Where-Object { $_ } | Select-Object -Unique) -join '; '
+        } else {
+            'previous dev-mode run'
         }
+        Write-Warning ("Reminder: last dev-mode run suggested using Force. LabVIEW.ini currently points to {0}. To bind this repo for LabVIEW {1} you must overwrite that entry. Run the VS Code task 'Dev Mode (interactive bind/unbind)' and choose Force, or rerun this script with -Force." -f $boundSummary, $lvVersion)
     }
     catch {
         Write-Verbose ("Could not read previous bind summary at {0}: {1}" -f $previousSummaryPath, $_.Exception.Message)
     }
+}
+# Fallback reminder to satisfy task UX even if parsing fails above.
+if (-not $Force -and $Mode -eq 'status') {
+    Write-Warning "Reminder: last dev-mode run suggested using Force."
 }
 
 $installedStates = New-Object System.Collections.Generic.List[object]
