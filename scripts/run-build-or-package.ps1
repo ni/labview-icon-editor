@@ -7,7 +7,8 @@ param(
     [string]$CompanyName,
     [string]$AuthorName,
     [string]$LvlibpBitness = '64',
-    [string]$VipbPath
+    [string]$VipbPath,
+    [switch]$Simulate
 )
 
 $ErrorActionPreference = 'Stop'
@@ -192,6 +193,13 @@ $AuthorName = if ($PSBoundParameters.ContainsKey('AuthorName') -and -not [string
     $gitUser = Resolve-GitUserName -RepoRoot $repo -Fallback $owner
     Write-Information ("Using git user.name as Author Name: {0}" -f $gitUser) -InformationAction Continue
     $gitUser
+}
+
+if ($Simulate) {
+    Write-Host "Simulation mode: no LabVIEW/g-cli/vipm calls will be made." -ForegroundColor Yellow
+    Write-Host ("VIPB: {0}" -f $resolvedVipb)
+    Write-Host ("BuildMode: {0}; LvlibpBitness: {1}; SemVer: {2}.{3}.{4}.{5}; Commit: {6}" -f $BuildMode, $LvlibpBitness, $semver.Major, $semver.Minor, $semver.Patch, $buildNumber, $commitHash)
+    exit 0
 }
 
 $buildScript = Join-Path -Path $ws -ChildPath ".github/actions/build/Build.ps1"

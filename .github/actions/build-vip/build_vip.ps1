@@ -65,6 +65,7 @@ param (
     [string]$ReleaseNotesFile,
 
     [switch]$Simulate,
+    [switch]$SkipPPLCheck,
 
     [Parameter(Mandatory=$true)]
     [string]$DisplayInformationJSON
@@ -93,6 +94,21 @@ catch {
     }
     $errorObject | ConvertTo-Json -Depth 10
     exit 1
+}
+
+# If provided VIPBPath doesn't exist, attempt to auto-discover the single .vipb in the repo
+if (-not (Test-Path -LiteralPath $ResolvedVIPBPath)) {
+    $candidates = Get-ChildItem -Path $ResolvedRepositoryPath -Filter *.vipb -File -Recurse
+    if (-not $candidates -or $candidates.Count -eq 0) {
+        Write-Error "VIPB not found at '$ResolvedVIPBPath' and no .vipb files discovered under $ResolvedRepositoryPath."
+        exit 1
+    }
+    if ($candidates.Count -gt 1) {
+        Write-Error ("VIPB not found at '{0}' and multiple .vipb files discovered: {1}. Specify vipb_path explicitly." -f $ResolvedVIPBPath, ($candidates | ForEach-Object { $_.FullName } -join '; '))
+        exit 1
+    }
+    $ResolvedVIPBPath = $candidates[0].FullName
+    Write-Verbose ("Auto-discovered VIPB at {0}" -f $ResolvedVIPBPath)
 }
 
 # 2) Create release notes if needed and resolve the paths
@@ -143,15 +159,19 @@ $pplDir    = Join-Path $ResolvedRepositoryPath 'resource\plugins'
 $pplNeutral = Join-Path $pplDir 'lv_icon.lvlibp'
 $pplWin64   = Join-Path $pplDir 'lv_icon.lvlibp.windows_x64'
 $pplWin86   = Join-Path $pplDir 'lv_icon.lvlibp.windows_x86'
-$missingPpl = @()
-foreach ($candidate in @($pplNeutral, $pplWin64, $pplWin86)) {
-    if (-not (Test-Path -LiteralPath $candidate)) {
-        $missingPpl += $candidate
+if (-not $SkipPPLCheck) {
+    $missingPpl = @()
+    foreach ($candidate in @($pplNeutral, $pplWin64, $pplWin86)) {
+        if (-not (Test-Path -LiteralPath $candidate)) {
+            $missingPpl += $candidate
+        }
     }
-}
-if ($missingPpl.Count -gt 0) {
-    Write-Error ("Missing staged PPL(s) required for post-install selection: {0}" -f ($missingPpl -join '; '))
-    exit 1
+    if ($missingPpl.Count -gt 0) {
+        Write-Error ("Missing staged PPL(s) required for post-install selection: {0}" -f ($missingPpl -join '; '))
+        exit 1
+    }
+} else {
+    Write-Host "Skipping staged PPL presence check (SkipPPLCheck enabled)." -ForegroundColor Yellow
 }
 
 # 3) Resolve LabVIEW version from VIPB to ensure determinism, overriding any inbound value

@@ -319,6 +319,31 @@ jobs:
           path: test-report.md
           if-no-files-found: error
 
+  simulate-build-vip:
+    name: Simulate VI Package build (preflight)
+    needs: [verify-checklist-sync]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run build-vip in simulate mode (no vipm)
+        uses: ./.github/actions/build-vip
+        with:
+          supported_bitness: 64
+          repository_path: ${{ github.workspace }}
+          vipb_path: Tooling/deployment/NI Icon editor.vipb
+          labview_minor_revision: 3
+          major: 0
+          minor: 0
+          patch: 0
+          build: 0
+          commit: simulate
+          release_notes_file: Tooling/deployment/release_notes.md
+          display_information_json: "{}"
+          simulate: true
+          skip_ppl_check: true
+
   docs-quality:
     name: Docs link check and ADR lint
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]

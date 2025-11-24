@@ -107,8 +107,38 @@
         "-ReleaseNotesFile",
         "Tooling/deployment/release_notes.md",
         "-DisplayInformationJSON",
-        "{}",
-        "-Simulate"
+        "'{}'",
+        "-Simulate",
+        "-SkipPPLCheck"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build PPL (simulate)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/run-build-lvlibp-task.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-SupportedBitness",
+        "64",
+        "-Major",
+        "0",
+        "-Minor",
+        "0",
+        "-Patch",
+        "0",
+        "-Build",
+        "0",
+        "-Commit",
+        "manual"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -150,6 +180,30 @@
           "GH_TOKEN": "${env:GH_TOKEN}",
           "GITHUB_TOKEN": "${env:GITHUB_TOKEN}"
         }
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build pipeline (full simulate)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/run-build-or-package.ps1",
+        "-BuildMode",
+        "vip+lvlibp",
+        "-WorkspacePath",
+        "${workspaceFolder}",
+        "-LabVIEWMinorRevision",
+        "3",
+        "-LvlibpBitness",
+        "both",
+        "-Simulate"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
       },
       "group": "build",
       "problemMatcher": []

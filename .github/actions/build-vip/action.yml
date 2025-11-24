@@ -125,7 +125,8 @@ runs:
           -Commit "${{ inputs.commit }}" `
           -ReleaseNotesFile "${{ inputs.release_notes_file }}" `
           -DisplayInformationJSON $displayInformationJson `
-          -Simulate ${{ inputs.simulate }}
+          -Simulate ${{ inputs.simulate }} `
+          -SkipPPLCheck ${{ inputs.skip_ppl_check }}
 
     - name: Dump vipm build logs on failure
       if: failure()
@@ -334,5 +335,9 @@ inputs:
     default: 'true'
   simulate:
     description: 'If true, run preflights only and skip vipm build'
+    required: false
+    default: 'false'
+  skip_ppl_check:
+    description: 'If true, do not require staged PPL variants (for simulate/dry-run only)'
     required: false
     default: 'false'
