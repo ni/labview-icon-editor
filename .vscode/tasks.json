@@ -67,27 +67,9 @@
       "type": "promptString",
       "description": "Build number",
       "default": "1"
-    },
+    }
   ],
   "tasks": [
-    {
-      "label": "Analyze VI Package (Pester)",
-      "type": "shell",
-      "command": "pwsh",
-      "args": [
-        "-NoProfile",
-        "-File",
-        "${workspaceFolder}/.github/actions/analyze-vi-package/run-local.ps1",
-        "-VipArtifactPath",
-        "${input:vipArtifactPath}",
-        "-MinLabVIEW",
-        "${input:minLv}"
-      ],
-      "options": {
-        "cwd": "${workspaceFolder}"
-      },
-      "problemMatcher": []
-    },
     {
       "label": "Build/Package VIP",
       "detail": "Choose artifact type via buildMode: vip+lvlibp (full pipeline) or vip-single (single-arch package)",
@@ -107,6 +89,30 @@
       },
       "group": "build",
       "problemMatcher": []
+    },
+    {
+      "label": "Build/Package VIP + Analyze",
+      "detail": "Runs the build task then analyzes the resulting .vip with the Pester policy suite.",
+      "type": "shell",
+      "dependsOn": [
+        "Build/Package VIP"
+      ],
+      "dependsOrder": "sequence",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/.github/actions/analyze-vi-package/run-local.ps1",
+        "-VipArtifactPath",
+        "${input:vipArtifactPath}",
+        "-MinLabVIEW",
+        "${input:minLv}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": "build"
     },
     {
       "label": "Build/Package VIP (both PPLs, no CI gate)",
