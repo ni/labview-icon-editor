@@ -71,7 +71,7 @@
   ],
   "tasks": [
     {
-      "label": "Build/Package VIP",
+      "label": "Build release asset (VI Package single bitness)",
       "type": "shell",
       "command": "pwsh",
       "args": [
@@ -90,7 +90,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Build/Package VIP (both PPLs, no CI gate)",
+      "label": "Build release asset (VI Package 32 & 64 bits)",
       "type": "shell",
       "command": "pwsh",
       "args": [
@@ -105,7 +105,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Draft GitHub Release (CI artifacts)",
+      "label": "Draft release",
       "type": "shell",
       "command": "pwsh",
       "args": [
@@ -123,7 +123,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Build lvlibp (LabVIEW)",
+      "label": "Build release asset (Packed Project Library)",
       "type": "shell",
       "command": "pwsh",
       "args": [
@@ -137,7 +137,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Set Dev Mode (LabVIEW)",
+      "label": "Set dev mode",
       "type": "shell",
       "command": "pwsh",
       "args": [
@@ -153,7 +153,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Revert Dev Mode (LabVIEW)",
+      "label": "Revert dev mode",
       "type": "shell",
       "command": "pwsh",
       "args": [
@@ -169,7 +169,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Requirements checklist",
+      "label": "Requirements",
       "type": "shell",
       "command": "python",
       "args": [
