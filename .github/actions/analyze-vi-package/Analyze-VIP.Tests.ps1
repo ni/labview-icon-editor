@@ -8,8 +8,24 @@ Set-StrictMode -Off
 
 Import-Module "$PSScriptRoot/VIPReader.psm1" -Force
 
+$vipPath = $env:VIP_PATH
+if (-not $vipPath -or -not (Test-Path -LiteralPath $vipPath -PathType Leaf)) {
+    $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+    $vipDir = Join-Path $repoRoot 'builds\VI Package'
+    $fallback = Get-ChildItem -Path $vipDir -Filter *.vip -File -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($fallback) {
+        $vipPath = $fallback.FullName
+        Write-Information ("VIP_PATH not set; using latest VIP under {0}: {1}" -f $vipDir, $vipPath) -InformationAction Continue
+    }
+}
+if (-not $vipPath -or -not (Test-Path -LiteralPath $vipPath -PathType Leaf)) {
+    Write-Warning "VIP_PATH not set and no .vip under builds\VI Package. Set VIP_PATH or run via run-local.ps1. Skipping Analyze-VIP tests."
+    Describe "Analyze VIP" -Skip:$true { It "skipped" { } }
+    return
+}
+
 BeforeAll {
-$script:vip = Read-VipSpec -Path $env:VIP_PATH
+    $script:vip = Read-VipSpec -Path $vipPath
     $script:S = $vip.Sections
     $script:entries = $vip.ZipEntries
     $script:entryNames = $entries | ForEach-Object { [System.IO.Path]::GetFileName($_) }
@@ -216,6 +232,18 @@ Describe "Presence of core files in the VIP" {
     It "VIP-CONTENT-002: Script VIs (*.vi) referenced SHALL be included" {
         foreach ($token in @('preinstall','postinstall','preuninstall','postuninstall')) {
             $normalizedScriptEntries | Should -Contain $token -Because ("Expected script token {0} in package entries." -f $token)
+        }
+    }
+    It "VIP-CONTENT-003: Both architecture PPLs SHALL be included" {
+        $expectedPpls = @(
+            'lv_icon.lvlibp',
+            'lv_icon_x86.lvlibp',
+            'lv_icon_x64.lvlibp',
+            'lv_icon.lvlibp.windows_x86',
+            'lv_icon.lvlibp.windows_x64'
+        )
+        foreach ($ppl in $expectedPpls) {
+            $entryNames | Should -Contain $ppl -Because ("Expected PPL artifact {0} in package entries." -f $ppl)
         }
     }
 }
