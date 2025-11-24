@@ -19,6 +19,7 @@ Lightweight helper to run VIPM CLI inside NI's LabVIEW container. Useful for ins
 
 ## VS Code task
 - Run task “Test VIPM Docker” (calls `Tooling/docker/vipm/test-vipm.ps1`) to build the image if needed and execute `vipm help` inside the container. It will auto-create an empty `.env` if missing; supply credentials in `.env` for activation/installs. The script now builds before running to avoid pull errors.
+- Run task “VIPM Docker Smoke” (calls `Tooling/docker/vipm/smoke-vipm.ps1`) to activate VIPM, refresh package metadata, install `oglib_boolean`, list installs, and sanity-check OpenG files. Requires valid `.env` credentials. Optional `-VipcPath` lets you also apply a VIPC inside the container.
 
 ## TLS note
 - The Dockerfile tries a normal download of VIPM and, if the certificate chain can’t be validated (e.g., corporate TLS interception), retries with `--no-check-certificate`. If you have a corporate root CA, prefer adding it to the base image instead of relying on the insecure fallback.

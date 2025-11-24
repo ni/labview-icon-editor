@@ -376,6 +376,24 @@
         "cwd": "${workspaceFolder}"
       },
       "problemMatcher": []
+    },
+    {
+      "label": "VIPM Docker Smoke",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/Tooling/docker/vipm/smoke-vipm.ps1",
+        "-RepositoryRoot",
+        "${workspaceFolder}",
+        "-VipcPath",
+        "icon-editor-developer.vipc"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
     }
   ]
 }
