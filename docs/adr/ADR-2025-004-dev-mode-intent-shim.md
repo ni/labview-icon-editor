@@ -1,7 +1,7 @@
 # ADR: Agent-Only Dev-Mode Intent Shim
 
 - **ID**: ADR-2025-004  
-- **Status**: Proposed  
+- **Status**: Proposed  _(implementation partially in progress; guarded rollout pending approval)_
 - **Date**: 2025-11-24
 
 ## Context
@@ -13,7 +13,7 @@ Automation wants to drive dev-mode bind/unbind from natural-language intents (e.
 - **C** - Add a separate agent-only CLI (e.g., .NET console) that parses intents, applies guardrails, emits a plan, and delegates execution to the existing PowerShell binder (separation of concerns; extra artifact to build/test).
 
 ## Decision
-Choose **C**. Introduce a dedicated agent-only CLI that consumes constrained dev-mode phrases, enforces guardrails (required prefix, per-intent Force, expected_path/version checks against `reports/dev-mode-bind.json`), emits a structured plan (pending/skip/blocked with reasons), and optionally executes the existing PowerShell binder per intent. The PowerShell binder remains the sole user-facing tool; the CLI is for automation/policy only and stays Windows-bound because it shells out to the binder.
+Choose **C**. Introduce a dedicated agent-only CLI that consumes constrained dev-mode phrases, enforces guardrails (required prefix, per-intent Force, expected_path/version checks against `reports/dev-mode-bind.json`), emits a structured plan (pending/skip/blocked with reasons), and optionally executes the existing PowerShell binder per intent. The PowerShell binder remains the sole user-facing tool; the CLI is for automation/policy only and stays Windows-bound because it shells out to the binder. Implementation is partially prototyped (intent parser + PowerShell glue); full adoption is gated on CLI delivery and approval.
 
 ## Consequences
 - **+** Clear separation: LabVIEW users keep the current binder UX; automation gets a policy/intent shim with structured outputs.

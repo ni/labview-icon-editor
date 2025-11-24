@@ -1,4 +1,4 @@
-# ADR 0001: Adopt ADRs (MADR) and a repository‑root `agent.yaml` as the single source of truth for our AI agent
+# ADR-2025-001: Adopt ADRs (MADR) and a repository-root `agent.yaml` as the single source of truth for our AI agent
 
 *Status*: **Accepted**  
 *Date*: 2025-11-20  
@@ -8,7 +8,7 @@
 We need a durable, reviewable way to (a) record significant architectural decisions and (b) define the behavior and boundaries of our AI agent in a single place that is easy to audit, test, and version. Prior decisions and configuration have been scattered across docs, code comments, and environment‑specific UIs.
 
 ## Decision
-1. Use **Architecture Decision Records (ADRs)** stored under `docs/adr/`, named `NNNN-title.md` with zero‑padded sequence numbers (starting at 0001), using a concise MADR‑style structure.
+1. Use **Architecture Decision Records (ADRs)** stored under `docs/adr/`, named `ADR-YYYY-NNN-title.md` (e.g., `ADR-2025-001-use-oidc.md`) using a concise MADR-style structure.
 2. Create and maintain a repository‑root `agent.yaml` as the **single source of truth** for agent identity, goals, guardrails, model selection, and capabilities.
 
 ## Decision Drivers
