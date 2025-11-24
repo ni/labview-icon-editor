@@ -22,6 +22,17 @@
       "default": "64"
     },
     {
+      "id": "lvlibpBitness",
+      "type": "pickString",
+      "description": "Bitness for VIP build task",
+      "options": [
+        "both",
+        "32",
+        "64"
+      ],
+      "default": "64"
+    },
+    {
       "id": "semverMajor",
       "type": "promptString",
       "description": "Major version",
@@ -47,6 +58,39 @@
     }
   ],
   "tasks": [
+    {
+      "label": "Analyze VI Package (Pester)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/.github/actions/analyze-vi-package/run-local.ps1",
+        "-VipArtifactPath",
+        "${workspaceFolder}/builds/VI Package/",
+        "-MinLabVIEW",
+        "21.0"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build/Package VIP",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "& { & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"${input:buildMode}\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"${input:lvlibpBitness}\" }"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
     {
       "label": "Build release asset (VI Package x64)",
       "type": "shell",
@@ -160,7 +204,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Set dev mode",
+      "label": "Set Dev Mode (LabVIEW)",
       "type": "shell",
       "command": "pwsh",
       "args": [
@@ -176,7 +220,7 @@
       "problemMatcher": []
     },
     {
-      "label": "Revert dev mode",
+      "label": "Revert Dev Mode (LabVIEW)",
       "type": "shell",
       "command": "pwsh",
       "args": [
