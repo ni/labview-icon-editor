@@ -406,7 +406,13 @@
       "options": {
         "cwd": "${workspaceFolder}"
       },
-      "problemMatcher": []
+      "problemMatcher": [],
+      "detail": "Guided PowerShell helper for bind/unbind",
+      "group": "Dev Mode",
+      "presentation": {
+        "reveal": "always"
+      },
+      "isBackground": false
     },
     {
       "label": "Dev Mode (bind both with Force)",
@@ -449,7 +455,13 @@
       "options": {
         "cwd": "${workspaceFolder}"
       },
-      "problemMatcher": []
+      "problemMatcher": [],
+      "detail": "Intent CLI (plan+execute) for dev-mode bind; safe default",
+      "group": "Dev Mode",
+      "presentation": {
+        "reveal": "always"
+      },
+      "isBackground": false
     },
     {
       "label": "Dev Mode Bind (force overwrite)",
@@ -471,7 +483,13 @@
       "options": {
         "cwd": "${workspaceFolder}"
       },
-      "problemMatcher": []
+      "problemMatcher": [],
+      "detail": "Intent CLI with Force to overwrite existing dev-mode tokens",
+      "group": "Dev Mode",
+      "presentation": {
+        "reveal": "always"
+      },
+      "isBackground": false
     },
     {
       "label": "Revert Dev Mode (LabVIEW)",
@@ -487,7 +505,13 @@
       "options": {
         "cwd": "${workspaceFolder}"
       },
-      "problemMatcher": []
+      "problemMatcher": [],
+      "detail": "Unbind/reset dev mode for the selected bitness",
+      "group": "Dev Mode",
+      "presentation": {
+        "reveal": "always"
+      },
+      "isBackground": false
     },
     {
       "label": "Requirements",
