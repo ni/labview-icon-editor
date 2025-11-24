@@ -646,6 +646,16 @@ $( $anomalyLines -join "`n")
 "@
 
     Write-Host $md
+
+    try {
+        $guidePath = Resolve-Path (Join-Path $PSScriptRoot '..\..\docs\troubleshooting\bind-dev-mode-force.md')
+        Write-Host ""
+        Write-Host "=== Troubleshooting Guide ==="
+        Get-Content -LiteralPath $guidePath
+    }
+    catch {
+        Write-Verbose ("Troubleshooting guide not found: {0}" -f $_.Exception.Message)
+    }
 }
 
 $exitFail = @($results | Where-Object { $_.status -in @('fail','blocked') })
