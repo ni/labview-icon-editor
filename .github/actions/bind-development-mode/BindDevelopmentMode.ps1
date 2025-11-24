@@ -314,7 +314,7 @@ else {
             $res.message = ("LabVIEW.ini not found for {0}-bit at the canonical path for LabVIEW {1}: {2}" -f $arch, $lvVersion, $_.Exception.Message)
             $missingIniArchs.Add($arch)
             $hadFailure = $true
-            Write-Warning $res.message
+            Write-Verbose $res.message
             $results.Add($res)
             continue
         }
