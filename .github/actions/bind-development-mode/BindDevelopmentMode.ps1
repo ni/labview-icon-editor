@@ -26,7 +26,10 @@ function Normalize-PathLower {
 function Format-TokenPath {
     param([string]$Path)
     if ([string]::IsNullOrWhiteSpace($Path)) { return '(no entries)' }
-    $p = $Path.Trim('"')
+    $p = $Path.Replace('"','')
+    # If multiple drive roots are present, treat as raw to avoid misleading GetFullPath resolution.
+    $colonCount = ($p -split ':').Length - 1
+    if ($colonCount -gt 1) { return $p }
     try {
         $full = [System.IO.Path]::GetFullPath($p)
         return $full
@@ -158,7 +161,7 @@ if (-not $Force -and (Test-Path -LiteralPath $previousSummaryPath)) {
     }
 }
 
-$installedStates = New-Object System.Collections.Generic.List[object]
+ $installedStates = New-Object System.Collections.Generic.List[object]
 function Get-LocalHostEntries {
     param([string]$IniPath)
     $entries = @()
@@ -197,10 +200,14 @@ foreach ($root in @('C:\Program Files\National Instruments','C:\Program Files (x
 
 if ($installedStates.Count -gt 0) {
     Write-Host "=== Installed LabVIEW INI tokens ==="
-    foreach ($state in $installedStates) {
+    foreach ($state in ($installedStates | Sort-Object arch,version)) {
         $entryList = @($state.entries)
-        $first = if ($entryList -and $entryList.Count -gt 0) { $entryList[0] } else { '(no entries)' }
-        Write-Host ("  {0}-bit {1}: {2}" -f $state.arch, $state.version, (Format-TokenPath $first))
+        if (-not $entryList -or $entryList.Count -eq 0) {
+            Write-Host ("  {0}-bit {1}: (no LocalHost.LibraryPaths entries)" -f $state.arch, $state.version)
+            continue
+        }
+        $first = Format-TokenPath $entryList[0]
+        Write-Host ("  {0}-bit {1}: {2}" -f $state.arch, $state.version, $first)
     }
 }
 else {
