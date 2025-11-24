@@ -75,7 +75,7 @@ if (-not $Force -and (Test-Path -LiteralPath $previousSummaryPath)) {
         $prevData = Get-Content -LiteralPath $previousSummaryPath -Raw | ConvertFrom-Json
         $forceSuggested = @($prevData | Where-Object { $_.message -match 'use -Force' }).Count -gt 0
         if ($forceSuggested) {
-            Write-Warning "Reminder: last dev-mode run suggested using Force to overwrite/clear the existing token. Use the VS Code task 'Dev Mode (interactive bind/unbind)' with Force, or rerun this script with -Force."
+            Write-Warning "Action needed: last dev-mode run recommended Force. Next: run VS Code task 'Dev Mode (interactive bind/unbind)' and choose Force, or rerun this script with -Force."
         }
     }
     catch {
@@ -402,11 +402,11 @@ Write-Host ("{0}Totals:{1} success={2} fail={3} skip={4} dry-run={5}" -f $palett
 
 $hintLines = New-Object System.Collections.Generic.List[string]
 if (@($results | Where-Object { $_.status -eq 'fail' -and $_.message -match 'use -Force' }).Count -gt 0) {
-    $hintLines.Add("1) Open VS Code > Terminal > Run Task, pick 'Dev Mode (interactive bind/unbind)'.")
-    $hintLines.Add("2) Choose bind + Force to overwrite, or unbind + Force to clear the other token (same as BindDevelopmentMode.ps1 flags).")
+    $hintLines.Add("Open VS Code > Terminal > Run Task, pick 'Dev Mode (interactive bind/unbind)'.")
+    $hintLines.Add("Choose bind + Force to overwrite, or unbind + Force to clear the other token (same as BindDevelopmentMode.ps1 flags).")
 }
 if ($hintLines.Count -gt 0) {
-    Write-Host ("{0}Next steps:{1}" -f $palette.head, $palette.reset)
+    Write-Host ("{0}Action required:{1}" -f $palette.head, $palette.reset)
     foreach ($line in $hintLines) {
         Write-Host ("  {0}" -f $line)
     }
