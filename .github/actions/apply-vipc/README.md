@@ -19,7 +19,7 @@ Ensure a runner has all required LabVIEW packages installed before building or t
 |-------------|-------|
 | **Windows runner** | LabVIEW and VIPM CLI are Windows only. |
 | **LabVIEW** `>= 2021` | Must match `package_labview_version` (typically derived from the `.vipb`). |
-| **VIPM CLI** in `PATH` | Used to apply the `.vipc` container. Install from VIPM. |
+| **VIPM CLI** in `PATH` | Used to apply the `.vipc` container. If missing, the action logs a skip instead of failing. Install from VIPM. |
 | **PowerShell 7** | Composite steps use PowerShell Core (`pwsh`). |
 
 ---
@@ -64,16 +64,16 @@ steps:
 ## How it works
 1. **Checkout** – pulls the repository to ensure scripts and the `.vipc` file are present.
 2. **PowerShell wrapper** – executes `ApplyVIPC.ps1` with the provided inputs.
-3. **VIPM CLI invocation** – `ApplyVIPC.ps1` launches **vipm install** to apply the `.vipc` container to the specified LabVIEW installation.
+3. **VIPM CLI invocation** – `ApplyVIPC.ps1` launches **vipm install** to apply the `.vipc` container to the specified LabVIEW installation (or skips when `vipm` is unavailable).
 4. **Package diffing** – before/after applying, the script compares installed packages against the VIPC; it skips install if already compliant and fails if post-check still shows missing/mismatched packages. A summary JSON is written (`summary-json` output) for downstream steps.
-5. **Failure propagation** – any error in path resolution, VIPM CLI, or the script causes the step (and job) to fail.
+5. **Failure propagation** – any error in path resolution or the script causes the step (and job) to fail. If the VIPM CLI is missing, the action exits cleanly and reports that dependencies were not applied.
 
 ---
 
 ## Troubleshooting
 | Symptom | Hint |
 |---------|------|
-| *vipm executable not found* | Ensure VIPM CLI is installed and on `PATH`. |
+| *vipm executable not found* | The action will skip applying dependencies. Install VIPM CLI and add it to `PATH` to enable application. |
 | *`.vipc` file not found* | Check `repository_path` and `vipc_path` values. |
 | *LabVIEW version mismatch* | Make sure the installed LabVIEW version matches both version inputs. |
 

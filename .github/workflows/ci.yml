@@ -464,8 +464,14 @@ jobs:
             $status = git status --short -- $vipcRel 2>$null
             if ($status) { $changed = $true }
           }
-          "changed_vipc=$changed" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+          $vipm = Get-Command vipm -ErrorAction SilentlyContinue
+          $hasVipmCli = [bool]$vipm
+
+          "changed_vipc=$($changed.ToString().ToLowerInvariant())" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "has_vipm_cli=$($hasVipmCli.ToString().ToLowerInvariant())" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
           Write-Host ("VIPC changed? {0}" -f $changed)
+          Write-Host ("vipm CLI present? {0}" -f $hasVipmCli)
 
       - name: Summarize VIPC file (skip apply)
         if: steps.detect.outputs.changed_vipc != 'true'
@@ -508,7 +514,24 @@ jobs:
           }
           Write-Host $summaryText
 
+      - name: Skip VIPC operations (vipm CLI missing)
+        if: steps.detect.outputs.has_vipm_cli != 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $msg = "vipm CLI not found on PATH; skipping VIPC listing and application steps."
+          Write-Warning $msg
+          if ($env:GITHUB_STEP_SUMMARY) {
+            $summary = @()
+            $summary += "### VIPC dependencies (x${{ matrix.bits }})"
+            $summary += ""
+            $summary += $msg
+            $summary += ""
+            $summary -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+
       - name: Print VIPC dependencies
+        if: steps.detect.outputs.has_vipm_cli == 'true'
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -531,6 +554,7 @@ jobs:
           $out | ForEach-Object { Write-Host "  $_" }
 
       - name: Summarize VIPC dependencies
+        if: steps.detect.outputs.has_vipm_cli == 'true'
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -575,7 +599,7 @@ jobs:
           }
 
       - name: Apply VIPC dependencies
-        if: steps.detect.outputs.changed_vipc == 'true'
+        if: steps.detect.outputs.changed_vipc == 'true' && steps.detect.outputs.has_vipm_cli == 'true'
         id: apply_vipc
         uses: ./.github/actions/apply-vipc
         with:
@@ -585,7 +609,7 @@ jobs:
           vipc_path: ${{ env.VIPC_PATH }}
 
       - name: Summarize applied VIPC file
-        if: steps.detect.outputs.changed_vipc == 'true'
+        if: steps.detect.outputs.changed_vipc == 'true' && steps.detect.outputs.has_vipm_cli == 'true'
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
@@ -618,7 +642,7 @@ jobs:
         run: echo "No .vipc changes detected; skipping dependency application."
 
       - id: report
-        if: steps.detect.outputs.changed_vipc == 'true'
+        if: steps.detect.outputs.changed_vipc == 'true' && steps.detect.outputs.has_vipm_cli == 'true'
         name: Capture report path
         shell: pwsh
         run: |

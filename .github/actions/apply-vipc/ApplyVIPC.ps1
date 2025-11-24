@@ -109,6 +109,54 @@ catch {
 }
 Write-Information ("Using VIPC '{0}' (size: {1} bytes, last write UTC: {2:o}, sha256: {3}, git commit: {4})" -f $vipcItem.FullName, $vipcItem.Length, $vipcItem.LastWriteTimeUtc, $vipcHash, ($vipcGitCommit ?? 'unknown')) -InformationAction Continue
 
+$ReportPath = Join-Path $PSScriptRoot 'apply_vipc_report.json'
+Remove-Item -LiteralPath $ReportPath -ErrorAction SilentlyContinue
+$script:Reports = @()
+
+function Write-ReportAndOutputs {
+    param([string]$StatusMessage)
+
+    $json = ConvertTo-Json -InputObject $script:Reports -Depth 6
+    Set-Content -Path $ReportPath -Value $json -Encoding UTF8
+    if (-not (Test-Path -LiteralPath $ReportPath)) {
+        throw "Expected to write apply-vipc report, but file was not found at '$ReportPath'."
+    }
+    Write-Information ("Wrote apply-vipc report to {0}" -f $ReportPath) -InformationAction Continue
+
+    if ($env:GITHUB_OUTPUT) {
+        @(
+            "summary-json=$ReportPath"
+            ("vipc_path={0}" -f $ResolvedVIPCPath)
+            ("vipc_sha256={0}" -f $vipcHash)
+            ("vipc_size_bytes={0}" -f $vipcItem.Length)
+            ("vipc_last_write_utc={0:o}" -f $vipcItem.LastWriteTimeUtc)
+            ("vipc_git_commit={0}" -f ($vipcGitCommit ?? 'unknown'))
+            ("vipc_git_author={0}" -f ($vipcGitAuthor ?? 'unknown'))
+        ) | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+    }
+
+    if ($env:GITHUB_STEP_SUMMARY) {
+        $vipcLeaf = Split-Path -Leaf $ResolvedVIPCPath
+        $bitLabel = "x$SupportedBitness"
+        $summary = @()
+        $summary += ("### {0} ({1})" -f $vipcLeaf, $bitLabel)
+        $summary += ""
+        $summary += "| Field | Value |"
+        $summary += "| --- | --- |"
+        if (-not [string]::IsNullOrWhiteSpace($StatusMessage)) {
+            $summary += ("| Status | {0} |" -f $StatusMessage)
+        }
+        $summary += ("| Path | `{0}` |" -f $ResolvedVIPCPath)
+        $summary += ("| SHA256 | `{0}` |" -f $vipcHash)
+        $summary += ("| Size (bytes) | `{0}` |" -f $vipcItem.Length)
+        $summary += ("| Last write (UTC) | `{0}` |" -f $vipcItem.LastWriteTimeUtc.ToString("o"))
+        $summary += ("| Git commit | `{0}` |" -f ($vipcGitCommit ?? 'unknown'))
+        $summary += ("| Git author | `{0}` |" -f ($vipcGitAuthor ?? 'unknown'))
+        $summary += ""
+        $summary -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+    }
+}
+
 # -------------------------
 # 2) Build LabVIEW Version Strings
 # -------------------------
@@ -140,16 +188,28 @@ $VersionLabel = Get-LvLabel -Version $Package_LabVIEW_Version -Bitness $Supporte
 Write-Information "Applying dependencies for LabVIEW $VersionLabel..." -InformationAction Continue
 Write-Verbose ("Target LabVIEW version: {0}" -f $Package_LabVIEW_Version)
 
-# Sanity check VIPM CLI exists
+# Sanity check VIPM CLI exists; skip apply if unavailable
 $vipmCli = Get-Command vipm -ErrorAction SilentlyContinue
 if (-not $vipmCli) {
-    Write-Error "vipm CLI is not available on PATH; cannot apply VIPC."
-    exit 1
+    Write-Warning "vipm CLI is not available on PATH; skipping VIPC application."
+    $script:Reports += [ordered]@{
+        target            = $VersionLabel
+        lvMajor           = $Package_LabVIEW_Version
+        bitness           = $SupportedBitness
+        vipcPath          = $ResolvedVIPCPath
+        installAttempted  = $false
+        skippedReason     = "vipm CLI not available on PATH"
+        preMissing        = @()
+        preMismatch       = @()
+        preExtra          = @()
+        postMissing       = @()
+        postMismatch      = @()
+        postExtra         = @()
+    }
+    Write-ReportAndOutputs -StatusMessage "Skipped (vipm CLI not available)"
+    Write-Information "Skipping dependency application because vipm CLI was not found." -InformationAction Continue
+    exit 0
 }
-
-$ReportPath = Join-Path $PSScriptRoot 'apply_vipc_report.json'
-Remove-Item -LiteralPath $ReportPath -ErrorAction SilentlyContinue
-$script:Reports = @()
 
 # -------------------------
 # 3) Construct and execute vipm commands
@@ -400,40 +460,5 @@ function Apply-ForTarget {
 
 Apply-ForTarget -LvMajor $Package_LabVIEW_Version -DisplayVersion $VersionLabel
 
-$json = ConvertTo-Json -InputObject $Reports -Depth 6
-Set-Content -Path $ReportPath -Value $json -Encoding UTF8
-if (-not (Test-Path -LiteralPath $ReportPath)) {
-    throw "Expected to write apply-vipc report, but file was not found at '$ReportPath'."
-}
-Write-Information ("Wrote apply-vipc report to {0}" -f $ReportPath) -InformationAction Continue
-if ($env:GITHUB_OUTPUT) {
-    @(
-        "summary-json=$ReportPath"
-        ("vipc_path={0}" -f $ResolvedVIPCPath)
-        ("vipc_sha256={0}" -f $vipcHash)
-        ("vipc_size_bytes={0}" -f $vipcItem.Length)
-        ("vipc_last_write_utc={0:o}" -f $vipcItem.LastWriteTimeUtc)
-        ("vipc_git_commit={0}" -f ($vipcGitCommit ?? 'unknown'))
-        ("vipc_git_author={0}" -f ($vipcGitAuthor ?? 'unknown'))
-    ) | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-}
-
-if ($env:GITHUB_STEP_SUMMARY) {
-    $vipcLeaf = Split-Path -Leaf $ResolvedVIPCPath
-    $bitLabel = "x$SupportedBitness"
-    $summary = @()
-    $summary += ("### {0} ({1})" -f $vipcLeaf, $bitLabel)
-    $summary += ""
-    $summary += "| Field | Value |"
-    $summary += "| --- | --- |"
-    $summary += ("| Path | `{0}` |" -f $ResolvedVIPCPath)
-    $summary += ("| SHA256 | `{0}` |" -f $vipcHash)
-    $summary += ("| Size (bytes) | `{0}` |" -f $vipcItem.Length)
-    $summary += ("| Last write (UTC) | `{0}` |" -f $vipcItem.LastWriteTimeUtc.ToString("o"))
-    $summary += ("| Git commit | `{0}` |" -f ($vipcGitCommit ?? 'unknown'))
-    $summary += ("| Git author | `{0}` |" -f ($vipcGitAuthor ?? 'unknown'))
-    $summary += ""
-    $summary -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-}
-
+Write-ReportAndOutputs
 Write-Information "Successfully applied dependencies to LabVIEW." -InformationAction Continue
