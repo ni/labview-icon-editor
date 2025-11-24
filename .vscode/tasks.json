@@ -72,7 +72,6 @@
   "tasks": [
     {
       "label": "Build/Package VIP",
-      "detail": "Choose artifact type via buildMode: vip+lvlibp (full pipeline) or vip-single (single-arch package)",
       "type": "shell",
       "command": "pwsh",
       "args": [
@@ -92,7 +91,6 @@
     },
     {
       "label": "Build/Package VIP (both PPLs, no CI gate)",
-      "detail": "Builds 32-bit and 64-bit PPLs and packages the VI Package locally (skips CI gate).",
       "type": "shell",
       "command": "pwsh",
       "args": [
@@ -108,7 +106,6 @@
     },
     {
       "label": "Draft GitHub Release (CI artifacts)",
-      "detail": "Dispatches draft-release.yml to create a draft release from CI artifacts by run ID.",
       "type": "shell",
       "command": "pwsh",
       "args": [
@@ -201,8 +198,7 @@
       "options": {
         "cwd": "${workspaceFolder}"
       },
-      "problemMatcher": [],
-      "detail": "Generate TRW checklist summary and full markdown under reports/."
+      "problemMatcher": []
     }
   ]
 }
