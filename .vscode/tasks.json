@@ -500,7 +500,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "& { pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '${workspaceFolder}' -Mode unbind -Bitness both -Force; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '${workspaceFolder}' -Mode bind -Bitness both -Force }"
+        "& { Write-Host 'Dev Mode Bind (force clean): running unbind/bind with Force for both bitnesses'; pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '${workspaceFolder}' -Mode unbind -Bitness both -Force; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '${workspaceFolder}' -Mode bind -Bitness both -Force }"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
