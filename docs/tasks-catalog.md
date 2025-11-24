@@ -1,197 +1,48 @@
 # VS Code Tasks Catalog
 
-All tasks from `.vscode/tasks.json`, grouped for quick navigation. Run via VS Code: Terminal -> Run Task.
+Tasks live in `.vscode/tasks.json`. Run via VS Code: Terminal -> Run Task.
 
-_Test tracking:_ mark `[x]` for each LabVIEW year (2020–2026) and OS (win/linux) once validated.
+## Task List
+- Dev Mode Bind (check + run) — Intent CLI plan+execute (default phrase `/devmode bind 2021 both force`).
+- Dev Mode Bind (force overwrite) — Intent CLI with Force for overwriting other-path tokens.
+- Dev Mode (interactive bind/unbind) — Guided PowerShell helper with prompts.
+- Revert Dev Mode (LabVIEW) — Unbind/reset dev mode for the selected bitness.
+- Set Dev Mode (LabVIEW) — Prep dev mode for a chosen bitness.
+- Build/Package VIP (simulate) — `build_vip.ps1` simulate (64-bit).
+- Build/Package VIP — `run-build-or-package.ps1` with selectable modes (VIP + lvlibp).
+- Build pipeline (full simulate) — `run-build-or-package.ps1` end-to-end simulate (lvlibp both).
+- Build (isolated worktree) — `scripts/worktree-build.ps1` with prompts for bitness/version/company/author.
+- Build release asset (VI Package x64/x86/both) — `scripts/task-build-vip.ps1` (Bitness 64/32/both).
+- Build PPL (simulate) — `scripts/run-build-lvlibp-task.ps1` simulate (64-bit).
+- Build release asset (Packed Project Library x64/x86) — `scripts/run-build-lvlibp-task.ps1` (SupportedBitness 64/32).
+- Analyze VI Package (Pester) — `analyze-vi-package/run-local.ps1` against `builds/VI Package/`.
+- Requirements — RequirementsSummarizer (`dotnet run tools/RequirementsSummarizer`) to emit summary/full/json/html.
+- Draft release — CI gate check, then trigger `draft-release.yml` with latest CI run ID.
+- Test VIPM Docker — `Tooling/docker/vipm/test-vipm.ps1`.
+- VIPM Docker Smoke — `Tooling/docker/vipm/smoke-vipm.ps1` for a specified VIPC.
 
-## Dev Mode (user-facing)
-- **Dev Mode Bind (check + run)** — Intent CLI plan+execute for dev-mode bind; default phrase `/devmode bind 2021 both force` (editable).
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-- **Dev Mode Bind (force overwrite)** — Intent CLI with Force to overwrite existing tokens (use only when INI points elsewhere).
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-- **Dev Mode (interactive bind/unbind)** — Guided PowerShell helper with prompts.
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-- **Revert Dev Mode (LabVIEW)** — Unbind/reset dev mode for the selected bitness.
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
+## Coverage Matrix (placeholder)
+Mark `[x]` when validated for a given year/OS. Test cases: Dev-mode tasks map to `TC-DEV-BIND-WIN/LNX`; intent tasks map to `TC-DEV-INTENT-WIN/LNX`; others use their own IDs as needed.
 
-## Dev Mode Utilities
-- **Set Dev Mode (LabVIEW)** — `.github/actions/set-development-mode/run-dev-mode.ps1` for a chosen bitness (prep before builds/tests).
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-
-## Build & Package
-- **Build/Package VIP (simulate)** — `build_vip.ps1` simulate (64-bit).
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-- **Build/Package VIP** — `run-build-or-package.ps1` with selectable modes (VIP + lvlibp).
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-- **Build pipeline (full simulate)** — `run-build-or-package.ps1` end-to-end simulate (lvlibp both).
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-- **Build (isolated worktree)** — `scripts/worktree-build.ps1` with prompts for bitness/version/company/author.
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-- **Build release asset (VI Package x64)** — `scripts/task-build-vip.ps1 -Bitness 64`.
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-- **Build release asset (VI Package x86)** — `scripts/task-build-vip.ps1 -Bitness 32`.
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-- **Build release asset (VI Package 32 & 64 bits)** — `scripts/task-build-vip.ps1 -Bitness both` (skip CI gate).
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-- **Build PPL (simulate)** — `scripts/run-build-lvlibp-task.ps1` simulate (64-bit).
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-- **Build release asset (Packed Project Library, x64)** — `scripts/run-build-lvlibp-task.ps1 -SupportedBitness 64`.
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-- **Build release asset (Packed Project Library, x86)** — `scripts/run-build-lvlibp-task.ps1 -SupportedBitness 32`.
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-
-## Analyze & Requirements
-- **Analyze VI Package (Pester)** — `analyze-vi-package/run-local.ps1` against `builds/VI Package/`.
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-- **Requirements** — RequirementsSummarizer (`dotnet run tools/RequirementsSummarizer`) to emit summary/full/json/html into `reports/`.
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-
-## Release Ops
-- **Draft release** — Checks CI gate, then triggers `draft-release.yml` using the latest CI run ID.
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-
-## Docker (VIPM)
-- **Test VIPM Docker** — `Tooling/docker/vipm/test-vipm.ps1` with repo root.
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
-- **VIPM Docker Smoke** — `Tooling/docker/vipm/smoke-vipm.ps1` for a specified VIPC.
-  - Tested:
-    - 2020: [ ] win [ ] linux
-    - 2021: [ ] win [ ] linux
-    - 2022: [ ] win [ ] linux
-    - 2023: [ ] win [ ] linux
-    - 2024: [ ] win [ ] linux
-    - 2025: [ ] win [ ] linux
-    - 2026: [ ] win [ ] linux
+| Task                               | 2020 win | 2020 linux | 2021 win | 2021 linux | 2022 win | 2022 linux | 2023 win | 2023 linux | 2024 win | 2024 linux | 2025 win | 2025 linux | 2026 win | 2026 linux |
+|------------------------------------|----------|------------|----------|------------|----------|------------|----------|------------|----------|------------|----------|------------|----------|------------|
+| Dev Mode Bind (check + run)        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Dev Mode Bind (force overwrite)    | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Dev Mode (interactive bind/unbind) | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Revert Dev Mode (LabVIEW)          | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Set Dev Mode (LabVIEW)             | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Build/Package VIP (simulate)       | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Build/Package VIP                  | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Build pipeline (full simulate)     | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Build (isolated worktree)          | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Build release asset (VIP x64)      | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Build release asset (VIP x86)      | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Build release asset (VIP both)     | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Build PPL (simulate)               | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Build PPL asset (x64)              | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Build PPL asset (x86)              | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Analyze VI Package (Pester)        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Requirements summarizer            | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Draft release                      | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| Test VIPM Docker                   | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
+| VIPM Docker Smoke                  | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        | [ ]      | [ ]        |
