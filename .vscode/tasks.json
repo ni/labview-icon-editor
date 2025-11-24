@@ -502,7 +502,9 @@
         "-File",
         "${workspaceFolder}/scripts/dev-mode-force-clean.ps1",
         "-RepositoryPath",
-        "${workspaceFolder}"
+        "${workspaceFolder}",
+        "-VipbPath",
+        "${input:vipbPath}"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -513,6 +515,12 @@
       "problemMatcher": [],
       "isBackground": false
     },
+    {
+      "id": "vipbPath",
+      "type": "promptString",
+      "description": "Path to the VIPB used by dev-mode (relative to repo root)",
+      "default": "Tooling/deployment/labview-icon-editor.vipb"
+    }
     {
       "label": "Revert Dev Mode (LabVIEW)",
       "type": "shell",
