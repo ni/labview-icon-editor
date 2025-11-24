@@ -1046,6 +1046,7 @@ jobs:
     # Chain after 32-bit build, which already depends on 64-bit, to enforce x64 -> x86 -> build-vip ordering
     needs: [verify-checklist-sync, build-ppl-x86, version]
     outputs:
+      should_build_vip: ${{ steps.vipm-gate.outputs.has_vipm_cli }}
       vip_artifact: ${{ steps.build-vip.outputs.vip_artifact }}
       vip_path: ${{ steps.build-vip.outputs.vip_path }}
       release_notes_artifact: ${{ steps.release-notes.outputs.artifact_name }}
@@ -1054,20 +1055,48 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Gate on vipm CLI (skip VI Package build if dependencies cannot be applied)
+        id: vipm-gate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vipm = Get-Command vipm -ErrorAction SilentlyContinue
+          $hasVipm = [bool]$vipm
+          "has_vipm_cli=$($hasVipm.ToString().ToLowerInvariant())" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+          if (-not $hasVipm) {
+            $msg = "vipm CLI not found on PATH; skipping VI Package build because the runner could not apply the VIPC."
+            Write-Warning $msg
+            if ($env:GITHUB_STEP_SUMMARY) {
+              $summary = @()
+              $summary += "### VI Package build"
+              $summary += ""
+              $summary += $msg
+              $summary += ""
+              $summary -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            }
+          }
+          else {
+            Write-Host "vipm CLI detected; proceeding with VI Package build."
+          }
       - name: Generate release notes
         id: release-notes
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         uses: ./.github/actions/generate-release-notes
         # output_path defaults to Tooling/deployment/release_notes.md
       - uses: actions/download-artifact@v4
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-32bit
           path: resource/plugins
       - uses: actions/download-artifact@v4
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-64bit
           path: resource/plugins
       - name: Generate display information JSON
         id: display-info
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         shell: pwsh
         env:
           RELEASE_NOTES_PATH: ${{ github.workspace }}/Tooling/deployment/release_notes.md
@@ -1120,6 +1149,7 @@ jobs:
           $json = $info | ConvertTo-Json -Depth 5 -Compress
           "json=$json" >> $Env:GITHUB_OUTPUT
       - uses: ./.github/actions/modify-vipb-display-info
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         with:
           supported_bitness: 64
           repository_path: ${{ github.workspace }}
@@ -1133,6 +1163,7 @@ jobs:
           release_notes_file: ${{ github.workspace }}/Tooling/deployment/release_notes.md
           display_information_json: ${{ steps.display-info.outputs.json }}
       - id: build-vip
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         uses: ./.github/actions/build-vip
         with:
           supported_bitness: 64
@@ -1146,13 +1177,14 @@ jobs:
           commit: ${{ github.sha }}
           release_notes_file: ${{ github.workspace }}/Tooling/deployment/release_notes.md
           display_information_json: ${{ steps.display-info.outputs.json }}
-      - if: always()
+      - # Only attempt to close LabVIEW if the build path ran
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true' && always()
         uses: ./.github/actions/close-labview
         with:
           repository_path: ${{ github.workspace }}
           supported_bitness: 64
       - name: Validate tag matches computed version (if provided)
-        if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.dispatch_tag != ''
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true' && (startsWith(github.ref, 'refs/tags/') || github.event.inputs.dispatch_tag != '')
         shell: pwsh
         env:
           EXPECTED_TAG: v${{ needs.version.outputs.MAJOR }}.${{ needs.version.outputs.MINOR }}.${{ needs.version.outputs.PATCH }}.${{ needs.version.outputs.BUILD }}
@@ -1174,6 +1206,7 @@ jobs:
   analyze-vip:
     name: Analyze VI Package
     needs: [verify-checklist-sync, build-vip]
+    if: needs.build-vip.outputs.should_build_vip == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
