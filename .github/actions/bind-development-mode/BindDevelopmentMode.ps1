@@ -161,7 +161,7 @@ if (-not $Force -and (Test-Path -LiteralPath $previousSummaryPath)) {
     }
 }
 
- $installedStates = New-Object System.Collections.Generic.List[object]
+$installedStates = New-Object System.Collections.Generic.List[object]
 function Get-LocalHostEntries {
     param([string]$IniPath)
     $entries = @()
@@ -199,19 +199,32 @@ foreach ($root in @('C:\Program Files\National Instruments','C:\Program Files (x
 }
 
 if ($installedStates.Count -gt 0) {
-    Write-Host "=== Installed LabVIEW INI tokens ==="
-    foreach ($state in ($installedStates | Sort-Object arch,version)) {
-        $entryList = @($state.entries)
-        if (-not $entryList -or $entryList.Count -eq 0) {
-            Write-Host ("  {0}-bit {1}: (no LocalHost.LibraryPaths entries)" -f $state.arch, $state.version)
+    $targetStates = $installedStates | Where-Object { $_.version -like "$lvVersion*" }
+    $otherStates  = $installedStates | Where-Object { $_.version -notlike "$lvVersion*" }
+
+    Write-Host "=== Target LabVIEW INI tokens (version $lvVersion) ==="
+    foreach ($arch in @('32','64')) {
+        $state = $targetStates | Where-Object { $_.arch -eq $arch } | Select-Object -First 1
+        if (-not $state) {
+            Write-Host ("  {0}-bit {1}: (not detected under Program Files)" -f $arch, $lvVersion)
             continue
         }
-        $first = Format-TokenPath $entryList[0]
-        Write-Host ("  {0}-bit {1}: {2}" -f $state.arch, $state.version, $first)
+        $entryList = @($state.entries)
+        $first = if (-not $entryList -or $entryList.Count -eq 0) { '(no LocalHost.LibraryPaths entries)' } else { Format-TokenPath $entryList[0] }
+        Write-Host ("  {0}-bit {1}: {2}" -f $arch, $state.version, $first)
+    }
+
+    if ($otherStates.Count -gt 0) {
+        Write-Host "=== Other installed LabVIEW INI tokens ==="
+        foreach ($state in ($otherStates | Sort-Object arch,version)) {
+            $entryList = @($state.entries)
+            $first = if (-not $entryList -or $entryList.Count -eq 0) { '(no LocalHost.LibraryPaths entries)' } else { Format-TokenPath $entryList[0] }
+            Write-Host ("  {0}-bit {1}: {2}" -f $state.arch, $state.version, $first)
+        }
     }
 }
 else {
-    Write-Host "=== Installed LabVIEW INI tokens ==="
+    Write-Host "=== Target LabVIEW INI tokens (version $lvVersion) ==="
     Write-Host "  none found under Program Files."
 }
 

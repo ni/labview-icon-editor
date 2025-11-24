@@ -5,7 +5,7 @@
     "expected_path": "C:\\repos\\labview-icon-editor-final-fork",
     "current_path": "",
     "post_path": "",
-    "action": "status",
+    "action": "bind",
     "status": "fail",
     "message": "LabVIEW.ini not found for 32-bit at the canonical path for LabVIEW 2026: LabVIEW.ini not found at canonical path: C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\LabVIEW.ini"
   },
@@ -15,8 +15,8 @@
     "expected_path": "C:\\repos\\labview-icon-editor-final-fork",
     "current_path": "C:\\repos\\labview-icon-editor-final-fork",
     "post_path": "C:\\repos\\labview-icon-editor-final-fork",
-    "action": "status",
+    "action": "bind",
     "status": "success",
-    "message": "Status only"
+    "message": "Already bound"
   }
 ]
