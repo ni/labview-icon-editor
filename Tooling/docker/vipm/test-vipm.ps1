@@ -1,9 +1,9 @@
-$ErrorActionPreference = 'Stop'
-Set-StrictMode -Version Latest
-
 param(
     [string]$RepositoryRoot = $PSScriptRoot | Split-Path -Parent | Split-Path -Parent | Split-Path -Parent
 )
+
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
 
 $envPath = Join-Path -Path $RepositoryRoot -ChildPath 'Tooling/docker/vipm/.env'
 if (-not (Test-Path -LiteralPath $envPath)) {
