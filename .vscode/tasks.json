@@ -397,6 +397,27 @@
       "problemMatcher": []
     },
     {
+      "label": "Dev Mode (bind both with Force)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/.github/actions/bind-development-mode/BindDevelopmentMode.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-Mode",
+        "bind",
+        "-Bitness",
+        "both",
+        "-Force"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Revert Dev Mode (LabVIEW)",
       "type": "shell",
       "command": "pwsh",

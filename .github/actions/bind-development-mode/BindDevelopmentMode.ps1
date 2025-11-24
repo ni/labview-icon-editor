@@ -11,6 +11,7 @@ param(
 
     [switch]$Force,
     [switch]$DryRun,
+    [switch]$SummaryOnly,
     [string]$JsonOutputPath
 )
 
@@ -202,65 +203,33 @@ foreach ($root in @('C:\Program Files\National Instruments','C:\Program Files (x
     }
 }
 
-if ($installedStates.Count -gt 0) {
-    $targetStates = $installedStates | Where-Object { $_.version -like "$lvVersion*" }
-    $otherStates  = $installedStates | Where-Object { $_.version -notlike "$lvVersion*" }
+if (-not $SummaryOnly) {
+    if ($installedStates.Count -gt 0) {
+        $targetStates = $installedStates | Where-Object { $_.version -like "$lvVersion*" }
+        $otherStates  = $installedStates | Where-Object { $_.version -notlike "$lvVersion*" }
 
-    Write-Host "=== Target LabVIEW INI tokens (version $lvVersion) ==="
-    foreach ($arch in @('32','64')) {
-        $state = $targetStates | Where-Object { $_.arch -eq $arch } | Select-Object -First 1
-        if (-not $state) {
-            Write-Host ("  [MISS] {0}-bit {1}: (not detected under Program Files)" -f $arch, $lvVersion)
-            continue
-        }
-        $entryList = @($state.entries)
-        if (-not $entryList -or $entryList.Count -eq 0) {
-            Write-Host ("  [NONE] {0}-bit {1}: (no LocalHost.LibraryPaths entries)" -f $arch, $state.version)
-            $crossVersion.Add([pscustomobject]@{
-                version = $state.version
-                arch    = $arch
-                tag     = 'NONE'
-                path    = '(no LocalHost.LibraryPaths entries)'
-            })
-            continue
-        }
-        $firstRaw = $entryList[0]
-        $first = Format-TokenPath $firstRaw
-        $norm = Normalize-PathLower $firstRaw
-        # Distinguish bindings to this repo vs other repos.
-        $tag = if ($norm -eq $expectedNorm) { 'THIS-REPO' } else { 'OTHER-REPO' }
-        $tagColor = ''
-        $resetColor = ''
-        if ($PSStyle) {
-            switch ($tag) {
-                'THIS-REPO'  { $tagColor = $PSStyle.Foreground.BrightGreen }
-                'OTHER-REPO' { $tagColor = $PSStyle.Foreground.BrightYellow }
-                'MISS'  { $tagColor = $PSStyle.Foreground.BrightRed }
-                'NONE'  { $tagColor = $PSStyle.Foreground.BrightBlack }
+        Write-Host "=== Target LabVIEW INI tokens (version $lvVersion) ==="
+        foreach ($arch in @('32','64')) {
+            $state = $targetStates | Where-Object { $_.arch -eq $arch } | Select-Object -First 1
+            if (-not $state) {
+                Write-Host ("  [MISS] {0}-bit {1}: (not detected under Program Files)" -f $arch, $lvVersion)
+                continue
             }
-            $resetColor = $PSStyle.Reset
-        }
-        $tagRendered = if ($tagColor) { "{0}[{1}]{2}" -f $tagColor, $tag, $resetColor } else { "[{0}]" -f $tag }
-        Write-Host ("  {0} {1}-bit {2}: {3}" -f $tagRendered, $arch, $state.version, $first)
-        $crossVersion.Add([pscustomobject]@{
-            version = $state.version
-            arch    = $arch
-            tag     = $tag
-            path    = $first
-        })
-    }
-
-    if ($otherStates.Count -gt 0) {
-        Write-Host "=== Other installed LabVIEW INI tokens ==="
-        foreach ($state in ($otherStates | Sort-Object arch,version)) {
             $entryList = @($state.entries)
             if (-not $entryList -or $entryList.Count -eq 0) {
-                Write-Host ("  [NONE] {0}-bit {1}: (no LocalHost.LibraryPaths entries)" -f $state.arch, $state.version)
+                Write-Host ("  [NONE] {0}-bit {1}: (no LocalHost.LibraryPaths entries)" -f $arch, $state.version)
+                $crossVersion.Add([pscustomobject]@{
+                    version = $state.version
+                    arch    = $arch
+                    tag     = 'NONE'
+                    path    = '(no LocalHost.LibraryPaths entries)'
+                })
                 continue
             }
             $firstRaw = $entryList[0]
             $first = Format-TokenPath $firstRaw
             $norm = Normalize-PathLower $firstRaw
+            # Distinguish bindings to this repo vs other repos.
             $tag = if ($norm -eq $expectedNorm) { 'THIS-REPO' } else { 'OTHER-REPO' }
             $tagColor = ''
             $resetColor = ''
@@ -274,19 +243,53 @@ if ($installedStates.Count -gt 0) {
                 $resetColor = $PSStyle.Reset
             }
             $tagRendered = if ($tagColor) { "{0}[{1}]{2}" -f $tagColor, $tag, $resetColor } else { "[{0}]" -f $tag }
-            Write-Host ("  {0} {1}-bit {2}: {3}" -f $tagRendered, $state.arch, $state.version, $first)
+            Write-Host ("  {0} {1}-bit {2}: {3}" -f $tagRendered, $arch, $state.version, $first)
             $crossVersion.Add([pscustomobject]@{
                 version = $state.version
-                arch    = $state.arch
+                arch    = $arch
                 tag     = $tag
                 path    = $first
             })
         }
+
+        if ($otherStates.Count -gt 0) {
+            Write-Host "=== Other installed LabVIEW INI tokens ==="
+            foreach ($state in ($otherStates | Sort-Object arch,version)) {
+                $entryList = @($state.entries)
+                if (-not $entryList -or $entryList.Count -eq 0) {
+                    Write-Host ("  [NONE] {0}-bit {1}: (no LocalHost.LibraryPaths entries)" -f $state.arch, $state.version)
+                    continue
+                }
+                $firstRaw = $entryList[0]
+                $first = Format-TokenPath $firstRaw
+                $norm = Normalize-PathLower $firstRaw
+                $tag = if ($norm -eq $expectedNorm) { 'THIS-REPO' } else { 'OTHER-REPO' }
+                $tagColor = ''
+                $resetColor = ''
+                if ($PSStyle) {
+                    switch ($tag) {
+                        'THIS-REPO'  { $tagColor = $PSStyle.Foreground.BrightGreen }
+                        'OTHER-REPO' { $tagColor = $PSStyle.Foreground.BrightYellow }
+                        'MISS'  { $tagColor = $PSStyle.Foreground.BrightRed }
+                        'NONE'  { $tagColor = $PSStyle.Foreground.BrightBlack }
+                    }
+                    $resetColor = $PSStyle.Reset
+                }
+                $tagRendered = if ($tagColor) { "{0}[{1}]{2}" -f $tagColor, $tag, $resetColor } else { "[{0}]" -f $tag }
+                Write-Host ("  {0} {1}-bit {2}: {3}" -f $tagRendered, $state.arch, $state.version, $first)
+                $crossVersion.Add([pscustomobject]@{
+                    version = $state.version
+                    arch    = $state.arch
+                    tag     = $tag
+                    path    = $first
+                })
+            }
+        }
     }
-}
-else {
-    Write-Host "=== Target LabVIEW INI tokens (version $lvVersion) ==="
-    Write-Host "  none found under Program Files."
+    else {
+        Write-Host "=== Target LabVIEW INI tokens (version $lvVersion) ==="
+        Write-Host "  none found under Program Files."
+    }
 }
 
 $bitnessList = if ($Bitness -eq 'both') { @('32','64') } else { @($Bitness) }
@@ -530,21 +533,23 @@ function Get-StatusVisual {
 }
 
 Write-Host ("{0}==== Dev Mode ({1} {2}) ===={3}" -f $palette.head, $Mode, $Bitness, $palette.reset)
-foreach ($r in $results) {
-    $visual = Get-StatusVisual -Status $r.status
-    $pathOut = if (-not [string]::IsNullOrWhiteSpace($r.post_path)) { $r.post_path } else { $r.current_path }
-    $msg = if (-not [string]::IsNullOrWhiteSpace($r.message)) { "; msg=$($r.message)" } else { '' }
-    Write-Host ("{0}[{1}] bitness={2,-2} action={3,-6} status={4,-7}{5} {6}{7}{8}{9}" -f
-        $visual.color,
-        $visual.glyph,
-        $r.bitness,
-        $r.action,
-        $r.status,
-        $palette.reset,
-        $palette.path,
-        $pathOut,
-        $palette.reset,
-        $msg)
+if (-not $SummaryOnly) {
+    foreach ($r in $results) {
+        $visual = Get-StatusVisual -Status $r.status
+        $pathOut = if (-not [string]::IsNullOrWhiteSpace($r.post_path)) { $r.post_path } else { $r.current_path }
+        $msg = if (-not [string]::IsNullOrWhiteSpace($r.message)) { "; msg=$($r.message)" } else { '' }
+        Write-Host ("{0}[{1}] bitness={2,-2} action={3,-6} status={4,-7}{5} {6}{7}{8}{9}" -f
+            $visual.color,
+            $visual.glyph,
+            $r.bitness,
+            $r.action,
+            $r.status,
+            $palette.reset,
+            $palette.path,
+            $pathOut,
+            $palette.reset,
+            $msg)
+    }
 }
 Write-Host ("{0}JSON:{1} {2}{3}{4}" -f $palette.head, $palette.reset, $palette.path, $JsonOutputPath, $palette.reset)
 
@@ -643,6 +648,21 @@ $( $anomalyLines -join "`n")
 
 ## JSON
 - $JsonOutputPath
+
+## Paste to your CODEX Agent
+Copy/paste the block below (replace `<log>` with your console output):
+
+You are the integration agent. Dev-mode bind failed because LabVIEW.ini points to another path. Here is the console log:
+<log>
+
+What you should do:
+1) Diagnose using the log and `reports/dev-mode-bind.json` (paths, statuses, anomalies).
+2) Recommend rerunning with Force to bind this repo:
+   - VS Code: Terminal → Run Task → “Dev Mode (interactive bind/unbind)” → **bind** + **Force** (bitness as needed).
+   - CLI: `pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath . -Mode bind -Bitness both -Force`
+3) If other repos might rely on current bindings, warn and ask before overwriting.
+4) Flag and suggest cleaning suspicious/double-rooted tokens (unbind + Force for that version/bitness if not needed).
+5) Include next steps and the JSON path in your reply.
 "@
 
     Write-Host $md
