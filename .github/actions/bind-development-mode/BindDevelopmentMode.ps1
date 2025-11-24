@@ -377,6 +377,24 @@ foreach ($r in $results) {
 }
 Write-Host ("{0}JSON:{1} {2}{3}{4}" -f $palette.head, $palette.reset, $palette.path, $JsonOutputPath, $palette.reset)
 
+$totals = @{
+    success = @($results | Where-Object { $_.status -eq 'success' }).Count
+    fail    = @($results | Where-Object { $_.status -eq 'fail' }).Count
+    skip    = @($results | Where-Object { $_.status -eq 'skip' }).Count
+    dryrun  = @($results | Where-Object { $_.status -eq 'dry-run' }).Count
+}
+Write-Host ("{0}Totals:{1} success={2} fail={3} skip={4} dry-run={5}" -f $palette.head, $palette.reset, $totals.success, $totals.fail, $totals.skip, $totals.dryrun)
+
+$hintLines = New-Object System.Collections.Generic.List[string]
+if (@($results | Where-Object { $_.status -eq 'fail' -and $_.message -match 'use -Force' }).Count -gt 0) {
+    $hintLines.Add("Next: rerun bind with -Force if this repo should own dev mode, or run unbind with -Force to clear the other token.")
+}
+if ($hintLines.Count -gt 0) {
+    foreach ($line in $hintLines) {
+        Write-Host ("{0}Hint:{1} {2}" -f $palette.head, $palette.reset, $line)
+    }
+}
+
 $exitFail = @($results | Where-Object { $_.status -in @('fail','blocked') })
 if ($exitFail.Count -gt 0) {
     exit 1
