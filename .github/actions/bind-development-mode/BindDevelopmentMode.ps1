@@ -165,6 +165,7 @@ if (-not $Force -and (Test-Path -LiteralPath $previousSummaryPath)) {
 }
 
 $installedStates = New-Object System.Collections.Generic.List[object]
+$crossVersion = New-Object System.Collections.Generic.List[object]
 function Get-LocalHostEntries {
     param([string]$IniPath)
     $entries = @()
@@ -293,7 +294,7 @@ $results = New-Object System.Collections.Generic.List[object]
 $hadFailure = $false
 $missingIniArchs = New-Object System.Collections.Generic.List[string]
 $anomalies = New-Object System.Collections.Generic.List[string]
-$crossVersion = New-Object System.Collections.Generic.List[object]
+$forceNeededThisRun = $false
 
 function New-ResultObject {
     param(
@@ -366,6 +367,7 @@ else {
             $results.Add($res)
             $hadFailure = $true
             $anomalies.Add("Target version $lvVersion ($arch-bit) currently bound to another path: $($res.current_path)")
+            $forceNeededThisRun = $true
             continue
         }
 
@@ -588,7 +590,8 @@ if ($hintLines.Count -gt 0) {
 if ($crossVersion.Count -gt 0) {
     $suspicious = $crossVersion | Where-Object { $_.path -match 'C:\\.*C:\\' }
     if ($suspicious.Count -gt 0) {
-        $anomalies.Add("Suspicious token paths detected (possible double-rooted): " + ($suspicious | ForEach-Object { "{0}-bit {1}: {2}" -f $_.arch, $_.version, $_.path } | Select-Object -First 3 -join '; '))
+        $suspiciousText = ($suspicious | ForEach-Object { "{0}-bit {1}: {2}" -f $_.arch, $_.version, $_.path } | Select-Object -First 3)
+        $anomalies.Add("Suspicious token paths detected (possible double-rooted): " + ($suspiciousText -join '; '))
     }
 }
 
@@ -597,6 +600,52 @@ if ($anomalies.Count -gt 0) {
     foreach ($a in $anomalies | Select-Object -Unique) {
         Write-Host ("  {0}" -f $a)
     }
+}
+
+# Emit a markdown summary when Force is needed (current run) to aid troubleshooting.
+if ($forceNeededThisRun) {
+    $targetLines = @()
+    foreach ($arch in @('32','64')) {
+        $state = ($installedStates | Where-Object { $_.version -like "$lvVersion*" -and $_.arch -eq $arch } | Select-Object -First 1)
+        $val = if ($state -and $state.entries -and $state.entries.Count -gt 0) { Format-TokenPath $state.entries[0] } else { '(no LocalHost.LibraryPaths entries)' }
+        $targetLines += ("- {0}-bit {1}: {2}" -f $arch, $lvVersion, $val)
+    }
+
+    $summaryLines = @()
+    foreach ($arch in @('32','64')) {
+        $r = $results | Where-Object { $_.bitness -eq $arch } | Select-Object -First 1
+        if (-not $r) { continue }
+        $summaryLines += ("- {0}-bit: {1} - {2}" -f $arch, $r.status, $r.message)
+    }
+
+    $anomalyLines = if ($anomalies.Count -gt 0) {
+        $anomalies | Select-Object -Unique | ForEach-Object { "- $_" }
+    } else { @("- None recorded") }
+
+    $md = @"
+# Dev Mode Bind – Force Required (LabVIEW $lvVersion)
+## Context
+- VIPB: $vipbMsg
+- Mode/Bitness: $Mode / $Bitness
+
+## Target LabVIEW INI tokens ($lvVersion)
+$( $targetLines -join "`n")
+
+## Result summary
+$( $summaryLines -join "`n")
+
+## Anomalies
+$( $anomalyLines -join "`n")
+
+## Action
+- VS Code: Terminal → Run Task → 'Dev Mode (interactive bind/unbind)' → choose bind + Force (or unbind + Force).
+- CLI: pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '$RepositoryPath' -Mode bind -Bitness both -Force
+
+## JSON
+- $JsonOutputPath
+"@
+
+    Write-Host $md
 }
 
 $exitFail = @($results | Where-Object { $_.status -in @('fail','blocked') })
