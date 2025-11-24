@@ -30,7 +30,7 @@
         "32",
         "64"
       ],
-      "default": "64"
+      "default": "both"
     },
     {
       "id": "semverMajor",

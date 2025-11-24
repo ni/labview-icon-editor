@@ -32,6 +32,11 @@ function Ensure-Command {
 
 Ensure-Command -Name git
 
+# Guard: the VIP packaging step expects both x86 and x64 PPLs to be staged.
+if ($LvlibpBitness -ne 'both') {
+    throw "Worktree builds require LvlibpBitness=both so the build-vip step can find both x86/x64 PPLs. Rerun with LvlibpBitness=both (see VS Code task input)."
+}
+
 $SourceRepoPath = (Resolve-Path -LiteralPath $SourceRepoPath).Path
 
 if (-not $WorktreePath) {
