@@ -116,7 +116,7 @@ catch {
 $LogDirectory = Join-Path -Path $ResolvedRepositoryPath -ChildPath "builds/logs"
 New-Item -ItemType Directory -Path $LogDirectory -Force | Out-Null
 
-# 3b) Preflight VIPB structure before invoking vipm to avoid opaque parser errors/timeouts
+# 3b) Preflight VIPB structure and staged PPLs before invoking vipm to avoid opaque parser errors/timeouts
 try {
     [xml]$vipbXml = Get-Content -LiteralPath $ResolvedVIPBPath -Raw
 }
@@ -133,6 +133,22 @@ if (-not $vipbXml.VI_Package_Builder_Settings -or -not $vipbXml.VI_Package_Build
 $pkgLvFromVipb = [string]$vipbXml.VI_Package_Builder_Settings.Library_General_Settings.Package_LabVIEW_Version
 if ([string]::IsNullOrWhiteSpace($pkgLvFromVipb)) {
     Write-Error ("VIPB missing Package_LabVIEW_Version: {0}" -f $ResolvedVIPBPath)
+    exit 1
+}
+
+# Ensure staged PPL variants exist so the post-install selector can work
+$pplDir    = Join-Path $ResolvedRepositoryPath 'resource\plugins'
+$pplNeutral = Join-Path $pplDir 'lv_icon.lvlibp'
+$pplWin64   = Join-Path $pplDir 'lv_icon.lvlibp.windows_x64'
+$pplWin86   = Join-Path $pplDir 'lv_icon.lvlibp.windows_x86'
+$missingPpl = @()
+foreach ($candidate in @($pplNeutral, $pplWin64, $pplWin86)) {
+    if (-not (Test-Path -LiteralPath $candidate)) {
+        $missingPpl += $candidate
+    }
+}
+if ($missingPpl.Count -gt 0) {
+    Write-Error ("Missing staged PPL(s) required for post-install selection: {0}" -f ($missingPpl -join '; '))
     exit 1
 }
 
