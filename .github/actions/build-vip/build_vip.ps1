@@ -168,6 +168,7 @@ if ([string]::IsNullOrWhiteSpace($pkgLvFromVipb)) {
     Write-Error ("VIPB missing Package_LabVIEW_Version: {0}" -f $ResolvedVIPBPath)
     exit 1
 }
+Write-Information ("VIPB preflight: path={0}; length={1}; md5={2}; Package_LV_Version={3}" -f $ResolvedVIPBPath, (Get-Item -LiteralPath $ResolvedVIPBPath).Length, (Get-FileHash -LiteralPath $ResolvedVIPBPath -Algorithm MD5).Hash, $pkgLvFromVipb) -InformationAction Continue
 
 # Ensure staged PPL variants exist so the post-install selector can work
 $pplDir    = Join-Path $ResolvedRepositoryPath 'resource\plugins'

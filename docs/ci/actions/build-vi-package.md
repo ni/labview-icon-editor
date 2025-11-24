@@ -118,6 +118,13 @@ That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Th
 
 The action reads the LabVIEW major version from the repository’s VIPB via `scripts/get-package-lv-version.ps1`, so no LabVIEW-version input or override is accepted. If `vipb_path` is omitted or invalid, the action auto-discovers the single `.vipb` under `repository_path`.
 
+**PPL staging expectations (build-vip preflight):**
+- `resource/plugins/lv_icon.lvlibp` (neutral)
+- `resource/plugins/lv_icon.lvlibp.windows_x64`
+- `resource/plugins/lv_icon.lvlibp.windows_x86`
+
+`build-ppl-x64` uploads both the neutral PPL and the windows_x64 variant; `build-ppl-x86` uploads the windows_x86 variant. The `build-vip` job downloads these artifacts into `resource/plugins` so the VIPB references resolve without additional renames. The preflight in `build_vip.ps1` will fail fast if any of the above three files are missing.
+
 The `major`, `minor`, and `patch` inputs are derived from pull-request labels (`major`,
 `minor`, `patch`) by the `version` job (which runs the `compute-version` action) in
 `ci.yml`. If a pull request lacks these labels, the `compute-version` action
