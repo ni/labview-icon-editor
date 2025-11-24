@@ -74,7 +74,7 @@ foreach ($key in $semverInputs.Keys) {
 }
 $isUnc = $repoRoot -like "\\\\*"
 if ($isUnc) {
-    Write-Warning "RepositoryPath is a UNC path ($repoRoot). g-cli and VIPM can behave poorly on UNC paths; consider mapping a drive."
+    Write-Warning "RepositoryPath is a UNC path ($repoRoot). VIPM can behave poorly on UNC paths; consider mapping a drive."
 }
 $sourceVIPB = if ([System.IO.Path]::IsPathRooted($VIPBPath)) {
     $VIPBPath
@@ -118,7 +118,7 @@ if (-not $targetDestNodes -or $targetDestNodes.Count -eq 0) {
     throw "Pruned VIPB is missing destination for $targetToken; cannot package this arch."
 }
 
-# Preflight: ensure the target lvlibp exists before invoking g-cli
+# Preflight: ensure the target lvlibp exists before packaging
 $targetLvlibp = Join-Path -Path $repoRoot -ChildPath ("resource/plugins/lv_icon_{0}.lvlibp" -f ($SupportedBitness -eq '64' ? 'x64' : 'x86'))
 $otherLvlibp = Join-Path -Path $repoRoot -ChildPath ("resource/plugins/lv_icon_{0}.lvlibp" -f ($SupportedBitness -eq '64' ? 'x86' : 'x64'))
 if (-not (Test-Path -LiteralPath $targetLvlibp)) {
@@ -173,8 +173,8 @@ if (-not (Test-Path -LiteralPath $versionScript)) {
 }
 $packageVersion = & $versionScript -RepositoryPath $repoRoot
 
-if (-not (Get-Command g-cli -ErrorAction SilentlyContinue)) {
-    throw "g-cli not found on PATH. Install VIPM CLI and ensure g-cli is available before packaging."
+if (-not (Get-Command vipm -ErrorAction SilentlyContinue)) {
+    throw "vipm CLI not found on PATH. Install VIPM CLI before packaging."
 }
 
 $buildVipScript = Join-Path -Path $repoRoot -ChildPath ".github/actions/build-vip/build_vip.ps1"
@@ -233,7 +233,7 @@ try {
     $vipsAfter = @(Get-ChildItem -Path (Join-Path $repoRoot 'builds') -Filter *.vip -Recurse -ErrorAction SilentlyContinue)
     $newVips = if ($vipsAfter) { @($vipsAfter | Where-Object { $_.LastWriteTime -ge $startTime }) } else { @() }
     if (-not $newVips -or $newVips.Count -eq 0) {
-        throw "No .vip artifact found after packaging. Check g-cli logs under builds/logs."
+        throw "No .vip artifact found after packaging. Check vipm logs under builds/logs."
     }
     $newVips | Sort-Object LastWriteTime -Descending | Select-Object -First 3 | ForEach-Object {
         Write-Information ("Produced VIP: {0}" -f $_.FullName) -InformationAction Continue

@@ -140,27 +140,66 @@ function Write-ErrorPayload {
     exit 1
 }
 
+function Resolve-VipbPath {
+    param(
+        [string]$RepositoryPath,
+        [string]$VIPBPath
+    )
+
+    $repoPath = $RepositoryPath
+    if ($RepositoryPath -is [System.Management.Automation.PathInfo]) {
+        $repoPath = $RepositoryPath.ProviderPath
+    }
+
+    if ([string]::IsNullOrWhiteSpace($repoPath) -or -not (Test-Path -LiteralPath $repoPath)) {
+        Write-ErrorPayload -Error "RepositoryPath is missing or invalid." -Path $RepositoryPath
+    }
+
+    # Prefer an explicitly provided path when it exists
+    if (-not [string]::IsNullOrWhiteSpace($VIPBPath)) {
+        try {
+            $candidate = $VIPBPath
+            if (-not [System.IO.Path]::IsPathRooted($candidate)) {
+                $candidate = Join-Path -Path $repoPath -ChildPath $candidate -ErrorAction Stop
+            }
+            $resolved = Resolve-Path -LiteralPath $candidate -ErrorAction Stop
+            return $resolved.ProviderPath
+        }
+        catch {
+            Write-Information ("VIPBPath '{0}' not found; attempting discovery under {1}" -f $VIPBPath, $repoPath) -InformationAction Continue
+        }
+    }
+
+    # Auto-discover a single VIPB in the repository
+    $vipbFiles = Get-ChildItem -Path $repoPath -Filter *.vipb -File -Recurse
+    if (-not $vipbFiles -or $vipbFiles.Count -eq 0) {
+        Write-ErrorPayload -Error "No VIPB file found under repository." -Path $repoPath
+    }
+    if ($vipbFiles.Count -gt 1) {
+        $paths = $vipbFiles | ForEach-Object { $_.FullName }
+        Write-ErrorPayload -Error "Multiple VIPB files found; specify VIPBPath to disambiguate." -Details ($paths -join '; ') -Path $repoPath
+    }
+
+    Write-Information ("Auto-discovered VIPB at {0}" -f $vipbFiles[0].FullName) -InformationAction Continue
+    return $vipbFiles[0].FullName
+}
+
 # 1) Resolve paths
 try {
     $ResolvedRepositoryPath = Resolve-Path -Path $RepositoryPath -ErrorAction Stop
-    $ResolvedVIPBPath = Join-Path -Path $ResolvedRepositoryPath -ChildPath $VIPBPath -ErrorAction Stop
 }
 catch {
-    Write-ErrorPayload -Error "Error resolving paths. Ensure RepositoryPath and VIPBPath are valid." `
+    Write-ErrorPayload -Error "Error resolving RepositoryPath." `
         -Details $_.Exception.Message `
-        -Context "RepositoryPath=$RepositoryPath; VIPBPath=$VIPBPath"
+        -Context "RepositoryPath=$RepositoryPath"
 }
 
 # Early validation: verify inputs exist and required JSON keys are present before heavy work
 if (-not $RepositoryPath -or -not (Test-Path -LiteralPath $RepositoryPath)) {
     Write-ErrorPayload -Error "RepositoryPath is missing or invalid." -Path $RepositoryPath
 }
-if (-not $VIPBPath) {
-    Write-ErrorPayload -Error "VIPBPath is required." -Context "VIPBPath not provided"
-}
-if (-not (Test-Path -LiteralPath $ResolvedVIPBPath)) {
-    Write-ErrorPayload -Error "VIPBPath does not exist." -Path $ResolvedVIPBPath
-}
+
+$ResolvedVIPBPath = Resolve-VipbPath -RepositoryPath $ResolvedRepositoryPath -VIPBPath $VIPBPath
 if (-not $ReleaseNotesFile) {
     Write-ErrorPayload -Error "ReleaseNotesFile path is required." -Context "ReleaseNotesFile not provided"
 }
@@ -444,10 +483,39 @@ try {
     $writerSettings.NewLineHandling = [System.Xml.NewLineHandling]::Replace
     $writerSettings.NewLineChars = "`n"
 
-    if ($PSCmdlet.ShouldProcess($ResolvedVIPBPath, "Save updated VIPB metadata")) {
-        $xmlWriter = [System.Xml.XmlWriter]::Create($ResolvedVIPBPath, $writerSettings)
+    $vipbDir   = Split-Path -Parent $ResolvedVIPBPath
+    $vipbLeaf  = Split-Path -Leaf   $ResolvedVIPBPath
+    $backupPath = Join-Path $vipbDir ($vipbLeaf + ".bak")
+    $tempPath   = Join-Path $vipbDir ($vipbLeaf + ".tmp")
+
+    if ($PSCmdlet.ShouldProcess($ResolvedVIPBPath, "Save updated VIPB metadata (with backup)")) {
+        Copy-Item -LiteralPath $ResolvedVIPBPath -Destination $backupPath -Force
+
+        $xmlWriter = [System.Xml.XmlWriter]::Create($tempPath, $writerSettings)
         $vipbXml.Save($xmlWriter)
         $xmlWriter.Close()
+
+        try {
+            [xml]$postSave = Get-Content -LiteralPath $tempPath -Raw
+        }
+        catch {
+            if (Test-Path -LiteralPath $backupPath) {
+                Copy-Item -LiteralPath $backupPath -Destination $ResolvedVIPBPath -Force
+            }
+            throw "VIPB became unreadable after save: $($_.Exception.Message)"
+        }
+
+        if (-not $postSave.VI_Package_Builder_Settings -or -not $postSave.VI_Package_Builder_Settings.Library_General_Settings) {
+            if (Test-Path -LiteralPath $backupPath) {
+                Copy-Item -LiteralPath $backupPath -Destination $ResolvedVIPBPath -Force
+            }
+            throw "VIPB validation failed after save; restoring backup from $backupPath."
+        }
+
+        Move-Item -LiteralPath $tempPath -Destination $ResolvedVIPBPath -Force
+        if (Test-Path -LiteralPath $backupPath) {
+            Remove-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
+        }
     }
 
     Write-Information "Successfully updated VIPB metadata: $ResolvedVIPBPath" -InformationAction Continue

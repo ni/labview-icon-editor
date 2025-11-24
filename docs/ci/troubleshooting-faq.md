@@ -2,6 +2,10 @@
 
 This document provides a collection of common **troubleshooting** scenarios (with solutions) and a **FAQ** (Frequently Asked Questions) for the LabVIEW Icon Editor GitHub Actions workflows. Refer back to the main CI guide if you need overall setup instructions or deeper references.
 
+For dev-mode binding/unbinding details and JSON outputs, see `docs/ci/dev-mode-bind.md`.
+For the current list of reusable composites and workflow entry points, see `docs/ci/actions/README.md` and `.github/workflows/ci.yml`.
+For quick artifact locations: VIPs under `builds/VI Package/`, bind status JSON under `reports/dev-mode-bind.json`, other reports under `reports/`.
+
 ---
 
 ## Table of Contents
@@ -66,13 +70,14 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - The build succeeds, but the “Upload artifact” step fails with “File not found” or empty artifact.
 
 **Possible Causes**:
-- The `Build.ps1` script didn’t actually produce a `.vip` file in the expected folder.
-- The workflow’s “paths” setting doesn’t match the output directory.
+- The `build-vip` job (or `build-vip` composite) was skipped because vipm/dep gates failed.
+- The `.vip` file was produced under `builds/VI Package/` but the upload step pointed elsewhere.
+- A prior step failed and never invoked `build-vip`.
 
 **Solution**:
-1. Check your “Build VI Package” job logs to confirm the `.vip` file was created.  
-2. If it’s created in `builds/VI Package/`, ensure the upload step references that folder.  
-3. Verify the version of VI Package Manager or the build scripts aren’t failing silently.
+1. Check the `build-vip` job logs in `ci.yml` to confirm `build-vip` ran (vipm gate not skipped).
+2. Verify the `.vip` was created under `builds/VI Package/` and the upload step targets that path/artifact name.
+3. Ensure vipm is available on the runner (see vipm troubleshooting) and that prior dependencies/jobs passed.
 
 ---
 
@@ -118,8 +123,10 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - Another step re-applied the `Set_Development_Mode.ps1` script.
 
 **Solution**:
-1. Manually run the “Development Mode Toggle” workflow with `mode=disable`.  
-2. Confirm your pipeline sequence: typically, dev mode is enabled for debugging only, then disabled prior to final builds.
+1. Run the bind/unbind helper in unbind mode: `BindDevelopmentMode.ps1 -Mode unbind -Bitness both -RepositoryPath <repo> [-Force]` (or the composite `.github/actions/bind-development-mode` with `mode: unbind`).  
+2. Check `reports/dev-mode-bind.json` for per-bitness status; `json_path` is surfaced even on failure.  
+3. If the INI token points to another repo, rerun with `-Force` to clear it intentionally.  
+4. Confirm your pipeline sequence: enable dev mode only when needed, then unbind before final builds.
 
 ---
 
@@ -129,13 +136,14 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - The workflow completes, but you see no new release in GitHub’s “Releases” section.
 
 **Possible Causes**:
-- The composite pipeline only uploads artifacts and does not create releases automatically.
-- The build was triggered by a Pull Request, and your workflow logic only creates releases on “push” or merges to main.
+- `ci.yml` only builds/uploads artifacts; releases are created by `draft-release.yml` (workflow_dispatch) when triggered with a CI run ID.
+- The workflow was a Pull Request run; `draft-release.yml` is not triggered automatically.
 
 **Solution**:
-1. Create releases manually through GitHub’s interface or configure a separate workflow to publish them.
-2. Check your workflow triggers if you expect another workflow to handle releases on certain branches.
-3. Confirm you have “Read and write” permissions for Actions in your repo settings.
+1. Trigger `draft-release.yml` with the successful `ci.yml` run ID to generate a draft release and upload artifacts from that run.
+2. If you need auto-release on push, add logic to invoke `draft-release.yml` (or another release workflow) from the desired branch events.
+3. For manual releases, download artifacts from the CI run and attach them in GitHub Releases.
+4. Confirm you have “Read and write” permissions for Actions in your repo settings.
 
 ---
 
@@ -172,8 +180,8 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - The script that checks for alpha/beta/rc might not be updated for your custom naming.
 
 **Solution**:
-1. Rename your branch to the correct pattern: `release-beta/2.0`, `release-rc/2.0`, etc.  
-2. If you changed naming conventions, update your workflow logic to detect them (e.g., a RegEx match).
+1. Ensure the branch matches `release-alpha/*`, `release-beta/*`, or `release-rc/*` so `compute-version` applies the right suffix.  
+2. If you use custom naming, update the branch-detection logic in `ci.yml` to map to the desired suffix behavior.
 
 ---
 
@@ -187,9 +195,9 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - The branch name might not match exactly `hotfix/` (e.g., `hotfix-2.0` without a slash).
 
 **Solution**:
-1. Ensure your code checks for `hotfix/` prefix, not `hotfix-`.  
-2. Confirm you’re merging into main or the correct base.  
-3. Verify the build logs to see how the workflow computed the version and tag.
+1. Ensure your branch matches `hotfix/*` and let `compute-version` derive the tag (format `v<MAJOR>.<MINOR>.<PATCH>.<BUILD>`).  
+2. Confirm merges go into the intended base (e.g., `main`); suffix logic for alpha/beta/rc should not apply to hotfix.  
+3. Review the `compute-version` step in `ci.yml` to see how the version/tag was computed.
 
 ---
 
@@ -204,8 +212,9 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - The script has no parameter named `lv-ver` or `arch`, so passing `--lv-ver` or `--arch` triggers a parsing error.
 
 **Solution**:
-1. Remove or replace `--lv-ver` and `--arch` with valid single-dash parameters your script actually declares, such as `-Package_LabVIEW_Version 2021` and `-SupportedBitness 64`.  
-2. If you really want `--lv-ver`, you must update the script’s `param()` block to accept that alias.
+1. Use the parameters defined by the script/action you’re calling. For LabVIEW build scripts, prefer single-dash PowerShell params (e.g., `-Package_LabVIEW_Version 2021`, `-SupportedBitness 64`).  
+2. Pass `--` flags only to tools that support them (e.g., `g-cli --lv-ver 2021 --arch 64 -- <VI>`).  
+3. Check the action/script README (e.g., `build-vip`, `bind-development-mode`) for the accepted arguments.
 
 ---
 
@@ -215,13 +224,13 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - The final `.vip` file’s metadata for “Company Name” or “Author Name (Person or Company)” remains empty.
 
 **Possible Causes**:
-- You didn’t pass `-CompanyName` or `-AuthorName` to the `Build.ps1` script.  
-- The JSON creation step is missing or incorrectly references the parameters.
+- You didn’t pass `company_name` / `author_name` to the `build-vip` composite (or `-CompanyName` / `-AuthorName` to `Build.ps1`).
+- The display-info generation step in `ci.yml` is missing or references empty env vars.
 
 **Solution**:
-1. In your GitHub Actions or local call, ensure you specify both `-CompanyName "XYZ Corp"` and `-AuthorName "my-org/repo"`.  
-2. Check that the script’s code block generating `$DisplayInformationJSON` includes these fields.  
-3. Confirm no conflicting code overwrote your JSON after you set it.
+1. In GitHub Actions, ensure `build-vip` receives `company_name` and `author_name` (or env vars used by the display-info step are set).  
+2. For local `Build.ps1`, pass `-CompanyName "XYZ Corp"` and `-AuthorName "my-org/repo"`.  
+3. Check the display-info generation step (in `ci.yml` under build-vip) to confirm it includes these fields and isn’t overwritten later.
 
 ---
 
@@ -231,13 +240,13 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - You see “Add-Member … already exists” errors, or your `Package Version` keys get overwritten unexpectedly.
 
 **Possible Causes**:
-- The script is re-adding or re-initializing the same JSON fields multiple times without using `-Force`.  
-- Another function in the pipeline modifies the same subobject.
+- The display-info generation step (in `ci.yml` under build-vip) rehydrates JSON; additional manual mutations can collide.
+- Scripts re-add or re-init the same JSON fields multiple times without checking existence.
 
 **Solution**:
-1. Update your script to **conditionally** add fields only if they’re missing, or directly assign the property if it already exists.  
-2. If needed, specify `Add-Member -Force` (though recommended approach is to check existence first).  
-3. Ensure you only do the “Package Version” injection once in your pipeline.
+1. Let the `display-info` step populate JSON; avoid extra mutations unless needed.  
+2. If you must mutate JSON, check for existence before adding, or assign directly instead of re-adding members.  
+3. Ensure “Package Version” injection happens once; avoid parallel rewrites.
 
 ---
 
@@ -313,7 +322,7 @@ Technically yes, if you don’t rely on alpha/beta/rc branch naming. But the wor
 ### Q8: Why Is My Dev Mode Toggle Not Working Locally?
 
 **Answer**:  
-The Dev Mode Toggle scripts rely on a self-hosted runner context. If you’re trying to run them directly on your machine outside GitHub Actions, you might need to adapt the PowerShell scripts or replicate the environment variables. Check logs to see if your system path matches what the scripts expect.
+Use the bind/unbind helper directly instead of the toggle workflow: `pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath <repo> -Mode bind|unbind -Bitness both`. Ensure `g-cli` is on PATH and `Tooling/deployment/Create_LV_INI_Token.vi` exists. The script reads the LabVIEW version from your VIPB and targets the canonical LabVIEW.ini under Program Files; check `reports/dev-mode-bind.json` for per-bitness status and rerun with `-Force` only when overwriting another repo’s token intentionally.
 
 ---
 

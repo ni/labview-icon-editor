@@ -14,7 +14,7 @@
 **When to write an ADR**
 - Choosing significant technologies, patterns, protocols, data models.
 - Changes that affect quality attributes (security, reliability, performance, maintainability, cost).
-- Standards and policies teams must follow.
+- Standards and policies teams shall follow.
 
 **Good practice**
 - Keep decisions small and focused; prefer several small ADRs to one omnibus record.
@@ -24,3 +24,9 @@
 - Cross‑link related ADRs and issues.
 
 See `adr-template.md` for the full template and `adr-template-lite.md` for a 1‑page version.
+
+## Catalog
+- ADR-2025-001 - [Adopt ADRs and repository-root `agent.yaml`](ADR-2025-001-adopt-adrs-agent-yaml.md).
+- ADR-2025-002 - [CLA gate enforcement and manifest handling](ADR-2025-002-cla-gate-enforcement.md).
+- ADR-2025-003 - [Bind/Unbind LabVIEW Development Mode via Composite Helper](ADR-2025-003-dev-mode-composite-helper.md).
+- ADR-2025-004 - [Agent-Only Dev-Mode Intent Shim](ADR-2025-004-dev-mode-intent-shim.md).

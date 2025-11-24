@@ -143,7 +143,7 @@ try {
     if (Test-Path $PluginsPath) {
         # Build and execute the removal command only if the plugins folder exists
         # Remove via pipeline to avoid IE
-        Get-ChildItem -Path $PluginsPath -Filter '*.lvlibp' -ErrorAction SilentlyContinue | Remove-Item -Force
+        Get-ChildItem -Path $PluginsPath -Filter '*.lvlibp' -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -Confirm:$false
     }
     else {
         Write-Information "No 'resource\plugins' directory found at $PluginsPath; skipping removal of packed libraries." -InformationAction Continue

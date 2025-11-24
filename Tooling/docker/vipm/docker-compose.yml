@@ -1,0 +1,11 @@
+services:
+  vipm-labview:
+    build: .
+    stdin_open: true
+    tty: true
+    env_file:
+      - .env
+    volumes:
+      - ../../..:/workspace
+    working_dir: /workspace
+    command: bash

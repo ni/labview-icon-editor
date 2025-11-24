@@ -6,26 +6,14 @@ function Resolve-LVIniPath {
         [string]$Arch
     )
 
-    $allowCustom = [bool]$env:ALLOW_NONCANONICAL_LV_INI_PATH
-
     $canonical = if ($Arch -eq '64') {
         "C:\Program Files\National Instruments\LabVIEW $LvVersion\LabVIEW.ini"
     } else {
         "C:\Program Files (x86)\National Instruments\LabVIEW $LvVersion\LabVIEW.ini"
     }
 
-    $candidates = @($canonical)
-    if ($allowCustom -and $env:TEST_LV_INI_PATH) {
-        $candidates = @($env:TEST_LV_INI_PATH) + $candidates
-    }
-
-    foreach ($path in $candidates) {
-        if (Test-Path $path) {
-            if (-not $allowCustom -and $path -ne $canonical) {
-                throw "Non-canonical LabVIEW.ini path detected: $path. Expected: $canonical"
-            }
-            return $path
-        }
+    if (Test-Path $canonical) {
+        return $canonical
     }
 
     throw "LabVIEW.ini not found at canonical path: $canonical"
@@ -35,7 +23,9 @@ function Clear-StaleLibraryPaths {
     param(
         [string]$LvVersion,
         [string]$Arch,
-        [string]$RepositoryRoot
+        [string]$RepositoryRoot,
+        [switch]$Force,
+        [string]$TargetPath
     )
     $lvIniPath = Resolve-LVIniPath -LvVersion $LvVersion -Arch $Arch
     if (-not $lvIniPath) { return }
@@ -46,7 +36,7 @@ function Clear-StaleLibraryPaths {
     $cleaned = @()
     $removed = @()
     $seen    = @{}
-    $repoNorm = [System.IO.Path]::GetFullPath($RepositoryRoot).TrimEnd('\','/').ToLowerInvariant()
+    $repoNorm = [System.IO.Path]::GetFullPath($RepositoryRoot).TrimEnd([char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)).ToLowerInvariant()
 
     foreach ($line in $lines) {
         if (-not ($line -match $pattern)) {
@@ -60,7 +50,7 @@ function Clear-StaleLibraryPaths {
             $removed += $line
             continue
         }
-        $valNorm = ([System.IO.Path]::GetFullPath($value)).TrimEnd('\','/').ToLowerInvariant()
+        $valNorm = ([System.IO.Path]::GetFullPath($value)).TrimEnd([char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)).ToLowerInvariant()
 
         $shouldRemove =
             ($line -like "*actions-runner*actions-runner*") -or
@@ -71,13 +61,22 @@ function Clear-StaleLibraryPaths {
             continue
         }
 
+        # If Force with a TargetPath is supplied, remove entries that do not match the target
+        if ($Force -and $TargetPath) {
+            $targetNorm = [System.IO.Path]::GetFullPath($TargetPath).TrimEnd([char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)).ToLowerInvariant()
+            if ($valNorm -ne $targetNorm) {
+                $removed += $line
+                continue
+            }
+        }
+
         $seen[$valNorm] = $true
         $cleaned += $line
     }
     if ($removed.Count -gt 0) {
         Set-Content -LiteralPath $lvIniPath -Value ($cleaned -join "`r`n")
         $sample = $removed | Select-Object -First 1
-        Write-Warning ("Removed {0} LocalHost.LibraryPaths entries from {1}. Example removed entry: {2}" -f $removed.Count, $lvIniPath, $sample)
+        Write-Warning ("Removed {0} LocalHost.LibraryPaths entries from {1}. Example removed entry: {2}. If you still need that path, re-bind it explicitly for the intended repo/bitness." -f $removed.Count, $lvIniPath, $sample)
     }
 }
 
@@ -92,7 +91,7 @@ function Add-LibraryPathToken {
     $lvIniPath = Resolve-LVIniPath -LvVersion $LvVersion -Arch $Arch
     if (-not $lvIniPath) { return }
 
-    $normToken = [System.IO.Path]::GetFullPath($TokenPath).TrimEnd('\','/').ToLowerInvariant()
+    $normToken = [System.IO.Path]::GetFullPath($TokenPath).TrimEnd([char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)).ToLowerInvariant()
     $lines = Get-Content -LiteralPath $lvIniPath -ErrorAction Stop -Encoding UTF8
     if ($lines -isnot [System.Array]) {
         $lines = @($lines)
@@ -120,7 +119,7 @@ function Add-LibraryPathToken {
         $m = [regex]::Match($line, $pattern, 'IgnoreCase')
         if (-not $m.Success) { continue }
 
-        $valNorm = ([System.IO.Path]::GetFullPath($m.Groups['val'].Value)).TrimEnd('\','/').ToLowerInvariant()
+        $valNorm = ([System.IO.Path]::GetFullPath($m.Groups['val'].Value)).TrimEnd([char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)).ToLowerInvariant()
         if ($valNorm -eq $normToken) {
             $removeIndices.Add($i)
             continue

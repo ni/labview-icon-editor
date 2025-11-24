@@ -90,14 +90,14 @@ try {
 
 $runs = @($data.workflow_runs | Where-Object { $_.head_sha -eq $sha })
 if (-not $runs -or $runs.Count -eq 0) {
-    throw "No runs found for workflow '$workflowName' at commit $sha."
+    throw "No runs found for workflow '$workflowName' at commit $sha. Push/PR the commit or run the workflow manually before gating."
 }
 
 $run = $runs | Sort-Object created_at -Descending | Select-Object -First 1
 Write-Info ("Found workflow run: id={0}, status={1}, conclusion={2}, event={3}" -f $run.id, $run.status, $run.conclusion, $run.event)
 
 if ($run.status -ne 'completed' -or $run.conclusion -ne 'success') {
-    throw ("CI gate failed: latest run for {0} is status={1}, conclusion={2} (run id {3}). Wait for a successful run before proceeding." -f $sha, $run.status, $run.conclusion, $run.id)
+    throw ("CI gate failed: latest run for {0} is status={1}, conclusion={2} (run id {3}). Trigger ci.yml for this commit (push/PR) and wait for success." -f $sha, $run.status, $run.conclusion, $run.id)
 }
 
 Write-Info "CI gate passed for commit $sha."

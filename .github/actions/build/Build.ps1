@@ -42,11 +42,17 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$CompanyName,
 
-    [Parameter(Mandatory = $true)]
+[Parameter(Mandatory = $true)]
     [string]$AuthorName
 )
 
 $ReleaseNotesFile = Join-Path $RepositoryPath 'Tooling\deployment\release_notes.md'
+$helpersPath = Join-Path $RepositoryPath 'scripts/build-helpers.psm1'
+if (-not (Test-Path -LiteralPath $helpersPath)) {
+    Write-Error "Helper module not found at $helpersPath"
+    exit 1
+}
+Import-Module -Name $helpersPath -Force
 
 # Helper function to verify a file/folder path exists
 function Test-PathExistence {
@@ -176,6 +182,12 @@ try {
         exit 1
     }
 
+    # Hard fail if vipm CLI is missing; do not skip dependency application
+    if (-not (Get-Command vipm -ErrorAction SilentlyContinue)) {
+        Write-Error "vipm CLI not found on PATH; install VIPM CLI and ensure 'vipm' is available before running the build task."
+        exit 1
+    }
+
     # Derive build number from total commits when available
     try {
         git -C $RepositoryPath fetch --unshallow 2>$null | Out-Null
@@ -196,7 +208,7 @@ try {
     }
 
     # Derive LabVIEW version from VIPB as the first consumer step
-    $lvVersion = Get-LabVIEWVersionFromVipb -RootPath $RepositoryPath
+    $lvVersion = Get-LabVIEWVersionOrFail -RepoPath $RepositoryPath
     Write-Information ("Using LabVIEW version from VIPB: {0}" -f $lvVersion) -InformationAction Continue
 
     # Validate needed folders after version is known
@@ -207,12 +219,8 @@ try {
     $ActionsPath = Split-Path -Parent $PSScriptRoot
     Test-PathExistence $ActionsPath "Actions folder"
 
-    # Ensure VIPC dependencies exist (mirrors CI prep)
-    $vipcPath = Join-Path $RepositoryPath "Tooling\deployment\runner_dependencies.vipc"
-    if (-not (Test-Path -LiteralPath $vipcPath)) {
-        Write-Error "Missing runner_dependencies.vipc at $vipcPath. Cannot apply dependencies; run packaging prep or fetch the VIPC."
-        exit 1
-    }
+    # Ensure VIPC dependencies exist (mirrors CI prep). Only use the canonical VIPC under .github/actions/apply-vipc.
+    $vipcPath = Get-CanonicalVipcPath -RepoPath $RepositoryPath
 
     # 1) Clean up old .lvlibp in the plugins folder
     Write-Information "Cleaning up old .lvlibp files in plugins folder..." -InformationAction Continue
@@ -247,7 +255,7 @@ try {
             Package_LabVIEW_Version   = $lvVersion
             SupportedBitness          = '32'
             RepositoryPath            = $RepositoryPath
-            VIPCPath                  = 'Tooling\deployment\runner_dependencies.vipc'
+            VIPCPath                  = $vipcPath
         }
 
         # 2.1) Preflight missing items using existing missing-in-project helper (32-bit)
@@ -307,7 +315,7 @@ try {
         Package_LabVIEW_Version   = $lvVersion
         SupportedBitness          = '64'
         RepositoryPath            = $RepositoryPath
-        VIPCPath                  = 'Tooling\deployment\runner_dependencies.vipc'
+        VIPCPath                  = $vipcPath
     }
 
     # 6.1) Ensure LabVIEW 64-bit is closed before building to avoid loaded NIIconEditor collisions
@@ -339,11 +347,41 @@ try {
     }
 
     # Rename .lvlibp -> lv_icon_x64.lvlibp
-    Write-Verbose "Renaming .lvlibp file to lv_icon_x64.lvlibp..."
-    Invoke-ScriptSafe -ScriptPath $RenameFile -ArgumentMap @{
-        CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
-        NewFilename     = 'lv_icon_x64.lvlibp'
-    }
+        Write-Verbose "Renaming .lvlibp file to lv_icon_x64.lvlibp..."
+        Invoke-ScriptSafe -ScriptPath $RenameFile -ArgumentMap @{
+            CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
+            NewFilename     = 'lv_icon_x64.lvlibp'
+        }
+
+        # 7.2) Stage neutral and suffixed PPLs for post-install selector
+        try {
+            $pplDir    = Join-Path $RepositoryPath 'resource\plugins'
+            $pplX64    = Join-Path $pplDir 'lv_icon_x64.lvlibp'
+            $pplX86    = Join-Path $pplDir 'lv_icon_x86.lvlibp'
+            $neutral   = Join-Path $pplDir 'lv_icon.lvlibp'
+            $win64Copy = Join-Path $pplDir 'lv_icon.lvlibp.windows_x64'
+            $win86Copy = Join-Path $pplDir 'lv_icon.lvlibp.windows_x86'
+
+            if (Test-Path -LiteralPath $pplX64) {
+                Copy-Item -LiteralPath $pplX64 -Destination $neutral -Force
+                Copy-Item -LiteralPath $pplX64 -Destination $win64Copy -Force
+                Write-Information "Staged neutral and windows_x64 PPLs at $pplDir" -InformationAction Continue
+            }
+            else {
+                Write-Warning "x64 PPL not found at $pplX64; skipping neutral/windows_x64 staging."
+            }
+
+            if (Test-Path -LiteralPath $pplX86) {
+                Copy-Item -LiteralPath $pplX86 -Destination $win86Copy -Force
+                Write-Information "Staged windows_x86 PPL at $pplDir" -InformationAction Continue
+            }
+            else {
+                Write-Warning "x86 PPL not found at $pplX86; skipping windows_x86 staging."
+            }
+        }
+        catch {
+            Write-Warning "Failed to stage neutral/suffixed PPL copies: $($_.Exception.Message)"
+        }
 
     # -------------------------------------------------------------------------
     # 8) Construct the JSON for "Company Name" & "Author Name", plus version

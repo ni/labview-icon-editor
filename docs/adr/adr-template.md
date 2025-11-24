@@ -38,7 +38,7 @@ adr:
 - **Rationale**: <why this beats the alternatives against the drivers>  
 - **Scope of applicability**: <systems, teams, boundaries>  
 - **Assumptions**: <facts we rely on>  
-- **Dependencies**: <things that must be true or delivered>
+- **Dependencies**: <things that shall be true or delivered>
 
 ## 4. Consequences
 - **Positive**: <benefits and opportunities>  
@@ -52,7 +52,7 @@ adr:
 - **Rollback strategy**: <how we back out safely>
 
 ## 6. Verification & validation
-- **Success criteria / measures of performance**: <quantitative where possible>  
+- **Success criteria / measures of performance**: <quantitative when applicable>  
 - **Verification method**: <inspection | analysis/simulation | demonstration | test>  
 - **Validation with stakeholders**: <how we’ll confirm we built the right thing>
 
@@ -66,7 +66,7 @@ adr:
 - **System/software requirements**: <IDs>  
 - **Downstream** (tests / VCRM entry / monitoring): <IDs or links>
 
-## 9. Open issues / TBD / TBR
+## 9. Open issues / follow-ups
 - <ID> — <issue> — <owner> — <due>
 
 ## 10. Change log

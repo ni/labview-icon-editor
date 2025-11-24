@@ -2,18 +2,6 @@
   "version": "2.0.0",
   "inputs": [
     {
-      "id": "vipArtifactPath",
-      "type": "promptString",
-      "description": "Path to the built .vip (file/folder/pattern)",
-      "default": "builds/VI Package/"
-    },
-    {
-      "id": "minLv",
-      "type": "promptString",
-      "description": "Minimum LabVIEW version (major.minor)",
-      "default": "21.0"
-    },
-    {
       "id": "buildMode",
       "type": "pickString",
       "description": "Artifact type: VIP + lvlibp builds, or single-arch VIP only",
@@ -36,8 +24,9 @@
     {
       "id": "lvlibpBitness",
       "type": "pickString",
-      "description": "Bitness for building the lvlibp",
+      "description": "Bitness for VIP build task",
       "options": [
+        "both",
         "32",
         "64"
       ],
@@ -67,6 +56,35 @@
       "description": "Build number",
       "default": "1"
     },
+    {
+      "id": "companyName",
+      "type": "promptString",
+      "description": "Company name for Build.ps1",
+      "default": "LabVIEW-Community-CI-CD"
+    },
+    {
+      "id": "authorName",
+      "type": "promptString",
+      "description": "Author name for Build.ps1",
+      "default": "Local Developer"
+    },
+    {
+      "id": "devmodePhrase",
+      "type": "promptString",
+      "description": "Dev-mode intent phrase (e.g., /devmode bind 2021 both force)",
+      "default": "/devmode bind 2021 both force"
+    },
+    {
+      "id": "devmodeForcePhrase",
+      "type": "promptString",
+      "description": "Dev-mode intent phrase for force overwrite",
+      "default": "/devmode bind 2021 both force"
+    },
+    {
+      "id": "vipbPath",
+      "type": "promptString",
+      "description": "Path to the VIPB used by dev-mode (relative to repo root)"
+    },
   ],
   "tasks": [
     {
@@ -78,9 +96,9 @@
         "-File",
         "${workspaceFolder}/.github/actions/analyze-vi-package/run-local.ps1",
         "-VipArtifactPath",
-        "${input:vipArtifactPath}",
+        "${workspaceFolder}/builds/VI Package/",
         "-MinLabVIEW",
-        "${input:minLv}"
+        "21.0"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -88,14 +106,137 @@
       "problemMatcher": []
     },
     {
+      "label": "Build/Package VIP (simulate)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/.github/actions/build-vip/build_vip.ps1",
+        "-SupportedBitness",
+        "64",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-VIPBPath",
+        "Tooling/deployment/labview-icon-editor.vipb",
+        "-Package_LabVIEW_Version",
+        "2021",
+        "-LabVIEWMinorRevision",
+        "3",
+        "-Major",
+        "0",
+        "-Minor",
+        "0",
+        "-Patch",
+        "0",
+        "-Build",
+        "0",
+        "-Commit",
+        "manual",
+        "-ReleaseNotesFile",
+        "Tooling/deployment/release_notes.md",
+        "-DisplayInformationJSON",
+        "'{}'",
+        "-Simulate",
+        "-SkipPPLCheck"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build (isolated worktree)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/worktree-build.ps1",
+        "-SourceRepoPath",
+        "${workspaceFolder}",
+        "-Ref",
+        "HEAD",
+        "-SupportedBitness",
+        "${input:devModeBitness}",
+        "-LvlibpBitness",
+        "${input:lvlibpBitness}",
+        "-Major",
+        "${input:semverMajor}",
+        "-Minor",
+        "${input:semverMinor}",
+        "-Patch",
+        "${input:semverPatch}",
+        "-Build",
+        "${input:buildNumber}",
+        "-CompanyName",
+        "${input:companyName}",
+        "-AuthorName",
+        "${input:authorName}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build PPL (simulate)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/run-build-lvlibp-task.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-SupportedBitness",
+        "64",
+        "-Major",
+        "0",
+        "-Minor",
+        "0",
+        "-Patch",
+        "0",
+        "-Build",
+        "0",
+        "-Commit",
+        "manual"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
       "label": "Build/Package VIP",
-      "detail": "Choose artifact type via buildMode: vip+lvlibp (full pipeline) or vip-single (single-arch package)",
       "type": "shell",
       "command": "pwsh",
       "args": [
         "-NoProfile",
         "-Command",
-        "& { & \"${workspaceFolder}/scripts/check-ci-gate.ps1\" -WorkflowFile \".github/workflows/ci.yml\" -RepositoryPath \"${workspaceFolder}\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"${input:buildMode}\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"${input:lvlibpBitness}\" }"
+        "& { & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"${input:buildMode}\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"${input:lvlibpBitness}\" }"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build release asset (VI Package x64)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/task-build-vip.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-Bitness",
+        "64"
       ],
       "options": {
         "cwd": "${workspaceFolder}",
@@ -108,8 +249,74 @@
       "problemMatcher": []
     },
     {
-      "label": "Draft GitHub Release (CI artifacts)",
-      "detail": "Dispatches draft-release.yml to create a draft release from CI artifacts by run ID.",
+      "label": "Build pipeline (full simulate)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/run-build-or-package.ps1",
+        "-BuildMode",
+        "vip+lvlibp",
+        "-WorkspacePath",
+        "${workspaceFolder}",
+        "-LabVIEWMinorRevision",
+        "3",
+        "-LvlibpBitness",
+        "both",
+        "-Simulate"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build release asset (VI Package x86)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/task-build-vip.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-Bitness",
+        "32"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "GH_TOKEN": "${env:GH_TOKEN}",
+          "GITHUB_TOKEN": "${env:GITHUB_TOKEN}"
+        }
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build release asset (VI Package 32 & 64 bits)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/task-build-vip.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-Bitness",
+        "both",
+        "-SkipCIGate"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Draft release",
       "type": "shell",
       "command": "pwsh",
       "args": [
@@ -127,13 +334,27 @@
       "problemMatcher": []
     },
     {
-      "label": "Build lvlibp (LabVIEW)",
+      "label": "Build release asset (Packed Project Library, x64)",
       "type": "shell",
       "command": "pwsh",
       "args": [
         "-NoProfile",
         "-Command",
-        "& { $ver = & \"${workspaceFolder}/scripts/get-package-lv-version.ps1\" -RepositoryPath \"${workspaceFolder}\"; & \"${workspaceFolder}/.github/actions/build-lvlibp/Build_lvlibp.ps1\" -Package_LabVIEW_Version $ver -SupportedBitness \"${input:lvlibpBitness}\" -RepositoryPath \"${workspaceFolder}\" -Major 0 -Minor 0 -Patch 0 -Build 0 -Commit \"manual\" }"
+        "& \"${workspaceFolder}/scripts/run-build-lvlibp-task.ps1\" -RepositoryPath \"${workspaceFolder}\" -SupportedBitness \"64\" -Major 0 -Minor 0 -Patch 0 -Build 0 -Commit \"manual\""
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Build release asset (Packed Project Library, x86)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "& \"${workspaceFolder}/scripts/run-build-lvlibp-task.ps1\" -RepositoryPath \"${workspaceFolder}\" -SupportedBitness \"32\" -Major 0 -Minor 0 -Patch 0 -Build 0 -Commit \"manual\""
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -157,6 +378,151 @@
       "problemMatcher": []
     },
     {
+      "label": "Bind Dev Mode (default bind both)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/.github/actions/bind-development-mode/BindDevelopmentMode.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-Mode",
+        "bind",
+        "-Bitness",
+        "both"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev Mode (interactive bind/unbind)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/.github/actions/bind-development-mode/RunInteractiveBind.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Guided PowerShell helper for bind/unbind",
+      "group": "Dev Mode",
+      "presentation": {
+        "reveal": "always"
+      },
+      "isBackground": false
+    },
+    {
+      "label": "Dev Mode (bind both with Force)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/.github/actions/bind-development-mode/BindDevelopmentMode.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-Mode",
+        "bind",
+        "-Bitness",
+        "both",
+        "-Force"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev Mode Bind (check + run)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/tools/DevModeAgentCli/DevModeAgentCli.csproj",
+        "--",
+        "--phrase",
+        "${input:devmodePhrase}",
+        "--repo",
+        "${workspaceFolder}",
+        "--summary",
+        "${workspaceFolder}/reports/dev-mode-bind.json",
+        "--execute"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Intent CLI (plan+execute) for dev-mode bind; safe default",
+      "group": "Dev Mode",
+      "presentation": {
+        "reveal": "always"
+      },
+      "isBackground": false
+    },
+    {
+      "label": "Dev Mode Bind (force overwrite)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/tools/DevModeAgentCli/DevModeAgentCli.csproj",
+        "--",
+        "--phrase",
+        "${input:devmodeForcePhrase}",
+        "--repo",
+        "${workspaceFolder}",
+        "--summary",
+        "${workspaceFolder}/reports/dev-mode-bind.json",
+        "--execute"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Intent CLI with Force to overwrite existing dev-mode tokens",
+      "group": "Dev Mode",
+      "presentation": {
+        "reveal": "always"
+      },
+      "isBackground": false
+    },
+    {
+      "label": "Dev Mode Bind (force clean)",
+      "type": "shell",
+      "detail": "Unbind + bind with Force for both bitnesses; use when tokens point elsewhere",
+      "group": "Dev Mode",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/dev-mode-force-clean.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-VipbPath",
+        "${input:vipbPath}"
+        ,
+        "-SkipConfirm"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "isBackground": false
+    },
+    {
       "label": "Revert Dev Mode (LabVIEW)",
       "type": "shell",
       "command": "pwsh",
@@ -170,10 +536,16 @@
       "options": {
         "cwd": "${workspaceFolder}"
       },
-      "problemMatcher": []
+      "problemMatcher": [],
+      "detail": "Unbind/reset dev mode for the selected bitness",
+      "group": "Dev Mode",
+      "presentation": {
+        "reveal": "always"
+      },
+      "isBackground": false
     },
     {
-      "label": "Requirements checklist",
+      "label": "Requirements",
       "type": "shell",
       "command": "python",
       "args": [
@@ -202,8 +574,41 @@
       "options": {
         "cwd": "${workspaceFolder}"
       },
-      "problemMatcher": [],
-      "detail": "Generate TRW checklist summary and full markdown under reports/."
+      "problemMatcher": []
+    },
+    {
+      "label": "Test VIPM Docker",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/Tooling/docker/vipm/test-vipm.ps1",
+        "-RepositoryRoot",
+        "${workspaceFolder}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "VIPM Docker Smoke",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/Tooling/docker/vipm/smoke-vipm.ps1",
+        "-RepositoryRoot",
+        "${workspaceFolder}",
+        "-VipcPath",
+        "icon-editor-developer.vipc"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
     }
   ]
 }

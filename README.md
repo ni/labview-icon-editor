@@ -6,7 +6,7 @@ Open-source Icon Editor for LabVIEW, packaged as a `.vip`. This repo includes VS
 
 Prerequisites
 - Windows with LabVIEW 2021 SP1 (32-bit and/or 64-bit for the bitness you need)
-- VIPM with `g-cli` on PATH
+- VIPM CLI (`vipm`) on PATH
 - PowerShell 7+, Git with full history (for versioning)
 
 Steps
@@ -28,5 +28,6 @@ More details: see `docs/vscode-tasks.md`.
 ## Docs quicklinks
 - Build & tasks: `docs/vscode-tasks.md`
 - CI overview: `docs/ci-workflows.md`
+- VIPM Docker helper: `Tooling/docker/vipm/README.md`
 - Dev mode toggle: `.github/actions/set-development-mode/run-dev-mode.ps1` and `.github/actions/revert-development-mode/run-dev-mode.ps1`
 - Tests: `docs/testing/policy.md` (and `Test/` for Pester)

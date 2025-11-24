@@ -44,9 +44,10 @@ jobs:
     name: Requirements
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          fetch-depth: 0
+          set-safe-directory: true
+          fetch-depth: 1
       - name: Summarize TRW checklist CSV
         run: dotnet run --project tools/RequirementsSummarizer/RequirementsSummarizer.csproj -- --csv docs/requirements/requirements.csv --rows 5 --summary-full --details --section-details --details-label "Requirements (full table)" --title "Requirements Checklist" --repo "${{ github.repository }}" --summary-output "${GITHUB_STEP_SUMMARY:-}" --full-output "${{ github.workspace }}/reports/req-full.md" --json-output "${{ github.workspace }}/reports/requirements.json" --html-output "${{ github.workspace }}/reports/requirements.html"
       - name: Upload requirements artifacts
@@ -248,9 +249,10 @@ jobs:
     name: Enforce jobs depend on verify-checklist-sync
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          fetch-depth: 0
+          set-safe-directory: true
+          fetch-depth: 1
       - name: Check job dependencies include verify-checklist-sync
         run: |
           python3 - <<'PY'
@@ -287,7 +289,9 @@ jobs:
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -319,12 +323,39 @@ jobs:
           path: test-report.md
           if-no-files-found: error
 
+  simulate-build-vip:
+    name: Simulate VI Package build (preflight)
+    needs: [verify-checklist-sync]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 1
+      - name: Run build-vip in simulate mode (no vipm)
+        uses: ./.github/actions/build-vip
+        with:
+          supported_bitness: 64
+          repository_path: ${{ github.workspace }}
+          labview_minor_revision: 3
+          major: 0
+          minor: 0
+          patch: 0
+          build: 0
+          commit: simulate
+          release_notes_file: Tooling/deployment/release_notes.md
+          display_information_json: "{}"
+          simulate: true
+          skip_ppl_check: true
+
   docs-quality:
     name: Docs link check and ADR lint
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -372,9 +403,10 @@ jobs:
     outputs:
       minimum_supported_lv_version: ${{ steps.read.outputs.lv_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          fetch-depth: 0
+          set-safe-directory: true
+          fetch-depth: 1
       - id: read
         name: Gate minimum LabVIEW policy vs VIPB
         shell: pwsh
@@ -408,9 +440,10 @@ jobs:
     needs: [verify-checklist-sync]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          fetch-depth: 0
+          set-safe-directory: true
+          fetch-depth: 1
 
       - name: List collaborators and permissions
         shell: pwsh
@@ -427,8 +460,11 @@ jobs:
 
   apply-deps:
     name: Apply VIPC (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x${{ matrix.bits }})
-    needs: [verify-checklist-sync, resolve-labview-version, ps-coverage, version]
+    needs: [verify-checklist-sync, resolve-labview-version, ps-coverage, version, preflight-gates]
     runs-on: self-hosted-windows-lv
+    defaults:
+      run:
+        shell: pwsh
     strategy:
       fail-fast: false
       matrix:
@@ -438,8 +474,9 @@ jobs:
     env:
       VIPC_PATH: ".github/actions/apply-vipc/runner_dependencies.vipc"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
+          set-safe-directory: true
           fetch-depth: 0
 
       - id: detect
@@ -671,10 +708,14 @@ jobs:
     name: Check LocalHost.LibraryPaths (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }})
     needs: [verify-checklist-sync, apply-deps, resolve-labview-version]
     runs-on: self-hosted-windows-lv
+    defaults:
+      run:
+        shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          fetch-depth: 0
+          set-safe-directory: true
+          fetch-depth: 1
       - name: Validate LocalHost.LibraryPaths entries (64-bit)
         shell: pwsh
         run: |
@@ -694,6 +735,9 @@ jobs:
     name: Compute Version
     needs: [serialize-before-version, verify-checklist-sync]
     runs-on: self-hosted-windows-lv
+    defaults:
+      run:
+        shell: pwsh
     outputs:
       VERSION:       ${{ steps.compute.outputs.VERSION }}
       MAJOR:         ${{ steps.compute.outputs.MAJOR }}
@@ -702,8 +746,9 @@ jobs:
       BUILD:         ${{ steps.compute.outputs.BUILD }}
       IS_PRERELEASE: ${{ steps.compute.outputs.IS_PRERELEASE }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
+          set-safe-directory: true
           fetch-depth: 0
       - id: compute
         uses: ./.github/actions/compute-version
@@ -726,9 +771,13 @@ jobs:
     name: Test Missing-In-Project (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x64)
     needs: [verify-checklist-sync, apply-deps, check-library-paths, resolve-labview-version]
     runs-on: self-hosted-windows-lv
+    defaults:
+      run:
+        shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
+          set-safe-directory: true
           fetch-depth: 0
           clean: true
       - uses: ./.github/actions/missing-in-project
@@ -756,9 +805,13 @@ jobs:
     name: Test Missing-In-Project (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x86)
     needs: [verify-checklist-sync, missing-in-project-x64, check-library-paths, resolve-labview-version, apply-deps]
     runs-on: self-hosted-windows-lv
+    defaults:
+      run:
+        shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
+          set-safe-directory: true
           fetch-depth: 0
           clean: true
       - uses: ./.github/actions/missing-in-project
@@ -786,6 +839,9 @@ jobs:
     name: Run Unit Tests (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x64)
     needs: [verify-checklist-sync, missing-in-project-x86, resolve-labview-version]
     runs-on: self-hosted-windows-lv
+    defaults:
+      run:
+        shell: pwsh
     env:
       LABVIEW_VERSION: ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
     steps:
@@ -822,6 +878,9 @@ jobs:
     name: Run Unit Tests (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x86)
     needs: [verify-checklist-sync, test-x64, resolve-labview-version]
     runs-on: self-hosted-windows-lv
+    defaults:
+      run:
+        shell: pwsh
     env:
       LABVIEW_VERSION: ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
     steps:
@@ -859,7 +918,9 @@ jobs:
     needs: [verify-checklist-sync, test-x86]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
       - name: Download unit test reports
         uses: actions/download-artifact@v4
         with:
@@ -938,9 +999,10 @@ jobs:
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
-          fetch-depth: 0
+          set-safe-directory: true
+          fetch-depth: 1
       - name: Install Pester 5.7.1
         shell: pwsh
         run: |
@@ -985,10 +1047,28 @@ jobs:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-pester-coverage
           path: coverage.xml
 
+  preflight-gates:
+    name: Preflight gates (fast-fail)
+    needs: [verify-checklist-sync, enforce-verify-checklist-needs, rtm-gates, docs-quality, ps-coverage]
+    runs-on: ubuntu-latest
+    if: >
+      ${{
+        needs.verify-checklist-sync.result == 'success' &&
+        needs.enforce-verify-checklist-needs.result == 'success' &&
+        needs.rtm-gates.result == 'success' &&
+        needs.docs-quality.result == 'success' &&
+        needs.ps-coverage.result == 'success'
+      }}
+    steps:
+      - run: echo "Preflight gates passed; proceeding to LabVIEW jobs."
+
   build-ppl-x86:
     name: Build 32-bit Packed Library (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }})
     needs: [verify-checklist-sync, build-ppl-x64, version, resolve-labview-version]
     runs-on: self-hosted-windows-lv
+    defaults:
+      run:
+        shell: pwsh
     steps:
       - uses: ./.github/actions/build-lvlibp
         with:
@@ -1004,19 +1084,27 @@ jobs:
         with:
           repository_path: ${{ github.workspace }}
           supported_bitness: 32
-      - uses: ./.github/actions/rename-file
-        with:
-          current_filename: ${{ github.workspace }}/resource/plugins/lv_icon.lvlibp
-          new_filename: ${{ github.workspace }}/resource/plugins/lv_icon_x86.lvlibp
+      - name: Stage PPL outputs (x86)
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = "$env:GITHUB_WORKSPACE/resource/plugins"
+          $source = Join-Path $dir 'lv_icon.lvlibp'
+          if (-not (Test-Path $source)) {
+            throw "Expected PPL at $source after build-lvlibp (x86)."
+          }
+          Copy-Item -LiteralPath $source -Destination (Join-Path $dir 'lv_icon.lvlibp.windows_x86') -Force
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-32bit
-          path: resource/plugins/lv_icon_x86.lvlibp
+          path: resource/plugins/lv_icon.lvlibp.windows_x86
 
   build-ppl-x64:
     name: Build 64-bit Packed Library (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }})
     needs: [verify-checklist-sync, test-x86, version, resolve-labview-version]
     runs-on: self-hosted-windows-lv
+    defaults:
+      run:
+        shell: pwsh
     steps:
       - uses: ./.github/actions/build-lvlibp
         with:
@@ -1032,42 +1120,82 @@ jobs:
         with:
           repository_path: ${{ github.workspace }}
           supported_bitness: 64
-      - uses: ./.github/actions/rename-file
-        with:
-          current_filename: ${{ github.workspace }}/resource/plugins/lv_icon.lvlibp
-          new_filename: ${{ github.workspace }}/resource/plugins/lv_icon_x64.lvlibp
+      - name: Stage PPL outputs (x64)
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = "$env:GITHUB_WORKSPACE/resource/plugins"
+          $source = Join-Path $dir 'lv_icon.lvlibp'
+          if (-not (Test-Path $source)) {
+            throw "Expected PPL at $source after build-lvlibp (x64)."
+          }
+          Copy-Item -LiteralPath $source -Destination (Join-Path $dir 'lv_icon.lvlibp.windows_x64') -Force
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-64bit
-          path: resource/plugins/lv_icon_x64.lvlibp
+          path: |
+            resource/plugins/lv_icon.lvlibp
+            resource/plugins/lv_icon.lvlibp.windows_x64
 
   build-vip:
     name: Build VI Package
     # Chain after 32-bit build, which already depends on 64-bit, to enforce x64 -> x86 -> build-vip ordering
     needs: [verify-checklist-sync, build-ppl-x86, version]
     outputs:
+      should_build_vip: ${{ steps.vipm-gate.outputs.has_vipm_cli }}
       vip_artifact: ${{ steps.build-vip.outputs.vip_artifact }}
       vip_path: ${{ steps.build-vip.outputs.vip_path }}
       release_notes_artifact: ${{ steps.release-notes.outputs.artifact_name }}
     runs-on: self-hosted-windows-lv
+    defaults:
+      run:
+        shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
+          set-safe-directory: true
           fetch-depth: 0
+      - name: Gate on vipm CLI (skip VI Package build if dependencies cannot be applied)
+        id: vipm-gate
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vipm = Get-Command vipm -ErrorAction SilentlyContinue
+          $hasVipm = [bool]$vipm
+          "has_vipm_cli=$($hasVipm.ToString().ToLowerInvariant())" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+          if (-not $hasVipm) {
+            $msg = "vipm CLI not found on PATH; skipping VI Package build because the runner could not apply the VIPC."
+            Write-Warning $msg
+            if ($env:GITHUB_STEP_SUMMARY) {
+              $summary = @()
+              $summary += "### VI Package build"
+              $summary += ""
+              $summary += $msg
+              $summary += ""
+              $summary -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            }
+          }
+          else {
+            Write-Host "vipm CLI detected; proceeding with VI Package build."
+          }
       - name: Generate release notes
         id: release-notes
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         uses: ./.github/actions/generate-release-notes
         # output_path defaults to Tooling/deployment/release_notes.md
       - uses: actions/download-artifact@v4
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-32bit
           path: resource/plugins
       - uses: actions/download-artifact@v4
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-64bit
           path: resource/plugins
       - name: Generate display information JSON
         id: display-info
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         shell: pwsh
         env:
           RELEASE_NOTES_PATH: ${{ github.workspace }}/Tooling/deployment/release_notes.md
@@ -1120,10 +1248,10 @@ jobs:
           $json = $info | ConvertTo-Json -Depth 5 -Compress
           "json=$json" >> $Env:GITHUB_OUTPUT
       - uses: ./.github/actions/modify-vipb-display-info
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         with:
           supported_bitness: 64
           repository_path: ${{ github.workspace }}
-          vipb_path: Tooling/deployment/NI Icon editor.vipb
           labview_minor_revision: 3
           major: ${{ needs.version.outputs.MAJOR }}
           minor: ${{ needs.version.outputs.MINOR }}
@@ -1133,11 +1261,11 @@ jobs:
           release_notes_file: ${{ github.workspace }}/Tooling/deployment/release_notes.md
           display_information_json: ${{ steps.display-info.outputs.json }}
       - id: build-vip
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         uses: ./.github/actions/build-vip
         with:
           supported_bitness: 64
           repository_path: ${{ github.workspace }}
-          vipb_path: Tooling/deployment/NI Icon editor.vipb
           labview_minor_revision: 3
           major: ${{ needs.version.outputs.MAJOR }}
           minor: ${{ needs.version.outputs.MINOR }}
@@ -1146,13 +1274,14 @@ jobs:
           commit: ${{ github.sha }}
           release_notes_file: ${{ github.workspace }}/Tooling/deployment/release_notes.md
           display_information_json: ${{ steps.display-info.outputs.json }}
-      - if: always()
+      - # Only attempt to close LabVIEW if the build path ran
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true' && always()
         uses: ./.github/actions/close-labview
         with:
           repository_path: ${{ github.workspace }}
           supported_bitness: 64
       - name: Validate tag matches computed version (if provided)
-        if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.dispatch_tag != ''
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true' && (startsWith(github.ref, 'refs/tags/') || github.event.inputs.dispatch_tag != '')
         shell: pwsh
         env:
           EXPECTED_TAG: v${{ needs.version.outputs.MAJOR }}.${{ needs.version.outputs.MINOR }}.${{ needs.version.outputs.PATCH }}.${{ needs.version.outputs.BUILD }}
@@ -1174,9 +1303,15 @@ jobs:
   analyze-vip:
     name: Analyze VI Package
     needs: [verify-checklist-sync, build-vip]
+    if: needs.build-vip.outputs.should_build_vip == 'true'
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
       - name: Record analyze job start
         shell: pwsh
         run: |
