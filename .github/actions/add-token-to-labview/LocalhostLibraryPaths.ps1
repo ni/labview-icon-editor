@@ -35,7 +35,9 @@ function Clear-StaleLibraryPaths {
     param(
         [string]$LvVersion,
         [string]$Arch,
-        [string]$RepositoryRoot
+        [string]$RepositoryRoot,
+        [switch]$Force,
+        [string]$TargetPath
     )
     $lvIniPath = Resolve-LVIniPath -LvVersion $LvVersion -Arch $Arch
     if (-not $lvIniPath) { return }
@@ -69,6 +71,15 @@ function Clear-StaleLibraryPaths {
         if ($shouldRemove) {
             $removed += $line
             continue
+        }
+
+        # If Force with a TargetPath is supplied, remove entries that do not match the target
+        if ($Force -and $TargetPath) {
+            $targetNorm = [System.IO.Path]::GetFullPath($TargetPath).TrimEnd('\\','/').ToLowerInvariant()
+            if ($valNorm -ne $targetNorm) {
+                $removed += $line
+                continue
+            }
         }
 
         $seen[$valNorm] = $true

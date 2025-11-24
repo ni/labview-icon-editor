@@ -66,6 +66,7 @@ function Get-LibraryPathState {
 $RepositoryPath = (Resolve-Path -LiteralPath $RepositoryPath).Path
 $expectedToken = Get-ExpectedTokenPath -Repo $RepositoryPath
 $expectedNorm = Normalize-PathLower $expectedToken
+$pluginsPath = Join-Path -Path $RepositoryPath -ChildPath 'resource\plugins'
 
 $actionRoot = Split-Path -Parent $PSScriptRoot
 $setDevScript    = Join-Path -Path $actionRoot -ChildPath 'set-development-mode/Set_Development_Mode.ps1'
@@ -178,6 +179,7 @@ else {
         $currentNorm = Normalize-PathLower $res.current_path
         $expectedMatch = ($state.Paths | ForEach-Object { Normalize-PathLower $_ }) -contains $expectedNorm
         $hasAnyPath = $state.Paths.Count -gt 0
+        $hasPackedLibs = Test-Path -LiteralPath (Join-Path $pluginsPath '*.lvlibp')
 
         if ($Mode -eq 'status') {
             $res.status = 'success'
@@ -198,7 +200,7 @@ else {
         }
 
         if ($Mode -eq 'bind') {
-            if ($expectedMatch) {
+            if ($expectedMatch -and -not $hasPackedLibs) {
                 $res.status = 'success'
                 $res.message = 'Already bound'
                 $res.post_path = $res.current_path
@@ -246,7 +248,7 @@ else {
             $postMatch = ($statePost.Paths | ForEach-Object { Normalize-PathLower $_ }) -contains $expectedNorm
             if ($postMatch) {
                 $res.status = 'success'
-                $res.message = 'Bound development mode'
+                $res.message = 'Bound development mode (token set and packed libs cleared)'
             }
             else {
                 $res.status = 'fail'
@@ -284,6 +286,12 @@ else {
             }
 
             try {
+                # Force removal of stale tokens when requested
+                if ($Force) {
+                    Clear-StaleLibraryPaths -LvVersion $lvVersion -Arch $arch -RepositoryRoot $RepositoryPath -Force -TargetPath $expectedToken
+                } else {
+                    Clear-StaleLibraryPaths -LvVersion $lvVersion -Arch $arch -RepositoryRoot $RepositoryPath
+                }
                 & $revertDevScript -RepositoryPath $RepositoryPath -SupportedBitness $arch | Out-Null
             }
             catch {
@@ -304,7 +312,7 @@ else {
             $postMatch = ($statePost.Paths | ForEach-Object { Normalize-PathLower $_ }) -contains $expectedNorm
             if (-not $postMatch) {
                 $res.status = 'success'
-                $res.message = 'Unbound development mode'
+                $res.message = 'Unbound development mode (token removed)'
             }
             else {
                 $res.status = 'fail'

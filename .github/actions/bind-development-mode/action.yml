@@ -33,7 +33,9 @@ runs:
   using: "composite"
   steps:
     - name: Run bind/unbind/status
+      id: run
       shell: pwsh
+      continue-on-error: true
       run: |
         $params = @(
           '-RepositoryPath "${{ inputs.repository_path }}"',
@@ -50,6 +52,7 @@ runs:
 
     - id: outputs
       name: Set outputs
+      if: always()
       shell: pwsh
       run: |
         $path = if ('${{ inputs.json_output_path }}') { '${{ inputs.json_output_path }}' } else { Join-Path '${{ inputs.repository_path }}' 'reports/dev-mode-bind.json' }
