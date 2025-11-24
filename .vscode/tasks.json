@@ -79,6 +79,12 @@
       "type": "promptString",
       "description": "Dev-mode intent phrase for force overwrite",
       "default": "/devmode bind 2021 both force"
+    },
+    {
+      "id": "vipbPath",
+      "type": "promptString",
+      "description": "Path to the VIPB used by dev-mode (relative to repo root)",
+      "default": "Tooling/deployment/labview-icon-editor.vipb"
     }
   ],
   "tasks": [
@@ -515,12 +521,6 @@
       "problemMatcher": [],
       "isBackground": false
     },
-    {
-      "id": "vipbPath",
-      "type": "promptString",
-      "description": "Path to the VIPB used by dev-mode (relative to repo root)",
-      "default": "Tooling/deployment/labview-icon-editor.vipb"
-    }
     {
       "label": "Revert Dev Mode (LabVIEW)",
       "type": "shell",
