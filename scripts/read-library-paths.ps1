@@ -113,10 +113,10 @@ foreach ($entry in $entries) {
 if ($mismatched.Count -gt 0) {
     $taskHint = "VS Code tasks: 'Revert Dev Mode (LabVIEW)' then 'Set Dev Mode (LabVIEW)' for bitness {0}".ToString() -f $SupportedBitness
     foreach ($badPath in $mismatched) {
-        Write-Warning ("Found LocalHost.LibraryPaths entry that does not point to this repo: {0}. {1} (Terminal -> Run Task) to refresh the INI, then rerun your build." -f $badPath, $taskHint)
+        Write-Warning ("Found LocalHost.LibraryPaths entry that do not point to this repo: {0}. {1} (Terminal -> Run Task) to refresh the INI, then rerun your build." -f $badPath, $taskHint)
     }
     if ($FailOnMissing) {
-        Write-Error "LocalHost.LibraryPaths entries are not pointing to this repo. Run the dev-mode tasks noted above and retry."
+        Write-Error "LocalHost.LibraryPaths entries do not point to this repo. Run the dev-mode tasks noted above and retry."
         exit 3
     }
 }
