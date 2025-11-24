@@ -174,12 +174,20 @@ $pplDir    = Join-Path $ResolvedRepositoryPath 'resource\plugins'
 $pplNeutral = Join-Path $pplDir 'lv_icon.lvlibp'
 $pplWin64   = Join-Path $pplDir 'lv_icon.lvlibp.windows_x64'
 $pplWin86   = Join-Path $pplDir 'lv_icon.lvlibp.windows_x86'
+$pplVipb64  = Join-Path $pplDir 'lv_icon_x64.lvlibp'
+$pplVipb86  = Join-Path $pplDir 'lv_icon_x86.lvlibp'
 
 function Restore-MissingPpls {
     param(
         [string[]]$Targets,
         [string]$SearchRoot
     )
+
+    # Allow equivalents (e.g., windows_x64 vs vipb x64). Prefer the source path if present.
+    $aliases = @{
+        ($pplVipb64) = $pplWin64
+        ($pplVipb86) = $pplWin86
+    }
 
     $allCandidates = Get-ChildItem -Path $SearchRoot -Filter 'lv_icon.lvlibp*' -File -Recurse -ErrorAction SilentlyContinue
     foreach ($target in $Targets) {
@@ -195,11 +203,20 @@ function Restore-MissingPpls {
             Write-Information ("Restored missing PPL {0} from {1}" -f $leaf, $match.FullName) -InformationAction Continue
         }
     }
+
+    # If VIPB-style names are missing but windows_* exist, copy them into place
+    foreach ($alias in $aliases.GetEnumerator()) {
+        if (-not (Test-Path -LiteralPath $alias.Key) -and (Test-Path -LiteralPath $alias.Value)) {
+            Copy-Item -LiteralPath $alias.Value -Destination $alias.Key -Force
+            Write-Information ("Hydrated expected VIPB PPL name {0} from {1}" -f $alias.Key, $alias.Value) -InformationAction Continue
+        }
+    }
 }
 
 if (-not $SkipPPLCheck) {
+    $required = @($pplNeutral, $pplWin64, $pplWin86)
     $missingPpl = @()
-    foreach ($candidate in @($pplNeutral, $pplWin64, $pplWin86)) {
+    foreach ($candidate in $required) {
         if (-not (Test-Path -LiteralPath $candidate)) {
             $missingPpl += $candidate
         }
@@ -208,9 +225,22 @@ if (-not $SkipPPLCheck) {
     if ($missingPpl.Count -gt 0) {
         Restore-MissingPpls -Targets $missingPpl -SearchRoot $ResolvedRepositoryPath
         $missingPpl = @()
-        foreach ($candidate in @($pplNeutral, $pplWin64, $pplWin86)) {
+        foreach ($candidate in $required) {
             if (-not (Test-Path -LiteralPath $candidate)) {
                 $missingPpl += $candidate
+            }
+        }
+    }
+
+    # Hydrate VIPB-expected filenames from windows_* copies when possible
+    foreach ($alias in @($pplVipb64, $pplVipb86)) {
+        if (-not (Test-Path -LiteralPath $alias)) {
+            $source = if ($alias -eq $pplVipb64) { $pplWin64 } else { $pplWin86 }
+            if (Test-Path -LiteralPath $source) {
+                Copy-Item -LiteralPath $source -Destination $alias -Force
+                Write-Information ("Hydrated {0} from {1}" -f $alias, $source) -InformationAction Continue
+            } else {
+                $missingPpl += $alias
             }
         }
     }
