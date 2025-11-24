@@ -58,7 +58,7 @@ Write-Host "Worktree path:   $WorktreePath"
 Write-Host "Output dir:      $OutputDirectory"
 
 $worktreeAdded = $false
-$devModeConfigured = $false
+$devModeConfigured = @()
 
 try {
     git -C $SourceRepoPath rev-parse --verify $Ref | Out-Null
@@ -70,17 +70,25 @@ try {
 
     $setDevScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/set-development-mode/Set_Development_Mode.ps1'
     $revertDevScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/revert-development-mode/RevertDevelopmentMode.ps1'
+    $bindDevScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/bind-development-mode/BindDevelopmentMode.ps1'
     $buildScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/build/Build.ps1'
 
-    foreach ($path in @($setDevScript, $revertDevScript, $buildScript)) {
+    foreach ($path in @($setDevScript, $revertDevScript, $bindDevScript, $buildScript)) {
         if (-not (Test-Path -LiteralPath $path)) {
             throw "Expected script not found: $path"
         }
     }
 
-    Write-Host "Setting development mode ($SupportedBitness-bit)..."
-    & $setDevScript -RepositoryPath $WorktreePath -SupportedBitness $SupportedBitness
-    $devModeConfigured = $true
+    $bitnessList = if ($LvlibpBitness -eq 'both') { @('32','64') } else { @($SupportedBitness) }
+    Write-Host ("Dev-mode preparation for bitness(es): {0}" -f ($bitnessList -join ', '))
+    foreach ($arch in ($bitnessList | Select-Object -Unique)) {
+        Write-Host "Setting development mode ($arch-bit)..."
+        & $setDevScript -RepositoryPath $WorktreePath -SupportedBitness $arch
+        $devModeConfigured += $arch
+
+        Write-Host "Binding dev mode (Force) to worktree ($arch-bit)..."
+        & $bindDevScript -RepositoryPath $WorktreePath -Mode bind -Bitness $arch -Force
+    }
 
     if (-not $Commit) {
         $Commit = (git -C $WorktreePath rev-parse --short HEAD).Trim()
@@ -118,13 +126,15 @@ try {
     Write-Host "Build completed. Artifacts staged in: $OutputDirectory"
 }
 finally {
-    if ($devModeConfigured) {
-        try {
-            Write-Host "Reverting development mode..."
-            & $revertDevScript -RepositoryPath $WorktreePath -SupportedBitness $SupportedBitness
-        }
-        catch {
-            Write-Warning "Failed to revert development mode: $($_.Exception.Message)"
+    if ($devModeConfigured.Count -gt 0) {
+        foreach ($arch in ($devModeConfigured | Select-Object -Unique)) {
+            try {
+                Write-Host "Reverting development mode ($arch-bit)..."
+                & $revertDevScript -RepositoryPath $WorktreePath -SupportedBitness $arch
+            }
+            catch {
+                Write-Warning "Failed to revert development mode ($arch-bit): $($_.Exception.Message)"
+            }
         }
     }
 

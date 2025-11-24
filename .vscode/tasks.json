@@ -157,7 +157,7 @@
         "-Ref",
         "HEAD",
         "-SupportedBitness",
-        "${input:devModeBitness}",
+        "64",
         "-LvlibpBitness",
         "${input:lvlibpBitness}",
         "-Major",
