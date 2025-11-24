@@ -444,10 +444,39 @@ try {
     $writerSettings.NewLineHandling = [System.Xml.NewLineHandling]::Replace
     $writerSettings.NewLineChars = "`n"
 
-    if ($PSCmdlet.ShouldProcess($ResolvedVIPBPath, "Save updated VIPB metadata")) {
-        $xmlWriter = [System.Xml.XmlWriter]::Create($ResolvedVIPBPath, $writerSettings)
+    $vipbDir   = Split-Path -Parent $ResolvedVIPBPath
+    $vipbLeaf  = Split-Path -Leaf   $ResolvedVIPBPath
+    $backupPath = Join-Path $vipbDir ($vipbLeaf + ".bak")
+    $tempPath   = Join-Path $vipbDir ($vipbLeaf + ".tmp")
+
+    if ($PSCmdlet.ShouldProcess($ResolvedVIPBPath, "Save updated VIPB metadata (with backup)")) {
+        Copy-Item -LiteralPath $ResolvedVIPBPath -Destination $backupPath -Force
+
+        $xmlWriter = [System.Xml.XmlWriter]::Create($tempPath, $writerSettings)
         $vipbXml.Save($xmlWriter)
         $xmlWriter.Close()
+
+        try {
+            [xml]$postSave = Get-Content -LiteralPath $tempPath -Raw
+        }
+        catch {
+            if (Test-Path -LiteralPath $backupPath) {
+                Copy-Item -LiteralPath $backupPath -Destination $ResolvedVIPBPath -Force
+            }
+            throw "VIPB became unreadable after save: $($_.Exception.Message)"
+        }
+
+        if (-not $postSave.VI_Package_Builder_Settings -or -not $postSave.VI_Package_Builder_Settings.Library_General_Settings) {
+            if (Test-Path -LiteralPath $backupPath) {
+                Copy-Item -LiteralPath $backupPath -Destination $ResolvedVIPBPath -Force
+            }
+            throw "VIPB validation failed after save; restoring backup from $backupPath."
+        }
+
+        Move-Item -LiteralPath $tempPath -Destination $ResolvedVIPBPath -Force
+        if (Test-Path -LiteralPath $backupPath) {
+            Remove-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
+        }
     }
 
     Write-Information "Successfully updated VIPB metadata: $ResolvedVIPBPath" -InformationAction Continue
