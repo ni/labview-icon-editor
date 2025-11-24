@@ -18,7 +18,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$AuthorName,
     [string]$OutputDirectory,
-    [switch]$KeepWorktree
+    [switch]$KeepWorktree,
+    [switch]$AnalyzeVIP
 )
 
 $ErrorActionPreference = 'Stop'
@@ -83,9 +84,10 @@ try {
     $setDevScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/set-development-mode/Set_Development_Mode.ps1'
     $revertDevScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/revert-development-mode/RevertDevelopmentMode.ps1'
     $bindDevScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/bind-development-mode/BindDevelopmentMode.ps1'
+    $analyzeVipScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/analyze-vi-package/run-local.ps1'
     $buildScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/build/Build.ps1'
 
-    foreach ($path in @($setDevScript, $revertDevScript, $bindDevScript, $buildScript)) {
+    foreach ($path in @($setDevScript, $revertDevScript, $bindDevScript, $buildScript, $analyzeVipScript)) {
         if (-not (Test-Path -LiteralPath $path)) {
             throw "Expected script not found: $path"
         }
@@ -137,6 +139,16 @@ try {
     }
 
     Write-Host "Build completed. Artifacts staged in: $OutputDirectory"
+
+    $shouldAnalyze = $AnalyzeVIP.IsPresent -or -not $PSBoundParameters.ContainsKey('AnalyzeVIP')
+    if ($shouldAnalyze) {
+        Write-Host "Analyzing built VIP package..."
+        $vipDir = Join-Path $WorktreePath 'builds\VI Package'
+        & $analyzeVipScript -VipArtifactPath $vipDir -MinLabVIEW '21.0'
+    }
+    else {
+        Write-Host "Skipping VIP analyze (AnalyzeVIP not requested)."
+    }
 }
 finally {
     if ($devModeConfigured.Count -gt 0) {
