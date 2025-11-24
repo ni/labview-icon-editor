@@ -3,6 +3,7 @@
 This document provides a collection of common **troubleshooting** scenarios (with solutions) and a **FAQ** (Frequently Asked Questions) for the LabVIEW Icon Editor GitHub Actions workflows. Refer back to the main CI guide if you need overall setup instructions or deeper references.
 
 For dev-mode binding/unbinding details and JSON outputs, see `docs/ci/dev-mode-bind.md`.
+For the current list of reusable composites and workflow entry points, see `docs/ci/actions/README.md` and `.github/workflows/ci.yml`.
 
 ---
 
