@@ -60,6 +60,24 @@ if (-not (Test-Path -LiteralPath $metaUtilsPath)) {
 }
 Import-Module -Name $metaUtilsPath -Force
 
+$hasStyle = ($PSStyle -ne $null)
+$bitnessPalette = @{
+    '32' = if ($hasStyle) { $PSStyle.Foreground.BrightCyan } else { '' }
+    '64' = if ($hasStyle) { $PSStyle.Foreground.BrightMagenta } else { '' }
+}
+$resetColor = if ($hasStyle) { $PSStyle.Reset } else { '' }
+function Show-BitnessBanner {
+    param([string]$Arch)
+    $color = $bitnessPalette[$Arch]
+    Write-Host ("{0}==== {1}-bit build phase ===={2}" -f $color, $Arch, $resetColor)
+}
+
+function Show-BitnessDone {
+    param([string]$Arch)
+    $color = $bitnessPalette[$Arch]
+    Write-Host ("{0}---- {1}-bit phase complete ----{2}" -f $color, $Arch, $resetColor)
+}
+
 # Helper function to verify a file/folder path exists
 function Test-PathExistence {
     param(
@@ -260,6 +278,7 @@ try {
     $RenameFile = Join-Path $ActionsPath "rename-file/Rename-file.ps1"
 
     if ($LvlibpBitness -eq 'both') {
+        Show-BitnessBanner -Arch '32'
         # 2) Apply VIPC (32-bit)
         Write-Information "Applying VIPC (dependencies) for 32-bit..." -InformationAction Continue
         Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
@@ -304,6 +323,7 @@ try {
             CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
             NewFilename     = 'lv_icon_x86.lvlibp'
         }
+        Show-BitnessDone -Arch '32'
 
         # 5.1) Restore project to avoid cross-bitness saves before 64-bit build
         if (Get-Command git -ErrorAction SilentlyContinue) {
@@ -321,6 +341,7 @@ try {
     }
 
     # 6) Apply VIPC (64-bit)
+    Show-BitnessBanner -Arch '64'
     Write-Information "Applying VIPC (dependencies) for 64-bit..." -InformationAction Continue
     Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
         Package_LabVIEW_Version   = $lvVersion
@@ -335,6 +356,7 @@ try {
         Package_LabVIEW_Version = $lvVersion
         SupportedBitness        = '64'
     }
+    Show-BitnessDone -Arch '64'
 
     # 7) Build LV Library (64-bit)
     Write-Verbose "Building LV library (64-bit)..."
