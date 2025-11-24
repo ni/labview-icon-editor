@@ -68,21 +68,6 @@ $expectedToken = Get-ExpectedTokenPath -Repo $RepositoryPath
 $expectedNorm = Normalize-PathLower $expectedToken
 $pluginsPath = Join-Path -Path $RepositoryPath -ChildPath 'resource\plugins'
 
-# Surface a reminder from the prior run if it recommended Force so users see it before choosing a task/flags.
-$previousSummaryPath = Join-Path -Path $RepositoryPath -ChildPath 'reports/dev-mode-bind.json'
-if (-not $Force -and (Test-Path -LiteralPath $previousSummaryPath)) {
-    try {
-        $prevData = Get-Content -LiteralPath $previousSummaryPath -Raw | ConvertFrom-Json
-        $forceSuggested = @($prevData | Where-Object { $_.message -match 'use -Force' }).Count -gt 0
-        if ($forceSuggested) {
-            Write-Warning "Action needed: LabVIEW.ini currently points elsewhere; to bind this repo you must overwrite that entry. Run the VS Code task 'Dev Mode (interactive bind/unbind)' and choose Force, or rerun this script with -Force."
-        }
-    }
-    catch {
-        Write-Verbose ("Could not read previous bind summary at {0}: {1}" -f $previousSummaryPath, $_.Exception.Message)
-    }
-}
-
 $actionRoot = Split-Path -Parent $PSScriptRoot
 $setDevScript    = Join-Path -Path $actionRoot -ChildPath 'set-development-mode/Set_Development_Mode.ps1'
 $revertDevScript = Join-Path -Path $actionRoot -ChildPath 'revert-development-mode/RevertDevelopmentMode.ps1'
@@ -142,6 +127,21 @@ catch {
 $vipbFile = Get-ChildItem -Path $RepositoryPath -Filter *.vipb -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
 $vipbMsg = if ($vipbFile) { $vipbFile.FullName } else { 'not found' }
 Write-Host ("LabVIEW version: {0} (from VIPB: {1}; via {2})" -f $lvVersion, $vipbMsg, $versionScript)
+
+# Surface a reminder from the prior run if it recommended Force so users see it before choosing a task/flags.
+$previousSummaryPath = Join-Path -Path $RepositoryPath -ChildPath 'reports/dev-mode-bind.json'
+if (-not $Force -and (Test-Path -LiteralPath $previousSummaryPath)) {
+    try {
+        $prevData = Get-Content -LiteralPath $previousSummaryPath -Raw | ConvertFrom-Json
+        $forceSuggested = @($prevData | Where-Object { $_.message -match 'use -Force' }).Count -gt 0
+        if ($forceSuggested) {
+            Write-Warning ("Action needed: LabVIEW.ini currently points elsewhere; to bind this repo for LabVIEW {0} you must overwrite that entry. Run the VS Code task 'Dev Mode (interactive bind/unbind)' and choose Force, or rerun this script with -Force." -f $lvVersion)
+        }
+    }
+    catch {
+        Write-Verbose ("Could not read previous bind summary at {0}: {1}" -f $previousSummaryPath, $_.Exception.Message)
+    }
+}
 
 $bitnessList = if ($Bitness -eq 'both') { @('32','64') } else { @($Bitness) }
 $results = New-Object System.Collections.Generic.List[object]

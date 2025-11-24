@@ -1,22 +1,22 @@
 [
   {
     "bitness": "32",
-    "available": true,
+    "available": false,
     "expected_path": "C:\\repos\\labview-icon-editor-final-fork",
-    "current_path": "C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor",
-    "post_path": "C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor",
+    "current_path": "",
+    "post_path": "",
     "action": "bind",
     "status": "fail",
-    "message": "LocalHost.LibraryPaths points to another path (C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor); use -Force to overwrite."
+    "message": "LabVIEW.ini not found for 32-bit at the canonical path for LabVIEW 2026: LabVIEW.ini not found at canonical path: C:\\Program Files (x86)\\National Instruments\\LabVIEW 2026\\LabVIEW.ini"
   },
   {
     "bitness": "64",
     "available": true,
     "expected_path": "C:\\repos\\labview-icon-editor-final-fork",
-    "current_path": "C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor",
-    "post_path": "C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor",
+    "current_path": "",
+    "post_path": "C:\\repos\\labview-icon-editor-final-fork",
     "action": "bind",
-    "status": "fail",
-    "message": "LocalHost.LibraryPaths points to another path (C:\\actions-runner\\_work\\labview-icon-editor\\labview-icon-editor); use -Force to overwrite."
+    "status": "success",
+    "message": "Bound development mode (token set and packed libs cleared)"
   }
 ]
