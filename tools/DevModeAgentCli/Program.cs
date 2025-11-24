@@ -217,7 +217,7 @@ internal static class Program
 
         foreach (var segment in segments)
         {
-            var match = Regex.Match(segment, @"(?i)\b(?<mode>bind|unbind)\s+(?<year>20\d{2})\s+(?<bitness>32|64|both)[ -]?bit\b");
+            var match = Regex.Match(segment, @"(?i)\b(?<mode>bind|unbind)\s+(?<year>20\d{2})\s+(?<bitness>32|64|both)(?:[ -]?bit)?\b");
             if (!match.Success) continue;
 
             var forceRequested = Regex.IsMatch(segment, @"(?i)\b(force|overwrite)\b");

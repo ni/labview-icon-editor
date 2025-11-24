@@ -72,13 +72,13 @@
       "id": "devmodePhrase",
       "type": "promptString",
       "description": "Dev-mode intent phrase (e.g., /devmode bind 2021 both force)",
-      "default": "/devmode bind 2021 both bit force"
+      "default": "/devmode bind 2021 both force"
     },
     {
       "id": "devmodeForcePhrase",
       "type": "promptString",
       "description": "Dev-mode intent phrase for force overwrite",
-      "default": "/devmode bind 2021 both bit force"
+      "default": "/devmode bind 2021 both force"
     }
   ],
   "tasks": [
