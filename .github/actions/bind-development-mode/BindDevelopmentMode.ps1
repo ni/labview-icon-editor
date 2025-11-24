@@ -142,8 +142,9 @@ catch {
 }
 $vipbFile = Get-ChildItem -Path $RepositoryPath -Filter *.vipb -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
 $vipbMsg = if ($vipbFile) { $vipbFile.FullName } else { 'not found' }
-Write-Host ("=== Context ===")
-Write-Host ("LabVIEW version: {0} (from VIPB: {1}; via {2})" -f $lvVersion, $vipbMsg, $versionScript)
+Write-Host "=== Context (metadata) ==="
+Write-Host ("VIPB path      : {0}" -f $vipbMsg)
+Write-Host ("LabVIEW version: {0}" -f $lvVersion)
 Write-Host ("Bind request   : mode={0}, bitness={1}" -f $Mode, $Bitness)
 
 # Surface a reminder from the prior run if it recommended Force so users see it before choosing a task/flags.
@@ -499,6 +500,20 @@ if (@($results | Where-Object { $_.status -eq 'fail' -and $_.message -match 'use
 if ($missingIniArchs.Count -gt 0) {
     $archText = ($missingIniArchs | ForEach-Object { "$_-bit" }) -join '/'
     $hintLines.Add(("Install LabVIEW {0} ({1}) so the canonical LabVIEW.ini exists, or update the VIPB to a version that is installed, then rerun." -f $lvVersion, $archText))
+}
+
+if ($results.Count -gt 0) {
+    Write-Host ("{0}Summary:{1}" -f $palette.head, $palette.reset)
+    foreach ($arch in @('32','64')) {
+        $r = $results | Where-Object { $_.bitness -eq $arch } | Select-Object -First 1
+        if (-not $r) { continue }
+        $statusText = $r.status
+        $reason =
+            if ($r.status -eq 'success' -and $r.message -eq 'Already bound') { 'Already bound to this repo' }
+            elseif ($r.status -eq 'fail' -and $r.message -like 'LabVIEW.ini not found*') { 'Missing LabVIEW.ini for this version/bitness' }
+            else { $r.message }
+        Write-Host ("  {0}-bit: {1} - {2}" -f $arch, $statusText, $reason)
+    }
 }
 if ($hintLines.Count -gt 0) {
     Write-Host ("{0}Action required:{1}" -f $palette.head, $palette.reset)
