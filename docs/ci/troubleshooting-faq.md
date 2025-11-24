@@ -4,6 +4,7 @@ This document provides a collection of common **troubleshooting** scenarios (wit
 
 For dev-mode binding/unbinding details and JSON outputs, see `docs/ci/dev-mode-bind.md`.
 For the current list of reusable composites and workflow entry points, see `docs/ci/actions/README.md` and `.github/workflows/ci.yml`.
+For quick artifact locations: VIPs under `builds/VI Package/`, bind status JSON under `reports/dev-mode-bind.json`, other reports under `reports/`.
 
 ---
 
