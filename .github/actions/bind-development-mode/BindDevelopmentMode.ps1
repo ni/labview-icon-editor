@@ -146,6 +146,7 @@ Write-Host ("LabVIEW version: {0} (from VIPB: {1}; via {2})" -f $lvVersion, $vip
 $bitnessList = if ($Bitness -eq 'both') { @('32','64') } else { @($Bitness) }
 $results = New-Object System.Collections.Generic.List[object]
 $hadFailure = $false
+$missingIniArchs = New-Object System.Collections.Generic.List[string]
 
 function New-ResultObject {
     param(
@@ -184,9 +185,11 @@ else {
         }
         catch {
             $res.available = $false
-            $res.status = 'skip'
-            $res.action = 'skip'
-            $res.message = "LabVIEW.ini not found for $arch-bit or cannot be read: $($_.Exception.Message)"
+            $res.status = 'fail'
+            $res.action = $Mode
+            $res.message = ("LabVIEW.ini not found for {0}-bit at the canonical path for LabVIEW {1}: {2}" -f $arch, $lvVersion, $_.Exception.Message)
+            $missingIniArchs.Add($arch)
+            $hadFailure = $true
             Write-Warning $res.message
             $results.Add($res)
             continue
@@ -407,6 +410,10 @@ $hintLines = New-Object System.Collections.Generic.List[string]
 if (@($results | Where-Object { $_.status -eq 'fail' -and $_.message -match 'use -Force' }).Count -gt 0) {
     $hintLines.Add("Open VS Code > Terminal > Run Task, pick 'Dev Mode (interactive bind/unbind)'.")
     $hintLines.Add("Choose bind + Force to overwrite, or unbind + Force to clear the other token (same as BindDevelopmentMode.ps1 flags).")
+}
+if ($missingIniArchs.Count -gt 0) {
+    $archText = ($missingIniArchs | ForEach-Object { "$_-bit" }) -join '/'
+    $hintLines.Add(("Install LabVIEW {0} ({1}) so the canonical LabVIEW.ini exists, or update the VIPB to a version that is installed, then rerun." -f $lvVersion, $archText))
 }
 if ($hintLines.Count -gt 0) {
     Write-Host ("{0}Action required:{1}" -f $palette.head, $palette.reset)
