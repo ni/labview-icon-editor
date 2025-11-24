@@ -75,7 +75,7 @@ if (-not $Force -and (Test-Path -LiteralPath $previousSummaryPath)) {
         $prevData = Get-Content -LiteralPath $previousSummaryPath -Raw | ConvertFrom-Json
         $forceSuggested = @($prevData | Where-Object { $_.message -match 'use -Force' }).Count -gt 0
         if ($forceSuggested) {
-            Write-Warning "Action needed: last dev-mode run recommended Force. Next: run VS Code task 'Dev Mode (interactive bind/unbind)' and choose Force, or rerun this script with -Force."
+            Write-Warning "Action needed: LabVIEW.ini currently points elsewhere; to bind this repo you must overwrite that entry. Run the VS Code task 'Dev Mode (interactive bind/unbind)' and choose Force, or rerun this script with -Force."
         }
     }
     catch {
@@ -139,6 +139,9 @@ try {
 catch {
     if (-not $precheckError) { $precheckError = $_ }
 }
+$vipbFile = Get-ChildItem -Path $RepositoryPath -Filter *.vipb -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+$vipbMsg = if ($vipbFile) { $vipbFile.FullName } else { 'not found' }
+Write-Host ("LabVIEW version: {0} (from VIPB: {1}; via {2})" -f $lvVersion, $vipbMsg, $versionScript)
 
 $bitnessList = if ($Bitness -eq 'both') { @('32','64') } else { @($Bitness) }
 $results = New-Object System.Collections.Generic.List[object]
