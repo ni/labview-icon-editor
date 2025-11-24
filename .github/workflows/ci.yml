@@ -451,7 +451,7 @@ jobs:
 
   apply-deps:
     name: Apply VIPC (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x${{ matrix.bits }})
-    needs: [verify-checklist-sync, resolve-labview-version, ps-coverage, version]
+    needs: [verify-checklist-sync, resolve-labview-version, ps-coverage, version, preflight-gates]
     runs-on: self-hosted-windows-lv
     defaults:
       run:
@@ -1029,6 +1029,21 @@ jobs:
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-pester-coverage
           path: coverage.xml
+
+  preflight-gates:
+    name: Preflight gates (fast-fail)
+    needs: [verify-checklist-sync, enforce-verify-checklist-needs, rtm-gates, docs-quality, ps-coverage]
+    runs-on: ubuntu-latest
+    if: >
+      ${{
+        needs.verify-checklist-sync.result == 'success' &&
+        needs.enforce-verify-checklist-needs.result == 'success' &&
+        needs.rtm-gates.result == 'success' &&
+        needs.docs-quality.result == 'success' &&
+        needs.ps-coverage.result == 'success'
+      }}
+    steps:
+      - run: echo "Preflight gates passed; proceeding to LabVIEW jobs."
 
   build-ppl-x86:
     name: Build 32-bit Packed Library (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }})

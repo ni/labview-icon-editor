@@ -112,21 +112,29 @@ runs:
 
         $lvVer = pwsh -NoProfile -File $lvScript -RepositoryPath $repo
 
-        & "${{ github.action_path }}/build_vip.ps1" `
-          -SupportedBitness ${{ inputs.supported_bitness }} `
-          -RepositoryPath "${{ inputs.repository_path }}" `
-          -VIPBPath "${{ inputs.vipb_path }}" `
-          -Package_LabVIEW_Version $lvVer `
-          -LabVIEWMinorRevision ${{ inputs.labview_minor_revision }} `
-          -Major ${{ inputs.major }} `
-          -Minor ${{ inputs.minor }} `
-          -Patch ${{ inputs.patch }} `
-          -Build ${{ inputs.build }} `
-          -Commit "${{ inputs.commit }}" `
-          -ReleaseNotesFile "${{ inputs.release_notes_file }}" `
-          -DisplayInformationJSON $displayInformationJson `
-          -Simulate ${{ inputs.simulate }} `
-          -SkipPPLCheck ${{ inputs.skip_ppl_check }}
+        $splat = @{
+          SupportedBitness      = ${{ inputs.supported_bitness }}
+          RepositoryPath        = "${{ inputs.repository_path }}"
+          VIPBPath              = "${{ inputs.vipb_path }}"
+          Package_LabVIEW_Version = $lvVer
+          LabVIEWMinorRevision  = ${{ inputs.labview_minor_revision }}
+          Major                 = ${{ inputs.major }}
+          Minor                 = ${{ inputs.minor }}
+          Patch                 = ${{ inputs.patch }}
+          Build                 = ${{ inputs.build }}
+          Commit                = "${{ inputs.commit }}"
+          ReleaseNotesFile      = "${{ inputs.release_notes_file }}"
+          DisplayInformationJSON= $displayInformationJson
+        }
+
+        if ("${{ inputs.simulate }}" -eq "true") {
+          $splat.Simulate = $true
+        }
+        if ("${{ inputs.skip_ppl_check }}" -eq "true") {
+          $splat.SkipPPLCheck = $true
+        }
+
+        & "${{ github.action_path }}/build_vip.ps1" @splat
 
     - name: Dump vipm build logs on failure
       if: failure()
