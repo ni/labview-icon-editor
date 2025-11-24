@@ -168,7 +168,7 @@ foreach ($root in @('C:\Program Files\National Instruments','C:\Program Files (x
         $iniCandidate = Join-Path $_.FullName 'LabVIEW.ini'
         if (-not (Test-Path $iniCandidate)) { return }
         try {
-            $entries = Get-LocalHostEntries -IniPath $iniCandidate
+            $entries = @(Get-LocalHostEntries -IniPath $iniCandidate)
             $installedStates.Add([pscustomobject]@{
                 arch    = $archHint
                 version = $_.Name.TrimStart('LabVIEW ').Trim()
@@ -183,7 +183,8 @@ foreach ($root in @('C:\Program Files\National Instruments','C:\Program Files (x
 if ($installedStates.Count -gt 0) {
     Write-Host "Installed LabVIEW INI tokens:"
     foreach ($state in $installedStates) {
-        $first = if ($state.entries.Count -gt 0) { $state.entries[0] } else { '(no entries)' }
+        $entryList = @($state.entries)
+        $first = if ($entryList -and $entryList.Count -gt 0) { $entryList[0] } else { '(no entries)' }
         Write-Host ("  {0}-bit {1}: {2}" -f $state.arch, $state.version, $first)
     }
 }
