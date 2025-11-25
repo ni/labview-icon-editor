@@ -79,3 +79,7 @@ The tasks live in `.vscode/tasks.json`. They are optional; skip if you don’t u
   }
   ```
   Point the task’s patch path to this file; the tool merges it into the VIPB and writes the patched copy.
+- Tips:
+  - Keep the patch file in the repo (e.g., `Tooling/seed/patches/my-change.json`) so paths are stable.
+  - The merge is additive/overwriting; omitted fields stay unchanged.
+  - To drop a field entirely, set it to `null` in the patch JSON.
