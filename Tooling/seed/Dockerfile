@@ -43,19 +43,31 @@ COPY tests/Samples/seed.lvproj tests/Samples/seed.vipb /github/workspace/tests/S
 # Copy the published VipbJsonTool binary from the build stage
 COPY --from=build /app/publish/VipbJsonTool /usr/local/bin/VipbJsonTool
 
-# Generate CLI wrapper scripts inside the image (no dependency on repo bin/)
+# Generate CLI wrapper scripts inside the image (flag-parsing shells).
 RUN /bin/bash -c 'set -e; \
   for cmd in vipb2json json2vipb lvproj2json json2lvproj buildspec2json json2buildspec; do \
-    printf "%s\n%s\n%s\n" "#!/bin/bash" "set -euo pipefail" "exec /usr/local/bin/VipbJsonTool ${cmd} \"\$@\"" > "/usr/local/bin/${cmd}"; \
+    printf "%s\n" \
+      "#!/bin/bash" \
+      "set -euo pipefail" \
+      "input=\"\"" \
+      "output=\"\"" \
+      "while [[ \$# -gt 0 ]]; do" \
+      "  case \"\$1\" in" \
+      "    -i|--input) input=\"\$2\"; shift 2;;" \
+      "    -o|--output) output=\"\$2\"; shift 2;;" \
+      "    --) shift; break;;" \
+      "    *) echo \"ERROR: Unknown arg \$1\" >&2; exit 1;;" \
+      "  esac" \
+      "done" \
+      "if [[ -z \"\$input\" || -z \"\$output\" ]]; then" \
+      "  echo \"Usage: ${cmd} --input <in> --output <out>\" >&2" \
+      "  exit 1" \
+      "fi" \
+      "exec /usr/local/bin/VipbJsonTool \"${cmd}\" \"\$input\" \"\$output\"" \
+      > "/usr/local/bin/${cmd}"; \
+    chmod +x "/usr/local/bin/${cmd}"; \
   done; \
-  chmod +x /entrypoint.sh \
-           /usr/local/bin/vipb2json \
-           /usr/local/bin/json2vipb \
-           /usr/local/bin/lvproj2json \
-           /usr/local/bin/json2lvproj \
-           /usr/local/bin/buildspec2json \
-           /usr/local/bin/json2buildspec \
-           /usr/local/bin/VipbJsonTool'
+  chmod +x /entrypoint.sh /usr/local/bin/VipbJsonTool'
 
 # Set the default entrypoint to the action's script (prints help if no inputs provided)
 ENTRYPOINT ["/entrypoint.sh"]
