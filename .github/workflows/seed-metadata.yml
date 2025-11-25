@@ -17,11 +17,13 @@ jobs:
         run: docker compose -f Tooling/docker/seed/docker-compose.yml build seed
 
       - name: Generate VIPB metadata JSON
+        env:
+          INPUT_MODE: vipb2json
+          INPUT_INPUT: /workspace/Tooling/deployment/labview-icon-editor.vipb
+          INPUT_OUTPUT: /workspace/artifacts/seed/metadata.json
         run: |
           mkdir -p artifacts/seed
-          docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed seed vipb json \
-            --input /workspace/Tooling/deployment/labview-icon-editor.vipb \
-            --output /workspace/artifacts/seed/metadata.json
+          docker compose -f Tooling/docker/seed/docker-compose.yml run --rm -e INPUT_MODE -e INPUT_INPUT -e INPUT_OUTPUT seed
 
       - name: Fetch baseline metadata from main
         run: |

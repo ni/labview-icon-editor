@@ -71,7 +71,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" build seed; docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" run --rm seed"
+        "docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" build seed; docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" run --rm -e INPUT_MODE=help seed"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -85,7 +85,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" build seed; docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" run --rm seed bash"
+        "docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" build seed; docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" run --rm --entrypoint bash seed"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -99,7 +99,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" build seed; docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" run --rm seed seed vipb json --input \"/workspace/${input:seedVipbInput}\" --output \"/workspace/${input:seedJsonOutput}\""
+        "$env:INPUT_MODE='vipb2json'; $env:INPUT_INPUT='/workspace/${input:seedVipbInput}'; $env:INPUT_OUTPUT='/workspace/${input:seedJsonOutput}'; docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" build seed; docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" run --rm -e INPUT_MODE -e INPUT_INPUT -e INPUT_OUTPUT seed"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -113,7 +113,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" build seed; docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" run --rm seed seed vipb patch --input \"/workspace/${input:seedVipbInput}\" --patch \"/workspace/${input:seedPatchPath}\" --output \"/workspace/${input:seedVipbOutput}\""
+        "$env:INPUT_MODE='json2vipb'; $env:INPUT_INPUT='/workspace/${input:seedVipbInput}'; $env:INPUT_PATCH_FILE='/workspace/${input:seedPatchPath}'; $env:INPUT_OUTPUT='/workspace/${input:seedVipbOutput}'; docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" build seed; docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" run --rm -e INPUT_MODE -e INPUT_INPUT -e INPUT_PATCH_FILE -e INPUT_OUTPUT seed"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
