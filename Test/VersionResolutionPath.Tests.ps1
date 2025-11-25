@@ -56,22 +56,11 @@ Describe "LabVIEW version resolution wiring" {
 
                 $job.env.LABVIEW_VERSION | Should -Be $script:ExpectedVersionExpr
 
-                $unitStep = @($job.steps) | Where-Object { $_.uses -eq './.github/actions/run-unit-tests' }
+                $unitStep = @($job.steps) | Where-Object { $_.run -and ($_.run -match 'run-unit-tests/RunUnitTests\.ps1') }
                 $unitStep | Should -Not -BeNullOrEmpty
-                $unitStep.with.labview_version | Should -Be $script:ExpectedVersionExpr
+                $unitStep[0].run | Should -Match "-Package_LabVIEW_Version `\"?\${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}`\"?"
             }
         }
     }
 
-    Context "run-unit-tests composite action" {
-        It "relies on provided labview_version input or LABVIEW_VERSION env and passes it to RunUnitTests.ps1" {
-            $runStep = @($script:Action.runs.steps) | Where-Object { $_.name -eq 'Run RunUnitTests.ps1' }
-            $runStep | Should -Not -BeNullOrEmpty
-
-            $scriptBlock = $runStep.run
-            $scriptBlock | Should -Match '\$Env:LABVIEW_VERSION'
-            $scriptBlock | Should -Match '-Package_LabVIEW_Version \$lvVer'
-            $scriptBlock | Should -Not -Match 'get-package-lv-version\.ps1'
-        }
-    }
 }

@@ -105,21 +105,13 @@ Describe "VSCode Build Task wiring" {
             $command | Should -Match "-LvlibpBitness"
         }
 
-        It "exposes a buildMode input with expected options for the unified task" {
+        It "uses a fixed buildMode value for the unified task" {
             $tasksPath = Join-Path $script:RepoRoot '.vscode/tasks.json'
             Test-Path -LiteralPath $tasksPath | Should -BeTrue
             $json = Get-Content -LiteralPath $tasksPath -Raw | ConvertFrom-Json
-
-            $modeInput = $json.inputs | Where-Object { $_.id -eq 'buildMode' } | Select-Object -First 1
-            $modeInput | Should -Not -BeNullOrEmpty
-            $modeInput.type | Should -Be 'pickString'
-            $modeInput.default | Should -Be 'vip+lvlibp'
-            $modeInput.options | Should -Contain 'vip+lvlibp'
-            $modeInput.options | Should -Contain 'vip-single'
-
             $buildTask = $json.tasks | Where-Object { $_.label -eq "Build/Package VIP" } | Select-Object -First 1
             $buildTask | Should -Not -BeNullOrEmpty
-            ($buildTask.args -join ' ') | Should -Match '\${input:buildMode}'
+            ($buildTask.args -join ' ') | Should -Match '-BuildMode\s+"?vip\+lvlibp"?'
         }
 
         It "quotes buildMode assignment and comparisons to avoid parser errors" {
