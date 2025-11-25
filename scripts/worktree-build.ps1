@@ -49,7 +49,7 @@ function Assert-DevModeBindOk {
         $data = Get-Content -LiteralPath $jsonPath -Raw | ConvertFrom-Json
     }
     catch {
-        throw "Unable to read dev-mode bind JSON at $jsonPath: $($_.Exception.Message)"
+        throw "Unable to read dev-mode bind JSON at ${jsonPath}: $($_.Exception.Message)"
     }
 
     $entry = $data | Where-Object { $_.bitness -eq $Arch } | Select-Object -First 1
