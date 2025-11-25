@@ -15,7 +15,7 @@ Path to the repository root.
 Relative path to the source VIPB. Defaults to the main project VIPB.
 
 .PARAMETER OutputVIPBPath
-Where to write the pruned VIPB. Defaults to builds/tmp/NI Icon editor.<bitness>.vipb under the repo.
+Where to write the pruned VIPB. Defaults to builds/tmp/labview-icon-editor.<bitness>.vipb under the repo.
 
 .PARAMETER LabVIEWMinorRevision
 LabVIEW minor revision (0 or 3) forwarded to build_vip.ps1.
@@ -91,7 +91,7 @@ if (-not $OutputVIPBPath) {
         $OutputVIPBPath = $sourceVIPB
     }
     else {
-        $OutputVIPBPath = Join-Path -Path $repoRoot -ChildPath ("builds/tmp/NI Icon editor.{0}.vipb" -f $SupportedBitness)
+        $OutputVIPBPath = Join-Path -Path $repoRoot -ChildPath ("builds/tmp/labview-icon-editor.{0}.vipb" -f $SupportedBitness)
     }
 } elseif (-not [System.IO.Path]::IsPathRooted($OutputVIPBPath)) {
     $OutputVIPBPath = Join-Path -Path $repoRoot -ChildPath $OutputVIPBPath
