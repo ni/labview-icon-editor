@@ -89,7 +89,7 @@
   - LabVIEWMinorRevision [Int32] default=3
 - Outputs: *(not explicitly declared)*
 
-## `/mnt/c/repos/labview-icon-editor-community-ci-cd/.github/actions/close-labview/Close_LabVIEW.ps1`
+## `/mnt/c/repos/labview-icon-editor-community-ci-cd/scripts/close-labview/Close_LabVIEW.ps1`
 - Inputs:
   - Package_LabVIEW_Version [String]
   - SupportedBitness [String]

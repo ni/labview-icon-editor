@@ -84,7 +84,7 @@ try {
     Write-Information ("Targeting bitness: {0}-bit" -f $targetBitness) -InformationAction Continue
     # Build the script paths
     $RestoreScript = Join-Path -Path $ScriptDirectory -ChildPath '..\restore-setup-lv-source\RestoreSetupLVSource.ps1'
-    $CloseScript   = Join-Path -Path $ScriptDirectory -ChildPath '..\close-labview\Close_LabVIEW.ps1'
+    $CloseScript   = Join-Path -Path $RepositoryPath -ChildPath 'scripts/close-labview/Close_LabVIEW.ps1'
 
     $arch = $targetBitness
 

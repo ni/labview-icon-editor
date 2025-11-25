@@ -77,6 +77,8 @@ try {
 
     # Run Unit Tests
     $RunUnitTests = Join-Path $ActionsPath "run-unit-tests/RunUnitTests.ps1"
+    $CloseLabVIEW = Join-Path $RepositoryPath "scripts/close-labview/Close_LabVIEW.ps1"
+    Test-PathExistence $CloseLabVIEW "Close_LabVIEW script"
     Invoke-ScriptSafe -ScriptPath $RunUnitTests -ArgumentList @(
         '-Package_LabVIEW_Version','2021',
         '-SupportedBitness','32',
@@ -84,7 +86,6 @@ try {
     )
 
     # Close LabVIEW
-    $CloseLabVIEW = Join-Path $ActionsPath "close-labview/Close_LabVIEW.ps1"
     Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentList @('-Package_LabVIEW_Version','2021','-SupportedBitness','32')
 
     # Run Unit Tests

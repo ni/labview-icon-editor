@@ -363,7 +363,7 @@ try {
     $ActionsPath = Split-Path -Parent $PSScriptRoot
     Test-PathExistence $ActionsPath "Actions folder"
 
-    # Ensure VIPC dependencies exist (mirrors CI prep). Only use the canonical VIPC under .github/actions/apply-vipc.
+    # Ensure VIPC dependencies exist (mirrors CI prep). Only use the canonical VIPC under scripts/apply-vipc.
     $vipcPath = Get-CanonicalVipcPath -RepoPath $RepositoryPath
 
     # 1) Clean up old .lvlibp in the plugins folder
@@ -389,7 +389,7 @@ try {
     $ApplyVIPC = Join-Path $RepositoryPath "scripts/apply-vipc/ApplyVIPC.ps1"
     $MissingHelper = Join-Path $RepositoryPath "scripts/missing-in-project/Invoke-MissingInProjectCLI.ps1"
     $BuildLvlibp = Join-Path $ActionsPath "build-lvlibp/Build_lvlibp.ps1"
-    $CloseLabVIEW = Join-Path $ActionsPath "close-labview/Close_LabVIEW.ps1"
+    $CloseLabVIEW = Join-Path $RepositoryPath "scripts/close-labview/Close_LabVIEW.ps1"
     $RenameFile = Join-Path $ActionsPath "rename-file/Rename-file.ps1"
 
     if ($LvlibpBitness -eq 'both') {
