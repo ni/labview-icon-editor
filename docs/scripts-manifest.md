@@ -109,14 +109,14 @@
   - OutputPath [String] default="Tooling/deployment/release_notes.md"
 - Outputs: *(not explicitly declared)*
 
-## `/mnt/c/repos/labview-icon-editor-community-ci-cd/.github/actions/missing-in-project/Invoke-MissingInProjectCLI.ps1`
+## `/mnt/c/repos/labview-icon-editor-community-ci-cd/scripts/missing-in-project/Invoke-MissingInProjectCLI.ps1`
 - Inputs:
   - LVVersion [String]
   - Arch [String]
   - ProjectFile [String]
 - Outputs: *(not explicitly declared)*
 
-## `/mnt/c/repos/labview-icon-editor-community-ci-cd/.github/actions/missing-in-project/RunMissingCheckWithGCLI.ps1`
+## `/mnt/c/repos/labview-icon-editor-community-ci-cd/scripts/missing-in-project/RunMissingCheckWithGCLI.ps1`
 - Inputs:
   - LVVersion [String]
   - Arch [String]

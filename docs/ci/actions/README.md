@@ -13,7 +13,7 @@ This repository defines several reusable [composite actions](https://docs.github
 | [close-labview](../../../.github/actions/close-labview) | Gracefully shuts down a LabVIEW instance after build steps to free runner resources. |
 | [compute-version](../../../.github/actions/compute-version) | Determines the semantic version from commit history and labels. |
 | [generate-release-notes](../../../.github/actions/generate-release-notes) | Generates a `release_notes.md` summarizing recent commits for use in changelogs or release drafts. |
-| [missing-in-project](../../../.github/actions/missing-in-project) | Checks a project for missing files using `MissingInProjectCLI.vi`. |
+| [missing-in-project](../../../scripts/missing-in-project) | Checks a project for missing files using `MissingInProjectCLI.vi`. |
 | [modify-vipb-display-info](../../../.github/actions/modify-vipb-display-info) | Updates display information in a VIPB file. |
 | [prepare-labview-source](../../../.github/actions/prepare-labview-source) | Prepares LabVIEW sources for builds. |
 | [rename-file](../../../.github/actions/rename-file) | Renames a file on disk. |

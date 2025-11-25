@@ -387,7 +387,7 @@ try {
     }
 
     $ApplyVIPC = Join-Path $RepositoryPath "scripts/apply-vipc/ApplyVIPC.ps1"
-    $MissingHelper = Join-Path $ActionsPath "missing-in-project/Invoke-MissingInProjectCLI.ps1"
+    $MissingHelper = Join-Path $RepositoryPath "scripts/missing-in-project/Invoke-MissingInProjectCLI.ps1"
     $BuildLvlibp = Join-Path $ActionsPath "build-lvlibp/Build_lvlibp.ps1"
     $CloseLabVIEW = Join-Path $ActionsPath "close-labview/Close_LabVIEW.ps1"
     $RenameFile = Join-Path $ActionsPath "rename-file/Rename-file.ps1"

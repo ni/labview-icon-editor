@@ -178,6 +178,16 @@ switch ($Command) {
         Invoke-Script -Path $scriptPath -ArgumentMap $args
     }
 
+    'missing-in-project' {
+        $scriptPath = Resolve-Script -RepoRoot $repoRoot -RelativePath "scripts/missing-in-project/Invoke-MissingInProjectCLI.ps1"
+        $args = @{
+            LVVersion   = $PackageLabVIEWVersion
+            Arch        = $SupportedBitness
+            ProjectFile = (Join-Path $repoRoot 'lv_icon_editor.lvproj')
+        }
+        Invoke-Script -Path $scriptPath -ArgumentMap $args
+    }
+
     'dev-set' {
         $scriptPath = Resolve-Script -RepoRoot $repoRoot -RelativePath ".github/actions/set-development-mode/run-dev-mode.ps1"
         $args = @{
