@@ -169,7 +169,8 @@ function Assert-ExpectedPPLSet {
         throw "Plugins folder not found at $PluginsDir"
     }
 
-    $files = Get-ChildItem -LiteralPath $PluginsDir -Filter '*.lvlibp' -File -ErrorAction SilentlyContinue
+    # Match the base, suffixed, and staged copies (e.g., lv_icon.lvlibp.windows_x64)
+    $files = Get-ChildItem -LiteralPath $PluginsDir -Filter '*.lvlibp*' -File -ErrorAction SilentlyContinue
     $names = $files | ForEach-Object { $_.Name }
 
     $missing = $ExpectedNames | Where-Object { $names -notcontains $_ }
