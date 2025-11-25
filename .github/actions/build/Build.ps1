@@ -43,7 +43,10 @@ param(
     [string]$CompanyName,
 
 [Parameter(Mandatory = $true)]
-    [string]$AuthorName
+    [string]$AuthorName,
+
+    # When true (default for non-CI), prompt the user to acknowledge any first-launch LabVIEW/VIPM dialog.
+    [switch]$PromptForVipmReady
 )
 
 $ReleaseNotesFile = Join-Path $RepositoryPath 'Tooling\deployment\release_notes.md'
@@ -126,6 +129,50 @@ function Invoke-ScriptSafe {
         Write-Error "Error occurred while executing `"$ScriptPath`" with arguments: $render. Exiting. Details: $($_.Exception.Message)"
         exit 1
     }
+}
+
+function Ensure-VipmReady {
+    param(
+        [switch]$Interactive
+    )
+
+    try {
+        $ver = & vipm --version 2>&1
+        if ($LASTEXITCODE -eq 0 -and $ver) {
+            Write-Information ("vipm version: {0}" -f ($ver -join ' ')) -InformationAction Continue
+            return
+        }
+    }
+    catch {
+        # fall through to interactive flow
+    }
+
+    if (-not $Interactive) {
+        throw "vipm CLI did not respond; rerun with -PromptForVipmReady (or outside CI) to acknowledge any LabVIEW prompt and retry."
+    }
+
+    Write-Warning "vipm CLI did not respond; launching 'vipm --version' to surface any LabVIEW dialog."
+    try {
+        $proc = Start-Process -FilePath "vipm" -ArgumentList "--version" -PassThru -WindowStyle Normal
+        Start-Sleep -Seconds 2
+    }
+    catch {
+        Write-Warning ("Failed to start vipm --version interactively: {0}" -f $_.Exception.Message)
+    }
+
+    Write-Host ""
+    Write-Host "=== ACTION REQUIRED ======================================================"
+    Write-Host "If LabVIEW shows a dialog (first-launch), acknowledge it now."
+    Write-Host "Then press Enter here to retry vipm --version."
+    Write-Host "=========================================================================="
+    [void][Console]::ReadLine()
+
+    $ver = & vipm --version 2>&1
+    if ($LASTEXITCODE -ne 0 -or -not $ver) {
+        throw "vipm CLI still not responding after user acknowledgment. Resolve the LabVIEW/VIPM prompt and retry."
+    }
+
+    Write-Information ("vipm version: {0}" -f ($ver -join ' ')) -InformationAction Continue
 }
 
 function Write-ReleaseNotesFromGit {
@@ -211,6 +258,11 @@ try {
         Write-Error "vipm CLI not found on PATH; install VIPM CLI and ensure 'vipm' is available before running the build task."
         exit 1
     }
+
+    if (-not $PSBoundParameters.ContainsKey('PromptForVipmReady')) {
+        $PromptForVipmReady = -not $env:CI -and -not $env:GITHUB_ACTIONS
+    }
+    Ensure-VipmReady -Interactive:$PromptForVipmReady
 
     # Derive build number from total commits when available
     try {
