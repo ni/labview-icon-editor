@@ -27,6 +27,10 @@
   - MinLabVIEW [String] default="21.0"
 - Outputs: *(not explicitly declared)*
 
+## `/mnt/c/repos/labview-icon-editor-community-ci-cd/scripts/analyze-vi-package/VIPReader.psm1`
+- Inputs: *(module auto-loaded by analyzer workflows)*
+- Outputs: *(not explicitly declared)*
+
 ## `/mnt/c/repos/labview-icon-editor-community-ci-cd/scripts/apply-vipc/ApplyVIPC.ps1`
 - Inputs:
   - MinimumSupportedLVVersion [String]
