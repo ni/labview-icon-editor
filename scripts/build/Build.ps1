@@ -554,11 +554,14 @@ try {
         # Remove temporary x86/x64-specific PPL files to keep the plugins folder idempotent for downstream checks
         try {
             $tempCopies = @($pplX64, $pplX86) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
+            $removed = @()
             foreach ($tmp in $tempCopies) {
                 Remove-Item -LiteralPath $tmp -Force -ErrorAction Stop
+                $removed += (Split-Path $tmp -Leaf)
             }
-            if ($tempCopies.Count -gt 0) {
-                Write-Information ("Cleaned temporary PPL copies: {0}" -f ($tempCopies | ForEach-Object { Split-Path $_ -Leaf } -join ', ')) -InformationAction Continue
+            if ($removed.Count -gt 0) {
+                $removedList = [string]::Join(', ', $removed)
+                Write-Information ("Cleaned temporary PPL copies: {0}" -f $removedList) -InformationAction Continue
             }
         }
         catch {

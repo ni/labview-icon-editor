@@ -222,7 +222,16 @@ catch {
 }
 
 # 3) Resolve LabVIEW version from VIPB to ensure determinism and calculate the LabVIEW version string
-$Package_LabVIEW_Version = & (Join-Path $PSScriptRoot '..\..\..\scripts\get-package-lv-version.ps1') -RepositoryPath $RepositoryPath
+$versionScriptCandidates = @(
+    (Join-Path $RepositoryPath 'scripts/get-package-lv-version.ps1'),
+    (Join-Path $PSScriptRoot '..\..\scripts\get-package-lv-version.ps1'),
+    (Join-Path $PSScriptRoot '..\..\..\scripts\get-package-lv-version.ps1')
+) | Where-Object { Test-Path -LiteralPath $_ }
+if (-not $versionScriptCandidates -or $versionScriptCandidates.Count -eq 0) {
+    Write-ErrorPayload -Error "Unable to locate get-package-lv-version.ps1 to resolve LabVIEW version." -Context ("PSScriptRoot={0}" -f $PSScriptRoot)
+}
+
+$Package_LabVIEW_Version = & ($versionScriptCandidates | Select-Object -First 1) -RepositoryPath $RepositoryPath
 $lvNumericMajor    = $Package_LabVIEW_Version - 2000
 $lvNumericVersion  = "$($lvNumericMajor).$LabVIEWMinorRevision"
 if ($SupportedBitness -eq "64") {
