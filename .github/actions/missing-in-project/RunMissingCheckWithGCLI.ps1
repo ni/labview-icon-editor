@@ -113,16 +113,56 @@ $gcliOutput = @()
 $exitCode   = -1
 $invokeError = $null
 
-try {
-    # Capture output while writing to a log file; Tee-Object cannot use -Variable and -FilePath together
-    $gcliOutput = & g-cli @gcliArgs 2>&1 | Tee-Object -FilePath $gcliLogPath
-    $exitCode   = $LASTEXITCODE
+function Invoke-WithRetry {
+    param(
+        [Parameter(Mandatory)][string[]]$Args,
+        [int]$MaxAttempts = 2,
+        [int]$DelaySeconds = 5
+    )
+
+    $lastOutput = @()
+    $lastCode = -1
+    $lastError = $null
+
+    for ($i = 1; $i -le $MaxAttempts; $i++) {
+        try {
+            $lastOutput = & g-cli @Args 2>&1 | Tee-Object -FilePath $gcliLogPath
+            $lastCode = $LASTEXITCODE
+            if ($lastCode -eq 0) { break }
+
+            $shouldRetry = $lastOutput -join "`n" -match "No connection established with application"
+            if ($shouldRetry -and $i -lt $MaxAttempts) {
+                Write-Warning ("Attempt {0}/{1} failed: No connection established with application. Retrying in {2}s..." -f $i, $MaxAttempts, $DelaySeconds)
+                Start-Sleep -Seconds $DelaySeconds
+                continue
+            } else {
+                break
+            }
+        }
+        catch {
+            $lastError = $_
+            $lastOutput = @($lastError.ToString())
+            $lastCode = -1
+            if ($i -lt $MaxAttempts) {
+                Write-Warning ("Attempt {0}/{1} failed invoking g-cli ({2}); retrying in {3}s..." -f $i, $MaxAttempts, $lastError.Exception.Message, $DelaySeconds)
+                Start-Sleep -Seconds $DelaySeconds
+                continue
+            }
+            break
+        }
+    }
+
+    return @{
+        Output = $lastOutput
+        ExitCode = $lastCode
+        Error = $lastError
+    }
 }
-catch {
-    $invokeError = $_
-    $gcliOutput  = @($invokeError.ToString())
-    $exitCode    = -1
-}
+
+$result = Invoke-WithRetry -Args $gcliArgs -MaxAttempts 2 -DelaySeconds 5
+$gcliOutput = $result.Output
+$exitCode = $result.ExitCode
+$invokeError = $result.Error
 
 $meta.exitCode = $exitCode
 $meta.outputPreview = @{
