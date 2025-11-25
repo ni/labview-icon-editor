@@ -100,3 +100,12 @@ The tasks live in `.vscode/tasks.json`. They are optional; skip if you don’t u
   - Keep the patch file in the repo (e.g., `Tooling/seed/patches/my-change.json`) so paths are stable.
   - Merge is additive/overwriting; omitted fields stay unchanged.
   - To drop a field entirely, set it to `null` in the patch JSON.
+
+### Seed + Analyze: deep metadata check (optional)
+- Label: `seed + analyze: deep metadata check`
+- Purpose: one-click deep check that:
+  - Builds the Seed image
+  - Exports VIPB metadata to `artifacts/seed/metadata.json`
+  - Runs `Test/SeedMetadata.Tests.ps1` (Pester)
+  - Finds the newest `.vip` under `builds/**/VI Package` and runs `scripts/analyze-vi-package/run-local.ps1` against it
+- Use when you want a detailed metadata report plus VIP content checks; keep it optional for users without Docker.
