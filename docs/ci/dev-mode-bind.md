@@ -30,6 +30,7 @@ pwsh scripts/bind-development-mode/BindDevelopmentMode.ps1 `
 - **Token points to another repo**: unbind/bind fails unless `-Force`/`force: true` is set; use force intentionally to overwrite.
 - **Packed libs still present after bind**: treated as mismatch; reruns dev-mode prep to clear them.
 - **Bind failure mid-run**: attempts revert; JSON status will be `fail` with diagnostics.
+- **Dev-mode anomalies**: if the bind output calls out suspicious token paths or missing `LocalHost.LibraryPaths` entries, rerun Dev Mode bind with **Force** (VS Code task “Dev Mode (interactive bind/unbind)” with Force enabled or CLI: `pwsh scripts/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath . -Mode bind -Bitness both -Force`) and review `reports/dev-mode-bind.json` for per-bitness details.
 
 ## Notes
 - Default JSON path is under `reports/`; adjust if CI uploads artifacts from another directory.
