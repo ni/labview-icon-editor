@@ -36,9 +36,28 @@ docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed bash
 - Compose is set to `pull_policy: never` to avoid registry pulls; first run will build the image locally.
 
 ## VS Code tasks (optional)
-- Build: `Build LVAddon (VI Package)` (root task)
-- Seed helpers (optional):
-  - `seed: help` — shows CLI help (`seed --help`).
-  - `seed: shell` — opens a bash shell in the Seed container.
-  - `seed: vipb -> json` — converts a .vipb to JSON (prompts for paths).
-  - `seed: apply patch` — applies a JSON patch to a .vipb (prompts for paths).
+The tasks live in `.vscode/tasks.json`. They are optional; skip if you don’t use Docker or Seed.
+
+### Build LVAddon (VI Package)
+- Label: `Build LVAddon (VI Package)`
+- Scope: root build task for the VI package
+- Runs: `scripts/ie.ps1 build-worktree` with the current repo
+
+### Seed: help
+- Label: `seed: help`
+- Purpose: build the Seed image and show CLI help (`seed --help`)
+
+### Seed: shell
+- Label: `seed: shell`
+- Purpose: build the Seed image and open a bash shell in the container
+- Use when you want to run custom Seed commands manually
+
+### Seed: vipb -> json
+- Label: `seed: vipb -> json`
+- Purpose: convert a `.vipb` to JSON
+- Prompts for input/output paths (use `/workspace/...` inside the container)
+
+### Seed: apply patch
+- Label: `seed: apply patch`
+- Purpose: apply a JSON patch to a `.vipb`
+- Prompts for input `.vipb`, patch path, and output `.vipb`
