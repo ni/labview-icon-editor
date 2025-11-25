@@ -11,7 +11,7 @@ Generated from `scripts/tasks-coverage.json`. Run `python scripts/generate-tasks
 - Build/Package VIP (simulate) — `build_vip.ps1` simulate (64-bit)
 - Build/Package VIP — `run-build-or-package.ps1` with selectable modes (VIP + lvlibp)
 - Build pipeline (full simulate) — `run-build-or-package.ps1` end-to-end simulate (lvlibp both)
-- Build (isolated worktree) — `scripts/worktree-build.ps1` with prompts for bitness/version/company/author
+- Build (isolated worktree) - `scripts/worktree-build.ps1` (task uses fixed defaults). Worktree folder name uses the short hash of the ref (e.g., `lv-ie-worktree-<hash>`); if the hash cannot be resolved, it logs a message and falls back to a random suffix.
 - Build release asset (VI Package x64) — `scripts/task-build-vip.ps1 -Bitness 64`
 - Build release asset (VI Package x86) — `scripts/task-build-vip.ps1 -Bitness 32`
 - Build release asset (VI Package 32 & 64 bits) — `scripts/task-build-vip.ps1 -Bitness both` (skip CI gate)

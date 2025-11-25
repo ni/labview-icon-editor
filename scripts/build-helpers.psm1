@@ -26,11 +26,18 @@ function Get-CanonicalVipcPath {
     )
 
     $resolved = (Resolve-Path -LiteralPath $RepoPath -ErrorAction Stop).Path
-    $vipcPath = Join-Path $resolved ".github\actions\apply-vipc\runner_dependencies.vipc"
-    if (-not (Test-Path -LiteralPath $vipcPath)) {
-        throw "Canonical runner_dependencies.vipc not found at $vipcPath. Copy or fetch it to match CI before building."
+    $rootVipc = Join-Path $resolved "runner_dependencies.vipc"
+    $nestedVipc = Join-Path $resolved ".github\actions\apply-vipc\runner_dependencies.vipc"
+
+    if (Test-Path -LiteralPath $rootVipc) {
+        return $rootVipc
     }
-    return $vipcPath
+
+    if (Test-Path -LiteralPath $nestedVipc) {
+        return $nestedVipc
+    }
+
+    throw "runner_dependencies.vipc not found. Expected at $rootVipc (preferred) or $nestedVipc. Copy or fetch it to match CI before building."
 }
 
 function Assert-DevModePaths {

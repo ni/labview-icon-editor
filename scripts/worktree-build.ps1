@@ -165,6 +165,14 @@ try {
         }
     }
 
+    # Make runner_dependencies.vipc available at the worktree root (preferred path for downstream tools).
+    $vipcSource = Join-Path -Path $WorktreePath -ChildPath '.github/actions/apply-vipc/runner_dependencies.vipc'
+    $vipcTarget = Join-Path -Path $WorktreePath -ChildPath 'runner_dependencies.vipc'
+    if ((Test-Path -LiteralPath $vipcSource) -and (-not (Test-Path -LiteralPath $vipcTarget))) {
+        Copy-Item -LiteralPath $vipcSource -Destination $vipcTarget -Force
+        Write-Host "Copied runner_dependencies.vipc to worktree root: $vipcTarget"
+    }
+
     $bitnessList = if ($LvlibpBitness -eq 'both') { @('32','64') } else { @($SupportedBitness) }
     Write-Host ("Dev-mode preparation for bitness(es): {0}" -f ($bitnessList -join ', '))
     foreach ($arch in ($bitnessList | Select-Object -Unique)) {
