@@ -55,33 +55,16 @@
       "args": [
         "-NoProfile",
         "-File",
-        "${workspaceFolder}/.github/actions/build-vip/build_vip.ps1",
-        "-SupportedBitness",
-        "64",
+        "${workspaceFolder}/scripts/ie.ps1",
+        "-Command",
+        "build-pipeline",
         "-RepositoryPath",
         "${workspaceFolder}",
-        "-VIPBPath",
-        "Tooling/deployment/labview-icon-editor.vipb",
-        "-Package_LabVIEW_Version",
-        "2021",
         "-LabVIEWMinorRevision",
         "3",
-        "-Major",
-        "0",
-        "-Minor",
-        "0",
-        "-Patch",
-        "0",
-        "-Build",
-        "0",
-        "-Commit",
-        "manual",
-        "-ReleaseNotesFile",
-        "Tooling/deployment/release_notes.md",
-        "-DisplayInformationJSON",
-        "'{}'",
-        "-Simulate",
-        "-SkipPPLCheck"
+        "-LvlibpBitness",
+        "64",
+        "-Simulate"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -100,9 +83,10 @@
       "args": [
         "-NoProfile",
         "-File",
-        "${workspaceFolder}/scripts/run-worktree-task.ps1",
-        "-Verbose",
-        "-SourceRepoPath",
+        "${workspaceFolder}/scripts/ie.ps1",
+        "-Command",
+        "build-worktree",
+        "-RepositoryPath",
         "${workspaceFolder}",
         "-Ref",
         "HEAD",
@@ -136,7 +120,9 @@
       "args": [
         "-NoProfile",
         "-File",
-        "${workspaceFolder}/scripts/run-build-lvlibp-task.ps1",
+        "${workspaceFolder}/scripts/ie.ps1",
+        "-Command",
+        "build-lvlibp",
         "-RepositoryPath",
         "${workspaceFolder}",
         "-SupportedBitness",
@@ -164,8 +150,16 @@
       "command": "pwsh",
       "args": [
         "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ie.ps1",
         "-Command",
-        "& { & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"vip+lvlibp\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"both\" }"
+        "build-pipeline",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-LabVIEWMinorRevision",
+        "3",
+        "-LvlibpBitness",
+        "both"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -180,7 +174,9 @@
       "args": [
         "-NoProfile",
         "-File",
-        "${workspaceFolder}/scripts/task-build-vip.ps1",
+        "${workspaceFolder}/scripts/ie.ps1",
+        "-Command",
+        "build-vip",
         "-RepositoryPath",
         "${workspaceFolder}",
         "-Bitness",
@@ -203,10 +199,10 @@
       "args": [
         "-NoProfile",
         "-File",
-        "${workspaceFolder}/scripts/run-build-or-package.ps1",
-        "-BuildMode",
-        "vip+lvlibp",
-        "-WorkspacePath",
+        "${workspaceFolder}/scripts/ie.ps1",
+        "-Command",
+        "build-pipeline",
+        "-RepositoryPath",
         "${workspaceFolder}",
         "-LabVIEWMinorRevision",
         "3",
@@ -227,7 +223,9 @@
       "args": [
         "-NoProfile",
         "-File",
-        "${workspaceFolder}/scripts/task-build-vip.ps1",
+        "${workspaceFolder}/scripts/ie.ps1",
+        "-Command",
+        "build-vip",
         "-RepositoryPath",
         "${workspaceFolder}",
         "-Bitness",
@@ -250,7 +248,9 @@
       "args": [
         "-NoProfile",
         "-File",
-        "${workspaceFolder}/scripts/task-build-vip.ps1",
+        "${workspaceFolder}/scripts/ie.ps1",
+        "-Command",
+        "build-vip",
         "-RepositoryPath",
         "${workspaceFolder}",
         "-Bitness",
@@ -287,8 +287,24 @@
       "command": "pwsh",
       "args": [
         "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ie.ps1",
         "-Command",
-        "& \"${workspaceFolder}/scripts/run-build-lvlibp-task.ps1\" -RepositoryPath \"${workspaceFolder}\" -SupportedBitness \"64\" -Major 0 -Minor 0 -Patch 0 -Build 0 -Commit \"manual\""
+        "build-lvlibp",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-SupportedBitness",
+        "64",
+        "-Major",
+        "0",
+        "-Minor",
+        "0",
+        "-Patch",
+        "0",
+        "-Build",
+        "0",
+        "-Commit",
+        "manual"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -301,8 +317,24 @@
       "command": "pwsh",
       "args": [
         "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ie.ps1",
         "-Command",
-        "& \"${workspaceFolder}/scripts/run-build-lvlibp-task.ps1\" -RepositoryPath \"${workspaceFolder}\" -SupportedBitness \"32\" -Major 0 -Minor 0 -Patch 0 -Build 0 -Commit \"manual\""
+        "build-lvlibp",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-SupportedBitness",
+        "32",
+        "-Major",
+        "0",
+        "-Minor",
+        "0",
+        "-Patch",
+        "0",
+        "-Build",
+        "0",
+        "-Commit",
+        "manual"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -316,7 +348,9 @@
       "args": [
         "-NoProfile",
         "-File",
-        "${workspaceFolder}/.github/actions/set-development-mode/run-dev-mode.ps1",
+        "${workspaceFolder}/scripts/ie.ps1",
+        "-Command",
+        "dev-set",
         "-SupportedBitness",
         "${input:devModeBitness}"
       ],
@@ -332,12 +366,12 @@
       "args": [
         "-NoProfile",
         "-File",
-        "${workspaceFolder}/.github/actions/bind-development-mode/BindDevelopmentMode.ps1",
+        "${workspaceFolder}/scripts/ie.ps1",
+        "-Command",
+        "dev-bind",
         "-RepositoryPath",
         "${workspaceFolder}",
-        "-Mode",
-        "bind",
-        "-Bitness",
+        "-DevModeBitness",
         "both"
       ],
       "options": {
@@ -374,14 +408,14 @@
       "args": [
         "-NoProfile",
         "-File",
-        "${workspaceFolder}/.github/actions/bind-development-mode/BindDevelopmentMode.ps1",
+        "${workspaceFolder}/scripts/ie.ps1",
+        "-Command",
+        "dev-bind",
         "-RepositoryPath",
         "${workspaceFolder}",
-        "-Mode",
-        "bind",
-        "-Bitness",
+        "-DevModeBitness",
         "both",
-        "-Force"
+        "-ForceBind"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -453,12 +487,13 @@
       "args": [
         "-NoProfile",
         "-File",
-        "${workspaceFolder}/scripts/dev-mode-force-clean.ps1",
+        "${workspaceFolder}/scripts/ie.ps1",
+        "-Command",
+        "dev-force-clean",
         "-RepositoryPath",
         "${workspaceFolder}",
-        "-VipbPath",
-        "${input:vipbPath}"
-        ,
+        "-VipbPathForDevMode",
+        "${input:vipbPath}",
         "-SkipConfirm"
       ],
       "options": {
@@ -477,7 +512,9 @@
       "args": [
         "-NoProfile",
         "-File",
-        "${workspaceFolder}/.github/actions/revert-development-mode/run-dev-mode.ps1",
+        "${workspaceFolder}/scripts/ie.ps1",
+        "-Command",
+        "dev-revert",
         "-SupportedBitness",
         "${input:devModeBitness}"
       ],

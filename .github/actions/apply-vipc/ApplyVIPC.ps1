@@ -91,18 +91,44 @@ $vipcGitCommit = $null
 $vipcGitAuthor = $null
 try {
     $gitCmd = Get-Command git -ErrorAction Stop
+
+    # Try to source metadata from the tracked VIPC under .github/actions if the root copy is untracked.
+    $repoPrefix = $ResolvedRepositoryPath.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+    $vipcMetadataPaths = @($VIPCPath)
+    $trackedVipcCandidate = Join-Path $ResolvedRepositoryPath '.github\actions\apply-vipc\runner_dependencies.vipc'
+    if ($trackedVipcCandidate -notin $vipcMetadataPaths) {
+        $vipcMetadataPaths += $trackedVipcCandidate
+    }
+
     Push-Location -LiteralPath $ResolvedRepositoryPath
     try {
-        $commit = & $gitCmd.Path log -1 --format=%H -- $VIPCPath 2>$null
-        if (-not [string]::IsNullOrWhiteSpace($commit)) {
-            $vipcGitCommit = $commit.Trim()
-            $author = & $gitCmd.Path log -1 --format=%an -- $VIPCPath 2>$null
-            if (-not [string]::IsNullOrWhiteSpace($author)) {
-                $vipcGitAuthor = $author.Trim()
+        foreach ($p in ($vipcMetadataPaths | Select-Object -Unique)) {
+            try {
+                $full = (Resolve-Path -LiteralPath $p -ErrorAction Stop).Path
+            }
+            catch {
+                continue
+            }
+
+            $relative = $full
+            if ($full.StartsWith($repoPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $relative = $full.Substring($repoPrefix.Length)
+            }
+
+            $commit = & $gitCmd.Path log -1 --format=%H -- $relative 2>$null
+            if (-not [string]::IsNullOrWhiteSpace($commit)) {
+                $vipcGitCommit = $commit.Trim()
+                $author = & $gitCmd.Path log -1 --format=%an -- $relative 2>$null
+                if (-not [string]::IsNullOrWhiteSpace($author)) {
+                    $vipcGitAuthor = $author.Trim()
+                }
+                Write-Verbose ("Resolved VIPC git metadata from '{0}'" -f $relative)
+                break
             }
         }
-        else {
-            Write-Warning "Unable to determine git commit for VIPC path '$VIPCPath'."
+
+        if (-not $vipcGitCommit) {
+            Write-Warning "Unable to determine git commit for VIPC path(s): $($vipcMetadataPaths -join ', ')"
         }
     }
     finally {
