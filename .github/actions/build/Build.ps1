@@ -100,34 +100,62 @@ function Invoke-ScriptSafe {
     param(
         [string]$ScriptPath,
         [hashtable]$ArgumentMap,
-        [string[]]$ArgumentList
+        [string[]]$ArgumentList,
+        [int]$TimeoutSec = 0,
+        [string]$DisplayName
     )
     if (-not $ScriptPath) { throw "ScriptPath is required" }
     if (-not (Test-Path -LiteralPath $ScriptPath)) { throw "ScriptPath '$ScriptPath' not found" }
 
+    $label = if ([string]::IsNullOrWhiteSpace($DisplayName)) { Split-Path -Leaf $ScriptPath } else { $DisplayName }
     $render = if ($ArgumentMap) {
         ($ArgumentMap.GetEnumerator() | ForEach-Object { "-$($_.Key) $($_.Value)" }) -join ' '
     } else {
         ($ArgumentList -join ' ')
     }
     Write-Information ("Executing: {0} {1}" -f $ScriptPath, $render) -InformationAction Continue
+    $timer = [System.Diagnostics.Stopwatch]::StartNew()
     try {
-        if ($ArgumentMap) {
-            & $ScriptPath @ArgumentMap
-        } elseif ($ArgumentList) {
-            & $ScriptPath @ArgumentList
-        } else {
-            & $ScriptPath
+        if ($TimeoutSec -gt 0) {
+            $job = Start-Job -ScriptBlock {
+                param($p,$argMap,$argList,$useMap)
+                if ($useMap) { & $p @argMap } elseif ($argList) { & $p @argList } else { & $p }
+                [pscustomobject]@{ ExitCode = $LASTEXITCODE }
+            } -ArgumentList @($ScriptPath,$ArgumentMap,$ArgumentList, [bool]$ArgumentMap)
+            if (-not (Wait-Job $job -Timeout $TimeoutSec)) {
+                Stop-Job $job -Force | Out-Null
+                Receive-Job $job -Keep | ForEach-Object { Write-Host $_ }
+                throw ("{0} timed out after {1} seconds (possible UI prompt or hang)." -f $label, $TimeoutSec)
+            }
+            $output = Receive-Job $job -AutoRemoveJob
+            $exitObj = $output | Where-Object { $_ -is [pscustomobject] -and $_.PSObject.Properties['ExitCode'] }
+            ($output | Where-Object { -not ($_ -is [pscustomobject]) }) | ForEach-Object { Write-Host $_ }
+            $exitCode = if ($exitObj) { $exitObj.ExitCode } else { 0 }
+            if ($exitCode -ne 0) {
+                throw ("{0} failed with exit code {1}" -f $label, $exitCode)
+            }
         }
-        Write-Verbose "Command completed. Checking exit code..."
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "Error occurred while executing `"$ScriptPath`" with arguments: $render. Exit code: $LASTEXITCODE"
-            exit $LASTEXITCODE
+        else {
+            if ($ArgumentMap) {
+                & $ScriptPath @ArgumentMap
+            } elseif ($ArgumentList) {
+                & $ScriptPath @ArgumentList
+            } else {
+                & $ScriptPath
+            }
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "Error occurred while executing `"$ScriptPath`" with arguments: $render. Exit code: $LASTEXITCODE"
+                exit $LASTEXITCODE
+            }
         }
     }
     catch {
         Write-Error "Error occurred while executing `"$ScriptPath`" with arguments: $render. Exiting. Details: $($_.Exception.Message)"
         exit 1
+    }
+    finally {
+        $timer.Stop()
+        Write-Verbose ("{0} completed in {1:n1}s" -f $label, $timer.Elapsed.TotalSeconds)
     }
 }
 
@@ -373,7 +401,7 @@ try {
             SupportedBitness          = '32'
             RepositoryPath            = $RepositoryPath
             VIPCPath                  = $vipcPath
-        }
+        } -TimeoutSec 600 -DisplayName "Apply VIPC (32-bit)"
 
         # 2.1) Preflight missing items using existing missing-in-project helper (32-bit)
         Write-Information "Preflight: checking for missing project items via missing-in-project..." -InformationAction Continue
@@ -381,7 +409,7 @@ try {
             LVVersion   = $lvVersion
             Arch        = '32'
             ProjectFile = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
-        }
+        } -TimeoutSec 300 -DisplayName "Missing in project (32-bit)"
 
         # 3) Build LV Library (32-bit)
         Write-Verbose "Building LV library (32-bit)..."
@@ -395,14 +423,14 @@ try {
             Build                     = $Build
             Commit                    = $Commit
         }
-        & $BuildLvlibp @argsLvlibp32
+        Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp32 -TimeoutSec 900 -DisplayName "Build lvlibp (32-bit)"
 
         # 4) Close LabVIEW (32-bit)
         Write-Verbose "Closing LabVIEW (32-bit)..."
         Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
             Package_LabVIEW_Version = $lvVersion
             SupportedBitness        = '32'
-        }
+        } -TimeoutSec 180 -DisplayName "Close LabVIEW (32-bit)"
 
         # 5) Rename .lvlibp -> lv_icon_x86.lvlibp
         Write-Verbose "Renaming .lvlibp file to lv_icon_x86.lvlibp..."
@@ -435,14 +463,14 @@ try {
         SupportedBitness          = '64'
         RepositoryPath            = $RepositoryPath
         VIPCPath                  = $vipcPath
-    }
+    } -TimeoutSec 600 -DisplayName "Apply VIPC (64-bit)"
 
     # 6.1) Ensure LabVIEW 64-bit is closed before building to avoid loaded NIIconEditor collisions
     Write-Verbose "Pre-build: closing LabVIEW (64-bit) to ensure a clean session..."
     Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
         Package_LabVIEW_Version = $lvVersion
         SupportedBitness        = '64'
-    }
+    } -TimeoutSec 180 -DisplayName "Close LabVIEW (pre-build 64-bit)"
     Show-BitnessDone -Arch '64'
 
     # 7) Build LV Library (64-bit)
@@ -457,14 +485,14 @@ try {
         Build                     = $Build
         Commit                    = $Commit
     }
-    & $BuildLvlibp @argsLvlibp64
+    Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp64 -TimeoutSec 900 -DisplayName "Build lvlibp (64-bit)"
 
     # 7.1) Close LabVIEW (64-bit)
     Write-Verbose "Closing LabVIEW (64-bit)..."
     Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
         Package_LabVIEW_Version = $lvVersion
         SupportedBitness        = '64'
-    }
+    } -TimeoutSec 180 -DisplayName "Close LabVIEW (post-build 64-bit)"
 
     # Rename .lvlibp -> lv_icon_x64.lvlibp
         Write-Verbose "Renaming .lvlibp file to lv_icon_x64.lvlibp..."
