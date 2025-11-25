@@ -62,7 +62,8 @@ Describe "LabVIEW version resolution wiring" {
                 $unitRuns = $runs | Where-Object { $_ -match 'run-unit-tests/RunUnitTests\.ps1' }
                 $unitRuns | Should -Not -BeNullOrEmpty
 
-                ($unitRuns -join "`n") | Should -Match '-Package_LabVIEW_Version "?${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}"?'
+                $pattern = '-Package_LabVIEW_Version\s+"?\${{ needs\.resolve-labview-version\.outputs\.minimum_supported_lv_version }}"?'
+                ($unitRuns | Where-Object { $_ -match $pattern }) | Should -Not -BeNullOrEmpty
             }
         }
     }
