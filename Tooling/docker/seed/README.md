@@ -1,6 +1,6 @@
 # Seed Docker helper
 
-Run the Seed CLI from a locally built image (no GHCR dependency). The repo is bind-mounted to `/workspace` inside the container, so reference paths accordingly.
+Use the Seed CLI via a locally built Docker image. The repo is bind-mounted to `/workspace` inside the container, so reference paths accordingly.
 
 - Build context: `Tooling/seed` (vendored source + Dockerfile)
 - Tag produced: `seed-local:latest`
