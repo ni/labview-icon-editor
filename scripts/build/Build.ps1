@@ -499,6 +499,13 @@ try {
         ProjectFile = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
     } -TimeoutSec 300 -DisplayName "Missing in project (64-bit)"
 
+    # 6.2) Run unit tests after missing-in-project to catch regressions early (runs 32- and 64-bit)
+    Write-Information "Running unit tests..." -InformationAction Continue
+    $RunUnitTests = Join-Path $ActionsPath "unit-tests/unit_tests.ps1"
+    Invoke-ScriptSafe -ScriptPath $RunUnitTests -ArgumentMap @{
+        RepositoryPath = $RepositoryPath
+    } -TimeoutSec 1800 -DisplayName "Unit tests"
+
     # 6.1) Ensure LabVIEW 64-bit is closed before building to avoid loaded NIIconEditor collisions
     Write-Verbose "Pre-build: closing LabVIEW (64-bit) to ensure a clean session..."
     Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
