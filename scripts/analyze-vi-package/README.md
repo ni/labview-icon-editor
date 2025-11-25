@@ -16,6 +16,8 @@ pwsh -NoProfile -File ./Analyze-VIP.Tests.ps1 -VipArtifactPath "/mnt/data/work/n
 ```powershell
 # Using a directory, .vip file, or downloaded artifact .zip:
 pwsh -NoProfile -File scripts/analyze-vi-package/run-workflow-local.ps1 -VipArtifactPath "builds/VI Package" -MinLabVIEW "21.0"
+# Directly target a specific package or artifact directory (recommended for local validation):
+pwsh -NoProfile -File scripts/analyze-vi-package/run-workflow-local.ps1 -VipArtifactPath "path/to/package.vip" -MinLabVIEW "21.0"
 ```
 
 ## GitHub Actions usage
@@ -30,4 +32,8 @@ jobs:
           vip_artifact_path: "/mnt/data/work/ni_icon_editor-0.0.2.16.vip"
           min_labview: "21.0"
 ```
+
+## Notes
+- The workflow script requires a real `.vip` file. If a placeholder artifact such as `vipm-skipped-placeholder.vip` is present (emitted when vipm builds are intentionally skipped), the Analyze-VIP suite will detect it and skip the tests instead of using the placeholder.
+- `VIPReader.psm1` lives next to the tests at `scripts/analyze-vi-package/VIPReader.psm1` and is automatically imported by `Analyze-VIP.Tests.ps1` and the workflow wrapper—no manual module import is necessary.
 
