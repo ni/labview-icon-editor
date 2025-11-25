@@ -49,4 +49,4 @@ Write-Information ("Running tests in {0} (VIP={1}, MinLV={2})" -f $tests, $vipRe
 $testsResolved = (Resolve-Path -LiteralPath $tests).Path
 $env:VIP_PATH = $vipResolved
 $env:MIN_LV_VERSION = $MinLabVIEW
-Invoke-Pester -Path $testsResolved -CI -Output Detailed | Out-Host
+Invoke-Pester -Script @(@{ Path = $testsResolved; Parameters = @{ VipPath = $vipResolved; MinLVVersion = $MinLabVIEW } }) -CI -Output Detailed | Out-Host
