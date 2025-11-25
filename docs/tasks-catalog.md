@@ -1,6 +1,6 @@
 # VS Code Tasks Catalog
 
-Only one VS Code task is shipped for local builds. It wraps `scripts/ie.ps1 -Command build-worktree` and uses fixed defaults to build the addon and package it as a `.vip` (64-bit top-level VIP, both-bitness packed libraries). VIPM is expected to be available; when it is missing the build emits `builds/VI Package/vipm-skipped-placeholder.vip` and the task completes so you can rerun it once VIPM is installed.
+Only one VS Code task is shipped for local builds. It wraps `scripts/ie.ps1 -Command build-worktree` and uses fixed defaults to build the addon and package it as a `.vip` (64-bit top-level VIP, both-bitness packed libraries). If `vipm` is not on PATH, VIPC/VIPM steps are skipped, the lvlibp still builds, and a placeholder `builds/VI Package/vipm-skipped-placeholder.vip` is written. After adding VIPM to PATH, delete the placeholder `.vip` and rerun the task to create the real package.
 
 | Task | Notes |
 | --- | --- |
