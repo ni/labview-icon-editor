@@ -14,9 +14,11 @@ RUN dotnet publish src/VipbJsonTool -c Release -r linux-x64 --self-contained \
 # Use a minimal Ubuntu base for the final image
 FROM ubuntu:22.04
 
-# Install core dependencies and required tools
+# Install core dependencies and required tools (include yq from upstream release)
 RUN apt-get update && \
-    apt-get install -y git curl unzip patch yq && \
+    apt-get install -y git curl unzip patch wget && \
+    wget -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.2/yq_linux_amd64 && \
+    chmod +x /usr/local/bin/yq && \
     rm -rf /var/lib/apt/lists/*
 
 # Install GitHub CLI (gh) for auto PR functionality
