@@ -151,7 +151,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "\"& { $ErrorActionPreference='Stop'; $script='${workspaceFolder}/scripts/worktree-build.ps1'; $scriptArgs=@('-SourceRepoPath','${workspaceFolder}','-Ref','HEAD','-SupportedBitness','64','-LvlibpBitness','${input:lvlibpBitness}','-Major','${input:semverMajor}','-Minor','${input:semverMinor}','-Patch','${input:semverPatch}','-Build','${input:buildNumber}','-CompanyName','${input:companyName}','-AuthorName','${input:authorName}'); $childCmd = \"& `\\\"$script`\\\" $($scriptArgs -join ' '); $code = `$LASTEXITCODE; Write-Host ''; Write-Host 'Press Enter to close this window.'; Read-Host | Out-Null; exit `$code\"; $proc = Start-Process -FilePath 'pwsh' -ArgumentList '-NoProfile','-Command', $childCmd -WindowStyle Normal -PassThru -Wait; exit $proc.ExitCode }\""
+        "\"$ErrorActionPreference='Stop'; $script='${workspaceFolder}/scripts/worktree-build.ps1'; $inner = \"& `\\\"$script`\\\" -SourceRepoPath `\\\"${workspaceFolder}`\\\" -Ref HEAD -SupportedBitness 64 -LvlibpBitness `\\\"${input:lvlibpBitness}`\\\" -Major ${input:semverMajor} -Minor ${input:semverMinor} -Patch ${input:semverPatch} -Build ${input:buildNumber} -CompanyName `\\\"${input:companyName}`\\\" -AuthorName `\\\"${input:authorName}`\\\"; \$code=`$LASTEXITCODE; Write-Host ''; Write-Host 'Press Enter to close this window.'; Read-Host | Out-Null; exit \$code\"; $args = @('-NoProfile','-Command', $inner); $proc = Start-Process -FilePath 'pwsh' -ArgumentList $args -WindowStyle Normal -PassThru -Wait; exit $proc.ExitCode\""
       ],
       "options": {
         "cwd": "${workspaceFolder}"
