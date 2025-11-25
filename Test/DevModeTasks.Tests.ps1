@@ -32,9 +32,8 @@ Describe "VSCode Dev Mode Task wiring" {
             $command = ($task.args -join ' ')
             $command | Should -Match "-NoProfile"
             $command | Should -Match "-File"
-            $command | Should -Match "run-dev-mode.ps1"
-            # Ensure no inline -Command usage for these wrappers
-            $command | Should -Not -Match "-Command"
+            $command | Should -Match "scripts/ie\.ps1"
+            $command | Should -Match "-Command\s+dev-(set|revert)"
             # Ensure we don't embed accidental g-cli flag fragments (e.g., double-dash in the wrapper args)
             $command | Should -Not -Match "--lv-ver"
             $command | Should -Not -Match "--arch"

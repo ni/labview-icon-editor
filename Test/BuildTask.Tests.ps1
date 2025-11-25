@@ -97,24 +97,24 @@ Describe "VSCode Build Task wiring" {
             $buildTask = $json.tasks | Where-Object { $_.label -eq "Build/Package VIP" } | Select-Object -First 1
             $buildTask | Should -Not -BeNullOrEmpty
             $command = ($buildTask.args -join ' ')
-            # Ensure the wrapper script and expected flags are present
-            $command | Should -Match "scripts/run-build-or-package\.ps1"
-            $command | Should -Match "-BuildMode"
-            $command | Should -Match "-WorkspacePath"
+            # Ensure the entry point and expected flags are present
+            $command | Should -Match "scripts/ie\.ps1"
+            $command | Should -Match "-Command\s+build-pipeline"
+            $command | Should -Match "-RepositoryPath"
             $command | Should -Match "-LabVIEWMinorRevision"
             $command | Should -Match "-LvlibpBitness"
         }
 
-        It "uses a fixed buildMode value for the unified task" {
+        It "uses a fixed build mode (build-pipeline) for the unified task" {
             $tasksPath = Join-Path $script:RepoRoot '.vscode/tasks.json'
             Test-Path -LiteralPath $tasksPath | Should -BeTrue
             $json = Get-Content -LiteralPath $tasksPath -Raw | ConvertFrom-Json
             $buildTask = $json.tasks | Where-Object { $_.label -eq "Build/Package VIP" } | Select-Object -First 1
             $buildTask | Should -Not -BeNullOrEmpty
-            ($buildTask.args -join ' ') | Should -Match '-BuildMode\s+"?vip\+lvlibp"?'
+            ($buildTask.args -join ' ') | Should -Match '-Command\s+build-pipeline'
         }
 
-        It "quotes buildMode assignment and comparisons to avoid parser errors" {
+        It "quotes command arguments to avoid parser errors" {
             $tasksPath = Join-Path $script:RepoRoot '.vscode/tasks.json'
             Test-Path -LiteralPath $tasksPath | Should -BeTrue
             $json = Get-Content -LiteralPath $tasksPath -Raw | ConvertFrom-Json
@@ -123,10 +123,10 @@ Describe "VSCode Build Task wiring" {
             $buildTask | Should -Not -BeNullOrEmpty
             $command = ($buildTask.args -join ' ')
 
-            # Ensure the mode is assigned with quotes and compared against quoted literals
-            $command | Should -Match "scripts/run-build-or-package.ps1"
-            $command | Should -Match "-BuildMode"
-            $command | Should -Match "-WorkspacePath"
+            # Ensure the command flag and key args are present and parseable
+            $command | Should -Match "scripts/ie\.ps1"
+            $command | Should -Match "-Command\s+build-pipeline"
+            $command | Should -Match "-RepositoryPath"
             $command | Should -Match "-LvlibpBitness"
         }
 
@@ -136,7 +136,8 @@ Describe "VSCode Build Task wiring" {
             $buildTask = $json.tasks | Where-Object { $_.label -eq "Build/Package VIP" } | Select-Object -First 1
             $buildTask | Should -Not -BeNullOrEmpty
             $command = ($buildTask.args -join ' ')
-            $command | Should -Match "run-build-or-package.ps1"
+            $command | Should -Match "scripts/ie\.ps1"
+            $command | Should -Match "-Command\s+build-pipeline"
         }
     }
 }
