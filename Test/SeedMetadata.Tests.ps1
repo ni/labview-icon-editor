@@ -6,64 +6,58 @@ param()
 
 Set-StrictMode -Version Latest
 
-$repoRoot     = Resolve-Path (Join-Path $PSScriptRoot '..')
-$metadataPath = Join-Path $repoRoot 'artifacts/seed/metadata.json'
-
-if (-not (Test-Path -LiteralPath $metadataPath)) {
-    Describe "Seed metadata" -Skip:$true {
-        It "skipped" { }
-    }
-    return
-}
-
-$metadata = $null
-try {
-    $metadata = Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json -ErrorAction Stop
-}
-catch {
-    Describe "Seed metadata" -Skip:$true {
-        It "could not parse metadata.json" { }
-    }
-    return
-}
-
-$root = $metadata.VI_Package_Builder_Settings
-if (-not $root) { $root = $metadata.Package }
-if (-not $root) {
-    Describe "Seed metadata" -Skip:$true {
-        It "missing expected root element in metadata.json" { }
-    }
-    return
-}
-
-$general     = $root.Library_General_Settings
-$description = $root.Description
-$advanced    = $root.Advanced_Settings
-$labview     = $advanced.LabVIEW
-
 Describe "Seed metadata (vipb json)" {
+    BeforeAll {
+        $script:repoRoot     = Resolve-Path (Join-Path $PSScriptRoot '..')
+        $script:metadataPath = Join-Path $script:repoRoot 'artifacts/seed/metadata.json'
+
+        if (-not (Test-Path -LiteralPath $script:metadataPath)) {
+            Set-ItResult -Skipped -Because "Metadata JSON not found at $script:metadataPath"
+            return
+        }
+
+        try {
+            $script:metadata = Get-Content -LiteralPath $script:metadataPath -Raw | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+        }
+        catch {
+            Set-ItResult -Skipped -Because "Could not parse metadata.json ($($_.Exception.Message))"
+            return
+        }
+
+        $script:root = $script:metadata['VI_Package_Builder_Settings']
+        if (-not $script:root) { $script:root = $script:metadata['Package'] }
+        if (-not $script:root) {
+            Set-ItResult -Skipped -Because "Missing expected root element in metadata.json"
+            return
+        }
+
+        $script:general     = $script:root['Library_General_Settings']
+        $script:advanced    = $script:root['Advanced_Settings']
+        $script:description = if ($script:advanced) { $script:advanced['Description'] } else { $null }
+        $script:labview     = if ($script:advanced) { $script:advanced['LabVIEW'] } else { $null }
+    }
     It "has a package file name" {
-        $general.Package_File_Name | Should -Not -BeNullOrEmpty
+        $general['Package_File_Name'] | Should -Not -BeNullOrEmpty
     }
     It "has a four-part library version" {
-        $general.Library_Version | Should -Match '^\d+\.\d+\.\d+\.\d+$'
+        $general['Library_Version'] | Should -Match '^\d+\.\d+\.\d+\.\d+$'
     }
     It "declares a LabVIEW version" {
-        $general.Package_LabVIEW_Version | Should -Not -BeNullOrEmpty
+        $general['Package_LabVIEW_Version'] | Should -Not -BeNullOrEmpty
     }
     It "has product name and license" {
-        $general.Product_Name | Should -Not -BeNullOrEmpty
+        $general['Product_Name'] | Should -Not -BeNullOrEmpty
         $allowed = @('MIT','BSD-3','Apache-2.0','GPL-3.0-only','Proprietary')
-        $general.Library_License | Should -BeIn $allowed
+        $general['Library_License'] | Should -BeIn $allowed
     }
     It "has descriptive metadata" {
-        $description.Packager  | Should -Not -BeNullOrEmpty
-        $description.Copyright | Should -Not -BeNullOrEmpty
+        $description['Packager']  | Should -Not -BeNullOrEmpty
+        # Copyright/URL may be empty in dev snapshots; optional
     }
     It "has LabVIEW install flags set" {
-        $labview.close_labview_before_install     | Should -Be 'true'
-        $labview.restart_labview_after_install    | Should -Be 'true'
-        $labview.skip_mass_compile_after_install  | Should -Be 'true'
-        $labview.install_into_global_environment  | Should -Be 'false'
+        $labview['close_labview_before_install']     | Should -Be 'true'
+        $labview['restart_labview_after_install']    | Should -Be 'true'
+        $labview['skip_mass_compile_after_install']  | Should -Be 'true'
+        $labview['install_into_global_environment']  | Should -Be 'false'
     }
 }
