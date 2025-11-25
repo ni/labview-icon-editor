@@ -769,10 +769,14 @@ jobs:
           set-safe-directory: true
           fetch-depth: 0
           clean: true
-      - uses: ./.github/actions/missing-in-project
-        with:
-          lv-ver:       ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
-          arch:         "64"
+      - name: Run missing-in-project (x64)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/missing-in-project/Invoke-MissingInProjectCLI.ps1" `
+            -LVVersion "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
+            -Arch 64 `
+            -ProjectFile "$env:GITHUB_WORKSPACE/lv_icon_editor.lvproj"
       - name: Detect unexpected workspace changes (x64)
         id: guard_x64
         if: always()
@@ -803,10 +807,14 @@ jobs:
           set-safe-directory: true
           fetch-depth: 0
           clean: true
-      - uses: ./.github/actions/missing-in-project
-        with:
-          lv-ver:       ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
-          arch:         "32"
+      - name: Run missing-in-project (x86)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/missing-in-project/Invoke-MissingInProjectCLI.ps1" `
+            -LVVersion "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
+            -Arch 32 `
+            -ProjectFile "$env:GITHUB_WORKSPACE/lv_icon_editor.lvproj"
       - name: Detect unexpected workspace changes (x86)
         id: guard_x86
         if: always()
@@ -834,14 +842,22 @@ jobs:
     env:
       LABVIEW_VERSION: ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
     steps:
-      - uses: ./.github/actions/run-unit-tests
-        with:
-          repository_path: ${{ github.workspace }}
-          supported_bitness:            "64"
-          labview_version:  ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
+      - name: Run unit tests (x64)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/run-unit-tests/RunUnitTests.ps1" `
+            -Package_LabVIEW_Version "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
+            -SupportedBitness "64" `
+            -AbsoluteProjectPath "$env:GITHUB_WORKSPACE/lv_icon_editor.lvproj"
       - if: always()
         name: Close LabVIEW ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} 64-bit after unit tests
-        uses: ./.github/actions/close-labview
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/close-labview/Close_LabVIEW.ps1" `
+            -Package_LabVIEW_Version "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
+            -SupportedBitness "64"
         with:
           repository_path: ${{ github.workspace }}
           supported_bitness: 64
@@ -873,14 +889,22 @@ jobs:
     env:
       LABVIEW_VERSION: ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
     steps:
-      - uses: ./.github/actions/run-unit-tests
-        with:
-          repository_path: ${{ github.workspace }}
-          supported_bitness:            "32"
-          labview_version:  ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
+      - name: Run unit tests (x86)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/run-unit-tests/RunUnitTests.ps1" `
+            -Package_LabVIEW_Version "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
+            -SupportedBitness "32" `
+            -AbsoluteProjectPath "$env:GITHUB_WORKSPACE/lv_icon_editor.lvproj"
       - if: always()
         name: Close LabVIEW ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} 32-bit after unit tests
-        uses: ./.github/actions/close-labview
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/close-labview/Close_LabVIEW.ps1" `
+            -Package_LabVIEW_Version "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
+            -SupportedBitness "32"
         with:
           repository_path: ${{ github.workspace }}
           supported_bitness: 32
@@ -1139,8 +1163,8 @@ jobs:
     needs: [verify-checklist-sync, build-ppl-x86, version]
     outputs:
       should_build_vip: ${{ steps.vipm-gate.outputs.has_vipm_cli }}
-      vip_artifact: ${{ steps.build-vip.outputs.vip_artifact }}
-      vip_path: ${{ steps.build-vip.outputs.vip_path }}
+      vip_artifact: ${{ steps.set-vip-outputs.outputs.vip_artifact }}
+      vip_path: ${{ steps.set-vip-outputs.outputs.vip_path }}
       release_notes_artifact: ${{ steps.release-notes.outputs.artifact_name }}
     runs-on: self-hosted-windows-lv
     defaults:
@@ -1178,8 +1202,10 @@ jobs:
       - name: Generate release notes
         id: release-notes
         if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
-        uses: ./.github/actions/generate-release-notes
-        # output_path defaults to Tooling/deployment/release_notes.md
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/generate-release-notes/GenerateReleaseNotes.ps1"
       - uses: actions/download-artifact@v4
         if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
         with:
@@ -1244,39 +1270,68 @@ jobs:
 
           $json = $info | ConvertTo-Json -Depth 5 -Compress
           "json=$json" >> $Env:GITHUB_OUTPUT
-      - uses: ./.github/actions/modify-vipb-display-info
+      - name: Update VIPB display info
         if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
-        with:
-          supported_bitness: 64
-          repository_path: ${{ github.workspace }}
-          labview_minor_revision: 3
-          major: ${{ needs.version.outputs.MAJOR }}
-          minor: ${{ needs.version.outputs.MINOR }}
-          patch: ${{ needs.version.outputs.PATCH }}
-          build: ${{ needs.version.outputs.BUILD }}
-          commit: ${{ github.sha }}
-          release_notes_file: ${{ github.workspace }}/Tooling/deployment/release_notes.md
-          display_information_json: ${{ steps.display-info.outputs.json }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/modify-vipb-display-info/ModifyVIPBDisplayInfo.ps1" `
+            -SupportedBitness 64 `
+            -RepositoryPath "$env:GITHUB_WORKSPACE" `
+            -LabVIEWMinorRevision 3 `
+            -Major ${{ needs.version.outputs.MAJOR }} `
+            -Minor ${{ needs.version.outputs.MINOR }} `
+            -Patch ${{ needs.version.outputs.PATCH }} `
+            -Build ${{ needs.version.outputs.BUILD }} `
+            -Commit "${{ github.sha }}" `
+            -ReleaseNotesFile "$env:GITHUB_WORKSPACE/Tooling/deployment/release_notes.md" `
+            -DisplayInformationJSON '${{ steps.display-info.outputs.json }}'
       - id: build-vip
         if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
-        uses: ./.github/actions/build-vip
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/build-vip/build_vip.ps1" `
+            -SupportedBitness 64 `
+            -RepositoryPath "$env:GITHUB_WORKSPACE" `
+            -VIPBPath "Tooling/deployment/labview-icon-editor.vipb" `
+            -Package_LabVIEW_Version ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} `
+            -LabVIEWMinorRevision 3 `
+            -Major ${{ needs.version.outputs.MAJOR }} `
+            -Minor ${{ needs.version.outputs.MINOR }} `
+            -Patch ${{ needs.version.outputs.PATCH }} `
+            -Build ${{ needs.version.outputs.BUILD }} `
+            -Commit "${{ github.sha }}" `
+            -ReleaseNotesFile "$env:GITHUB_WORKSPACE/Tooling/deployment/release_notes.md" `
+            -DisplayInformationJSON '${{ steps.display-info.outputs.json }}'
+      - name: Capture VIP outputs
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
+        id: set-vip-outputs
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = "$env:GITHUB_WORKSPACE/builds/VI Package"
+          $vip = Get-ChildItem -Path $dir -Filter *.vip -File -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $vip) { throw "No .vip found under '$dir' after build." }
+          "vip_path=$($vip.FullName)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          $artifactName = if ([string]::IsNullOrWhiteSpace("${{ github.event.repository.name }}")) { "labview-icon-editor-vip" } else { "${{ github.event.repository.name }}-vip" }
+          "vip_artifact=$artifactName" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+      - name: Upload VI Package artifact
+        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
+        uses: actions/upload-artifact@v4
         with:
-          supported_bitness: 64
-          repository_path: ${{ github.workspace }}
-          labview_minor_revision: 3
-          major: ${{ needs.version.outputs.MAJOR }}
-          minor: ${{ needs.version.outputs.MINOR }}
-          patch: ${{ needs.version.outputs.PATCH }}
-          build: ${{ needs.version.outputs.BUILD }}
-          commit: ${{ github.sha }}
-          release_notes_file: ${{ github.workspace }}/Tooling/deployment/release_notes.md
-          display_information_json: ${{ steps.display-info.outputs.json }}
+          name: ${{ steps.set-vip-outputs.outputs.vip_artifact }}
+          path: ${{ steps.set-vip-outputs.outputs.vip_path }}
+          if-no-files-found: error
       - # Only attempt to close LabVIEW if the build path ran
         if: steps.vipm-gate.outputs.has_vipm_cli == 'true' && always()
-        uses: ./.github/actions/close-labview
-        with:
-          repository_path: ${{ github.workspace }}
-          supported_bitness: 64
+        name: Close LabVIEW after VIP build
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/close-labview/Close_LabVIEW.ps1" `
+            -Package_LabVIEW_Version "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
+            -SupportedBitness 64
       - name: Validate tag matches computed version (if provided)
         if: steps.vipm-gate.outputs.has_vipm_cli == 'true' && (startsWith(github.ref, 'refs/tags/') || github.event.inputs.dispatch_tag != '')
         shell: pwsh
