@@ -38,7 +38,7 @@ COPY scripts/entrypoint.sh /entrypoint.sh
 COPY action.yml /action.yml
 
 # Copy golden sample template files for seeding (included in the image for reference)
-COPY tests/Samples/seed.lvproj tests/Samples/seed.vipb /github/workspace/tests/Samples/
+COPY tests/Samples/seed.lvproj /github/workspace/tests/Samples/
 
 # Copy the published VipbJsonTool binary from the build stage
 COPY --from=build /app/publish/VipbJsonTool /usr/local/bin/VipbJsonTool

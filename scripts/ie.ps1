@@ -41,7 +41,7 @@ param(
 
     # VIP/VIPB inputs
     [string]$VipcPath = 'runner_dependencies.vipc',
-    [string]$VipbPath = 'Tooling/deployment/labview-icon-editor.vipb',
+    [string]$VipbPath = 'Tooling/deployment/seed.vipb',
     [ValidateSet('32','64','both')]
     [string]$Bitness = '64',
     [string]$BuildMode = 'vip+lvlibp',

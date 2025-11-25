@@ -67,7 +67,7 @@ jobs:
 ```
 What happens in the above workflow?
 If a seed.lvproj file is not present at the repository root, the action copies the template tests/Samples/seed.lvproj into place as a starting project file.
-If build/buildspec.vipb is not present, the action creates the build directory (if needed) and copies the template tests/Samples/seed.vipb to build/buildspec.vipb.
+If build/buildspec.vipb is not present, the action creates the build directory (if needed) and copies the template Tooling/deployment/seed.vipb to build/buildspec.vipb.
 The action commits the new file(s) to a branch named seed-<tag> (for example, seed-v1.2.3 if the workflow was triggered by pushing tag v1.2.3).
 If auto_pr: true was set, the action would also open a pull request from that branch. In this example, auto_pr is false, so it simply pushes the branch.
 Using the CLI Tools (via Docker or Local)
@@ -138,6 +138,6 @@ Building the Docker image or using this action’s container occasionally runs i
 Entrypoint execution: Ensure the entrypoint.sh script is copied and has execute permission. If you get “permission denied” or “file not found” errors on container startup, verify that the Dockerfile used chmod +x /entrypoint.sh and that the file path is correct.
 CLI scripts present: All wrapper scripts in bin/ should be present and marked executable. The Docker build copies these to /usr/local/bin. If a script is missing, the action will report an “Unsupported mode” error for that command.
 Conversion tool binary: Make sure the VipbJsonTool binary is built and either included in the image or mounted in. The Dockerfile above uses a multi-stage build to include it. If you modify the .NET tool, rebuild the image to update the binary.
-Sample files: Verify that the sample template files exist in tests/Samples/. The image expects seed.lvproj and seed.vipb to be available for seeding new files. Missing templates will cause seeding to fail.
+Sample files: Verify that the sample template files exist (seed.lvproj in tests/Samples/ and seed.vipb in Tooling/deployment/). Missing templates will cause seeding to fail.
 Rebuild and inspect: If a Docker build fails, run it with docker build . --no-cache to ensure you’re not using stale layers. Look at the build output for any “file not found” messages to identify what’s missing.
 By following these guidelines, you can resolve most issues encountered during container build or runtime. Happy converting and seeding!

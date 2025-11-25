@@ -53,11 +53,16 @@ if [[ "$SEED_LVPROJ" == "true" || "$SEED_VIPB" == "true" ]]; then
     fi
   fi
 
-  # Seed .vipb if requested and not present
-  if [[ "$SEED_VIPB" == "true" ]]; then
+# Seed .vipb if requested and not present
+if [[ "$SEED_VIPB" == "true" ]]; then
     if [[ ! -f "build/buildspec.vipb" ]]; then
       mkdir -p build
-      cp "tests/Samples/seed.vipb" "build/buildspec.vipb"
+      template_vipb="Tooling/deployment/seed.vipb"
+      if [[ ! -f "$template_vipb" ]]; then
+        echo "::error ::VIPB template not found at $template_vipb" >&2
+        exit 1
+      fi
+      cp "$template_vipb" "build/buildspec.vipb"
       git add "build/buildspec.vipb"
       seeded=true
     else

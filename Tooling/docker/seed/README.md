@@ -15,7 +15,7 @@ docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed
 Run a Seed command:
 ```
 docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed seed <args>
-# example: seed vipb json --input /workspace/Tooling/deployment/labview-icon-editor.vipb --output /workspace/out.json
+# example: seed vipb json --input /workspace/Tooling/deployment/seed.vipb --output /workspace/out.json
 ```
 
 Open a shell:
@@ -29,14 +29,14 @@ The entrypoint respects GitHub Action-style env vars. Set them and pass `-e` whe
 PowerShell:
 ```
 $env:INPUT_MODE='vipb2json'
-$env:INPUT_INPUT='/workspace/Tooling/deployment/labview-icon-editor.vipb'
+$env:INPUT_INPUT='/workspace/Tooling/deployment/seed.vipb'
 $env:INPUT_OUTPUT='/workspace/artifacts/seed/metadata.json'
 docker compose -f Tooling/docker/seed/docker-compose.yml run --rm -e INPUT_MODE -e INPUT_INPUT -e INPUT_OUTPUT seed
 ```
 
 Bash:
 ```
-INPUT_MODE=vipb2json INPUT_INPUT=/workspace/Tooling/deployment/labview-icon-editor.vipb INPUT_OUTPUT=/workspace/artifacts/seed/metadata.json \
+INPUT_MODE=vipb2json INPUT_INPUT=/workspace/Tooling/deployment/seed.vipb INPUT_OUTPUT=/workspace/artifacts/seed/metadata.json \
   docker compose -f Tooling/docker/seed/docker-compose.yml run --rm -e INPUT_MODE -e INPUT_INPUT -e INPUT_OUTPUT seed
 ```
 

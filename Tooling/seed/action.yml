@@ -54,7 +54,7 @@ inputs:
     required: false
     default: false
   seed_vipb:
-    description: "If true, seed a .vipb from tests/Samples/seed.vipb if missing"
+    description: "If true, seed a .vipb from Tooling/deployment/seed.vipb if missing"
     required: false
     default: false
   tag:

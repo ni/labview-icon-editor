@@ -6,7 +6,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="$ROOT/Tooling/docker/seed/docker-compose.yml"
-VIPB_INPUT="/workspace/Tooling/deployment/labview-icon-editor.vipb"
+VIPB_INPUT="/workspace/Tooling/deployment/seed.vipb"
 METADATA_OUTPUT="/workspace/artifacts/seed/metadata.json"
 export PSModulePath="/usr/local/share/powershell/Modules:${PSModulePath:-}"
 

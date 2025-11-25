@@ -36,7 +36,7 @@ param(
     [ValidateSet('both','64')]
     [string]$LvlibpBitness = 'both',
 
-[string]$VIPBPath = 'Tooling\deployment\labview-icon-editor.vipb',
+[string]$VIPBPath = 'Tooling\deployment\seed.vipb',
 
     # New parameters that will populate the JSON fields
     [Parameter(Mandatory = $true)]

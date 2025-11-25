@@ -2,9 +2,10 @@ Describe "Conversion failure cases" {
 
     BeforeAll {
         # Define file paths for tests
-        $script:vipbFile   = "tests/Samples/seed.vipb"
-        $script:lvprojFile = "tests/Samples/seed.lvproj"
-        $script:tempDir    = "tests/Temp"
+        $repoRoot          = Resolve-Path (Join-Path $PSScriptRoot "..")
+        $script:vipbFile   = Join-Path $repoRoot "deployment/seed.vipb"
+        $script:lvprojFile = Join-Path $PSScriptRoot "Samples/seed.lvproj"
+        $script:tempDir    = Join-Path $PSScriptRoot "Temp"
         if (Test-Path $script:tempDir) { Remove-Item $script:tempDir -Recurse -Force }
         New-Item $script:tempDir -ItemType Directory | Out-Null
 

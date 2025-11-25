@@ -3,7 +3,7 @@
   Emit a sorted list of dot‑notation JSON paths for every leaf field in a VIPB‑JSON file.
 
 .EXAMPLE
-  dotnet run --project src/VipbJsonTool -- vipb2json 'tests/Samples/seed.vipb' tmp.json
+  dotnet run --project src/VipbJsonTool -- vipb2json '../deployment/seed.vipb' tmp.json
   pwsh tools/Enumerate-VipbPaths.ps1 tmp.json > all-paths.txt
 #>
 
