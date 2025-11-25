@@ -590,3 +590,48 @@ jobs:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-build-reports
           path: builds-isolated/reports
           if-no-files-found: warn
+
+  unify-artifacts:
+    name: Unify artifacts
+    needs:
+      - build-worktree
+      - seed-containerized
+      - rtm-gates
+      - docs-quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+
+      - name: Checkout (for scripts)
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 1
+
+      - name: Prepare staging
+        run: mkdir -p artifacts/unified
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/unified/downloads
+        continue-on-error: true
+
+      - name: List downloaded artifacts
+        run: |
+          echo "Downloaded artifacts tree:"
+          ls -R artifacts/unified/downloads || true
+
+      - name: Zip unified bundle
+        run: |
+          cd artifacts/unified/downloads
+          zip -r ../unified-bundle.zip .
+
+      - name: Upload unified bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: unified-artifacts
+          path: artifacts/unified/unified-bundle.zip
+          if-no-files-found: error
