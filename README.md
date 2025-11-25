@@ -18,6 +18,10 @@ Steps
    - VIP: `builds/VI Package/` (or under `builds/` if created there)
    - lvlibp (lvlibp-only task): `resource/plugins/lv_icon.lvlibp` (overwrites each run)
 
+VIPM not available?
+- If `vipm` is not on PATH, the build skips VIPC/VIPM steps, still builds the lvlibp, and writes a placeholder `builds/VI Package/vipm-skipped-placeholder.vip` so you know packaging was skipped.
+- After installing or exposing VIPM to PATH, delete the placeholder `.vip` and rerun the **Build/Package VIP** task to create the real package.
+
 Behavior & defaults
 - Versioning: MAJOR/MINOR/PATCH from latest tag; BUILD from commit count; commit hash embedded.
 - Metadata: Company = git remote owner; Author = `git config user.name` (fallback to owner).
