@@ -127,7 +127,7 @@ function Invoke-ScriptSafe {
                 Receive-Job $job -Keep | ForEach-Object { Write-Host $_ }
                 throw ("{0} timed out after {1} seconds (possible UI prompt or hang)." -f $label, $TimeoutSec)
             }
-            $output = Receive-Job $job -AutoRemoveJob
+            $output = Receive-Job $job -Wait -AutoRemoveJob
             $exitObj = $output | Where-Object { $_ -is [pscustomobject] -and $_.PSObject.Properties['ExitCode'] }
             ($output | Where-Object { -not ($_ -is [pscustomobject]) }) | ForEach-Object { Write-Host $_ }
             $exitCode = if ($exitObj) { $exitObj.ExitCode } else { 0 }
