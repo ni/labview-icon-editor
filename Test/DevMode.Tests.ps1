@@ -1,6 +1,12 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# Skip when LabVIEW is not available (e.g., hosted Linux runners)
+if (-not $IsWindows) {
+    Write-Host "Skipping DevMode tests: requires LabVIEW on Windows."
+    return
+}
+
 Describe "VIPB LabVIEW version parsing" {
     It "detects Package_LabVIEW_Version and derives the 4-digit year" {
         $vipb = Get-ChildItem -Path $PSScriptRoot/.. -Filter *.vipb -File -Recurse | Select-Object -First 1

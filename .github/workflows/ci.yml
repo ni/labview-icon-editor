@@ -988,6 +988,9 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          Write-Host "======================================================================"
+          Write-Host "Pester suite: dev-mode-related tests are skipped on non-Windows runners"
+          Write-Host "======================================================================"
           $coverageTargets = @(
             '.github/actions/add-token-to-labview/LocalhostLibraryPaths.ps1',
             '.github/actions/set-development-mode/run-dev-mode.ps1',
@@ -1008,6 +1011,8 @@ jobs:
           $pesterConfig.CodeCoverage.OutputFormat = 'JaCoCo'
           $pesterConfig.Run.PassThru = $true
           $pesterConfig.Output.Verbosity = 'Detailed'
+          $pesterConfig.Output.StackTraceFormat = 'SingleLine'
+          Write-Host "------ Invoking Pester ------------------------------------------------"
           Invoke-Pester -Configuration $pesterConfig
       - name: Upload Pester results
         if: always()

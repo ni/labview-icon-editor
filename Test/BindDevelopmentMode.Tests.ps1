@@ -1,6 +1,12 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# Skip when LabVIEW is not available (e.g., hosted Linux runners)
+if (-not $IsWindows) {
+    Write-Host "Skipping BindDevelopmentMode tests: requires LabVIEW on Windows." 
+    return
+}
+
 Describe "BindDevelopmentMode.ps1 JSON output and requirement coverage" {
     BeforeAll {
         $scriptPath = (Resolve-Path (Join-Path $PSScriptRoot '..\.github\actions\bind-development-mode\BindDevelopmentMode.ps1')).Path
