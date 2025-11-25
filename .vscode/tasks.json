@@ -31,7 +31,7 @@
   ],
   "tasks": [
     {
-      "label": "Build LVAddon",
+      "label": "Build LVAddon (VI Package)",
       "type": "shell",
       "command": "pwsh",
       "args": [
