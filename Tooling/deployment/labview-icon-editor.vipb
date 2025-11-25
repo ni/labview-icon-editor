@@ -149,6 +149,12 @@
         <Additional_Destination_Index>1</Additional_Destination_Index>
       </Destination_Overrides>
       <Destination_Overrides>
+        <Path>resource/plugins/lv_icon.lvlibp</Path>
+        <Destination>0</Destination>
+        <Additional_Destination>true</Additional_Destination>
+        <Additional_Destination_Index>3</Additional_Destination_Index>
+      </Destination_Overrides>
+      <Destination_Overrides>
         <Path>resource/plugins/lv_icon.lvlibp.windows_x86</Path>
         <Destination>0</Destination>
         <Additional_Destination>true</Additional_Destination>

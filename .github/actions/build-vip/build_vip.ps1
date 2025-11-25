@@ -214,6 +214,41 @@ function Restore-MissingPpls {
     }
 }
 
+function Assert-VipContainsEntries {
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$VipPath,
+        [Parameter(Mandatory=$true)]
+        [string[]]$RequiredEntries
+    )
+
+    if (-not (Test-Path -LiteralPath $VipPath -PathType Leaf)) {
+        throw ("VIP path not found for content validation: {0}" -f $VipPath)
+    }
+
+    try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop
+        $zip = [System.IO.Compression.ZipFile]::OpenRead($VipPath)
+    }
+    catch {
+        throw ("Unable to open VIP as zip for validation ({0}): {1}" -f $VipPath, $_.Exception.Message)
+    }
+
+    try {
+        $entries = $zip.Entries | ForEach-Object { $_.FullName.ToLowerInvariant() }
+    }
+    finally {
+        $zip.Dispose()
+    }
+
+    $missing = $RequiredEntries | Where-Object { -not ($entries -contains $_.ToLowerInvariant()) }
+    if ($missing.Count -gt 0) {
+        throw ("Built VIP missing expected entries: {0}" -f ($missing -join '; '))
+    }
+
+    Write-Information ("VIP content validation passed for {0}" -f $VipPath) -InformationAction Continue
+}
+
 if (-not $SkipPPLCheck) {
     $required = @($pplNeutral, $pplWin64, $pplWin86)
     $missingPpl = @()
@@ -373,6 +408,8 @@ if ($LASTEXITCODE -ne 0) {
 $outputDir = Join-Path -Path $ResolvedRepositoryPath -ChildPath "builds/VI Package"
 New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
 $vipbDir = Split-Path -Parent $ResolvedVIPBPath
+$vipPath = $null
+$destPath = $null
 
 $vipProduced = Get-ChildItem -Path $outputDir -Filter *.vip -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if (-not $vipProduced) {
@@ -381,14 +418,24 @@ if (-not $vipProduced) {
         $destPath = Join-Path -Path $outputDir -ChildPath $vipProduced.Name
         Move-Item -LiteralPath $vipProduced.FullName -Destination $destPath -Force
         Write-Information ("Moved built VIP to {0}" -f $destPath) -InformationAction Continue
+        $vipPath = $destPath
     }
 }
 elseif ($vipProduced) {
     Write-Information ("Built VIP already present at {0}" -f $vipProduced.FullName) -InformationAction Continue
+    $vipPath = $vipProduced.FullName
 }
 
 if (-not $vipProduced) {
     Write-Warning "vipm build succeeded but no .vip was found; downstream locate step may fail."
+}
+elseif ($vipPath -and (Test-Path -LiteralPath $vipPath)) {
+    $expectedEntries = @(
+        'resource/plugins/lv_icon.lvlibp',
+        'resource/plugins/lv_icon.lvlibp.windows_x64',
+        'resource/plugins/lv_icon.lvlibp.windows_x86'
+    )
+    Assert-VipContainsEntries -VipPath $vipPath -RequiredEntries $expectedEntries
 }
 
 Write-Information "Successfully built VI package: $ResolvedVIPBPath" -InformationAction Continue
