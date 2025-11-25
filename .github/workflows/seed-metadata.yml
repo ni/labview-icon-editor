@@ -25,21 +25,29 @@ jobs:
           mkdir -p artifacts/seed
           docker compose -f Tooling/docker/seed/docker-compose.yml run --rm -e INPUT_MODE -e INPUT_INPUT -e INPUT_OUTPUT seed
 
-      - name: Fetch baseline metadata from main
+      - name: Fetch baseline metadata from current branch (fallback: develop)
         run: |
           set -e
-          git fetch origin main --depth=1 || true
-          if git show origin/main:artifacts/seed/metadata.json >/tmp/metadata-main.json 2>/dev/null; then
-            mkdir -p artifacts/seed
-            mv /tmp/metadata-main.json artifacts/seed/metadata-main.json
+          branch="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME:-}}"
+          if git show "HEAD:artifacts/seed/metadata.json" >/tmp/metadata-baseline.json 2>/dev/null; then
+            echo "Baseline metadata found in current branch (${branch:-HEAD})."
           else
-            echo "No baseline metadata found on origin/main; skipping diff input."
+            echo "No baseline in current branch; falling back to origin/develop."
+            git fetch origin develop --depth=1 || true
+            if git show origin/develop:artifacts/seed/metadata.json >/tmp/metadata-baseline.json 2>/dev/null; then
+              echo "Baseline fetched from origin/develop."
+            else
+              echo "No baseline metadata found on current branch or origin/develop; skipping diff input."
+              exit 0
+            fi
           fi
+          mkdir -p artifacts/seed
+          mv /tmp/metadata-baseline.json artifacts/seed/metadata-baseline.json
 
       - name: Compute metadata diff
         run: |
-          if [ -f artifacts/seed/metadata-main.json ]; then
-            git diff --no-index -- artifacts/seed/metadata-main.json artifacts/seed/metadata.json > artifacts/seed/metadata.diff || true
+          if [ -f artifacts/seed/metadata-baseline.json ]; then
+            git diff --no-index -- artifacts/seed/metadata-baseline.json artifacts/seed/metadata.json > artifacts/seed/metadata.diff || true
           else
             echo "No baseline metadata to diff."
           fi
@@ -56,6 +64,6 @@ jobs:
           name: seed-metadata
           path: |
             artifacts/seed/metadata.json
-            artifacts/seed/metadata-main.json
+            artifacts/seed/metadata-baseline.json
             artifacts/seed/metadata.diff
           if-no-files-found: ignore
