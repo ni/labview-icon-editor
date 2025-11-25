@@ -324,16 +324,8 @@ Describe "Presence of core files in the VIP" {
             $normalizedScriptEntries | Should -Contain $token -Because ("Expected script token {0} in package entries." -f $token)
         }
     }
-    It "VIP-CONTENT-003: Both architecture PPLs SHALL be included" {
-        $expectedPpls = @(
-            'lv_icon.lvlibp',
-            'lv_icon_x86.lvlibp',
-            'lv_icon_x64.lvlibp',
-            'lv_icon.lvlibp.windows_x86',
-            'lv_icon.lvlibp.windows_x64'
-        )
-        foreach ($ppl in $expectedPpls) {
-            $entryNames | Should -Contain $ppl -Because ("Expected PPL artifact {0} in package entries." -f $ppl)
-        }
+    It "VIP-CONTENT-003: System sub-package SHALL be included" {
+        $systemPackage = $entryNames | Where-Object { $_ -match '_system-\d+\.\d+\.\d+\.\d+\.vip$' } | Select-Object -First 1
+        $systemPackage | Should -Not -BeNullOrEmpty -Because "Expected system sub-package (*.vip) to be present."
     }
 }
