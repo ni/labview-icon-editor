@@ -1,0 +1,9 @@
+services:
+  seed:
+    image: ghcr.io/labview-community-ci-cd/seed:latest
+    stdin_open: true
+    tty: true
+    volumes:
+      - ../../..:/workspace
+    working_dir: /workspace
+    command: ["seed", "--help"]
