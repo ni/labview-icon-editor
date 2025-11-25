@@ -627,7 +627,7 @@ jobs:
           $vipcFull = Join-Path $repo $vipcRel
           if (-not (Test-Path -LiteralPath $vipcFull)) { throw "VIPC file not found at '$vipcFull'." }
 
-          $applyScript = Join-Path $repo ".github/actions/apply-vipc/ApplyVIPC.ps1"
+          $applyScript = Join-Path $repo "scripts/apply-vipc/ApplyVIPC.ps1"
           if (-not (Test-Path -LiteralPath $applyScript)) { throw "ApplyVIPC.ps1 not found at $applyScript" }
 
           pwsh -NoProfile -File $applyScript `

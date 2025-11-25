@@ -386,7 +386,7 @@ try {
         Write-Verbose "Stack Trace: $($_.Exception.StackTrace)"
     }
 
-    $ApplyVIPC = Join-Path $ActionsPath "apply-vipc/ApplyVIPC.ps1"
+    $ApplyVIPC = Join-Path $RepositoryPath "scripts/apply-vipc/ApplyVIPC.ps1"
     $MissingHelper = Join-Path $ActionsPath "missing-in-project/Invoke-MissingInProjectCLI.ps1"
     $BuildLvlibp = Join-Path $ActionsPath "build-lvlibp/Build_lvlibp.ps1"
     $CloseLabVIEW = Join-Path $ActionsPath "close-labview/Close_LabVIEW.ps1"
