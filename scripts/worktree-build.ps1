@@ -33,6 +33,19 @@ function Ensure-Command {
 
 Ensure-Command -Name git
 
+function Normalize-ScriptPath {
+    param([string]$Path)
+    if (-not $Path) { return $Path }
+    $p = $Path.Trim()
+    if ($p.StartsWith(':')) { $p = $p.TrimStart(':') }
+    try {
+        return (Resolve-Path -LiteralPath $p -ErrorAction Stop).Path
+    }
+    catch {
+        return $p
+    }
+}
+
 $devBindJsonRel = 'reports/dev-mode-bind.json'
 function Assert-DevModeBindOk {
     param(
@@ -112,11 +125,11 @@ try {
     git -C $WorktreePath checkout $Ref | Out-Null
     $worktreeAdded = $true
 
-    $setDevScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/set-development-mode/Set_Development_Mode.ps1'
-    $revertDevScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/revert-development-mode/RevertDevelopmentMode.ps1'
-    $bindDevScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/bind-development-mode/BindDevelopmentMode.ps1'
-    $analyzeVipScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/analyze-vi-package/run-local.ps1'
-    $buildScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/build/Build.ps1'
+    $setDevScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath '.github/actions/set-development-mode/Set_Development_Mode.ps1')
+    $revertDevScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath '.github/actions/revert-development-mode/RevertDevelopmentMode.ps1')
+    $bindDevScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath '.github/actions/bind-development-mode/BindDevelopmentMode.ps1')
+    $analyzeVipScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath '.github/actions/analyze-vi-package/run-local.ps1')
+    $buildScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath '.github/actions/build/Build.ps1')
 
     foreach ($path in @($setDevScript, $revertDevScript, $bindDevScript, $buildScript, $analyzeVipScript)) {
         if (-not (Test-Path -LiteralPath $path)) {
