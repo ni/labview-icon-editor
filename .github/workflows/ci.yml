@@ -447,7 +447,7 @@ jobs:
           - bits: "64"
           - bits: "32"
     env:
-      VIPC_PATH: ".github/actions/apply-vipc/runner_dependencies.vipc"
+      VIPC_PATH: "runner_dependencies.vipc"
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
@@ -618,12 +618,26 @@ jobs:
       - name: Apply VIPC dependencies
         if: steps.detect.outputs.changed_vipc == 'true' && steps.detect.outputs.has_vipm_cli == 'true'
         id: apply_vipc
-        uses: ./.github/actions/apply-vipc
-        with:
-          package_labview_version: ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
-          supported_bitness: ${{ matrix.bits }}
-          repository_path: ${{ github.workspace }}
-          vipc_path: ${{ env.VIPC_PATH }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repo = "$env:GITHUB_WORKSPACE"
+          $vipcRel = "$env:VIPC_PATH"
+          if ([string]::IsNullOrWhiteSpace($vipcRel)) { throw "VIPC_PATH is not set." }
+          $vipcFull = Join-Path $repo $vipcRel
+          if (-not (Test-Path -LiteralPath $vipcFull)) { throw "VIPC file not found at '$vipcFull'." }
+
+          $applyScript = Join-Path $repo ".github/actions/apply-vipc/ApplyVIPC.ps1"
+          if (-not (Test-Path -LiteralPath $applyScript)) { throw "ApplyVIPC.ps1 not found at $applyScript" }
+
+          pwsh -NoProfile -File $applyScript `
+            -Package_LabVIEW_Version "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
+            -SupportedBitness "${{ matrix.bits }}" `
+            -RepositoryPath $repo `
+            -VIPCPath $vipcFull `
+            -Verbose
+
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Summarize applied VIPC file
         if: steps.detect.outputs.changed_vipc == 'true' && steps.detect.outputs.has_vipm_cli == 'true'

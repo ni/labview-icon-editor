@@ -28,7 +28,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 
 > **Prerequisites**:
 > - **LabVIEW 2021 SP1 (32-bit and 64-bit)** – and **LabVIEW 2023 (64-bit) for building the package**.
-> - The relevant **VIPC** file is now at `.github/actions/apply-vipc/runner_dependencies.vipc`.
+> - The relevant **VIPC** file is `runner_dependencies.vipc` (preferred at repo root; a copy also lives at `.github/actions/apply-vipc/runner_dependencies.vipc`).
 > - [PowerShell 7+](https://github.com/PowerShell/PowerShell/releases/latest)
 > - [Git for Windows](https://github.com/git-for-windows/git/releases/latest)
 
@@ -43,7 +43,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
    - [Git for Windows](https://github.com/git-for-windows/git/releases/latest)
 
 2. **Apply the VIPC**
-  - Apply `.github/actions/apply-vipc/runner_dependencies.vipc` with VIPM in **LabVIEW 2021 (32-bit)**; repeat for **LabVIEW 2021 (64-bit)**. If using **LabVIEW 2023 (64-bit)** for builds, apply the same VIPC there as well.
+  - Apply `runner_dependencies.vipc` (root copy preferred) with VIPM in **LabVIEW 2021 (32-bit)**; repeat for **LabVIEW 2021 (64-bit)**. If using **LabVIEW 2023 (64-bit)** for builds, apply the same VIPC there as well.
    - This is required on new runners because the workflow's `apply-deps` job in `.github/workflows/ci.yml` runs only when `.vipc` files change (`if: needs.changes.outputs.vipc == 'true'`). When no `.vipc` updates exist, dependencies aren't installed automatically, so apply the VIPC manually.
 
 3. **Configure a Self-Hosted Runner**  
@@ -105,7 +105,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 
 1. **Install LabVIEW 2021 SP1 (32-bit and 64-bit)**  
    - Confirm both are present on your Windows machine.  
-   - Apply `.github/actions/apply-vipc/runner_dependencies.vipc` to each if needed.
+   - Apply `runner_dependencies.vipc` (root copy preferred) to each if needed.
 
 2. **Install PowerShell 7+ and Git**  
    - Reboot if newly installed so environment variables are recognized.
