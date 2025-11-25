@@ -1,25 +1,29 @@
 # Seed Docker helper
 
-Run the Seed CLI from a locally built image so each fork can own its own tag without relying on GHCR.
+Run the Seed CLI from a locally built image (no GHCR dependency). The repo is bind-mounted to `/workspace` inside the container.
 
-- Build context: vendored source under `Tooling/seed` (Dockerfile in that folder).
-- Local image tag: `seed-local:latest`.
-- Mounts the repo at `/workspace` by default.
+- Build context: `Tooling/seed` (vendored source + Dockerfile)
+- Tag produced: `seed-local:latest`
+- Compose file: `Tooling/docker/seed/docker-compose.yml`
 
-## Usage
-1) Ensure Docker is installed. The compose file will build the local image on first run.
-2) Show Seed help from the container (builds if needed):
-   ```
-   docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed
-   ```
-   (By default the service runs `seed --help`.)
-3) Run a specific Seed command (builds if needed):
-   ```
-   docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed seed <args>
-   ```
-4) Drop into a shell inside the container:
-   ```
-   docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed bash
-   ```
+## Quick start
+Show Seed help (auto-builds if needed):
+```
+docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed
+```
 
-The repo is mounted at `/workspace`; adjust paths accordingly when running commands in the container.
+Run a Seed command:
+```
+docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed seed <args>
+# example: seed vipb json --input /workspace/Tooling/deployment/labview-icon-editor.vipb --output /workspace/out.json
+```
+
+Open a shell:
+```
+docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed bash
+```
+
+## Notes
+- Paths inside the container should use `/workspace/...` since the repo root is mounted there.
+- The image builds locally; each fork can retag as desired by changing `image:` in `docker-compose.yml`.
+- To rebuild after source changes: `docker compose -f Tooling/docker/seed/docker-compose.yml build --no-cache seed`.
