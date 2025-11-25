@@ -50,6 +50,18 @@ function Get-ExpectedTokenPath {
     return $Repo
 }
 
+function Get-WorktreeHash {
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $null }
+    try {
+        $leaf = Split-Path -LiteralPath $Path -Leaf
+        $m = [regex]::Match($leaf, '^lv-ie-worktree-\d{8}-\d{6}-(?<hash>[0-9a-fA-F]{7,8})$')
+        if ($m.Success) { return $m.Groups['hash'].Value.ToLowerInvariant() }
+    }
+    catch {}
+    return $null
+}
+
 function Get-LibraryPathState {
     param(
         [string]$LvVersion,
@@ -398,6 +410,18 @@ else {
         }
 
         $autoForce = (-not [string]::IsNullOrWhiteSpace($currentNorm)) -and ($currentNorm -ne $expectedNorm) -and $AutoFixOtherRepo -and -not $Force
+        # Auto-force when the token points to a stale worktree for this repo (same prefix, different hash)
+        $staleWorktreeForce = $false
+        if (-not $Force) {
+            $expectedHash = Get-WorktreeHash -Path $expectedToken
+            $currentHash  = Get-WorktreeHash -Path $res.current_path
+            if ($expectedHash -and $currentHash -and ($expectedHash -ne $currentHash)) {
+                $staleWorktreeForce = $true
+            }
+        }
+        if ($staleWorktreeForce) {
+            $autoForce = $true
+        }
         $forceApplied = $Force -or $autoForce
         $conflictsOtherRepo = (-not [string]::IsNullOrWhiteSpace($currentNorm)) -and ($currentNorm -ne $expectedNorm) -and -not $forceApplied
         if ($conflictsOtherRepo) {
@@ -498,6 +522,9 @@ else {
                 $res.message = 'Bound development mode (token set and packed libs cleared)'
                 if ($autoForce) {
                     $res.message += " (auto-fixed prior binding from $($res.current_path))"
+                    if ($staleWorktreeForce) {
+                        $res.message += " [stale worktree token auto-forced]"
+                    }
                 }
             }
             else {
