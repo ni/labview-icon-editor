@@ -42,6 +42,7 @@ on:
 jobs:
   verify-checklist-sync:
     name: Requirements
+    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -72,6 +73,7 @@ jobs:
   test-compute-version-bump:
     name: Test compute-version bump selection (matrix)
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -194,6 +196,7 @@ jobs:
   test-tag-existence-check:
     name: Test tag existence check logic
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     steps:
       - name: Simulate tag existence/mismatch scenarios
@@ -247,6 +250,7 @@ jobs:
           echo "Mismatch detected as expected: remote tag $remote_sha vs new head $new_head."
   enforce-verify-checklist-needs:
     name: Enforce jobs depend on verify-checklist-sync
+    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -287,6 +291,7 @@ jobs:
   rtm-gates:
     name: RTM validation and coverage gate
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -326,6 +331,7 @@ jobs:
   docs-quality:
     name: Docs link check and ADR lint
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -374,6 +380,7 @@ jobs:
   seed-containerized:
     name: Seed + Analyze (containerized)
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -398,6 +405,7 @@ jobs:
   resolve-labview-version:
     name: Resolve LabVIEW version from VIPB
     needs: [verify-checklist-sync]
+    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     outputs:
       minimum_supported_lv_version: ${{ steps.read.outputs.lv_version }}
@@ -437,6 +445,7 @@ jobs:
   version:
     name: Compute Version
     needs: [verify-checklist-sync]
+    if: runner.os == 'Windows'
     runs-on: self-hosted-windows-lv
     defaults:
       run:
@@ -461,6 +470,7 @@ jobs:
   list-collaborators:
     name: List Repo Collaborators
     needs: [verify-checklist-sync]
+    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -483,6 +493,7 @@ jobs:
   build-worktree:
     name: Build (worktree)
     needs: [verify-checklist-sync, version, resolve-labview-version, test-compute-version-bump, test-tag-existence-check, rtm-gates, docs-quality, list-collaborators]
+    if: runner.os == 'Windows'
     runs-on: self-hosted-windows-lv
     defaults:
       run:
