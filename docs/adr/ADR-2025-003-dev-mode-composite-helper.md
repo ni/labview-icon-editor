@@ -27,5 +27,5 @@ Choose **Option A**. Standardize on `scripts/bind-development-mode` backed by `B
 - [ ] Add tests/lints for JSON schema and BIND requirement coverage. (QA/Automation)
 - [ ] Document usage and failure modes in `docs/ci` or `docs/requirements`. (Docs)
 
-> Traceability: BIND-001..BIND-014; scripts: `scripts/bind-development-mode/BindDevelopmentMode.ps1`, `scripts/bind-development-mode/action.yml`; helpers: `scripts/set-development-mode/Set_Development_Mode.ps1`, `scripts/revert-development-mode/RevertDevelopmentMode.ps1`.
+> Traceability: BIND-001..BIND-014; scripts: `scripts/bind-development-mode/BindDevelopmentMode.ps1`; helpers: `scripts/set-development-mode/Set_Development_Mode.ps1`, `scripts/revert-development-mode/RevertDevelopmentMode.ps1`.
 

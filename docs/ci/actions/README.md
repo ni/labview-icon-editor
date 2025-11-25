@@ -1,6 +1,6 @@
-# Composite GitHub Actions
+# Reusable Actions & Scripts
 
-This repository defines several reusable [composite actions](https://docs.github.com/actions/creating-actions/creating-a-composite-action) in [`scripts`](../../../scripts). These actions wrap common LabVIEW build and test tasks and can be called from workflows in this or other repositories. Workflows such as [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) rely on the [`build-lvlibp`](../../../scripts/build-lvlibp) and [`build-vip`](../../../scripts/build-vip) actions for their build steps.
+This repository defines reusable build/test tasks under [`scripts`](../../../scripts); many are composite actions, some are plain scripts. Workflows such as [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) rely on the [`build-lvlibp`](../../../scripts/build-lvlibp) and [`build-vip`](../../../scripts/build-vip) actions for their build steps.
 
 | Action | Description |
 |---|---|
@@ -15,13 +15,13 @@ This repository defines several reusable [composite actions](https://docs.github
 | [generate-release-notes](../../../scripts/generate-release-notes) | Generates a `release_notes.md` summarizing recent commits for use in changelogs or release drafts. |
 | [missing-in-project](../../../scripts/missing-in-project) | Checks a project for missing files using `MissingInProjectCLI.vi`. |
 | [modify-vipb-display-info](../../../scripts/modify-vipb-display-info) | Updates display information in a VIPB file. |
-| [prepare-labview-source](../../../scripts/prepare-labview-source) | Prepares LabVIEW sources for builds. |
 | [rename-file](../../../scripts/rename-file) | Renames a file on disk. |
 | [restore-setup-lv-source](../../../scripts/restore-setup-lv-source) | Reverts prepared sources back to their packaged state. |
 | [revert-development-mode](../../../scripts/revert-development-mode) | Restores the repository after development mode. |
-| [bind-development-mode](../../../scripts/bind-development-mode) | Binds/unbinds dev mode per bitness, emits JSON status, and supports dry-run/force (BIND-001..BIND-014). |
+| [prepare-labview-source](../../../scripts/prepare-labview-source/README.md) | Script: prepares LabVIEW sources for builds. |
+| [bind-development-mode](../../../scripts/bind-development-mode/README.md) | Script: binds/unbinds dev mode per bitness, emits JSON status, supports dry-run/force (BIND-001..BIND-014). |
 | [run-unit-tests](../../../scripts/run-unit-tests) | Executes LabVIEW unit tests via g-cli. |
 | [set-development-mode](../../../scripts/set-development-mode) | Configures the repository for development mode. |
 
-Each action directory includes a `README.md` and `action.yml` with full usage details.
+Each task directory includes a `README.md` (and an `action.yml` when it is a composite action) with usage details.
 

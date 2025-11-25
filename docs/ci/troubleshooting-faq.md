@@ -123,7 +123,7 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - Another step re-applied the `Set_Development_Mode.ps1` script.
 
 **Solution**:
-1. Run the bind/unbind helper in unbind mode: `BindDevelopmentMode.ps1 -Mode unbind -Bitness both -RepositoryPath <repo> [-Force]` (or the composite `scripts/bind-development-mode` with `mode: unbind`).  
+1. Run the bind/unbind helper in unbind mode: `BindDevelopmentMode.ps1 -Mode unbind -Bitness both -RepositoryPath <repo> [-Force]`.  
 2. Check `reports/dev-mode-bind.json` for per-bitness status; `json_path` is surfaced even on failure.  
 3. If the INI token points to another repo, rerun with `-Force` to clear it intentionally.  
 4. Confirm your pipeline sequence: enable dev mode only when needed, then unbind before final builds.
