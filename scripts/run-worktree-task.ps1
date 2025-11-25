@@ -56,6 +56,12 @@ try {
 }
 catch {
     Write-Output "Inner launch failed: $($_.Exception.Message)"
+    if ($_.ScriptStackTrace) {
+        Write-Output ("Stack: {0}" -f $_.ScriptStackTrace)
+    }
+    if ($_.InvocationInfo) {
+        Write-Output ("At {0}:{1}" -f $_.InvocationInfo.ScriptName, $_.InvocationInfo.ScriptLineNumber)
+    }
     $code = 1
 }
 finally {

@@ -645,13 +645,19 @@ if (@($results | Where-Object { $_.status -eq 'fail' -and $_.message -match 'use
 # If a target bitness has no LocalHost.LibraryPaths entry, suggest binding for that bitness.
 $resultsByArch = @{}
 foreach ($r in $results) { $resultsByArch[$r.bitness] = $r }
-$missingTokens = @($crossVersion | Where-Object { $_.version -like "$lvVersion*" -and $_.tag -eq 'NONE' -and $resultsByArch[$_.arch].status -ne 'success' })
+function Get-ResultStatus {
+    param([string]$Arch)
+    $res = $resultsByArch[$Arch]
+    if (-not $res) { return $null }
+    try { return $res.status } catch { return $null }
+}
+$missingTokens = @($crossVersion | Where-Object { $_.version -like "$lvVersion*" -and $_.tag -eq 'NONE' -and (Get-ResultStatus $_.arch) -ne 'success' })
 if ($missingTokens.Count -gt 0) {
     $archText = ($missingTokens | ForEach-Object { "$($_.arch)-bit" }) -join '/'
     $hintLines.Add("No LocalHost.LibraryPaths entry found for $archText LabVIEW $lvVersion; run dev-mode bind for that bitness to populate the INI token.")
 }
 # Guardrail: target version tokens should point to this repo for all bitnesses
-$wrongRepo = @($crossVersion | Where-Object { $_.version -like "$lvVersion*" -and $_.tag -ne 'THIS-REPO' -and $_.tag -ne 'NONE' -and $resultsByArch[$_.arch].status -ne 'success' })
+$wrongRepo = @($crossVersion | Where-Object { $_.version -like "$lvVersion*" -and $_.tag -ne 'THIS-REPO' -and $_.tag -ne 'NONE' -and (Get-ResultStatus $_.arch) -ne 'success' })
 if ($wrongRepo.Count -gt 0) {
     $archText = ($wrongRepo | ForEach-Object { "$($_.arch)-bit" }) -join '/'
     $hintLines.Add("LabVIEW $lvVersion ($archText) LocalHost.LibraryPaths points elsewhere; bind those bitnesses so both tokens point to this repo.")

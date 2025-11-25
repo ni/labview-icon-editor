@@ -176,6 +176,12 @@ try {
     $analyzeVipScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath 'scripts/analyze-vi-package/run-local.ps1')
     $buildScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath 'scripts/build/Build.ps1')
 
+    # Ensure the worktree uses the latest local binder (pick up uncommitted fixes)
+    $sourceBinder = Join-Path -Path $SourceRepoPath -ChildPath 'scripts/bind-development-mode/BindDevelopmentMode.ps1'
+    if (Test-Path -LiteralPath $sourceBinder) {
+        Copy-Item -LiteralPath $sourceBinder -Destination $bindDevScript -Force
+    }
+
     foreach ($path in @($setDevScript, $revertDevScript, $bindDevScript, $buildScript, $analyzeVipScript)) {
         if (-not (Test-Path -LiteralPath $path)) {
             throw "Expected script not found: $path"
