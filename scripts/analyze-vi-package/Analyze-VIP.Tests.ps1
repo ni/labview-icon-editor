@@ -12,13 +12,15 @@ Set-StrictMode -Off
 
 $vipReaderPath = Join-Path $PSScriptRoot 'VIPReader.psm1'
 $pendingSkipReason = $null
-if (-not (Test-Path -LiteralPath $vipReaderPath)) {
-    $pendingSkipReason = "VIPReader module not found at $vipReaderPath; skipping Analyze-VIP."
-}
 
-# Resolve VIP path during discovery so we can decide whether to skip.
-$vipPath = if ($VipPath) { $VipPath } else { $env:VIP_PATH }
-if (-not $vipPath -or -not (Test-Path -LiteralPath $vipPath -PathType Leaf)) {
+function Resolve-VipPath {
+    param([string]$ExplicitPath)
+
+    $vipPath = if ($ExplicitPath) { $ExplicitPath } else { $env:VIP_PATH }
+    if ($vipPath -and (Test-Path -LiteralPath $vipPath -PathType Leaf)) {
+        return $vipPath
+    }
+
     $repoRoot = $null
     try { $repoRoot = (git -C $PSScriptRoot rev-parse --show-toplevel 2>$null) } catch {}
     if (-not $repoRoot) {
@@ -29,35 +31,42 @@ if (-not $vipPath -or -not (Test-Path -LiteralPath $vipPath -PathType Leaf)) {
         }
     }
 
-    if ($repoRoot) {
-        $vipDir = Join-Path $repoRoot 'builds\VI Package'
-        $tagVersion = '0.1.0'
-        try {
-            $tag = git -C $repoRoot describe --tags --abbrev=0 2>$null
-            if ($tag -and ($tag -match 'v?(\d+)\.(\d+)\.(\d+)')) {
-                $tagVersion = "{0}.{1}.{2}" -f $Matches[1], $Matches[2], $Matches[3]
-            }
-        } catch {}
-        $commitCount = $null
-        try { $commitCount = git -C $repoRoot rev-list --count HEAD 2>$null } catch {}
-        if ($commitCount) {
-            $deterministicName = "ni_icon_editor-{0}.{1}.vip" -f $tagVersion, $commitCount
-            $candidate = Join-Path $vipDir $deterministicName
-            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
-                Write-Information ("VIP_PATH not set; using deterministic VIP {0}" -f $candidate) -InformationAction Continue
-                $vipPath = $candidate
-            }
+    if (-not $repoRoot) { return $null }
+
+    $vipDir = Join-Path $repoRoot 'builds\VI Package'
+    $tagVersion = '0.1.0'
+    try {
+        $tag = git -C $repoRoot describe --tags --abbrev=0 2>$null
+        if ($tag -and ($tag -match 'v?(\d+)\.(\d+)\.(\d+)')) {
+            $tagVersion = "{0}.{1}.{2}" -f $Matches[1], $Matches[2], $Matches[3]
         }
-        if (-not $vipPath) {
-            $fallback = Get-ChildItem -Path $vipDir -Filter *.vip -File -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-            if ($fallback) {
-                $vipPath = $fallback.FullName
-                Write-Information ("VIP_PATH not set; using latest VIP under {0}: {1}" -f $vipDir, $vipPath) -InformationAction Continue
-            }
+    } catch {}
+    $commitCount = $null
+    try { $commitCount = git -C $repoRoot rev-list --count HEAD 2>$null } catch {}
+    if ($commitCount) {
+        $deterministicName = "ni_icon_editor-{0}.{1}.vip" -f $tagVersion, $commitCount
+        $candidate = Join-Path $vipDir $deterministicName
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+            Write-Information ("VIP_PATH not set; using deterministic VIP {0}" -f $candidate) -InformationAction Continue
+            return $candidate
         }
     }
+
+    $fallback = Get-ChildItem -Path $vipDir -Filter *.vip -File -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($fallback) {
+        $resolved = $fallback.FullName
+        Write-Information ("VIP_PATH not set; using latest VIP under {0}: {1}" -f $vipDir, $resolved) -InformationAction Continue
+        return $resolved
+    }
+
+    return $null
 }
-$script:ResolvedVipPath = $vipPath
+
+if (-not (Test-Path -LiteralPath $vipReaderPath)) {
+    $pendingSkipReason = "VIPReader module not found at $vipReaderPath; skipping Analyze-VIP."
+}
+
+$script:ResolvedVipPath = Resolve-VipPath -ExplicitPath $VipPath
 if (-not $script:ResolvedVipPath -or -not (Test-Path -LiteralPath $script:ResolvedVipPath -PathType Leaf)) {
     Write-Warning "VIP_PATH not set and no .vip under builds\VI Package. Set VIP_PATH or run via run-local.ps1. Skipping Analyze-VIP tests."
     Describe "Analyze VIP" -Skip:$true { It "skipped" { } }
@@ -86,7 +95,70 @@ elseif (-not $env:MIN_LV_VERSION) {
 }
 
 BeforeAll {
-    $localVip = $script:ResolvedVipPath
+    function Resolve-VipPath {
+        param([string]$ExplicitPath)
+
+        $vipPath = if ($ExplicitPath) { $ExplicitPath } else { $env:VIP_PATH }
+        if ($vipPath -and (Test-Path -LiteralPath $vipPath -PathType Leaf)) {
+            return $vipPath
+        }
+
+        $repoRoot = $null
+        try { $repoRoot = (git -C $PSScriptRoot rev-parse --show-toplevel 2>$null) } catch {}
+        if (-not $repoRoot) {
+            $probe = $PSScriptRoot
+            for ($i = 0; $i -lt 5 -and $probe; $i++) {
+                if (Test-Path (Join-Path $probe '.git')) { $repoRoot = $probe; break }
+                $probe = Split-Path -Parent $probe
+            }
+        }
+
+        if (-not $repoRoot) { return $null }
+
+        $vipDir = Join-Path $repoRoot 'builds\VI Package'
+        $tagVersion = '0.1.0'
+        try {
+            $tag = git -C $repoRoot describe --tags --abbrev=0 2>$null
+            if ($tag -and ($tag -match 'v?(\d+)\.(\d+)\.(\d+)')) {
+                $tagVersion = "{0}.{1}.{2}" -f $Matches[1], $Matches[2], $Matches[3]
+            }
+        } catch {}
+        $commitCount = $null
+        try { $commitCount = git -C $repoRoot rev-list --count HEAD 2>$null } catch {}
+        if ($commitCount) {
+            $deterministicName = "ni_icon_editor-{0}.{1}.vip" -f $tagVersion, $commitCount
+            $candidate = Join-Path $vipDir $deterministicName
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                Write-Information ("VIP_PATH not set; using deterministic VIP {0}" -f $candidate) -InformationAction Continue
+                return $candidate
+            }
+        }
+
+        $fallback = Get-ChildItem -Path $vipDir -Filter *.vip -File -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if ($fallback) {
+            $resolved = $fallback.FullName
+            Write-Information ("VIP_PATH not set; using latest VIP under {0}: {1}" -f $vipDir, $resolved) -InformationAction Continue
+            return $resolved
+        }
+
+        return $null
+    }
+
+    $vipReaderPath = Join-Path $PSScriptRoot 'VIPReader.psm1'
+    if (-not (Test-Path -LiteralPath $vipReaderPath)) {
+        throw "VIPReader module not found at $vipReaderPath; unable to analyze VIP."
+    }
+    Import-Module -Name $vipReaderPath -Force
+
+    if (-not $env:MIN_LV_VERSION) {
+        if ($MinLVVersion) { $env:MIN_LV_VERSION = $MinLVVersion }
+        else { $env:MIN_LV_VERSION = '21.0' }
+    }
+
+    $localVip = (Get-Variable -Scope Script -Name ResolvedVipPath -ErrorAction SilentlyContinue).Value
+    if (-not $localVip -or -not (Test-Path -LiteralPath $localVip -PathType Leaf)) {
+        $localVip = Resolve-VipPath -ExplicitPath $VipPath
+    }
     if (-not $localVip -or -not (Test-Path -LiteralPath $localVip -PathType Leaf)) {
         $localVip = if ($VipPath) { $VipPath } else { $env:VIP_PATH }
         if (-not $localVip -or -not (Test-Path -LiteralPath $localVip -PathType Leaf)) {

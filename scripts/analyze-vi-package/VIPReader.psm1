@@ -5,6 +5,18 @@ function Get-CaseInsensitiveTable {
     return New-Object System.Collections.Hashtable ([System.StringComparer]::InvariantCultureIgnoreCase)
 }
 
+function Normalize-VipValue {
+    param([string]$Value)
+
+    if ($null -eq $Value) { return $null }
+    $trimmed = $Value.Trim()
+    # Strip a single layer of surrounding quotes that VIPM emits for string fields.
+    if ($trimmed.Length -ge 2 -and $trimmed.StartsWith('"') -and $trimmed.EndsWith('"')) {
+        $trimmed = $trimmed.Substring(1, $trimmed.Length - 2)
+    }
+    return $trimmed
+}
+
 function Read-VipSpec {
     [CmdletBinding()]
     param(
@@ -47,7 +59,7 @@ function Read-VipSpec {
         $kv = [regex]::Match($trim, '^(?<key>[^=]+)=(?<val>.*)$')
         if ($kv.Success -and $current) {
             $key = $kv.Groups['key'].Value.Trim()
-            $val = $kv.Groups['val'].Value.Trim()
+            $val = Normalize-VipValue -Value $kv.Groups['val'].Value
             $current[$key] = $val
         }
     }
