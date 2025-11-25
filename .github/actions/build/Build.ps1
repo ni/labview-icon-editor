@@ -465,6 +465,14 @@ try {
         VIPCPath                  = $vipcPath
     } -TimeoutSec 600 -DisplayName "Apply VIPC (64-bit)"
 
+    # 6.1) Preflight missing items using existing missing-in-project helper (64-bit)
+    Write-Information "Preflight: checking for missing project items via missing-in-project..." -InformationAction Continue
+    Invoke-ScriptSafe -ScriptPath $MissingHelper -ArgumentMap @{
+        LVVersion   = $lvVersion
+        Arch        = '64'
+        ProjectFile = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
+    } -TimeoutSec 300 -DisplayName "Missing in project (64-bit)"
+
     # 6.1) Ensure LabVIEW 64-bit is closed before building to avoid loaded NIIconEditor collisions
     Write-Verbose "Pre-build: closing LabVIEW (64-bit) to ensure a clean session..."
     Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
