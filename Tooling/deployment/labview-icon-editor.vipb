@@ -137,12 +137,6 @@
         <Additional_Destination_Index>4</Additional_Destination_Index>
       </Destination_Overrides>
       <Destination_Overrides>
-        <Path>Tooling/deployment/lv_icon_versions/lv_icon_uninstall_backup.zip</Path>
-        <Destination>0</Destination>
-        <Additional_Destination>true</Additional_Destination>
-        <Additional_Destination_Index>2</Additional_Destination_Index>
-      </Destination_Overrides>
-      <Destination_Overrides>
         <Path>resource/plugins</Path>
         <Destination>0</Destination>
         <Additional_Destination>true</Additional_Destination>
