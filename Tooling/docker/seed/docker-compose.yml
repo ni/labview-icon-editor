@@ -4,6 +4,7 @@ services:
       context: ../../seed
       dockerfile: Dockerfile
     image: seed-local:latest
+    pull_policy: never
     stdin_open: true
     tty: true
     volumes:
