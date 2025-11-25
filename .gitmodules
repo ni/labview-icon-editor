@@ -1,0 +1,3 @@
+[submodule "Tooling/seed"]
+	path = Tooling/seed
+	url = https://github.com/LabVIEW-Community-CI-CD/seed
