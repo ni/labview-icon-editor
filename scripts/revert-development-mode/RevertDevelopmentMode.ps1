@@ -77,7 +77,7 @@ function Invoke-ScriptSafe {
 # Sequential script execution with error handling
 try {
     # Always resolve from VIPB to ensure determinism; ignore inbound overrides
-    $Package_LabVIEW_Version = & (Join-Path $PSScriptRoot '..\..\..\scripts\get-package-lv-version.ps1') -RepositoryPath $RepositoryPath
+    $Package_LabVIEW_Version = & (Join-Path $RepositoryPath 'scripts/get-package-lv-version.ps1') -RepositoryPath $RepositoryPath
     Write-Information ("Detected LabVIEW version from VIPB: {0}" -f $Package_LabVIEW_Version) -InformationAction Continue
 
     $targetBitness = $SupportedBitness
