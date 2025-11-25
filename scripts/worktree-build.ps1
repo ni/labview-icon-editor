@@ -88,6 +88,20 @@ function Write-BitnessBanner {
     Write-Host ("{0}==== {1}-bit phase ===={2}" -f $color, $Arch, $resetColor)
 }
 
+function Write-Separator {
+    param(
+        [string]$Label = ''
+    )
+    $line = ('-' * 80)
+    if ([string]::IsNullOrWhiteSpace($Label)) {
+        Write-Host $line
+    } else {
+        Write-Host "$line"
+        Write-Host ("-- {0}" -f $Label)
+        Write-Host "$line"
+    }
+}
+
 # Guard: the VIP packaging step expects both x86 and x64 PPLs to be staged.
 if ($LvlibpBitness -ne 'both') {
     throw "Worktree builds require LvlibpBitness=both so the build-vip step can find both x86/x64 PPLs. Rerun with LvlibpBitness=both (see VS Code task input)."
@@ -112,6 +126,7 @@ Write-Host "Source repo:     $SourceRepoPath"
 Write-Host "Ref to checkout: $Ref"
 Write-Host "Worktree path:   $WorktreePath"
 Write-Host "Output dir:      $OutputDirectory"
+Write-Separator "Initialize worktree"
 
 $worktreeAdded = $false
 $devModeConfigured = @()
@@ -140,6 +155,7 @@ try {
     $bitnessList = if ($LvlibpBitness -eq 'both') { @('32','64') } else { @($SupportedBitness) }
     Write-Host ("Dev-mode preparation for bitness(es): {0}" -f ($bitnessList -join ', '))
     foreach ($arch in ($bitnessList | Select-Object -Unique)) {
+        Write-Separator ("Dev-mode bind {0}-bit" -f $arch)
         Write-BitnessBanner -Arch $arch
         Write-Host "Setting development mode ($arch-bit)..."
         & $setDevScript -RepositoryPath $WorktreePath -SupportedBitness $arch
@@ -168,6 +184,7 @@ try {
     }
 
     Write-Host "Running full build (bitness: $LvlibpBitness)..."
+    Write-Separator "Build start"
     & $buildScript @buildArgs
 
     if (Test-Path -LiteralPath $OutputDirectory) {
