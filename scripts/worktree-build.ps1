@@ -19,7 +19,10 @@ param(
     [string]$AuthorName,
     [string]$OutputDirectory,
     [switch]$KeepWorktree,
-    [switch]$AnalyzeVIP
+    [switch]$AnalyzeVIP,
+    [int]$GcliLockTimeoutSeconds = 300,
+    [string]$GcliMutexName = 'Global\LabVIEW-IconEditor-gcli',
+    [string]$GcliLockFilePath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -28,6 +31,96 @@ function Ensure-Command {
     param([string]$Name)
     if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
         throw "Required command '$Name' was not found on PATH."
+    }
+}
+
+function Resolve-GCliLockPath {
+    param([string]$OverridePath)
+    if (-not [string]::IsNullOrWhiteSpace($OverridePath)) {
+        return $OverridePath
+    }
+
+    $commonDocs = $null
+    try { $commonDocs = [Environment]::GetFolderPath('CommonDocuments') } catch { $commonDocs = $null }
+    if (-not [string]::IsNullOrWhiteSpace($commonDocs)) {
+        return Join-Path $commonDocs 'labview-icon-editor-gcli.lock'
+    }
+
+    $tempRoot = if ($env:WINDIR) { Join-Path $env:WINDIR 'Temp' } else { [System.IO.Path]::GetTempPath() }
+    return Join-Path $tempRoot 'labview-icon-editor-gcli.lock'
+}
+
+function Acquire-GCliMutex {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][int]$TimeoutSeconds,
+        [string]$LockFilePath
+    )
+
+    $lockPath = Resolve-GCliLockPath -OverridePath $LockFilePath
+    $lockDir = Split-Path -Parent $lockPath
+    if (-not (Test-Path -LiteralPath $lockDir)) {
+        try { New-Item -ItemType Directory -Path $lockDir -Force | Out-Null } catch {
+            throw ("Unable to create g-cli lock directory '{0}': {1}. Set -GcliLockFilePath to a writable location." -f $lockDir, $_.Exception.Message)
+        }
+    }
+
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    $lock = [pscustomobject]@{
+        Kind       = 'File'
+        Mutex      = $null
+        FileStream = $null
+        Path       = $lockPath
+    }
+
+    while ($true) {
+        try {
+            $lock.FileStream = [System.IO.File]::Open($lockPath, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::ReadWrite, [System.IO.FileShare]::None)
+            break
+        }
+        catch [System.UnauthorizedAccessException] {
+            throw ("Access denied creating or locking '{0}'. Set -GcliLockFilePath to a writable location." -f $lockPath)
+        }
+        catch {
+            if ([DateTime]::UtcNow -ge $deadline) {
+                throw ("Another LabVIEW/g-cli job is already running (lock '{0}' held; key '{1}'). Wait for it to finish or rerun with a longer -GcliLockTimeoutSeconds." -f $lockPath, $Name)
+            }
+            Start-Sleep -Seconds 1
+        }
+    }
+
+    try {
+        $mutex = [System.Threading.Mutex]::new($false, $Name)
+        if ($mutex.WaitOne([TimeSpan]::Zero)) {
+            $lock.Kind = 'File+Mutex'
+            $lock.Mutex = $mutex
+        }
+        else {
+            $mutex.Dispose()
+        }
+    }
+    catch {
+        # Best-effort; file lock still enforces exclusivity across users.
+    }
+
+    return $lock
+}
+
+function Release-GCliMutex {
+    param([psobject]$Lock)
+    if (-not $Lock) { return }
+
+    if ($Lock.Mutex) {
+        try { $Lock.Mutex.ReleaseMutex() } catch { }
+        try { $Lock.Mutex.Dispose() } catch { }
+    }
+
+    if ($Lock.FileStream) {
+        try { $Lock.FileStream.Dispose() } catch { }
+    }
+
+    if ($Lock.Path) {
+        Remove-Item -LiteralPath $Lock.Path -ErrorAction SilentlyContinue
     }
 }
 
@@ -160,6 +253,12 @@ Write-Separator "Initialize worktree"
 
 $worktreeAdded = $false
 $devModeConfigured = @()
+$gcliMutex = $null
+$gcliLockPath = Resolve-GCliLockPath -OverridePath $GcliLockFilePath
+
+Write-Host ("Waiting for LabVIEW/g-cli lock '{0}' (timeout: {1}s; file: {2})..." -f $GcliMutexName, $GcliLockTimeoutSeconds, $gcliLockPath)
+$gcliMutex = Acquire-GCliMutex -Name $GcliMutexName -TimeoutSeconds $GcliLockTimeoutSeconds -LockFilePath $gcliLockPath
+Write-Host ("g-cli lock acquired: {0}" -f $GcliMutexName)
 
 $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 try {
@@ -283,6 +382,11 @@ finally {
     }
     elseif ($worktreeAdded) {
         Write-Host "Keeping worktree at $WorktreePath (per -KeepWorktree)."
+    }
+
+    if ($gcliMutex) {
+        Write-Host ("Releasing LabVIEW/g-cli lock '{0}'" -f $GcliMutexName)
+        Release-GCliMutex -Lock $gcliMutex
     }
 }
 
