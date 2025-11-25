@@ -1,6 +1,6 @@
 # Seed Docker helper
 
-Use the Seed CLI via a locally built Docker image. The repo is bind-mounted to `/workspace` inside the container, so reference paths accordingly.
+Use the Seed CLI via a locally built Docker image. The repo is bind-mounted to `/workspace` inside the container, so reference paths accordingly. Docker Desktop is assumed to be available and running.
 
 - Build context: `Tooling/seed` (vendored source + Dockerfile)
 - Tag produced: `seed-local:latest`
