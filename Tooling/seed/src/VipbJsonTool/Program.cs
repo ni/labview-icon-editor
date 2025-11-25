@@ -97,16 +97,16 @@ namespace VipbJsonTool
         private static void ConvertBuildSpecToJson(string inputPath, string outputPath)
         {
             string ext = Path.GetExtension(inputPath).ToLowerInvariant();
-            if (ext == ".vipb")      ConvertXmlToJson(inputPath, outputPath, "Package");
-            else if (ext == ".lvproj") ConvertXmlToJson(inputPath, outputPath, "Project");
+            if (ext == ".vipb")        ConvertXmlToJson(inputPath, outputPath, new[] { "Package", "VI_Package_Builder_Settings" });
+            else if (ext == ".lvproj") ConvertXmlToJson(inputPath, outputPath, new[] { "Project" });
             else throw new InvalidOperationException("Unsupported input file type for buildspec2json. Must be .vipb or .lvproj");
         }
 
         private static void ConvertJsonToBuildSpec(string inputPath, string outputPath)
         {
             string ext = Path.GetExtension(outputPath).ToLowerInvariant();
-            if (ext == ".vipb")      ConvertJsonToXml(inputPath, outputPath, "Package");
-            else if (ext == ".lvproj") ConvertJsonToXml(inputPath, outputPath, "Project");
+            if (ext == ".vipb")        ConvertJsonToXml(inputPath, outputPath, new[] { "Package", "VI_Package_Builder_Settings" });
+            else if (ext == ".lvproj") ConvertJsonToXml(inputPath, outputPath, new[] { "Project" });
             else throw new InvalidOperationException("Unsupported output file type for json2buildspec. Must be .vipb or .lvproj");
         }
     }
