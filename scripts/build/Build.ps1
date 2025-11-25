@@ -551,6 +551,20 @@ try {
             Write-Warning "Failed to stage neutral/suffixed PPL copies: $($_.Exception.Message)"
         }
 
+        # Remove temporary x86/x64-specific PPL files to keep the plugins folder idempotent for downstream checks
+        try {
+            $tempCopies = @($pplX64, $pplX86) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
+            foreach ($tmp in $tempCopies) {
+                Remove-Item -LiteralPath $tmp -Force -ErrorAction Stop
+            }
+            if ($tempCopies.Count -gt 0) {
+                Write-Information ("Cleaned temporary PPL copies: {0}" -f ($tempCopies | ForEach-Object { Split-Path $_ -Leaf } -join ', ')) -InformationAction Continue
+            }
+        }
+        catch {
+            Write-Warning ("Failed to remove temporary PPL copies: {0}" -f $_.Exception.Message)
+        }
+
         # Idempotency guard: validate expected PPL set and log hashes
         $expectedPpls = @('lv_icon.lvlibp','lv_icon.lvlibp.windows_x64','lv_icon.lvlibp.windows_x86')
         Assert-ExpectedPPLSet -PluginsDir $pplDir -ExpectedNames $expectedPpls
