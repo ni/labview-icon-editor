@@ -11,11 +11,8 @@ Prerequisites
 
 ### Build LVAddon (VI Package)
 
-Use **Terminal → Run Task → Build LVAddon (VI Package)** in VS Code to run the isolated worktree build (`scripts/ie.ps1 -Command build-worktree`). The task defaults to **SupportedBitness=64** for the top-level package, **LvlibpBitness=both** to produce 32-bit and 64-bit packed libraries, and **version inputs** `Major=0`, `Minor=1`, `Patch=0`, `Build=1` (plus the default Company/Author metadata). You can adjust these arguments in `.vscode/tasks.json` or by editing the task invocation before running it.
-
-Outputs
-- VIP artifact: `builds/VI Package/`
-- Packed libraries: `resource/plugins/lv_icon.lvlibp` (overwritten each run for each built bitness)
+Use **Terminal → Run Task → Build LVAddon (VI Package)** in VS Code to run the isolated worktree build (`scripts/ie.ps1 -Command build-worktree`) and package the icon editor; outputs land in `builds/VI Package/` (VIP artifact) and `resource/plugins/lv_icon.lvlibp` (overwritten for each bitness built).
+Default version inputs are `Major=0`, `Minor=1`, `Patch=0`, and `Build=1` (override in `.vscode/tasks.json` or when invoking the task).
 
 VIPM not available?
 - If `vipm` is not on PATH, the build skips VIPC/VIPM steps, still builds the lvlibp, and writes a placeholder `builds/VI Package/vipm-skipped-placeholder.vip` so you know packaging was skipped.
@@ -23,15 +20,16 @@ VIPM not available?
 
 More details: see `docs/vscode-tasks.md`.
 
-### Analyze an existing .vip
 
-Run the analyzer directly from the CLI (the VS Code task was removed):
+## Analyze VI Packages (CLI-only)
+
+Run the analyzer directly—there is no VS Code task for this:
 
 ```pwsh
 pwsh -NoProfile -File scripts/analyze-vi-package/run-workflow-local.ps1 -VipArtifactPath "<vip or dir>" -MinLabVIEW "21.0"
 ```
 
-Use a real `.vip` (placeholders such as `vipm-skipped-placeholder.vip` are ignored), and `scripts/analyze-vi-package/VIPReader.psm1` is auto-loaded by the analyzer.
+Provide a real `.vip` artifact (placeholders such as `vipm-skipped-placeholder.vip` are skipped) and the workflow auto-loads `scripts/analyze-vi-package/VIPReader.psm1`.
 
 
 ## Docs quicklinks

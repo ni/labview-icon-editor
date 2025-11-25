@@ -28,8 +28,8 @@
 - Outputs: *(not explicitly declared)*
 
 ## `/mnt/c/repos/labview-icon-editor-community-ci-cd/scripts/analyze-vi-package/VIPReader.psm1`
-- Inputs: *(module auto-loaded by analyzer workflows)*
-- Outputs: *(not explicitly declared)*
+- Inputs: *(module auto-loaded by analyzer workflows; consumes VIP paths passed by callers)*
+- Outputs: *(not explicitly declared; exposes parsing helpers for analysis scripts)*
 
 ## `/mnt/c/repos/labview-icon-editor-community-ci-cd/scripts/apply-vipc/ApplyVIPC.ps1`
 - Inputs:

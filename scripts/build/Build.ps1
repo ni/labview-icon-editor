@@ -430,7 +430,7 @@ try {
             Build                     = $Build
             Commit                    = $Commit
         }
-        Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp32 -TimeoutSec 900 -DisplayName "Build lvlibp (32-bit)"
+        Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp32 -TimeoutSec 900 -DisplayName "Build icon PPL (32-bit)"
 
         # 4) Close LabVIEW (32-bit)
         Write-Verbose "Closing LabVIEW (32-bit)..."
@@ -505,7 +505,7 @@ try {
         Build                     = $Build
         Commit                    = $Commit
     }
-    Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp64 -TimeoutSec 900 -DisplayName "Build lvlibp (64-bit)"
+    Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp64 -TimeoutSec 900 -DisplayName "Build icon PPL (64-bit)"
 
     # 7.1) Close LabVIEW (64-bit)
     Write-Verbose "Closing LabVIEW (64-bit)..."
