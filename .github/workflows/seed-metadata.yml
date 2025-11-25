@@ -19,7 +19,7 @@ jobs:
       - name: Generate VIPB metadata JSON
         env:
           INPUT_MODE: vipb2json
-          INPUT_INPUT: /workspace/Tooling/deployment/labview-icon-editor.vipb
+          INPUT_INPUT: /workspace/Tooling/deployment/seed.vipb
           INPUT_OUTPUT: /workspace/artifacts/seed/metadata.json
         run: |
           mkdir -p artifacts/seed
