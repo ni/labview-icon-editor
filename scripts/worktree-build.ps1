@@ -33,6 +33,36 @@ function Ensure-Command {
 
 Ensure-Command -Name git
 
+$devBindJsonRel = 'reports/dev-mode-bind.json'
+function Assert-DevModeBindOk {
+    param(
+        [string]$RepoPath,
+        [string]$Arch
+    )
+
+    $jsonPath = Join-Path $RepoPath $devBindJsonRel
+    if (-not (Test-Path -LiteralPath $jsonPath -PathType Leaf)) {
+        throw "Dev-mode bind JSON not found at $jsonPath after bind ($Arch-bit). Resolve and rerun dev-mode bind."
+    }
+
+    try {
+        $data = Get-Content -LiteralPath $jsonPath -Raw | ConvertFrom-Json
+    }
+    catch {
+        throw "Unable to read dev-mode bind JSON at $jsonPath: $($_.Exception.Message)"
+    }
+
+    $entry = $data | Where-Object { $_.bitness -eq $Arch } | Select-Object -First 1
+    if (-not $entry) {
+        throw "Dev-mode bind JSON at $jsonPath does not contain an entry for bitness $Arch. Rerun dev-mode bind."
+    }
+
+    if ($entry.status -ne 'success') {
+        $msg = if ($entry.message) { $entry.message } else { 'Unknown bind failure' }
+        throw ("Dev-mode bind failed for {0}-bit: {1}. JSON: {2}. Run 'Dev Mode (interactive bind/unbind)' task with Force for {0}-bit, then rerun the build task." -f $Arch, $msg, $jsonPath)
+    }
+}
+
 $hasStyle = ($PSStyle -ne $null)
 $bitnessPalette = @{
     '32' = if ($hasStyle) { $PSStyle.Foreground.BrightCyan } else { '' }
@@ -104,6 +134,7 @@ try {
 
         Write-Host "Binding dev mode (Force) to worktree ($arch-bit)..."
         & $bindDevScript -RepositoryPath $WorktreePath -Mode bind -Bitness $arch -Force
+        Assert-DevModeBindOk -RepoPath $WorktreePath -Arch $arch
     }
 
     if (-not $Commit) {
