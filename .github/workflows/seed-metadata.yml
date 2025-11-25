@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Guard: Linux runner
-        if: runner.os != 'Linux'
+        if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - name: Checkout
         uses: actions/checkout@v4

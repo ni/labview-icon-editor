@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Guard: Linux runner
-        if: runner.os != 'Linux'
+        if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
@@ -200,7 +200,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Guard: Linux runner
-        if: runner.os != 'Linux'
+        if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - name: Simulate tag existence/mismatch scenarios
         shell: bash
@@ -256,7 +256,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Guard: Linux runner
-        if: runner.os != 'Linux'
+        if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
@@ -299,7 +299,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Guard: Linux runner
-        if: runner.os != 'Linux'
+        if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
@@ -341,7 +341,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Guard: Linux runner
-        if: runner.os != 'Linux'
+        if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
@@ -392,7 +392,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Guard: Linux runner
-        if: runner.os != 'Linux'
+        if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
@@ -421,7 +421,7 @@ jobs:
       minimum_supported_lv_version: ${{ steps.read.outputs.lv_version }}
     steps:
       - name: Guard: Linux runner
-        if: runner.os != 'Linux'
+        if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
@@ -475,7 +475,7 @@ jobs:
           set-safe-directory: true
           fetch-depth: 0
       - name: Guard: Windows runner
-        if: runner.os != 'Windows'
+        if: ${{ runner.os != 'Windows' }}
         run: exit 1
       - id: compute
         uses: ./.github/actions/compute-version
@@ -488,7 +488,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Guard: Linux runner
-        if: runner.os != 'Linux'
+        if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
@@ -523,7 +523,7 @@ jobs:
           set-safe-directory: true
           fetch-depth: 0
       - name: Guard: Windows runner
-        if: runner.os != 'Windows'
+        if: ${{ runner.os != 'Windows' }}
         run: exit 1
       - name: Build via worktree (includes VIPC, missing-in-project, lvlibp, VIP)
         shell: pwsh
