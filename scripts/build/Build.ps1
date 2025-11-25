@@ -317,16 +317,17 @@ try {
         exit 1
     }
 
-    # Hard fail if vipm CLI is missing; do not skip dependency application
-    if (-not (Get-Command vipm -ErrorAction SilentlyContinue)) {
-        Write-Error "vipm CLI not found on PATH; install VIPM CLI and ensure 'vipm' is available before running the build task."
-        exit 1
+    $vipmCommand = Get-Command vipm -ErrorAction SilentlyContinue
+    $vipmAvailable = [bool]$vipmCommand
+    if (-not $vipmAvailable) {
+        Write-Warning "vipm CLI not found on PATH; will skip VIPC application and VI Package build, but continue with missing-in-project checks and lvlibp build steps."
     }
-
-    if (-not $PSBoundParameters.ContainsKey('PromptForVipmReady')) {
-        $PromptForVipmReady = -not $env:CI -and -not $env:GITHUB_ACTIONS
+    else {
+        if (-not $PSBoundParameters.ContainsKey('PromptForVipmReady')) {
+            $PromptForVipmReady = -not $env:CI -and -not $env:GITHUB_ACTIONS
+        }
+        Ensure-VipmReady -Interactive:$PromptForVipmReady
     }
-    Ensure-VipmReady -Interactive:$PromptForVipmReady
 
     # Derive build number from total commits when available
     try {
@@ -396,13 +397,18 @@ try {
     if ($LvlibpBitness -eq 'both') {
         Show-BitnessBanner -Arch '32'
         # 2) Apply VIPC (32-bit)
-        Write-Information "Applying VIPC (dependencies) for 32-bit..." -InformationAction Continue
-        Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
-            Package_LabVIEW_Version   = $lvVersion
-            SupportedBitness          = '32'
-            RepositoryPath            = $RepositoryPath
-            VIPCPath                  = $vipcPath
-        } -TimeoutSec 600 -DisplayName "Apply VIPC (32-bit)"
+        if ($vipmAvailable) {
+            Write-Information "Applying VIPC (dependencies) for 32-bit..." -InformationAction Continue
+            Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
+                Package_LabVIEW_Version   = $lvVersion
+                SupportedBitness          = '32'
+                RepositoryPath            = $RepositoryPath
+                VIPCPath                  = $vipcPath
+            } -TimeoutSec 600 -DisplayName "Apply VIPC (32-bit)"
+        }
+        else {
+            Write-Warning "Skipping VIPC application for 32-bit because vipm CLI is not available."
+        }
 
         # 2.1) Preflight missing items using existing missing-in-project helper (32-bit)
         Write-Information "Preflight: checking for missing project items via missing-in-project..." -InformationAction Continue
@@ -458,13 +464,18 @@ try {
 
     # 6) Apply VIPC (64-bit)
     Show-BitnessBanner -Arch '64'
-    Write-Information "Applying VIPC (dependencies) for 64-bit..." -InformationAction Continue
-    Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
-        Package_LabVIEW_Version   = $lvVersion
-        SupportedBitness          = '64'
-        RepositoryPath            = $RepositoryPath
-        VIPCPath                  = $vipcPath
-    } -TimeoutSec 600 -DisplayName "Apply VIPC (64-bit)"
+    if ($vipmAvailable) {
+        Write-Information "Applying VIPC (dependencies) for 64-bit..." -InformationAction Continue
+        Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
+            Package_LabVIEW_Version   = $lvVersion
+            SupportedBitness          = '64'
+            RepositoryPath            = $RepositoryPath
+            VIPCPath                  = $vipcPath
+        } -TimeoutSec 600 -DisplayName "Apply VIPC (64-bit)"
+    }
+    else {
+        Write-Warning "Skipping VIPC application for 64-bit because vipm CLI is not available."
+    }
 
     # 6.1) Preflight missing items using existing missing-in-project helper (64-bit)
     Write-Information "Preflight: checking for missing project items via missing-in-project..." -InformationAction Continue
@@ -592,22 +603,27 @@ try {
     }
 
     # 11) Build VI Package (64-bit) 2023
-    Write-Verbose "Building VI Package (64-bit)..."
-    $BuildVip = Join-Path $ActionsPath "build-vip/build_vip.ps1"
-    Invoke-ScriptSafe -ScriptPath $BuildVip -ArgumentMap @{
-        SupportedBitness         = '64'
-        RepositoryPath           = $RepositoryPath
-        VIPBPath                 = $VIPBPath
-        Package_LabVIEW_Version  = $lvVersion
-        LabVIEWMinorRevision     = $LabVIEWMinorRevision
-        Major                    = $Major
-        Minor                    = $Minor
-        Patch                    = $Patch
-        Build                    = $Build
-        Commit                   = $Commit
-        ReleaseNotesFile         = $ReleaseNotesFile
-        DisplayInformationJSON   = $DisplayInformationJSON
-        Verbose                  = $true
+    if ($vipmAvailable) {
+        Write-Verbose "Building VI Package (64-bit)..."
+        $BuildVip = Join-Path $ActionsPath "build-vip/build_vip.ps1"
+        Invoke-ScriptSafe -ScriptPath $BuildVip -ArgumentMap @{
+            SupportedBitness         = '64'
+            RepositoryPath           = $RepositoryPath
+            VIPBPath                 = $VIPBPath
+            Package_LabVIEW_Version  = $lvVersion
+            LabVIEWMinorRevision     = $LabVIEWMinorRevision
+            Major                    = $Major
+            Minor                    = $Minor
+            Patch                    = $Patch
+            Build                    = $Build
+            Commit                   = $Commit
+            ReleaseNotesFile         = $ReleaseNotesFile
+            DisplayInformationJSON   = $DisplayInformationJSON
+            Verbose                  = $true
+        }
+    }
+    else {
+        Write-Warning "Skipping VI Package build because vipm CLI is not available."
     }
 
     # 12) Close LabVIEW (64-bit)
