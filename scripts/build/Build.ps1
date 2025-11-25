@@ -410,6 +410,13 @@ try {
             Write-Warning "Skipping VIPC application for 32-bit because vipm CLI is not available."
         }
 
+        # Ensure LabVIEW is closed before running missing-in-project to avoid UI prompts/locks
+        Write-Verbose "Pre-missing-in-project: closing LabVIEW (32-bit) to ensure a clean session..."
+        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+            Package_LabVIEW_Version = $lvVersion
+            SupportedBitness        = '32'
+        } -TimeoutSec 180 -DisplayName "Close LabVIEW (pre-missing 32-bit)"
+
         # 2.1) Preflight missing items using existing missing-in-project helper (32-bit)
         Write-Information "Preflight: checking for missing project items via missing-in-project..." -InformationAction Continue
         Invoke-ScriptSafe -ScriptPath $MissingHelper -ArgumentMap @{
@@ -476,6 +483,13 @@ try {
     else {
         Write-Warning "Skipping VIPC application for 64-bit because vipm CLI is not available."
     }
+
+    # Ensure LabVIEW is closed before running missing-in-project to avoid UI prompts/locks
+    Write-Verbose "Pre-missing-in-project: closing LabVIEW (64-bit) to ensure a clean session..."
+    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+        Package_LabVIEW_Version = $lvVersion
+        SupportedBitness        = '64'
+    } -TimeoutSec 180 -DisplayName "Close LabVIEW (pre-missing 64-bit)"
 
     # 6.1) Preflight missing items using existing missing-in-project helper (64-bit)
     Write-Information "Preflight: checking for missing project items via missing-in-project..." -InformationAction Continue
