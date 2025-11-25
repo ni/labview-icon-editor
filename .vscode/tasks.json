@@ -1,6 +1,31 @@
 {
   "version": "2.0.0",
-  "inputs": [],
+  "inputs": [
+    {
+      "id": "seedVipbInput",
+      "type": "promptString",
+      "description": "Path to .vipb to convert (relative to repo or absolute)",
+      "default": "Tooling/deployment/labview-icon-editor.vipb"
+    },
+    {
+      "id": "seedJsonOutput",
+      "type": "promptString",
+      "description": "Output path for JSON (relative to repo or absolute)",
+      "default": "builds/seed-output.json"
+    },
+    {
+      "id": "seedPatchPath",
+      "type": "promptString",
+      "description": "Path to JSON patch file (relative to repo or absolute)",
+      "default": "patch.json"
+    },
+    {
+      "id": "seedVipbOutput",
+      "type": "promptString",
+      "description": "Output path for patched .vipb (relative to repo or absolute)",
+      "default": "builds/patched.vipb"
+    }
+  ],
   "tasks": [
     {
       "label": "Build LVAddon (VI Package)",
@@ -37,6 +62,91 @@
         "cwd": "${workspaceFolder}"
       },
       "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "seed: help",
+      "type": "shell",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "${workspaceFolder}/Tooling/docker/seed/docker-compose.yml",
+        "run",
+        "--rm",
+        "seed"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "seed: shell",
+      "type": "shell",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "${workspaceFolder}/Tooling/docker/seed/docker-compose.yml",
+        "run",
+        "--rm",
+        "seed",
+        "bash"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "seed: vipb -> json",
+      "type": "shell",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "${workspaceFolder}/Tooling/docker/seed/docker-compose.yml",
+        "run",
+        "--rm",
+        "seed",
+        "seed",
+        "vipb",
+        "json",
+        "--input",
+        "/workspace/${input:seedVipbInput}",
+        "--output",
+        "/workspace/${input:seedJsonOutput}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "seed: apply patch",
+      "type": "shell",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "${workspaceFolder}/Tooling/docker/seed/docker-compose.yml",
+        "run",
+        "--rm",
+        "seed",
+        "seed",
+        "vipb",
+        "patch",
+        "--input",
+        "/workspace/${input:seedVipbInput}",
+        "--patch",
+        "/workspace/${input:seedPatchPath}",
+        "--output",
+        "/workspace/${input:seedVipbOutput}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "problemMatcher": []
     }
   ]

@@ -33,3 +33,11 @@ docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed bash
 - The image builds locally; retag via `image:` in `docker-compose.yml` if you want a different name.
 - Rebuild after source changes: `docker compose -f Tooling/docker/seed/docker-compose.yml build --no-cache seed`.
 - If you prefer not to use Docker, run Seed directly from `Tooling/seed` with `dotnet` after restoring its dependencies.
+
+## VS Code tasks (optional)
+- Build: `Build LVAddon (VI Package)` (root task)
+- Seed helpers (optional):
+  - `seed: help` — shows CLI help (`seed --help`).
+  - `seed: shell` — opens a bash shell in the Seed container.
+  - `seed: vipb -> json` — converts a .vipb to JSON (prompts for paths).
+  - `seed: apply patch` — applies a JSON patch to a .vipb (prompts for paths).
