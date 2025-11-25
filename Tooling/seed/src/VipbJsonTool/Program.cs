@@ -26,10 +26,10 @@ namespace VipbJsonTool
             {
                 switch (mode)
                 {
-                    case "vipb2json":      ConvertXmlToJson(inputPath, outputPath, "Package"); break;
-                    case "json2vipb":      ConvertJsonToXml(inputPath, outputPath, "Package"); break;
-                    case "lvproj2json":    ConvertXmlToJson(inputPath, outputPath, "Project"); break;
-                    case "json2lvproj":    ConvertJsonToXml(inputPath, outputPath, "Project"); break;
+                    case "vipb2json":      ConvertXmlToJson(inputPath, outputPath, new[] { "Package", "VI_Package_Builder_Settings" }); break;
+                    case "json2vipb":      ConvertJsonToXml(inputPath, outputPath, new[] { "Package", "VI_Package_Builder_Settings" }); break;
+                    case "lvproj2json":    ConvertXmlToJson(inputPath, outputPath, new[] { "Project" }); break;
+                    case "json2lvproj":    ConvertJsonToXml(inputPath, outputPath, new[] { "Project" }); break;
                     case "buildspec2json": ConvertBuildSpecToJson(inputPath, outputPath);       break;
                     case "json2buildspec": ConvertJsonToBuildSpec(inputPath, outputPath);       break;
                     default:
@@ -51,7 +51,7 @@ namespace VipbJsonTool
         // XML ➜ JSON
         //----------------------------------------------------------------------
 
-        private static void ConvertXmlToJson(string xmlPath, string jsonPath, string rootElementName)
+        private static void ConvertXmlToJson(string xmlPath, string jsonPath, string[] allowedRootNames)
         {
             if (!File.Exists(xmlPath))
                 throw new FileNotFoundException($"Input file not found: {xmlPath}");
@@ -59,8 +59,8 @@ namespace VipbJsonTool
             var doc = new XmlDocument { PreserveWhitespace = true };
             doc.Load(xmlPath);
 
-            if (doc.DocumentElement?.Name != rootElementName)
-                throw new InvalidOperationException($"Invalid root element. Expected '{rootElementName}'.");
+            if (doc.DocumentElement == null || Array.IndexOf(allowedRootNames, doc.DocumentElement.Name) < 0)
+                throw new InvalidOperationException($"Invalid root element. Expected one of: {string.Join(", ", allowedRootNames)}.");
 
             // Use fully-qualified enum to avoid ambiguity
             string json = JsonConvert.SerializeXmlNode(
@@ -74,7 +74,7 @@ namespace VipbJsonTool
         // JSON ➜ XML
         //----------------------------------------------------------------------
 
-        private static void ConvertJsonToXml(string jsonPath, string xmlPath, string rootElementName)
+        private static void ConvertJsonToXml(string jsonPath, string xmlPath, string[] allowedRootNames)
         {
             if (!File.Exists(jsonPath))
                 throw new FileNotFoundException($"Input file not found: {jsonPath}");
@@ -83,8 +83,8 @@ namespace VipbJsonTool
 
             var xmlDoc = JsonConvert.DeserializeXmlNode(json)!;
 
-            if (xmlDoc.DocumentElement?.Name != rootElementName)
-                throw new InvalidOperationException($"Invalid root element. Expected '{rootElementName}'.");
+            if (xmlDoc.DocumentElement == null || Array.IndexOf(allowedRootNames, xmlDoc.DocumentElement.Name) < 0)
+                throw new InvalidOperationException($"Invalid root element. Expected one of: {string.Join(", ", allowedRootNames)}.");
 
             using var writer = XmlWriter.Create(xmlPath, new XmlWriterSettings { Indent = true });
             xmlDoc.Save(writer);

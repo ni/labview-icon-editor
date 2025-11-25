@@ -1,0 +1,59 @@
+name: Seed Metadata Checks
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  seed-metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build Seed image
+        run: docker compose -f Tooling/docker/seed/docker-compose.yml build seed
+
+      - name: Generate VIPB metadata JSON
+        run: |
+          mkdir -p artifacts/seed
+          docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed seed vipb json \
+            --input /workspace/Tooling/deployment/labview-icon-editor.vipb \
+            --output /workspace/artifacts/seed/metadata.json
+
+      - name: Fetch baseline metadata from main
+        run: |
+          set -e
+          git fetch origin main --depth=1 || true
+          if git show origin/main:artifacts/seed/metadata.json >/tmp/metadata-main.json 2>/dev/null; then
+            mkdir -p artifacts/seed
+            mv /tmp/metadata-main.json artifacts/seed/metadata-main.json
+          else
+            echo "No baseline metadata found on origin/main; skipping diff input."
+          fi
+
+      - name: Compute metadata diff
+        run: |
+          if [ -f artifacts/seed/metadata-main.json ]; then
+            git diff --no-index -- artifacts/seed/metadata-main.json artifacts/seed/metadata.json > artifacts/seed/metadata.diff || true
+          else
+            echo "No baseline metadata to diff."
+          fi
+
+      - name: Run Pester metadata checks
+        shell: pwsh
+        run: |
+          Install-Module Pester -RequiredVersion 5.7.1 -Scope CurrentUser -Force -SkipPublisherCheck
+          Invoke-Pester -Path Test/SeedMetadata.Tests.ps1 -CI
+
+      - name: Upload metadata artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: seed-metadata
+          path: |
+            artifacts/seed/metadata.json
+            artifacts/seed/metadata-main.json
+            artifacts/seed/metadata.diff
+          if-no-files-found: ignore

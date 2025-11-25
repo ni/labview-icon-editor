@@ -28,4 +28,5 @@ reports/requirements.json
 reports/requirements.html
 reports/*.json
 artifacts/dev-mode-bind/
+artifacts/seed/
 Tooling/docker/vipm/.env
