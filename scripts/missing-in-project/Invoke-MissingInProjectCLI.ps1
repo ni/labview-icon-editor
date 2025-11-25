@@ -23,6 +23,15 @@ $MissingFilePath = Join-Path $PSScriptRoot 'missing_files.txt'
 $GcliLogPath     = Join-Path $PSScriptRoot 'missing_in_project_gcli.log'
 $MetaPath        = Join-Path $PSScriptRoot 'missing_in_project_meta.json'
 
+$projectInput = $ProjectFile
+try {
+    $ProjectFile = (Resolve-Path -LiteralPath $ProjectFile -ErrorAction Stop).ProviderPath
+}
+catch {
+    Write-Error ("Project file not found or invalid path '{0}': {1}" -f $projectInput, $_.Exception.Message)
+    exit 10
+}
+
 if (-not (Test-Path $HelperPath)) {
     Write-Error "Helper script not found: $HelperPath"
     exit 100

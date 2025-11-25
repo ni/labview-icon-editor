@@ -25,6 +25,16 @@ param(
 $ErrorActionPreference = 'Stop'
 Write-Information "[GCLI] Starting Missing-in-Project check ..." -InformationAction Continue
 
+$projectInput = $ProjectFile
+try {
+    $ProjectFile = (Resolve-Path -LiteralPath $ProjectFile -ErrorAction Stop).ProviderPath
+}
+catch {
+    Write-Warning ("Project file not found or invalid path '{0}': {1}" -f $projectInput, $_.Exception.Message)
+    $global:LASTEXITCODE = 3
+    return
+}
+
 function Get-ExceptionDetails {
     param([Parameter(Mandatory)][System.Management.Automation.ErrorRecord]$ErrorRecord)
     @{
@@ -55,11 +65,6 @@ $viPath = Join-Path -Path $PSScriptRoot -ChildPath 'MissingInProjectCLI.vi'
 if (-not (Test-Path $viPath)) {
     Write-Warning "VI not found: $viPath"
     $global:LASTEXITCODE = 2
-    return
-}
-if (-not (Test-Path $ProjectFile)) {
-    Write-Warning "Project file not found: $ProjectFile"
-    $global:LASTEXITCODE = 3
     return
 }
 
