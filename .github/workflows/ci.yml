@@ -42,9 +42,11 @@ on:
 jobs:
   verify-checklist-sync:
     name: Requirements
-    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     steps:
+      - name: Guard: Linux runner
+        if: runner.os != 'Linux'
+        run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           set-safe-directory: true
@@ -73,7 +75,6 @@ jobs:
   test-compute-version-bump:
     name: Test compute-version bump selection (matrix)
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
-    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -196,9 +197,11 @@ jobs:
   test-tag-existence-check:
     name: Test tag existence check logic
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
-    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     steps:
+      - name: Guard: Linux runner
+        if: runner.os != 'Linux'
+        run: exit 1
       - name: Simulate tag existence/mismatch scenarios
         shell: bash
         run: |
@@ -250,9 +253,11 @@ jobs:
           echo "Mismatch detected as expected: remote tag $remote_sha vs new head $new_head."
   enforce-verify-checklist-needs:
     name: Enforce jobs depend on verify-checklist-sync
-    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     steps:
+      - name: Guard: Linux runner
+        if: runner.os != 'Linux'
+        run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           set-safe-directory: true
@@ -291,9 +296,11 @@ jobs:
   rtm-gates:
     name: RTM validation and coverage gate
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
-    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     steps:
+      - name: Guard: Linux runner
+        if: runner.os != 'Linux'
+        run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           set-safe-directory: true
@@ -331,9 +338,11 @@ jobs:
   docs-quality:
     name: Docs link check and ADR lint
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
-    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     steps:
+      - name: Guard: Linux runner
+        if: runner.os != 'Linux'
+        run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           set-safe-directory: true
@@ -380,9 +389,11 @@ jobs:
   seed-containerized:
     name: Seed + Analyze (containerized)
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
-    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     steps:
+      - name: Guard: Linux runner
+        if: runner.os != 'Linux'
+        run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           set-safe-directory: true
@@ -405,11 +416,13 @@ jobs:
   resolve-labview-version:
     name: Resolve LabVIEW version from VIPB
     needs: [verify-checklist-sync]
-    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     outputs:
       minimum_supported_lv_version: ${{ steps.read.outputs.lv_version }}
     steps:
+      - name: Guard: Linux runner
+        if: runner.os != 'Linux'
+        run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           set-safe-directory: true
@@ -445,7 +458,6 @@ jobs:
   version:
     name: Compute Version
     needs: [verify-checklist-sync]
-    if: runner.os == 'Windows'
     runs-on: self-hosted-windows-lv
     defaults:
       run:
@@ -462,6 +474,9 @@ jobs:
         with:
           set-safe-directory: true
           fetch-depth: 0
+      - name: Guard: Windows runner
+        if: runner.os != 'Windows'
+        run: exit 1
       - id: compute
         uses: ./.github/actions/compute-version
         with:
@@ -470,9 +485,11 @@ jobs:
   list-collaborators:
     name: List Repo Collaborators
     needs: [verify-checklist-sync]
-    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     steps:
+      - name: Guard: Linux runner
+        if: runner.os != 'Linux'
+        run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           set-safe-directory: true
@@ -493,7 +510,6 @@ jobs:
   build-worktree:
     name: Build (worktree)
     needs: [verify-checklist-sync, version, resolve-labview-version, test-compute-version-bump, test-tag-existence-check, rtm-gates, docs-quality, list-collaborators]
-    if: runner.os == 'Windows'
     runs-on: self-hosted-windows-lv
     defaults:
       run:
@@ -506,6 +522,9 @@ jobs:
         with:
           set-safe-directory: true
           fetch-depth: 0
+      - name: Guard: Windows runner
+        if: runner.os != 'Windows'
+        run: exit 1
       - name: Build via worktree (includes VIPC, missing-in-project, lvlibp, VIP)
         shell: pwsh
         run: |

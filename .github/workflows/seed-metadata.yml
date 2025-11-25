@@ -6,9 +6,11 @@ on:
 
 jobs:
   seed-metadata:
-    if: runner.os == 'Linux'
     runs-on: ubuntu-latest
     steps:
+      - name: Guard: Linux runner
+        if: runner.os != 'Linux'
+        run: exit 1
       - name: Checkout
         uses: actions/checkout@v4
         with:
