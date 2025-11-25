@@ -594,6 +594,7 @@ jobs:
   unify-artifacts:
     name: Unify artifacts
     needs:
+      - verify-checklist-sync
       - build-worktree
       - seed-containerized
       - rtm-gates
