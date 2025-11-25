@@ -1,0 +1,381 @@
+<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2025-06-28 00:32:02" Creator="svelderr" Comments="" ID="3f49c096859f2e6eb3f5b59ff13fa049">
+  <Library_General_Settings>
+    <Package_File_Name>NI_Icon_editor</Package_File_Name>
+    <Library_Version>21.0.0.12</Library_Version>
+    <Auto_Increment_Version>false</Auto_Increment_Version>
+    <Library_Source_Folder>..\..</Library_Source_Folder>
+    <Library_Output_Folder>..\..\builds\VI Package</Library_Output_Folder>
+    <Company_Name>NI</Company_Name>
+    <Library_Summary/>
+    <Library_License>MIT</Library_License>
+    <Package_LabVIEW_Version>21.0 (64-bit)</Package_LabVIEW_Version>
+    <Community_Edition>true</Community_Edition>
+    <Package_Icon>00000CFC002900000012000000020000000D01000000000100000000000A000000080000000000240024002900000012000000020000000D00FAFAFA00010000000000100000001000000002002300000000000000000023002900000012000000020000000D00FFFFFF00010000000000100000001000000002002200010001000100010022002900000012000000020000000D00FAFAFA00010000000000100000001000000002000000240024002400240000002900000012000000020000000D00F8F8F800010000000000100000001000000002000100230023002300230001001D00000C1800000C00000200020022002200180000000000FFFFFF0000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000000000FFFFFFFFFFFF000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000FFFFFF000000FFFFFF000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000FFFFFF000000FFFFFF000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000FFFFFF000000FFFFFF000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000FFFFFF000000FFFFFF000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000FFFFFFFFFFFF000000FFFFFFFFFFFF000000FFFFFFFFFFFF000000000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000FFFFFF000000FFFFFFFFFFFF000000FFFFFF000000FFFFFF000000FFFFFF000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000FFFFFF000000FFFFFFFFFFFF000000FFFFFF000000FFFFFF000000FFFFFF000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000FFFFFFFFFFFF000000FFFFFFFFFFFF000000FFFFFFFFFFFF000000FFFFFF000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000FFFFFF000000FFFFFF000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000FFFFFFFFFFFFFFFFFF000000000000FFFFFFFFFFFFFFFFFF000000000000FFFFFFFFFFFF000000FFFFFFFFFFFF000000000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000000000000000FFFFFF000000FFFFFF000000FFFFFF000000FFFFFF000000FFFFFFFFFFFF000000FFFFFF000000FFFFFF000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000FFFFFFFFFFFFFFFFFF000000FFFFFF000000FFFFFF000000FFFFFF000000FFFFFFFFFFFF000000FFFFFF000000FFFFFF000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000000000FFFFFFFFFFFF000000000000FFFFFF000000FFFFFFFFFFFF000000FFFFFFFFFFFF000000FFFFFFFFFFFF000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFF6C00006C0000CCCCFFCCCCFF6C0000CCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFF6C0000CCCCFF6C0000CCCCFF6C0000CCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFF6C0000CCCCFF6C0000CCCCFF6C0000CCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFF6C0000CCCCFF6C0000CCCCFF6C0000CCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFF6C0000CCCCFF6C0000CCCCFF6C0000CCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFFCCCCFF</Package_Icon>
+    <Product_Name>Icon Editor</Product_Name>
+    <Was_Built>true</Was_Built>
+    <Target>LabVIEW</Target>
+  </Library_General_Settings>
+  <Advanced_Settings>
+    <Package_Dependencies>
+      <Additional_External_Dependencies>oglib_array &gt;=6.0.1.20</Additional_External_Dependencies>
+      <Additional_External_Dependencies>oglib_error &gt;=6.0.0.26</Additional_External_Dependencies>
+      <Additional_External_Dependencies>oglib_file &gt;=6.0.2.28</Additional_External_Dependencies>
+      <Additional_External_Dependencies>oglib_lvzip &gt;=5.0.9</Additional_External_Dependencies>
+    </Package_Dependencies>
+    <Custom_Action_VIs>
+      <Pre-Build_VI/>
+      <Post-Build_VI/>
+      <Pre-Install_VI>VIP_Pre-Install Custom Action.vi</Pre-Install_VI>
+      <Post-Install_VI>VIP_Post-Install Custom Action.vi</Post-Install_VI>
+      <Pre-Uninstall_VI>VIP_Pre-Uninstall Custom Action.vi</Pre-Uninstall_VI>
+      <Post-Uninstall_VI>VIP_Post-Uninstall Custom Action.vi</Post-Uninstall_VI>
+    </Custom_Action_VIs>
+    <VI_Package_Configuration_File>NI Icon editor.vipc</VI_Package_Configuration_File>
+    <Description>
+      <One_Line_Description_Summary/>
+      <Description/>
+      <Copyright/>
+      <Packager>Sergio Velderrain</Packager>
+      <URL/>
+      <Release_Notes/>
+    </Description>
+    <Destinations>
+      <Toolkit_VIs>
+        <LLB>false</LLB>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path>&lt;OS Boot Volume Root&gt;</Path>
+      </Toolkit_VIs>
+      <Examples>
+        <LLB>false</LLB>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path/>
+      </Examples>
+      <Custom_Probes>
+        <LLB>false</LLB>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path/>
+      </Custom_Probes>
+      <Custom_Errors>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path/>
+      </Custom_Errors>
+      <Help_Files>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path/>
+      </Help_Files>
+      <Template_VIs>
+        <LLB>false</LLB>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path/>
+      </Template_VIs>
+      <File_Menu>
+        <LLB>false</LLB>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path/>
+      </File_Menu>
+      <Tools_Menu>
+        <LLB>false</LLB>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path/>
+      </Tools_Menu>
+      <Help_Menu>
+        <LLB>false</LLB>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path/>
+      </Help_Menu>
+      <Project_Templates>
+        <LLB>false</LLB>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path/>
+      </Project_Templates>
+      <Project_Provider>
+        <LLB>false</LLB>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path/>
+      </Project_Provider>
+      <QuickDrop_Plugins>
+        <LLB>false</LLB>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path/>
+      </QuickDrop_Plugins>
+      <Additional_Destination>
+        <Name>LVAddons</Name>
+        <LLB>false</LLB>
+        <Preserve_Hierarchy>false</Preserve_Hierarchy>
+        <Path>&lt;OS Application Files&gt;\NI\LVAddons\niiconeditor64</Path>
+      </Additional_Destination>
+      <Additional_Destination>
+        <Name>Install artifacts</Name>
+        <LLB>false</LLB>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path>&lt;OS Public Documents&gt;\National Instruments\LabVIEW Icon Editor\install</Path>
+      </Additional_Destination>
+      <Additional_Destination>
+        <Name>Uninstall artifacts</Name>
+        <LLB>false</LLB>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path>&lt;OS Public Documents&gt;\National Instruments\LabVIEW Icon Editor\uninstall</Path>
+      </Additional_Destination>
+      <Additional_Destination>
+        <Name>Install artifacts temp</Name>
+        <LLB>false</LLB>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path>&lt;OS Public Documents&gt;\National Instruments\LabVIEW Icon Editor\install\temp</Path>
+      </Additional_Destination>
+      <Additional_Destination>
+        <Name>Icon editor public documents</Name>
+        <LLB>false</LLB>
+        <Preserve_Hierarchy>true</Preserve_Hierarchy>
+        <Path>&lt;OS Public Documents&gt;\National Instruments\LabVIEW Icon Editor</Path>
+      </Additional_Destination>
+    </Destinations>
+    <Source_Files>
+      <Destination_Overrides>
+        <Path>.</Path>
+        <Destination>0</Destination>
+        <Additional_Destination>true</Additional_Destination>
+        <Additional_Destination_Index>4</Additional_Destination_Index>
+      </Destination_Overrides>
+      <Destination_Overrides>
+        <Path>Tooling/deployment/lv_icon_versions/lv_icon_uninstall_backup.zip</Path>
+        <Destination>0</Destination>
+        <Additional_Destination>true</Additional_Destination>
+        <Additional_Destination_Index>2</Additional_Destination_Index>
+      </Destination_Overrides>
+      <Destination_Overrides>
+        <Path>resource/plugins</Path>
+        <Destination>0</Destination>
+        <Additional_Destination>true</Additional_Destination>
+        <Additional_Destination_Index>1</Additional_Destination_Index>
+      </Destination_Overrides>
+      <Password_Overrides>
+        <Path>.</Path>
+        <Password/>
+        <Locked_Only>false</Locked_Only>
+      </Password_Overrides>
+      <Namespace_Overrides>
+        <Path>.</Path>
+        <Namespace_Type>Prefix</Namespace_Type>
+        <Namespace/>
+      </Namespace_Overrides>
+      <Exclusions>
+        <Path>.github</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Antidoc-Output</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>pipeline/scripts</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>pipeline/templates</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>vi.lib</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>.gitattributes</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>.gitignore</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>CODE_OF_CONDUCT.md</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>CONTRIBUTING.md</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>LICENSE</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>lv_icon_editor.lvproj</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>README.md</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>pipeline</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>resource/plugins/NIIconEditor</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>resource/plugins/lv_icon.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>resource/plugins/lv_icon.vit</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>resource/plugins/lv_IconEditor.lvlib</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>resource/plugins/SAMPLE_lv_icon.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/deployment/ApplyVIPC.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/deployment/BuildVIPackage.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/deployment/Create_LV_INI_Token.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/deployment/CreateLVAddonJSONfile.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/deployment/Destroy_LV_INI_Token.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/deployment/ModifyProjectBuildOutput.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/deployment/NIP Post uninstall.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/deployment/VIP_Post-Install Custom Action.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/deployment/VIP_Post-Uninstall Custom Action.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/deployment/VIP_Pre-Install Custom Action.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/deployment/VIP_Pre-Uninstall Custom Action.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/support</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/CI CD.lvproj</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/Force Icon Editor to Unload.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/Post Build Icon Editor PPL.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/Pre Build Icon Editor PPL.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/Prepare LV to Use Icon Editor Source.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/PrepareIESource.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/Run all tests CLI.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/Run all tests.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/RestoreSetupLVSource.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>docs</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>GOVERNANCE.md</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>requirements.txt</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/deployment/Modify_VIPB_Display_Information.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/PrepareIESourceCore.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/RestoreSetupLVSourceCore.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/VI Package Tooling.lvproj</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling/VIP_Post-Install Custom Action.vi</Path>
+      </Exclusions>
+      <Compile_Exclusions>
+        <Path>.</Path>
+      </Compile_Exclusions>
+      <Place_Folder_Contents>
+        <Path/>
+      </Place_Folder_Contents>
+      <Place_Folder_Contents>
+        <Path>pipeline/lv_icon_versions</Path>
+      </Place_Folder_Contents>
+      <Place_Folder_Contents>
+        <Path>Tooling/deployment/lv_icon_versions</Path>
+      </Place_Folder_Contents>
+    </Source_Files>
+    <License_Agreement_Filepath/>
+    <Licensing_and_Activation>
+      <License_LF_file_path/>
+      <Licensed_library_file_path/>
+      <Perform_License_Binding>false</Perform_License_Binding>
+      <Purchase_URL/>
+      <License_File_Password/>
+      <Web_Activation_URL/>
+      <Phone_Activation_Number/>
+      <Auto_Activation_URL/>
+      <Library_Protection_Password>&lt;random:32&gt;</Library_Protection_Password>
+      <Enable_Deactivation>false</Enable_Deactivation>
+      <Encryption_key_id/>
+      <Client_key/>
+      <Server_key/>
+      <License_Sublibraries>false</License_Sublibraries>
+    </Licensing_and_Activation>
+    <Palette_Sets>
+      <Palette_Set_Name>Default</Palette_Set_Name>
+      <Use_Custom_Category>false</Use_Custom_Category>
+      <Custom_Category_Name/>
+      <Custom_Category_Icon>00000176002900000012000000020000000D00FFFFFF000100000000000A00000008000000000020002000280000008F000000690000000E0007001300180000000000FFFFFF0000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000000000FFFFFFFFFFFF000000000000FFFFFF000000FFFFFF000000000000FFFFFF000000FFFFFF000000000000FFFFFF000000FFFFFF000000000000FFFFFF000000FFFFFF000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF07FFCFFFAFFFAFFFAFFFAFFF07FF002900000012000000020000000D00CCCCFF000100000000000A00000008001900000020002000280000008F000000690019000E0020001300180000000000FFFFFF0000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF6C00006C0000FFFFFFFFFFFF6C00006C0000FFFFFF6C0000FFFFFF6C00006C0000FFFFFF6C0000FFFFFF6C00006C0000FFFFFF6C0000FFFFFF6C00006C0000FFFFFF6C0000FFFFFF6C0000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF07FFCFFFAFFFAFFFAFFFAFFF07FF</Custom_Category_Icon>
+      <Controls_Palette_Information>
+        <Virtual_Palette_Base_Path>Controls</Virtual_Palette_Base_Path>
+        <Palette_Disk_Base_Path>&lt;menus&gt;\Controls</Palette_Disk_Base_Path>
+        <Syncing_MNU_file/>
+      </Controls_Palette_Information>
+      <Functions_Palette_Information>
+        <Virtual_Palette_Base_Path>Functions</Virtual_Palette_Base_Path>
+        <Palette_Disk_Base_Path>&lt;menus&gt;\Categories</Palette_Disk_Base_Path>
+        <Syncing_MNU_file/>
+      </Functions_Palette_Information>
+      <Apply_Short_Names_to_VI_Titles>false</Apply_Short_Names_to_VI_Titles>
+      <Apply_Short_Names_to_VI_Titles_2>false</Apply_Short_Names_to_VI_Titles_2>
+      <Library_or_Class_Nmae/>
+    </Palette_Sets>
+    <Install_Requirements>
+      <All_Windows>true</All_Windows>
+      <Windows_7>true</Windows_7>
+      <Windows_Vista>true</Windows_Vista>
+      <Windows_XP>true</Windows_XP>
+      <Mac_OS>false</Mac_OS>
+      <Linux>false</Linux>
+      <Built_LV_Version>false</Built_LV_Version>
+      <Built_LV_Version_or_greater>true</Built_LV_Version_or_greater>
+      <Windows_8>true</Windows_8>
+      <OS_32-Bit>true</OS_32-Bit>
+      <OS_64-Bit>true</OS_64-Bit>
+      <LV_32-Bit>true</LV_32-Bit>
+      <LV_64-Bit>true</LV_64-Bit>
+    </Install_Requirements>
+    <LabVIEW>
+      <close_labview_before_install>true</close_labview_before_install>
+      <restart_labview_after_install>true</restart_labview_after_install>
+      <skip_mass_compile_after_install>true</skip_mass_compile_after_install>
+      <install_into_global_environment>false</install_into_global_environment>
+    </LabVIEW>
+    <VI_Docs>
+      <Edit_VI_Description>false</Edit_VI_Description>
+      <Text_to_Add>{product_name} {version_number}
+{author_name} - {company_name}
+{copyright}</Text_to_Add>
+    </VI_Docs>
+    <System_Destinations/>
+  </Advanced_Settings>
+  <Library_Palette_Definition/>
+</VI_Package_Builder_Settings>

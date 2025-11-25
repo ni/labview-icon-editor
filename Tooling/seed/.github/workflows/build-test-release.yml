@@ -1,0 +1,150 @@
+name: build-test-release
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            **/*.sln
+
+      # --- VipbJsonTool Build/Publish ---
+      - name: Restore .NET packages (VipbJsonTool)
+        run: dotnet restore src/VipbJsonTool/VipbJsonTool.csproj
+
+      - name: Build .NET project (VipbJsonTool)
+        run: dotnet build src/VipbJsonTool/VipbJsonTool.csproj -c Release --no-restore -p:TreatWarningsAsErrors=false
+
+      - name: Publish CLI (VipbJsonTool, linux-x64 single-file)
+        run: dotnet publish src/VipbJsonTool -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:TreatWarningsAsErrors=false --no-restore --no-build -o publish/linux-x64
+
+      # --- LvprojJsonTool Build/Publish ---
+      - name: Restore .NET packages (LvprojJsonTool)
+        run: dotnet restore src/LvprojJsonTool/LvprojJsonTool.csproj
+
+      - name: Build .NET project (LvprojJsonTool)
+        run: dotnet build src/LvprojJsonTool/LvprojJsonTool.csproj -c Release --no-restore -p:TreatWarningsAsErrors=false
+
+      - name: Publish CLI (LvprojJsonTool, linux-x64 single-file)
+        run: dotnet publish src/LvprojJsonTool -c Release -r linux-x64 --self-contained -p:PublishSingleFile=true -p:TreatWarningsAsErrors=false --no-restore --no-build -o publish/linux-x64
+
+      - name: Install CLI tools to /usr/local/bin
+        run: |
+          sudo cp publish/linux-x64/VipbJsonTool /usr/local/bin/VipbJsonTool
+          sudo cp publish/linux-x64/LvprojJsonTool /usr/local/bin/LvprojJsonTool
+          sudo cp bin/vipb2json /usr/local/bin/vipb2json
+          sudo cp bin/json2vipb /usr/local/bin/json2vipb
+          sudo cp bin/lvproj2json /usr/local/bin/lvproj2json
+          sudo cp bin/json2lvproj /usr/local/bin/json2lvproj
+          sudo cp bin/buildspec2json /usr/local/bin/buildspec2json
+          sudo cp bin/json2buildspec /usr/local/bin/json2buildspec
+          sudo chmod +x /usr/local/bin/VipbJsonTool /usr/local/bin/LvprojJsonTool
+          sudo chmod +x /usr/local/bin/vipb2json /usr/local/bin/json2vipb /usr/local/bin/lvproj2json /usr/local/bin/json2lvproj /usr/local/bin/buildspec2json /usr/local/bin/json2buildspec
+
+      # --- Pester Test & Coverage ---
+      - name: Install Pester
+        run: Install-Module Pester -Force -Scope CurrentUser
+
+      - name: Add /usr/local/bin to PATH
+        shell: pwsh
+        run: |
+          echo "/usr/local/bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Run all Pester tests with coverage
+        run: |
+          $Config = New-PesterConfiguration
+          $Config.Run.Path = 'tests'
+          $Config.CodeCoverage.Enabled = $true
+          $Config.CodeCoverage.Path = 'tools/*.ps1'
+          $Config.TestResult.Enabled = $true
+          $Config.TestResult.OutputFormat = 'NUnitXml'
+          $Config.TestResult.OutputPath = 'test-results.xml'
+          Invoke-Pester -Configuration $Config
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.xml
+
+      # --- Convert seed files to JSON and YAML ---
+      - name: Convert LabVIEW seed files to JSON and YAML
+        if: success()
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y yq
+          if (!(Test-Path -Path 'release')) { New-Item -Path 'release' -ItemType Directory | Out-Null }
+          vipb2json --input tests/Samples/seed.vipb --output release/seed-vipb.json
+          lvproj2json --input tests/Samples/seed.lvproj --output release/seed-lvproj.json
+          yq -p json -o yaml release/seed-vipb.json > release/seed-vipb.yaml
+          yq -p json -o yaml release/seed-lvproj.json > release/seed-lvproj.yaml
+
+      # --- Upload Artifacts ---
+      - name: Upload seed-vipb.json artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seed-vipb.json
+          path: release/seed-vipb.json
+
+      - name: Upload seed-lvproj.json artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seed-lvproj.json
+          path: release/seed-lvproj.json
+
+      - name: Upload seed-vipb.yaml artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seed-vipb.yaml
+          path: release/seed-vipb.yaml
+
+      - name: Upload seed-lvproj.yaml artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seed-lvproj.yaml
+          path: release/seed-lvproj.yaml
+
+      - name: Upload VipbJsonTool CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vipb-json-cli-linux-x64
+          path: publish/linux-x64/VipbJsonTool
+
+      - name: Upload LvprojJsonTool CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lvproj-json-cli-linux-x64
+          path: publish/linux-x64/LvprojJsonTool
+
+      # --- Optional: Build Docker image (for manual test or release) ---
+      - name: Build Docker image (for manual test or release)
+        run: |
+          docker build -t labview-seed:ci .
+        # Add a docker push step here if you want to push to a registry

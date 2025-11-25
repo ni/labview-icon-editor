@@ -1,0 +1,62 @@
+name: "LabVIEW CI/CD Seed"
+description: "GitHub Action to handle VIPB↔JSON conversion, patching, and seeding of project/build spec files."
+author: "LabVIEW Community"
+runs:
+  using: "docker"
+  image: "Dockerfile"
+  args:
+    - "${{ inputs.mode }}"
+    - "${{ inputs.input }}"
+    - "${{ inputs.output }}"
+    - "${{ inputs.patch_file }}"
+    - "${{ inputs.patch_yaml }}"
+    - "${{ inputs.always_patch }}"
+    - "${{ inputs.branch_name }}"
+    - "${{ inputs.auto_pr }}"
+    - "${{ inputs.upload_files }}"
+    - "${{ inputs.seed_lvproj }}"
+    - "${{ inputs.seed_vipb }}"
+    - "${{ inputs.tag }}"
+
+inputs:
+  mode:
+    description: "Conversion mode: vipb2json, json2vipb, lvproj2json, or json2lvproj. (Use 'vipb2json'/'json2vipb' for VI Package Build specs; 'buildspec2json' and 'json2buildspec' are accepted as aliases.)"
+    required: true
+  input:
+    description: "Input file path"
+    required: true
+  output:
+    description: "Output file path"
+    required: true
+  patch_file:
+    description: "Path to a file to patch"
+    required: false
+  patch_yaml:
+    description: "Path to a YAML patch file"
+    required: false
+  always_patch:
+    description: "Force patch even if target fields are absent"
+    required: false
+    default: false
+  branch_name:
+    description: "Name of branch for patches or commits"
+    required: false
+  auto_pr:
+    description: "Automatically create a PR after commit"
+    required: false
+    default: false
+  upload_files:
+    description: "Upload resulting files as workflow artifacts"
+    required: false
+    default: true
+  seed_lvproj:
+    description: "If true, seed a .lvproj from tests/Samples/seed.lvproj if missing"
+    required: false
+    default: false
+  seed_vipb:
+    description: "If true, seed a .vipb from tests/Samples/seed.vipb if missing"
+    required: false
+    default: false
+  tag:
+    description: "Git tag name for the release (used to name the seeding branch). Required when seed_lvproj or seed_vipb is true."
+    required: false

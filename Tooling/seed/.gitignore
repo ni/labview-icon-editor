@@ -1,0 +1,43 @@
+# -----------------------------------------------------------------
+#            Existing ignores (leave these as-is / adjust)         
+# -----------------------------------------------------------------
+# --- .NET / VS Code ---
+bin/
+obj/
+publish/
+*.user
+*.suo
+.vs/
+.vscode/
+
+# NuGet / dotnet
+*.nupkg
+.nuget/
+packages/
+artifacts/
+
+# Docker build context
+*.tar
+*.gz
+*.zip
+
+# OS files
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+# -----------------------------------------------------------------
+#        Seed Action wrapper scripts & golden template files       
+# -----------------------------------------------------------------
+# Re-add ONLY the wrapper scripts we actually need.
+!bin/vipb2json
+!bin/json2vipb
+!bin/lvproj2json
+!bin/json2lvproj
+!bin/buildspec2json
+!bin/json2buildspec
+!bin/VipbJsonTool      # compiled binary kept in Git
+
+# Ensure golden seed templates are tracked
+!tests/Samples/seed.vipb
+!tests/Samples/seed.lvproj

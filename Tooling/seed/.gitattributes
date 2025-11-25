@@ -1,0 +1,13 @@
+# Treat all VIPB files as binary
+*.vipb binary
+
+# -----------------------------------------------------------------
+#            Keep line-endings + exec bit on wrapper scripts       
+# -----------------------------------------------------------------
+bin/vipb2json      text eol=lf executable
+bin/json2vipb      text eol=lf executable
+bin/lvproj2json    text eol=lf executable
+bin/json2lvproj    text eol=lf executable
+bin/buildspec2json text eol=lf executable
+bin/json2buildspec text eol=lf executable
+entrypoint.sh      text eol=lf executable
