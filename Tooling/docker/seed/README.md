@@ -52,6 +52,30 @@ INPUT_MODE=vipb2json INPUT_INPUT=/workspace/Tooling/deployment/labview-icon-edit
 - If you prefer not to use Docker, run Seed directly from `Tooling/seed` with `dotnet` after restoring its dependencies.
 - Compose is set to `pull_policy: never` to avoid registry pulls; first run will build the image locally.
 
+## Containerized runner (Linux/WSL/Windows)
+Run the full Seed + Analyze-VIP flow inside a tools container that has PowerShell, Pester, and the Docker CLI (binds the host Docker socket):
+```
+pwsh -NoProfile -File ./scripts/run-seed-runner.ps1
+```
+Prereqs: Docker running on the host, and `/var/run/docker.sock` available to the container (Docker Desktop with WSL 2 backend works). The repo is mounted at `/workspace` inside the runner.
+- Trust and pinning:
+  - Pester is fetched from the NuGet CDN by default (`https://globalcdn.nuget.org/packages/pester.<version>.nupkg`) with TLS validation and a pinned checksum (default 5.7.1 / SHA256 `3c6dad5fb143faf19709dfb28c31c873989944705a087e160e23b7ce462e37a1`).
+  - If your network MITMs TLS, pass your root CA as base64 to the build: `export CA_CERT_BUNDLE_BASE64=$(base64 -w0 ./my-root-ca.crt)` then rebuild. You can override the Pester version/hash/url via `PESTER_VERSION`, `PESTER_SHA256`, and `PESTER_URL` to keep the pin in sync.
+  - Last resort: set `ALLOW_INSECURE_PESTER_DOWNLOAD=1` to allow `curl -k` with checksum validation (only if you cannot supply a trusted CA).
+  - Optional GitHub source: publish the Pester `.nupkg` you trust to a GitHub release, then set `PESTER_GH_REPO=owner/repo`, optionally `PESTER_GH_TAG=<tag>` and `PESTER_GH_ASSET=<asset-name>` (defaults to `Pester.<version>.nupkg`) to download via `gh release download` instead of PowerShell Gallery. Keep `PESTER_SHA256` aligned with the asset you host.
+  - Set `GH_TOKEN` if you need authenticated GitHub API access (private repo or rate limit avoidance).
+  - GitHub CLI comes from a pinned release tarball (default 2.83.1 / SHA256 `1c5252d4ce3db07b51c01ff0b909583da6364ff3fdc06d0c2e75e62dc0380a34`); override with `GH_VERSION`/`GH_SHA256` if you want a different version.
+- Host path for nested compose:
+  - The containerized runner uses Docker-in-Docker; the inner Seed compose uses `WORKSPACE_HOST_PATH` for the bind mount. The helper script sets it automatically to your repo path on the host. If paths resolve incorrectly (e.g., Windows), set `WORKSPACE_HOST_PATH` to the host path of this repo before running the task.
+- Buildx automation: the helper script will use docker compose (buildx/Bake) when available; if `docker buildx` is missing it falls back to `docker build` + `compose run --no-build` so forks without Buildx still work. Install the buildx plugin for faster builds (`docker buildx version`).
+
+## Linux/WSL bash helper
+Run the full Seed + Analyze-VIP flow from Bash (Linux/WSL) without inline PowerShell quoting issues:
+```
+./scripts/run-seed-and-analyze.sh
+```
+Prereqs: Bash + Docker/Compose available in your shell; PowerShell (`pwsh`) is optional but required to run the Pester metadata tests and Analyze-VIP. If `pwsh` is missing, those steps are skipped with a warning.
+
 ## VS Code tasks (optional)
 The tasks live in `.vscode/tasks.json`. They are optional; skip if you don’t use Docker or Seed.
 
@@ -102,10 +126,11 @@ The tasks live in `.vscode/tasks.json`. They are optional; skip if you don’t u
   - To drop a field entirely, set it to `null` in the patch JSON.
 
 ### Seed + Analyze: deep metadata check (optional)
-- Label: `seed + analyze: deep metadata check`
+- Label: `seed + analyze: deep metadata check (containerized)`
+- Runs: `docker compose -f ./Tooling/docker/seed-runner/docker-compose.yml run --rm seed-runner`
 - Purpose: one-click deep check that:
   - Builds the Seed image
   - Exports VIPB metadata to `artifacts/seed/metadata.json`
-  - Runs `Test/SeedMetadata.Tests.ps1` (Pester)
-  - Finds the newest `.vip` under `builds/**/VI Package` and runs `scripts/analyze-vi-package/run-local.ps1` against it
-- Use when you want a detailed metadata report plus VIP content checks; keep it optional for users without Docker.
+  - Runs `Test/SeedMetadata.Tests.ps1` (Pester) and Analyze-VIP (PowerShell), both inside the runner container
+  - Finds the newest `.vip` under `builds-isolated` and runs `scripts/analyze-vi-package/run-local.ps1` against it
+- Use when you want a detailed metadata report plus VIP content checks without relying on host PowerShell; Docker must be running and the host socket must be available to the container.

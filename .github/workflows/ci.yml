@@ -371,6 +371,30 @@ jobs:
           path: lychee/report.json
           if-no-files-found: error
 
+  seed-containerized:
+    name: Seed + Analyze (containerized)
+    needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 0
+      - name: Seed + Analyze
+        env:
+          WORKSPACE_HOST_PATH: ${{ github.workspace }}
+          # Optional overrides:
+          # PESTER_VERSION: "5.7.1"
+          # PESTER_SHA256: "3c6dad5fb143faf19709dfb28c31c873989944705a087e160e23b7ce462e37a1"
+          # PESTER_URL: "https://globalcdn.nuget.org/packages/pester.5.7.1.nupkg"
+          # CA_CERT_BUNDLE_BASE64: ""
+          # ALLOW_INSECURE_PESTER_DOWNLOAD: "0"
+          # PESTER_GH_REPO: ""
+          # PESTER_GH_TAG: ""
+          # PESTER_GH_ASSET: ""
+          # GH_TOKEN: ""
+        run: pwsh -NoProfile -File ./scripts/run-seed-runner.ps1
+
   resolve-labview-version:
     name: Resolve LabVIEW version from VIPB
     needs: [verify-checklist-sync]

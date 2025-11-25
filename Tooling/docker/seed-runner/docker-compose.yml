@@ -1,0 +1,27 @@
+services:
+  seed-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        CA_CERT_BUNDLE_BASE64: ${CA_CERT_BUNDLE_BASE64:-}
+        ALLOW_INSECURE_PESTER_DOWNLOAD: ${ALLOW_INSECURE_PESTER_DOWNLOAD:-0}
+        PESTER_GH_REPO: ${PESTER_GH_REPO:-}
+        PESTER_GH_TAG: ${PESTER_GH_TAG:-}
+        PESTER_GH_ASSET: ${PESTER_GH_ASSET:-}
+        GH_TOKEN: ${GH_TOKEN:-}
+        GH_VERSION: ${GH_VERSION:-2.83.1}
+        GH_SHA256: ${GH_SHA256:-1c5252d4ce3db07b51c01ff0b909583da6364ff3fdc06d0c2e75e62dc0380a34}
+        PESTER_VERSION: ${PESTER_VERSION:-5.7.1}
+        PESTER_SHA256: ${PESTER_SHA256:-3c6dad5fb143faf19709dfb28c31c873989944705a087e160e23b7ce462e37a1}
+        PESTER_URL: ${PESTER_URL:-https://globalcdn.nuget.org/packages/pester.5.7.1.nupkg}
+    image: seed-runner:latest
+    pull_policy: never
+    volumes:
+      - ../../..:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /workspace
+    environment:
+      WORKSPACE_HOST_PATH: ${WORKSPACE_HOST_PATH:-}
+    entrypoint: ["/usr/bin/env", "bash"]
+    command: ["/workspace/scripts/run-seed-and-analyze.sh"]
