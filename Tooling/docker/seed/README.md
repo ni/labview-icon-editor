@@ -1,6 +1,6 @@
 # Seed Docker helper
 
-Run the Seed CLI from a locally built image (no GHCR dependency). The repo is bind-mounted to `/workspace` inside the container.
+Run the Seed CLI from a locally built image (no GHCR dependency). The repo is bind-mounted to `/workspace` inside the container, so reference paths accordingly.
 
 - Build context: `Tooling/seed` (vendored source + Dockerfile)
 - Tag produced: `seed-local:latest`
@@ -24,6 +24,6 @@ docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed bash
 ```
 
 ## Notes
-- Paths inside the container should use `/workspace/...` since the repo root is mounted there.
-- The image builds locally; each fork can retag as desired by changing `image:` in `docker-compose.yml`.
-- To rebuild after source changes: `docker compose -f Tooling/docker/seed/docker-compose.yml build --no-cache seed`.
+- Use `/workspace/...` paths inside the container (that’s where the repo mounts).
+- The image builds locally; retag via `image:` in `docker-compose.yml` if you want a different name.
+- Rebuild after source changes: `docker compose -f Tooling/docker/seed/docker-compose.yml build --no-cache seed`.
