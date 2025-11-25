@@ -1,34 +1,6 @@
 {
   "version": "2.0.0",
-  "inputs": [
-    {
-      "id": "devModeBitness",
-      "type": "pickString",
-      "description": "Target LabVIEW bitness for dev-mode tasks",
-      "options": [
-        "32",
-        "64"
-      ],
-      "default": "64"
-    },
-    {
-      "id": "devmodePhrase",
-      "type": "promptString",
-      "description": "Dev-mode intent phrase (e.g., /devmode bind 2021 both force)",
-      "default": "/devmode bind 2021 both force"
-    },
-    {
-      "id": "devmodeForcePhrase",
-      "type": "promptString",
-      "description": "Dev-mode intent phrase for force overwrite",
-      "default": "/devmode bind 2021 both force"
-    },
-    {
-      "id": "vipbPath",
-      "type": "promptString",
-      "description": "Path to the VIPB used by dev-mode (relative to repo root)"
-    }
-  ],
+  "inputs": [],
   "tasks": [
     {
       "label": "Build LVAddon (VI Package)",

@@ -1,4 +1,4 @@
-# Validates the VSCode build task wiring for the unified Build/Package task.
+# Validates the VSCode build task wiring for the single Build LVAddon task.
 # Exits non-zero if the task is missing or does not include required flags or inputs.
 [CmdletBinding()]
 param(
@@ -21,21 +21,26 @@ catch {
 }
 
 $json = Get-Content -LiteralPath $TasksPath -Raw | ConvertFrom-Json
-$buildTask = $json.tasks | Where-Object { $_.label -eq "Build/Package VIP" } | Select-Object -First 1
+$buildTask = $json.tasks | Where-Object { $_.label -eq "Build LVAddon (VI Package)" } | Select-Object -First 1
 
 if (-not $buildTask) {
-    Write-Error "Build task 'Build/Package VIP' not found in $TasksPath"
+    Write-Error "Build task 'Build LVAddon (VI Package)' not found in $TasksPath"
     exit 2
 }
 
 # Required substrings in the command
 $command = ($buildTask.args -join ' ')
 $required = @(
-    "scripts/run-build-or-package.ps1",
-    "-BuildMode",
-    "-WorkspacePath",
-    "-LabVIEWMinorRevision",
-    "-LvlibpBitness"
+    "scripts/ie.ps1",
+    "-Command",
+    "build-worktree",
+    "-RepositoryPath",
+    "-SupportedBitness",
+    "-LvlibpBitness",
+    "-Major",
+    "-Minor",
+    "-Patch",
+    "-Build"
 )
 
 $missing = $required | Where-Object { $command -notmatch [regex]::Escape($_) }

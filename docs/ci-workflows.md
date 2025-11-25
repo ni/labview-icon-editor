@@ -27,7 +27,7 @@ Artifacts
 
 Related workflows
 - Dev mode toggle: `scripts/set-development-mode/run-dev-mode.ps1` and `revert-development-mode/run-dev-mode.ps1`
-- Draft release (manual): `.github/workflows/draft-release.yml` (use VS Code task “Draft GitHub Release” with CI run ID)
+- Draft release (manual): `.github/workflows/draft-release.yml` (invoke via **Run workflow** in GitHub and supply the CI run ID)
 
 ## VIPM Docker helper (Linux)
 - Location: `Tooling/docker/vipm/README.md` (builds a LabVIEW 2025 Linux image with VIPM CLI and mounts the repo at `/workspace`).
