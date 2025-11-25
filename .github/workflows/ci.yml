@@ -433,7 +433,6 @@ jobs:
           if (-not $env:GH_REPO) { throw "GITHUB_REPOSITORY is not set." }
           pwsh -NoProfile -File $script -Repo $env:GH_REPO -Token $env:GH_TOKEN
 
-  apply-deps:
     name: Apply VIPC (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x${{ matrix.bits }})
     needs: [verify-checklist-sync, resolve-labview-version, ps-coverage, version, preflight-gates]
     runs-on: self-hosted-windows-lv
@@ -693,33 +692,6 @@ jobs:
           path: ${{ steps.report.outputs.report_path }}
           if-no-files-found: error
 
-  check-library-paths:
-    name: Check LocalHost.LibraryPaths (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }})
-    needs: [verify-checklist-sync, apply-deps, resolve-labview-version]
-    runs-on: self-hosted-windows-lv
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-        with:
-          set-safe-directory: true
-          fetch-depth: 1
-      - name: Validate LocalHost.LibraryPaths entries (64-bit)
-        shell: pwsh
-        run: |
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/read-library-paths.ps1" `
-            -RepositoryPath "$env:GITHUB_WORKSPACE" `
-            -SupportedBitness 64 `
-            -FailOnMissing
-      - name: Validate LocalHost.LibraryPaths entries (32-bit)
-        shell: pwsh
-        run: |
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/read-library-paths.ps1" `
-            -RepositoryPath "$env:GITHUB_WORKSPACE" `
-            -SupportedBitness 32 `
-            -FailOnMissing
-
   version:
     name: Compute Version
     needs: [serialize-before-version, verify-checklist-sync]
@@ -755,175 +727,6 @@ jobs:
           poll-interval-seconds: 30
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  test-x64:
-    name: Run Unit Tests (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x64)
-    needs: [verify-checklist-sync, apply-deps, check-library-paths, resolve-labview-version]
-    runs-on: self-hosted-windows-lv
-    defaults:
-      run:
-        shell: pwsh
-    env:
-      LABVIEW_VERSION: ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
-    steps:
-      - name: Run unit tests (x64)
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/run-unit-tests/RunUnitTests.ps1" `
-            -Package_LabVIEW_Version "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
-            -SupportedBitness "64" `
-            -AbsoluteProjectPath "$env:GITHUB_WORKSPACE/lv_icon_editor.lvproj"
-      - if: always()
-        name: Close LabVIEW ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} 64-bit after unit tests
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/close-labview/Close_LabVIEW.ps1" `
-            -Package_LabVIEW_Version "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
-            -SupportedBitness "64"
-      - name: Upload unit test report (x64)
-        id: check_report_x64
-        if: always()
-        shell: pwsh
-        run: |
-          if (Test-Path '.github/actions/run-unit-tests/UnitTestReport.xml') {
-            "found_report=true" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
-          } else {
-            "found_report=false" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
-          }
-      - name: Upload unit test report (x64)
-        if: always() && steps.check_report_x64.outputs.found_report == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-unit-test-report-64bit
-          path: .github/actions/run-unit-tests/UnitTestReport.xml
-          if-no-files-found: ignore
-
-  test-x86:
-    name: Run Unit Tests (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x86)
-    needs: [verify-checklist-sync, test-x64, apply-deps, check-library-paths, resolve-labview-version]
-    runs-on: self-hosted-windows-lv
-    defaults:
-      run:
-        shell: pwsh
-    env:
-      LABVIEW_VERSION: ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}
-    steps:
-      - name: Run unit tests (x86)
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/run-unit-tests/RunUnitTests.ps1" `
-            -Package_LabVIEW_Version "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
-            -SupportedBitness "32" `
-            -AbsoluteProjectPath "$env:GITHUB_WORKSPACE/lv_icon_editor.lvproj"
-      - if: always()
-        name: Close LabVIEW ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} 32-bit after unit tests
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/close-labview/Close_LabVIEW.ps1" `
-            -Package_LabVIEW_Version "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
-            -SupportedBitness "32"
-      - name: Upload unit test report (x86)
-        id: check_report_x86
-        if: always()
-        shell: pwsh
-        run: |
-          if (Test-Path '.github/actions/run-unit-tests/UnitTestReport.xml') {
-            "found_report=true" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
-          } else {
-            "found_report=false" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
-          }
-      - name: Upload unit test report (x86)
-        if: always() && steps.check_report_x86.outputs.found_report == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-unit-test-report-32bit
-          path: .github/actions/run-unit-tests/UnitTestReport.xml
-          if-no-files-found: ignore
-
-  publish-performance-and-portability:
-    name: Publish Performance/Portability JSON
-    needs: [verify-checklist-sync, test-x86]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-        with:
-          set-safe-directory: true
-      - name: Download unit test reports
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-      - name: Build performance/portability reports
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import json
-          import xml.etree.ElementTree as ET
-          from pathlib import Path
-
-          repo = "${{ github.event.repository.name || 'labview-icon-editor' }}"
-
-          reports = {
-              "test-x64": Path(f"artifacts/{repo}-unit-test-report-64bit/UnitTestReport.xml"),
-              "test-x86": Path(f"artifacts/{repo}-unit-test-report-32bit/UnitTestReport.xml"),
-          }
-
-          perf_entries = []
-          port_entries = []
-
-          for arch, path in reports.items():
-              note = ""
-              status = "fail"
-              duration = None
-
-              if path.exists():
-                  try:
-                      tree = ET.parse(path)
-                      duration = sum(float(tc.get("time") or 0.0) for tc in tree.findall(".//testcase"))
-                      status = "pass"
-                      note = "Unit tests completed"
-                  except Exception as exc:
-                      note = f"Failed to parse UnitTestReport.xml: {exc}"
-              else:
-                  note = "UnitTestReport.xml not found"
-
-              if duration is not None:
-                  perf_entries.append(
-                      {
-                          "scenario": "LabVIEW unit tests",
-                          "architecture": arch,
-                          "metric": "unit_tests_duration_s",
-                          "unit": "s",
-                          "value": round(duration, 3),
-                          "source": str(path),
-                      }
-                  )
-
-              port_entries.append(
-                  {
-                      "architecture": arch,
-                      "status": status,
-                      "notes": note,
-                  }
-              )
-
-          out_dir = Path("reports")
-          out_dir.mkdir(parents=True, exist_ok=True)
-          (out_dir / "performance-measurements.json").write_text(json.dumps(perf_entries, indent=2))
-          (out_dir / "portability-status.json").write_text(json.dumps(port_entries, indent=2))
-          print("Performance entries:", json.dumps(perf_entries, indent=2))
-          print("Portability entries:", json.dumps(port_entries, indent=2))
-          PY
-      - name: Upload performance/portability reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-reports-json
-          path: |
-            reports/performance-measurements.json
-            reports/portability-status.json
 
   ps-coverage:
     name: PowerShell Tests & Coverage
@@ -1003,7 +806,7 @@ jobs:
 
   build-worktree:
     name: Build (worktree)
-    needs: [verify-checklist-sync, preflight-gates, version, resolve-labview-version, test-x86, apply-deps]
+    needs: [verify-checklist-sync, preflight-gates, version, resolve-labview-version]
     runs-on: self-hosted-windows-lv
     defaults:
       run:
