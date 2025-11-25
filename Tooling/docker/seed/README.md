@@ -23,6 +23,23 @@ Open a shell:
 docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed bash
 ```
 
+## Env-driven invocation
+The entrypoint respects GitHub Action-style env vars. Set them and pass `-e` when running:
+
+PowerShell:
+```
+$env:INPUT_MODE='vipb2json'
+$env:INPUT_INPUT='/workspace/Tooling/deployment/labview-icon-editor.vipb'
+$env:INPUT_OUTPUT='/workspace/artifacts/seed/metadata.json'
+docker compose -f Tooling/docker/seed/docker-compose.yml run --rm -e INPUT_MODE -e INPUT_INPUT -e INPUT_OUTPUT seed
+```
+
+Bash:
+```
+INPUT_MODE=vipb2json INPUT_INPUT=/workspace/Tooling/deployment/labview-icon-editor.vipb INPUT_OUTPUT=/workspace/artifacts/seed/metadata.json \
+  docker compose -f Tooling/docker/seed/docker-compose.yml run --rm -e INPUT_MODE -e INPUT_INPUT -e INPUT_OUTPUT seed
+```
+
 ## Common tasks
 - Convert VIPB to JSON: `seed vipb json --input /workspace/path/to/package.vipb --output /workspace/out.json`
 - Apply JSON patch to VIPB: `seed vipb patch --input /workspace/path/to/package.vipb --patch /workspace/patch.json --output /workspace/patched.vipb`
