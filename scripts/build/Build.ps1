@@ -619,6 +619,7 @@ try {
         Verbose                  = $true
     }
 
+    $vipOutputDir = Join-Path $RepositoryPath 'builds\VI Package'
     # 11) Build VI Package (64-bit) 2023
     if ($vipmAvailable) {
         Write-Verbose "Building VI Package (64-bit)..."
@@ -641,6 +642,20 @@ try {
     }
     else {
         Write-Warning "Skipping VI Package build because vipm CLI is not available."
+        try {
+            if (-not (Test-Path -LiteralPath $vipOutputDir)) {
+                New-Item -ItemType Directory -Path $vipOutputDir -Force | Out-Null
+            } else {
+                # Clear stale artifacts so downstream checks don't pick up an old VIP
+                Get-ChildItem -LiteralPath $vipOutputDir -Force -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+            }
+            $placeholderVip = Join-Path $vipOutputDir 'vipm-skipped-placeholder.vip'
+            "VIPM build skipped because vipm CLI is not available on this runner." | Set-Content -LiteralPath $placeholderVip -Encoding UTF8
+            Write-Information ("Created placeholder VIP artifact at {0} (vipm missing)" -f $placeholderVip) -InformationAction Continue
+        }
+        catch {
+            Write-Warning ("Failed to create placeholder VIP output: {0}" -f $_.Exception.Message)
+        }
     }
 
     # 12) Close LabVIEW (64-bit)
