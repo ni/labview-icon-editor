@@ -991,21 +991,25 @@ jobs:
           Write-Host "======================================================================"
           Write-Host "Pester suite: dev-mode-related tests are skipped on non-Windows runners"
           Write-Host "======================================================================"
-          $coverageTargets = @(
-            '.github/actions/add-token-to-labview/LocalhostLibraryPaths.ps1',
-            '.github/actions/set-development-mode/run-dev-mode.ps1',
-            '.github/actions/set-development-mode/Set_Development_Mode.ps1',
-            '.github/actions/prepare-labview-source/Prepare_LabVIEW_source.ps1',
-            '.github/actions/build/Build.ps1',
-            'scripts/read-library-paths.ps1',
-            'scripts/show-ini.ps1',
-            'scripts/verify-dev-mode-state.ps1'
-          )
+          $coverageTargets = if ($IsWindows) {
+            @(
+              '.github/actions/add-token-to-labview/LocalhostLibraryPaths.ps1',
+              '.github/actions/set-development-mode/run-dev-mode.ps1',
+              '.github/actions/set-development-mode/Set_Development_Mode.ps1',
+              '.github/actions/prepare-labview-source/Prepare_LabVIEW_source.ps1',
+              '.github/actions/build/Build.ps1',
+              'scripts/read-library-paths.ps1',
+              'scripts/show-ini.ps1',
+              'scripts/verify-dev-mode-state.ps1'
+            )
+          } else {
+            @() # Skip coverage on non-Windows to avoid false 0% from dev-mode scripts
+          }
           $pesterConfig = New-PesterConfiguration
           $pesterConfig.Run.Container = New-PesterContainer -Path 'Test'
           $pesterConfig.TestResult.Enabled = $true
           $pesterConfig.TestResult.OutputPath = 'pester-results.xml'
-          $pesterConfig.CodeCoverage.Enabled = $true
+          $pesterConfig.CodeCoverage.Enabled = $coverageTargets.Count -gt 0
           $pesterConfig.CodeCoverage.Path = $coverageTargets
           $pesterConfig.CodeCoverage.OutputPath = 'coverage.xml'
           $pesterConfig.CodeCoverage.OutputFormat = 'JaCoCo'
