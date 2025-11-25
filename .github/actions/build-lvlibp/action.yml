@@ -11,33 +11,59 @@ runs:
     - name: Run Build_lvlibp.ps1
       shell: pwsh
       run: |
-        $candidates = @(
-          "$env:GITHUB_WORKSPACE/scripts/get-package-lv-version.ps1",
-          "$env:GITHUB_WORKSPACE/.github/scripts/get-package-lv-version.ps1",
-          "${{ github.action_path }}/../../scripts/get-package-lv-version.ps1"
-        )
-        $verScript = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-        if (-not $verScript) {
-          throw "Unable to locate get-package-lv-version.ps1. Checked: $($candidates -join ', ')"
+        $repo = "${{ inputs.repository_path }}"
+        if (-not $repo) {
+          $relative = "${{ inputs.relative_path }}"
+          if ($relative) {
+            $repo = Join-Path $env:GITHUB_WORKSPACE $relative
+          }
+          else {
+            $repo = $env:GITHUB_WORKSPACE
+          }
         }
 
-        $lvVer = pwsh -NoProfile -File $verScript -RepositoryPath "${{ inputs.repository_path }}"
+        if (-not (Test-Path $repo)) {
+          throw "Repository path '$repo' does not exist."
+        }
+
+        $lvVer = "${{ inputs.minimum_supported_lv_version }}"
+        if (-not $lvVer) {
+          $candidates = @(
+            "$repo/scripts/get-package-lv-version.ps1",
+            "$repo/.github/scripts/get-package-lv-version.ps1",
+            "${{ github.action_path }}/../../scripts/get-package-lv-version.ps1"
+          )
+          $verScript = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $verScript) {
+            throw "Unable to locate get-package-lv-version.ps1. Checked: $($candidates -join ', ')"
+          }
+          $lvVer = pwsh -NoProfile -File $verScript -RepositoryPath $repo
+        }
+
         & "${{ github.action_path }}/Build_lvlibp.ps1" `
           -Package_LabVIEW_Version $lvVer `
           -SupportedBitness ${{ inputs.supported_bitness }} `
-          -RepositoryPath "${{ inputs.repository_path }}" `
+          -RepositoryPath $repo `
           -Major ${{ inputs.major }} `
           -Minor ${{ inputs.minor }} `
           -Patch ${{ inputs.patch }} `
           -Build ${{ inputs.build }} `
           -Commit "${{ inputs.commit }}"
 inputs:
+  minimum_supported_lv_version:
+    description: 'Minimum LabVIEW version to build against. If empty, get-package-lv-version.ps1 is used.'
+    required: false
+    default: ''
   supported_bitness:
     description: '32 or 64'
     required: true
+  relative_path:
+    description: 'Path to the repository relative to GITHUB_WORKSPACE (alternative to repository_path).'
+    required: false
+    default: ''
   repository_path:
     description: 'Workspace root path'
-    required: true
+    required: false
   major:
     description: 'Major version component'
     required: true
