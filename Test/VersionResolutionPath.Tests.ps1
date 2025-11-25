@@ -56,9 +56,13 @@ Describe "LabVIEW version resolution wiring" {
 
                 $job.env.LABVIEW_VERSION | Should -Be $script:ExpectedVersionExpr
 
-                $runCommands = @($job.steps | ForEach-Object { $_.run }) | Where-Object { $_ -and ($_ -match 'run-unit-tests/RunUnitTests\.ps1') }
-                $runCommands | Should -Not -BeNullOrEmpty
-                ($runCommands -join "`n") | Should -Match '-Package_LabVIEW_Version "?${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}"?'
+                $runs = @($job.steps | ForEach-Object { $_.run }) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+                $runs | Should -Not -BeNullOrEmpty
+
+                $unitRuns = $runs | Where-Object { $_ -match 'run-unit-tests/RunUnitTests\.ps1' }
+                $unitRuns | Should -Not -BeNullOrEmpty
+
+                ($unitRuns -join "`n") | Should -Match '-Package_LabVIEW_Version "?${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}"?'
             }
         }
     }
