@@ -633,6 +633,13 @@ try {
         Verbose                  = $true
     }
 
+    # Guard: ensure 32-bit LabVIEW is not running before invoking VIPM packaging
+    Write-Verbose "Pre-VIPM: closing LabVIEW (32-bit) to avoid cross-bitness interference..."
+    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+        Package_LabVIEW_Version = $lvVersion
+        SupportedBitness        = '32'
+    } -TimeoutSec 120 -DisplayName "Close LabVIEW (pre-VIPM 32-bit)"
+
     $vipOutputDir = Join-Path $RepositoryPath 'builds\VI Package'
     # 11) Build VI Package (64-bit) 2023
     if ($vipmAvailable) {
