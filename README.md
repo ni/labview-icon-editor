@@ -25,6 +25,13 @@ Behavior & defaults
 
 More details: see `docs/vscode-tasks.md`.
 
+### Build LVAddon (VI Package)
+
+Use **Terminal → Run Task → Build LVAddon (VI Package)** in VS Code to run the isolated worktree build (`ie.ps1 -Command buil
+d-worktree`). The task defaults to **bitness=64** for the top-level package, **LvlibpBitness=both** to produce 32-bit and 64-
+bit packed libraries, and **version inputs** `Major=0`, `Minor=1`, `Patch=0`, `Build=1` (plus the default Company/Author meta
+data). You can adjust these arguments in `.vscode/tasks.json` or by editing the task invocation before running it.
+
 ## Docs quicklinks
 - Build & tasks: `docs/vscode-tasks.md`
 - CI overview: `docs/ci-workflows.md`
