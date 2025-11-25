@@ -410,6 +410,30 @@ jobs:
           "lv_version=$derived" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf8 -Append
           Write-Host ("LabVIEW version check passed: env policy {0} == VIPB {1} (normalized {2})." -f $env:EXPECTED_MIN_LV, $derivedRaw, $derived)
 
+  version:
+    name: Compute Version
+    needs: [verify-checklist-sync]
+    runs-on: self-hosted-windows-lv
+    defaults:
+      run:
+        shell: pwsh
+    outputs:
+      VERSION:       ${{ steps.compute.outputs.VERSION }}
+      MAJOR:         ${{ steps.compute.outputs.MAJOR }}
+      MINOR:         ${{ steps.compute.outputs.MINOR }}
+      PATCH:         ${{ steps.compute.outputs.PATCH }}
+      BUILD:         ${{ steps.compute.outputs.BUILD }}
+      IS_PRERELEASE: ${{ steps.compute.outputs.IS_PRERELEASE }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 0
+      - id: compute
+        uses: ./.github/actions/compute-version
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
   list-collaborators:
     name: List Repo Collaborators
     needs: [verify-checklist-sync]
@@ -434,7 +458,7 @@ jobs:
           pwsh -NoProfile -File $script -Repo $env:GH_REPO -Token $env:GH_TOKEN
   build-worktree:
     name: Build (worktree)
-    needs: [verify-checklist-sync, preflight-gates, version, resolve-labview-version]
+    needs: [verify-checklist-sync, version, resolve-labview-version]
     runs-on: self-hosted-windows-lv
     defaults:
       run:
