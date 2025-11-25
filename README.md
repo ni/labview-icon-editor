@@ -21,6 +21,17 @@ VIPM not available?
 More details: see `docs/vscode-tasks.md`.
 
 
+## Analyze VI Packages (CLI-only)
+
+Run the analyzer directly—there is no VS Code task for this:
+
+```pwsh
+pwsh -NoProfile -File scripts/analyze-vi-package/run-workflow-local.ps1 -VipArtifactPath "<vip or dir>" -MinLabVIEW "21.0"
+```
+
+Provide a real `.vip` artifact (placeholders such as `vipm-skipped-placeholder.vip` are skipped) and the workflow auto-loads `scripts/analyze-vi-package/VIPReader.psm1`.
+
+
 ## Docs quicklinks
 - Build & tasks: `docs/vscode-tasks.md`
 - CI overview: `docs/ci-workflows.md`
