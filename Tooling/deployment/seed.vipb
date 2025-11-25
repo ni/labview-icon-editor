@@ -25,10 +25,10 @@
     <Custom_Action_VIs>
       <Pre-Build_VI/>
       <Post-Build_VI/>
-      <Pre-Install_VI>VIP_Pre-Install Custom Action.vi</Pre-Install_VI>
-      <Post-Install_VI>VIP_Post-Install Custom Action.vi</Post-Install_VI>
-      <Pre-Uninstall_VI>VIP_Pre-Uninstall Custom Action.vi</Pre-Uninstall_VI>
-      <Post-Uninstall_VI>VIP_Post-Uninstall Custom Action.vi</Post-Uninstall_VI>
+      <Pre-Install_VI>Tooling/deployment/custom-actions/VIP_Pre-Install Custom Action.vi</Pre-Install_VI>
+      <Post-Install_VI>Tooling/deployment/custom-actions/VIP_Post-Install Custom Action.vi</Post-Install_VI>
+      <Pre-Uninstall_VI>Tooling/deployment/custom-actions/VIP_Pre-Uninstall Custom Action.vi</Pre-Uninstall_VI>
+      <Post-Uninstall_VI>Tooling/deployment/custom-actions/VIP_Post-Uninstall Custom Action.vi</Post-Uninstall_VI>
     </Custom_Action_VIs>
     <VI_Package_Configuration_File>NI Icon editor.vipc</VI_Package_Configuration_File>
     <Description>
@@ -255,16 +255,16 @@
         <Path>Tooling/deployment/NIP Post uninstall.vi</Path>
       </Exclusions>
       <Exclusions>
-        <Path>Tooling/deployment/VIP_Post-Install Custom Action.vi</Path>
+        <Path>Tooling/deployment/custom-actions/VIP_Post-Install Custom Action.vi</Path>
       </Exclusions>
       <Exclusions>
-        <Path>Tooling/deployment/VIP_Post-Uninstall Custom Action.vi</Path>
+        <Path>Tooling/deployment/custom-actions/VIP_Post-Uninstall Custom Action.vi</Path>
       </Exclusions>
       <Exclusions>
-        <Path>Tooling/deployment/VIP_Pre-Install Custom Action.vi</Path>
+        <Path>Tooling/deployment/custom-actions/VIP_Pre-Install Custom Action.vi</Path>
       </Exclusions>
       <Exclusions>
-        <Path>Tooling/deployment/VIP_Pre-Uninstall Custom Action.vi</Path>
+        <Path>Tooling/deployment/custom-actions/VIP_Pre-Uninstall Custom Action.vi</Path>
       </Exclusions>
       <Exclusions>
         <Path>Tooling/support</Path>
