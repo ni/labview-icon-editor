@@ -1011,7 +1011,6 @@ jobs:
           $pesterConfig.CodeCoverage.OutputFormat = 'JaCoCo'
           $pesterConfig.Run.PassThru = $true
           $pesterConfig.Output.Verbosity = 'Detailed'
-          $pesterConfig.Output.StackTraceFormat = 'SingleLine'
           Write-Host "------ Invoking Pester ------------------------------------------------"
           Invoke-Pester -Configuration $pesterConfig
       - name: Upload Pester results
