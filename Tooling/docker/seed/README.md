@@ -31,7 +31,7 @@ docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed bash
 ## Notes
 - Use `/workspace/...` paths inside the container (that's where the repo mounts).
 - The image builds locally; retag via `image:` in `docker-compose.yml` if you want a different name.
-- Rebuild after source changes: `docker compose -f Tooling/docker/seed/docker-compose.yml build --no-cache seed` (VS Code tasks pass `--build` automatically).
+- Rebuild after source changes: `docker compose -f Tooling/docker/seed/docker-compose.yml build --no-cache seed` (VS Code tasks run `docker compose ... build seed` before invoking the container).
 - If you prefer not to use Docker, run Seed directly from `Tooling/seed` with `dotnet` after restoring its dependencies.
 - Compose is set to `pull_policy: never` to avoid registry pulls; first run will build the image locally.
 

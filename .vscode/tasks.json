@@ -67,15 +67,11 @@
     {
       "label": "seed: help",
       "type": "shell",
-      "command": "docker",
+      "command": "pwsh",
       "args": [
-        "compose",
-        "-f",
-        "${workspaceFolder}/Tooling/docker/seed/docker-compose.yml",
-        "--build",
-        "run",
-        "--rm",
-        "seed"
+        "-NoProfile",
+        "-Command",
+        "docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" build seed; docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" run --rm seed"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -85,16 +81,11 @@
     {
       "label": "seed: shell",
       "type": "shell",
-      "command": "docker",
+      "command": "pwsh",
       "args": [
-        "compose",
-        "-f",
-        "${workspaceFolder}/Tooling/docker/seed/docker-compose.yml",
-        "--build",
-        "run",
-        "--rm",
-        "seed",
-        "bash"
+        "-NoProfile",
+        "-Command",
+        "docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" build seed; docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" run --rm seed bash"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -104,22 +95,11 @@
     {
       "label": "seed: vipb -> json",
       "type": "shell",
-      "command": "docker",
+      "command": "pwsh",
       "args": [
-        "compose",
-        "-f",
-        "${workspaceFolder}/Tooling/docker/seed/docker-compose.yml",
-        "--build",
-        "run",
-        "--rm",
-        "seed",
-        "seed",
-        "vipb",
-        "json",
-        "--input",
-        "/workspace/${input:seedVipbInput}",
-        "--output",
-        "/workspace/${input:seedJsonOutput}"
+        "-NoProfile",
+        "-Command",
+        "docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" build seed; docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" run --rm seed seed vipb json --input \"/workspace/${input:seedVipbInput}\" --output \"/workspace/${input:seedJsonOutput}\""
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -129,24 +109,11 @@
     {
       "label": "seed: apply patch",
       "type": "shell",
-      "command": "docker",
+      "command": "pwsh",
       "args": [
-        "compose",
-        "-f",
-        "${workspaceFolder}/Tooling/docker/seed/docker-compose.yml",
-        "--build",
-        "run",
-        "--rm",
-        "seed",
-        "seed",
-        "vipb",
-        "patch",
-        "--input",
-        "/workspace/${input:seedVipbInput}",
-        "--patch",
-        "/workspace/${input:seedPatchPath}",
-        "--output",
-        "/workspace/${input:seedVipbOutput}"
+        "-NoProfile",
+        "-Command",
+        "docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" build seed; docker compose -f \"${workspaceFolder}/Tooling/docker/seed/docker-compose.yml\" run --rm seed seed vipb patch --input \"/workspace/${input:seedVipbInput}\" --patch \"/workspace/${input:seedPatchPath}\" --output \"/workspace/${input:seedVipbOutput}\""
       ],
       "options": {
         "cwd": "${workspaceFolder}"
