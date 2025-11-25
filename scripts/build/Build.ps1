@@ -173,8 +173,8 @@ function Assert-ExpectedPPLSet {
     $files = Get-ChildItem -LiteralPath $PluginsDir -Filter '*.lvlibp*' -File -ErrorAction SilentlyContinue
     $names = $files | ForEach-Object { $_.Name }
 
-    $missing = $ExpectedNames | Where-Object { $names -notcontains $_ }
-    $extra   = $names | Where-Object { $ExpectedNames -notcontains $_ }
+    $missing = @($ExpectedNames | Where-Object { $names -notcontains $_ })
+    $extra   = @($names | Where-Object { $ExpectedNames -notcontains $_ })
 
     if ($missing.Count -gt 0) {
         throw ("Expected PPL(s) missing from {0}: {1}" -f $PluginsDir, ($missing -join ', '))
