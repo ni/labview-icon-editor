@@ -10,7 +10,7 @@ param(
     [string]$Bitness = 'both',
 
     [switch]$Force,
-    [switch]$AutoFixOtherRepo,
+    [switch]$AutoFixOtherRepo = $true,
     [switch]$DryRun,
     [switch]$SummaryOnly,
     [string]$JsonOutputPath
@@ -432,6 +432,18 @@ else {
             $statePost = Get-LibraryPathState -LvVersion $lvVersion -Arch $arch
             $res.post_path = if ($statePost.Paths) { $statePost.Paths[0] } else { '' }
             $postMatch = ($statePost.Paths | ForEach-Object { Normalize-PathLower $_ }) -contains $expectedNorm
+            # Fallback: if token still points elsewhere and auto-fix is enabled, attempt to force-write the token and re-read.
+            if (-not $postMatch -and $AutoFixOtherRepo) {
+                try {
+                    Add-LibraryPathToken -LvVersion $lvVersion -Arch $arch -TokenPath $expectedToken -RepositoryRoot $RepositoryPath -Force
+                    $statePost = Get-LibraryPathState -LvVersion $lvVersion -Arch $arch
+                    $res.post_path = if ($statePost.Paths) { $statePost.Paths[0] } else { '' }
+                    $postMatch = ($statePost.Paths | ForEach-Object { Normalize-PathLower $_ }) -contains $expectedNorm
+                }
+                catch {
+                    Write-Warning ("Auto-fix write for {0}-bit token failed: {1}" -f $arch, $_.Exception.Message)
+                }
+            }
             if ($postMatch) {
                 $res.status = 'success'
                 $res.message = 'Bound development mode (token set and packed libs cleared)'
@@ -582,13 +594,15 @@ if (@($results | Where-Object { $_.status -eq 'fail' -and $_.message -match 'use
     $hintLines.Add("CLI: pwsh scripts/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '$RepositoryPath' -Mode bind -Bitness both -Force")
 }
 # If a target bitness has no LocalHost.LibraryPaths entry, suggest binding for that bitness.
-$missingTokens = @($crossVersion | Where-Object { $_.version -like "$lvVersion*" -and $_.tag -eq 'NONE' })
+$resultsByArch = @{}
+foreach ($r in $results) { $resultsByArch[$r.bitness] = $r }
+$missingTokens = @($crossVersion | Where-Object { $_.version -like "$lvVersion*" -and $_.tag -eq 'NONE' -and $resultsByArch[$_.arch].status -ne 'success' })
 if ($missingTokens.Count -gt 0) {
     $archText = ($missingTokens | ForEach-Object { "$($_.arch)-bit" }) -join '/'
     $hintLines.Add("No LocalHost.LibraryPaths entry found for $archText LabVIEW $lvVersion; run dev-mode bind for that bitness to populate the INI token.")
 }
 # Guardrail: target version tokens should point to this repo for all bitnesses
-$wrongRepo = @($crossVersion | Where-Object { $_.version -like "$lvVersion*" -and $_.tag -ne 'THIS-REPO' -and $_.tag -ne 'NONE' })
+$wrongRepo = @($crossVersion | Where-Object { $_.version -like "$lvVersion*" -and $_.tag -ne 'THIS-REPO' -and $_.tag -ne 'NONE' -and $resultsByArch[$_.arch].status -ne 'success' })
 if ($wrongRepo.Count -gt 0) {
     $archText = ($wrongRepo | ForEach-Object { "$($_.arch)-bit" }) -join '/'
     $hintLines.Add("LabVIEW $lvVersion ($archText) LocalHost.LibraryPaths points elsewhere; bind those bitnesses so both tokens point to this repo.")
