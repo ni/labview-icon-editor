@@ -60,4 +60,12 @@ The tasks live in `.vscode/tasks.json`. They are optional; skip if you don’t u
 ### Seed: apply patch
 - Label: `seed: apply patch`
 - Purpose: apply a JSON patch to a `.vipb`
-- Prompts for input `.vipb`, patch path, and output `.vipb`
+- Prompts for:
+  - Input `.vipb` (use `/workspace/...` inside the container)
+  - JSON patch file (e.g., `patch.json`)
+  - Output `.vipb` path (where the patched file is written)
+- Typical flow:
+  1) Export a baseline JSON: run `seed: vipb -> json` or `seed vipb json ...`
+  2) Edit the JSON or create a patch file with your changes
+  3) Run `seed: apply patch` to produce a patched `.vipb`
+  4) Optionally re-export to JSON to verify the patch applied as expected
