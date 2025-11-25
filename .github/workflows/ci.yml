@@ -858,9 +858,6 @@ jobs:
           pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/close-labview/Close_LabVIEW.ps1" `
             -Package_LabVIEW_Version "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
             -SupportedBitness "64"
-        with:
-          repository_path: ${{ github.workspace }}
-          supported_bitness: 64
       - name: Upload unit test report (x64)
         id: check_report_x64
         if: always()
@@ -905,9 +902,6 @@ jobs:
           pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/close-labview/Close_LabVIEW.ps1" `
             -Package_LabVIEW_Version "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
             -SupportedBitness "32"
-        with:
-          repository_path: ${{ github.workspace }}
-          supported_bitness: 32
       - name: Upload unit test report (x86)
         id: check_report_x86
         if: always()
