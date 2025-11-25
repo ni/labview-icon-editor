@@ -1,10 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-# Read inputs provided to the action
-MODE="${INPUT_MODE}"
-INPUT_PATH="${INPUT_INPUT}"
-OUTPUT_PATH="${INPUT_OUTPUT}"
+# Read inputs provided to the action (default to help-friendly values for local use)
+MODE="${INPUT_MODE:-help}"
+INPUT_PATH="${INPUT_INPUT:-}"
+OUTPUT_PATH="${INPUT_OUTPUT:-}"
 PATCH_FILE="${INPUT_PATCH_FILE:-}"
 PATCH_YAML="${INPUT_PATCH_YAML:-}"
 ALWAYS_PATCH="${INPUT_ALWAYS_PATCH:-false}"
@@ -16,6 +16,15 @@ UPLOAD_FILES="${INPUT_UPLOAD_FILES:-true}"
 SEED_LVPROJ="${INPUT_SEED_LVPROJ:-false}"
 SEED_VIPB="${INPUT_SEED_VIPB:-false}"
 TAG="${INPUT_TAG:-}"
+
+# Local help mode: just show usage for convenience when MODE is unset/help
+if [[ "$MODE" == "help" || -z "$MODE" ]]; then
+  echo "Seed action entrypoint (local mode):"
+  echo "  Set INPUT_MODE to one of: vipb2json, json2vipb, lvproj2json, json2lvproj, buildspec2json, json2buildspec"
+  echo "  Set INPUT_INPUT and INPUT_OUTPUT to the desired paths (use /workspace/... in Docker)"
+  echo "  Optional: INPUT_PATCH_FILE, INPUT_PATCH_YAML, INPUT_BRANCH_NAME, INPUT_AUTO_PR, INPUT_UPLOAD_FILES"
+  exit 0
+fi
 
 # If seeding is requested, handle seeding of .lvproj/.vipb templates and exit
 if [[ "$SEED_LVPROJ" == "true" || "$SEED_VIPB" == "true" ]]; then
@@ -71,7 +80,11 @@ if [[ "$SEED_LVPROJ" == "true" || "$SEED_VIPB" == "true" ]]; then
   exit 0
 fi
 
-# Validate that the input file exists before proceeding
+# Validate that the input file exists before proceeding (skip for modes that don't need it)
+if [[ -z "$INPUT_PATH" ]]; then
+  echo "::error ::INPUT_INPUT not provided for mode '$MODE'." >&2
+  exit 1
+fi
 if [[ ! -f "$INPUT_PATH" ]]; then
   echo "::error ::Input file '$INPUT_PATH' not found." >&2
   exit 1
