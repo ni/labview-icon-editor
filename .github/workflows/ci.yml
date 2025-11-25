@@ -756,85 +756,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  missing-in-project-x64:
-    name: Test Missing-In-Project (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x64)
-    needs: [verify-checklist-sync, apply-deps, check-library-paths, resolve-labview-version]
-    runs-on: self-hosted-windows-lv
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-        with:
-          set-safe-directory: true
-          fetch-depth: 0
-          clean: true
-      - name: Run missing-in-project (x64)
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/missing-in-project/Invoke-MissingInProjectCLI.ps1" `
-            -LVVersion "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
-            -Arch 64 `
-            -ProjectFile "$env:GITHUB_WORKSPACE/lv_icon_editor.lvproj"
-      - name: Detect unexpected workspace changes (x64)
-        id: guard_x64
-        if: always()
-        shell: pwsh
-        run: |
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/report-lvproj-diffs.ps1" `
-            -Label "missing-in-project-x64" `
-            -DiffPrefix "x64" `
-            -Workspace "$env:GITHUB_WORKSPACE"
-      - name: Upload lvproj diffs (x64, if any)
-        if: always() && steps.guard_x64.outputs.found_diff == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: lvproj-diffs-x64
-          path: post_mip_dirty_x64_*.diff
-          if-no-files-found: ignore
-
-  missing-in-project-x86:
-    name: Test Missing-In-Project (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x86)
-    needs: [verify-checklist-sync, missing-in-project-x64, check-library-paths, resolve-labview-version, apply-deps]
-    runs-on: self-hosted-windows-lv
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-        with:
-          set-safe-directory: true
-          fetch-depth: 0
-          clean: true
-      - name: Run missing-in-project (x86)
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/missing-in-project/Invoke-MissingInProjectCLI.ps1" `
-            -LVVersion "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
-            -Arch 32 `
-            -ProjectFile "$env:GITHUB_WORKSPACE/lv_icon_editor.lvproj"
-      - name: Detect unexpected workspace changes (x86)
-        id: guard_x86
-        if: always()
-        shell: pwsh
-        run: |
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/report-lvproj-diffs.ps1" `
-            -Label "missing-in-project-x86" `
-            -DiffPrefix "x86" `
-            -Workspace "$env:GITHUB_WORKSPACE"
-      - name: Upload lvproj diffs (x86, if any)
-        if: always() && steps.guard_x86.outputs.found_diff == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: lvproj-diffs-x86
-          path: post_mip_dirty_x86_*.diff
-          if-no-files-found: ignore
-
   test-x64:
     name: Run Unit Tests (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x64)
-    needs: [verify-checklist-sync, missing-in-project-x86, resolve-labview-version]
+    needs: [verify-checklist-sync, apply-deps, check-library-paths, resolve-labview-version]
     runs-on: self-hosted-windows-lv
     defaults:
       run:
@@ -878,7 +802,7 @@ jobs:
 
   test-x86:
     name: Run Unit Tests (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} x86)
-    needs: [verify-checklist-sync, test-x64, resolve-labview-version]
+    needs: [verify-checklist-sync, test-x64, apply-deps, check-library-paths, resolve-labview-version]
     runs-on: self-hosted-windows-lv
     defaults:
       run:
@@ -1077,318 +1001,72 @@ jobs:
     steps:
       - run: echo "Preflight gates passed; proceeding to LabVIEW jobs."
 
-  build-ppl-x86:
-    name: Build 32-bit Packed Library (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }})
-    needs: [verify-checklist-sync, build-ppl-x64, version, resolve-labview-version]
+  build-worktree:
+    name: Build (worktree)
+    needs: [verify-checklist-sync, preflight-gates, version, resolve-labview-version, test-x86, apply-deps]
     runs-on: self-hosted-windows-lv
     defaults:
       run:
         shell: pwsh
-    steps:
-      - uses: ./.github/actions/build-lvlibp
-        with:
-          supported_bitness: 32
-          repository_path: ${{ github.workspace }}
-          major: ${{ needs.version.outputs.MAJOR }}
-          minor: ${{ needs.version.outputs.MINOR }}
-          patch: ${{ needs.version.outputs.PATCH }}
-          build: ${{ needs.version.outputs.BUILD }}
-          commit: ${{ github.sha }}
-      - if: always()
-        uses: ./.github/actions/close-labview
-        with:
-          repository_path: ${{ github.workspace }}
-          supported_bitness: 32
-      - name: Stage PPL outputs (x86)
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $dir = "$env:GITHUB_WORKSPACE/resource/plugins"
-          $source = Join-Path $dir 'lv_icon.lvlibp'
-          if (-not (Test-Path $source)) {
-            throw "Expected PPL at $source after build-lvlibp (x86)."
-          }
-          Copy-Item -LiteralPath $source -Destination (Join-Path $dir 'lv_icon.lvlibp.windows_x86') -Force
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-32bit
-          path: resource/plugins/lv_icon.lvlibp.windows_x86
-
-  build-ppl-x64:
-    name: Build 64-bit Packed Library (${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }})
-    needs: [verify-checklist-sync, test-x86, version, resolve-labview-version]
-    runs-on: self-hosted-windows-lv
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - uses: ./.github/actions/build-lvlibp
-        with:
-          supported_bitness: 64
-          repository_path: ${{ github.workspace }}
-          major: ${{ needs.version.outputs.MAJOR }}
-          minor: ${{ needs.version.outputs.MINOR }}
-          patch: ${{ needs.version.outputs.PATCH }}
-          build: ${{ needs.version.outputs.BUILD }}
-          commit: ${{ github.sha }}
-      - if: always()
-        uses: ./.github/actions/close-labview
-        with:
-          repository_path: ${{ github.workspace }}
-          supported_bitness: 64
-      - name: Stage PPL outputs (x64)
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $dir = "$env:GITHUB_WORKSPACE/resource/plugins"
-          $source = Join-Path $dir 'lv_icon.lvlibp'
-          if (-not (Test-Path $source)) {
-            throw "Expected PPL at $source after build-lvlibp (x64)."
-          }
-          Copy-Item -LiteralPath $source -Destination (Join-Path $dir 'lv_icon.lvlibp.windows_x64') -Force
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-64bit
-          path: |
-            resource/plugins/lv_icon.lvlibp
-            resource/plugins/lv_icon.lvlibp.windows_x64
-
-  build-vip:
-    name: Build VI Package
-    # Chain after 32-bit build, which already depends on 64-bit, to enforce x64 -> x86 -> build-vip ordering
-    needs: [verify-checklist-sync, build-ppl-x86, version]
-    outputs:
-      should_build_vip: ${{ steps.vipm-gate.outputs.has_vipm_cli }}
-      vip_artifact: ${{ steps.set-vip-outputs.outputs.vip_artifact }}
-      vip_path: ${{ steps.set-vip-outputs.outputs.vip_path }}
-      release_notes_artifact: ${{ steps.release-notes.outputs.artifact_name }}
-    runs-on: self-hosted-windows-lv
-    defaults:
-      run:
-        shell: pwsh
+    env:
+      COMPANY_NAME: ${{ github.repository_owner }}
+      AUTHOR_NAME: ${{ github.actor }}
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           set-safe-directory: true
           fetch-depth: 0
-      - name: Gate on vipm CLI (skip VI Package build if dependencies cannot be applied)
-        id: vipm-gate
+      - name: Build via worktree (includes VIPC, missing-in-project, lvlibp, VIP)
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $vipm = Get-Command vipm -ErrorAction SilentlyContinue
-          $hasVipm = [bool]$vipm
-          "has_vipm_cli=$($hasVipm.ToString().ToLowerInvariant())" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
-
-          if (-not $hasVipm) {
-            $msg = "vipm CLI not found on PATH; skipping VI Package build because the runner could not apply the VIPC."
-            Write-Warning $msg
-            if ($env:GITHUB_STEP_SUMMARY) {
-              $summary = @()
-              $summary += "### VI Package build"
-              $summary += ""
-              $summary += $msg
-              $summary += ""
-              $summary -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-            }
-          }
-          else {
-            Write-Host "vipm CLI detected; proceeding with VI Package build."
-          }
-      - name: Generate release notes
-        id: release-notes
-        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/generate-release-notes/GenerateReleaseNotes.ps1"
-      - uses: actions/download-artifact@v4
-        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
-        with:
-          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-32bit
-          path: resource/plugins
-      - uses: actions/download-artifact@v4
-        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
-        with:
-          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-64bit
-          path: resource/plugins
-      - name: Generate display information JSON
-        id: display-info
-        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
-        shell: pwsh
-        env:
-          RELEASE_NOTES_PATH: ${{ github.workspace }}/Tooling/deployment/release_notes.md
-          REPO_NAME: ${{ github.event.repository.name }}
-          REPO_DESCRIPTION: ${{ github.event.repository.description }}
-          REPO_URL: ${{ github.event.repository.html_url }}
-          COMPANY: ${{ github.repository_owner }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          $releaseNotes = if (Test-Path $Env:RELEASE_NOTES_PATH) {
-            Get-Content -Raw -Path $Env:RELEASE_NOTES_PATH
-          } else {
-            "Release notes file not generated."
-          }
-
-          $productName = if ([string]::IsNullOrWhiteSpace($Env:REPO_NAME)) {
-            $Env:REPOSITORY
-          } else {
-            $Env:REPO_NAME
-          }
-
-          $description = if ([string]::IsNullOrWhiteSpace($Env:REPO_DESCRIPTION)) {
-            "$($Env:REPO_NAME) VI Package build for $($Env:REPOSITORY)."
-          } else {
-            $Env:REPO_DESCRIPTION
-          }
-
-          $info = @{
-            "Package Version" = @{
-              "major" = ${{ needs.version.outputs.MAJOR }}
-              "minor" = ${{ needs.version.outputs.MINOR }}
-              "patch" = ${{ needs.version.outputs.PATCH }}
-              "build" = ${{ needs.version.outputs.BUILD }}
-            }
-            "Product Name" = $productName
-            "Company Name" = $Env:COMPANY
-            "Author Name (Person or Company)" = $Env:REPOSITORY
-            "Product Homepage (URL)" = if ([string]::IsNullOrWhiteSpace($Env:REPO_URL)) {
-              "https://github.com/$($Env:REPOSITORY)"
-            } else {
-              $Env:REPO_URL
-            }
-            "Legal Copyright" = "© $(Get-Date -Format yyyy) $($Env:COMPANY)"
-            "License Agreement Name" = "LICENSE"
-            "Product Description Summary" = $description
-            "Product Description" = $description
-            "Release Notes - Change Log" = $releaseNotes
-          }
-
-          $json = $info | ConvertTo-Json -Depth 5 -Compress
-          "json=$json" >> $Env:GITHUB_OUTPUT
-      - name: Update VIPB display info
-        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/modify-vipb-display-info/ModifyVIPBDisplayInfo.ps1" `
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/worktree-build.ps1" `
+            -SourceRepoPath "$env:GITHUB_WORKSPACE" `
+            -Ref "${{ github.sha }}" `
             -SupportedBitness 64 `
-            -RepositoryPath "$env:GITHUB_WORKSPACE" `
-            -LabVIEWMinorRevision 3 `
+            -LvlibpBitness both `
             -Major ${{ needs.version.outputs.MAJOR }} `
             -Minor ${{ needs.version.outputs.MINOR }} `
             -Patch ${{ needs.version.outputs.PATCH }} `
             -Build ${{ needs.version.outputs.BUILD }} `
-            -Commit "${{ github.sha }}" `
-            -ReleaseNotesFile "$env:GITHUB_WORKSPACE/Tooling/deployment/release_notes.md" `
-            -DisplayInformationJSON '${{ steps.display-info.outputs.json }}'
-      - id: build-vip
-        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
+            -CompanyName "$env:COMPANY_NAME" `
+            -AuthorName "$env:AUTHOR_NAME" `
+            -OutputDirectory "$env:GITHUB_WORKSPACE/builds-isolated" `
+            -AnalyzeVIP:$false
+      - name: Locate built artifacts
+        id: locate-build
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/build-vip/build_vip.ps1" `
-            -SupportedBitness 64 `
-            -RepositoryPath "$env:GITHUB_WORKSPACE" `
-            -VIPBPath "Tooling/deployment/labview-icon-editor.vipb" `
-            -Package_LabVIEW_Version ${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }} `
-            -LabVIEWMinorRevision 3 `
-            -Major ${{ needs.version.outputs.MAJOR }} `
-            -Minor ${{ needs.version.outputs.MINOR }} `
-            -Patch ${{ needs.version.outputs.PATCH }} `
-            -Build ${{ needs.version.outputs.BUILD }} `
-            -Commit "${{ github.sha }}" `
-            -ReleaseNotesFile "$env:GITHUB_WORKSPACE/Tooling/deployment/release_notes.md" `
-            -DisplayInformationJSON '${{ steps.display-info.outputs.json }}'
-      - name: Capture VIP outputs
-        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
-        id: set-vip-outputs
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $dir = "$env:GITHUB_WORKSPACE/builds/VI Package"
-          $vip = Get-ChildItem -Path $dir -Filter *.vip -File -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          if (-not $vip) { throw "No .vip found under '$dir' after build." }
+          $plugins = Join-Path $env:GITHUB_WORKSPACE 'builds-isolated/builds/resource/plugins'
+          $vipDir = Join-Path $env:GITHUB_WORKSPACE 'builds-isolated/builds/VI Package'
+          if (-not (Test-Path -LiteralPath $vipDir)) { throw "VIP output directory not found at $vipDir" }
+          $vip = Get-ChildItem -Path $vipDir -Filter *.vip -File -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $vip) { throw "No .vip found under '$vipDir' after build." }
           "vip_path=$($vip.FullName)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
-          $artifactName = if ([string]::IsNullOrWhiteSpace("${{ github.event.repository.name }}")) { "labview-icon-editor-vip" } else { "${{ github.event.repository.name }}-vip" }
-          "vip_artifact=$artifactName" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
-      - name: Upload VI Package artifact
-        if: steps.vipm-gate.outputs.has_vipm_cli == 'true'
+          if (Test-Path -LiteralPath $plugins) {
+            "plugins_dir=$plugins" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          } else {
+            "plugins_dir=" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          }
+      - name: Upload PPL artifacts
+        if: steps.locate-build.outputs.plugins_dir != ''
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.set-vip-outputs.outputs.vip_artifact }}
-          path: ${{ steps.set-vip-outputs.outputs.vip_path }}
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-lvlibp-worktree
+          path: ${{ steps.locate-build.outputs.plugins_dir }}
           if-no-files-found: error
-      - # Only attempt to close LabVIEW if the build path ran
-        if: steps.vipm-gate.outputs.has_vipm_cli == 'true' && always()
-        name: Close LabVIEW after VIP build
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/.github/actions/close-labview/Close_LabVIEW.ps1" `
-            -Package_LabVIEW_Version "${{ needs.resolve-labview-version.outputs.minimum_supported_lv_version }}" `
-            -SupportedBitness 64
-      - name: Validate tag matches computed version (if provided)
-        if: steps.vipm-gate.outputs.has_vipm_cli == 'true' && (startsWith(github.ref, 'refs/tags/') || github.event.inputs.dispatch_tag != '')
-        shell: pwsh
-        env:
-          EXPECTED_TAG: v${{ needs.version.outputs.MAJOR }}.${{ needs.version.outputs.MINOR }}.${{ needs.version.outputs.PATCH }}.${{ needs.version.outputs.BUILD }}
-          REF_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
-          INPUT_TAG: ${{ github.event.inputs.dispatch_tag || '' }}
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $provided = if (-not [string]::IsNullOrWhiteSpace($Env:INPUT_TAG)) { $Env:INPUT_TAG } else { $Env:REF_TAG }
-          if ([string]::IsNullOrWhiteSpace($provided)) {
-            Write-Host 'No tag provided; skipping validation.'
-            exit 0
-          }
-          if ($provided -ne $Env:EXPECTED_TAG) {
-            Write-Error ("Provided tag '{0}' does not match computed tag '{1}'." -f $provided, $Env:EXPECTED_TAG)
-          } else {
-            Write-Host ("Tag validation ok: {0}" -f $provided)
-          }
-
-  analyze-vip:
-    name: Analyze VI Package
-    needs: [verify-checklist-sync, build-vip]
-    if: needs.build-vip.outputs.should_build_vip == 'true'
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: pwsh
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+      - name: Upload VI Package artifact
+        uses: actions/upload-artifact@v4
         with:
-          set-safe-directory: true
-      - name: Record analyze job start
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $dir = "timings"
-          New-Item -ItemType Directory -Path $dir -Force | Out-Null
-          $path = Join-Path $dir "analyze-vip.txt"
-          "job=analyze-vip" | Out-File -FilePath $path -Encoding utf8
-          "server_time_start=$(Get-Date -Format o)" | Out-File -FilePath $path -Encoding utf8 -Append
-          "run_id=${{ github.run_id }}" | Out-File -FilePath $path -Encoding utf8 -Append
-          "ref=${{ github.ref }}" | Out-File -FilePath $path -Encoding utf8 -Append
-      - uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.build-vip.outputs.vip_artifact }}
-          path: builds/VI Package
-      - name: Locate downloaded VI package
-        id: locate-downloaded-vip
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $dir = "builds/VI Package"
-          $vip = Get-ChildItem -Path $dir -Filter *.vip -File -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          if (-not $vip) {
-            Write-Error "No .vip found under '$dir' after artifact download."
-          }
-          "vip_path=$($vip.FullName)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-vip
+          path: ${{ steps.locate-build.outputs.vip_path }}
+          if-no-files-found: error
       - name: Analyze built VI package
         id: analyze-vip
         uses: ./.github/actions/analyze-vi-package
         with:
-          vip_artifact_path: ${{ steps.locate-downloaded-vip.outputs.vip_path }}
+          vip_artifact_path: ${{ steps.locate-build.outputs.vip_path }}
           min_labview: ${{ env.MIN_LABVIEW_POLICY }}
       - name: Upload VI package analysis results
         if: always()
@@ -1396,20 +1074,10 @@ jobs:
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-vip-analysis-junit
           path: ${{ steps.analyze-vip.outputs.junit }}
-      - name: Record analyze job end and upload timing
-        if: always()
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $path = "timings/analyze-vip.txt"
-          if (-not (Test-Path $path)) {
-            Write-Error "Timing file missing at $path"
-          }
-          "server_time_end=$(Get-Date -Format o)" | Out-File -FilePath $path -Encoding utf8 -Append
-        # Upload timing as its own artifact for duration analysis
-      - name: Upload analyze timing
+      - name: Upload build reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-analyze-vip-timing
-          path: timings/analyze-vip.txt
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-build-reports
+          path: builds-isolated/reports
+          if-no-files-found: warn
