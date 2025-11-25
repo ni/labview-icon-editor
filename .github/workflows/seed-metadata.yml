@@ -25,7 +25,7 @@ jobs:
           mkdir -p artifacts/seed
           docker compose -f Tooling/docker/seed/docker-compose.yml run --rm -e INPUT_MODE -e INPUT_INPUT -e INPUT_OUTPUT seed
 
-      - name: Fetch baseline metadata from current branch (fallback: develop)
+      - name: "Fetch baseline metadata from current branch (fallback: develop)"
         run: |
           set -e
           branch="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME:-}}"
