@@ -43,12 +43,15 @@ COPY tests/Samples/seed.lvproj tests/Samples/seed.vipb /github/workspace/tests/S
 # Copy the published VipbJsonTool binary from the build stage
 COPY --from=build /app/publish/VipbJsonTool /usr/local/bin/VipbJsonTool
 
-# Generate CLI wrapper scripts inside the image (no dependency on host bin/)
-RUN set -e; \
-    for cmd in vipb2json json2vipb lvproj2json json2lvproj buildspec2json json2buildspec; do \
-      printf '#!/bin/bash\nset -euo pipefail\nexec /usr/local/bin/VipbJsonTool %s "$@"\n' "$cmd" > "/usr/local/bin/${cmd}"; \
-    done; \
-    chmod +x /entrypoint.sh \
+# Copy CLI wrapper scripts from the repo (flag-parsing shells) and ensure exec bits
+COPY bin/vipb2json      /usr/local/bin/vipb2json
+COPY bin/json2vipb      /usr/local/bin/json2vipb
+COPY bin/lvproj2json    /usr/local/bin/lvproj2json
+COPY bin/json2lvproj    /usr/local/bin/json2lvproj
+COPY bin/buildspec2json /usr/local/bin/buildspec2json
+COPY bin/json2buildspec /usr/local/bin/json2buildspec
+
+RUN chmod +x /entrypoint.sh \
              /usr/local/bin/vipb2json \
              /usr/local/bin/json2vipb \
              /usr/local/bin/lvproj2json \
