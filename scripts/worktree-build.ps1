@@ -70,8 +70,23 @@ function Assert-DevModeBindOk {
         throw "Dev-mode bind JSON at $jsonPath does not contain an entry for bitness $Arch. Rerun dev-mode bind."
     }
 
-    if ($entry.status -ne 'success') {
-        $msg = if ($entry.message) { $entry.message } else { 'Unknown bind failure' }
+    # Normalize to a PSObject to reliably check properties
+    if ($entry -isnot [psobject]) {
+        $entry = [pscustomobject]$entry
+    }
+
+    $render = $entry | ConvertTo-Json -Depth 5
+    $status = $null
+    $message = $null
+    try { $status = $entry.status } catch {}
+    try { $message = $entry.message } catch {}
+
+    if (-not $status) {
+        throw ("Dev-mode bind JSON at {0} is missing 'status' for bitness {1}. JSON entry: {2}" -f $jsonPath, $Arch, $render)
+    }
+
+    if ($status -ne 'success') {
+        $msg = if ($message) { $message } else { 'Unknown bind failure' }
         throw ("Dev-mode bind failed for {0}-bit: {1}. JSON: {2}. Run 'Dev Mode (interactive bind/unbind)' task with Force for {0}-bit, then rerun the build task." -f $Arch, $msg, $jsonPath)
     }
 }

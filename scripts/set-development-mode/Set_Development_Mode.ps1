@@ -42,10 +42,10 @@ if (-not (Test-Path -LiteralPath $RepositoryPath)) {
     throw "RepositoryPath '$RepositoryPath' does not exist."
 }
 
-# Build paths to the helper scripts
-$AddTokenScript = Join-Path -Path $ScriptDirectory -ChildPath '..\add-token-to-labview\AddTokenToLabVIEW.ps1'
-$PrepareScript  = Join-Path -Path $ScriptDirectory -ChildPath '..\prepare-labview-source\Prepare_LabVIEW_source.ps1'
-$CloseScript    = Join-Path -Path $RepositoryPath -ChildPath 'scripts/close-labview/Close_LabVIEW.ps1'
+# Build paths to the helper scripts (normalize to absolute paths to avoid "..\" segments in logs)
+$AddTokenScript = [System.IO.Path]::GetFullPath((Join-Path -Path $ScriptDirectory -ChildPath '..\add-token-to-labview\AddTokenToLabVIEW.ps1'))
+$PrepareScript  = [System.IO.Path]::GetFullPath((Join-Path -Path $ScriptDirectory -ChildPath '..\prepare-labview-source\Prepare_LabVIEW_source.ps1'))
+$CloseScript    = [System.IO.Path]::GetFullPath((Join-Path -Path $RepositoryPath  -ChildPath 'scripts/close-labview/Close_LabVIEW.ps1'))
 
 Write-Information "AddTokenToLabVIEW script: $AddTokenScript" -InformationAction Continue
 Write-Information "Prepare_LabVIEW_source script: $PrepareScript" -InformationAction Continue
