@@ -113,7 +113,7 @@ catch {
 
 # If VIPBPath is unset/invalid, attempt to auto-discover the single .vipb in the repo
 if (-not $ResolvedVIPBPath -or -not (Test-Path -LiteralPath $ResolvedVIPBPath)) {
-    $candidates = Get-ChildItem -Path $ResolvedRepositoryPath -Filter *.vipb -File -Recurse
+    $candidates = @(Get-ChildItem -Path $ResolvedRepositoryPath -Filter *.vipb -File -Recurse)
     if (-not $candidates -or $candidates.Count -eq 0) {
         Write-Error ("VIPB not found{0} and no .vipb files discovered under {1}." -f (if ($ResolvedVIPBPath) { " at '$ResolvedVIPBPath'" } else { "" }), $ResolvedRepositoryPath)
         exit 1
@@ -266,7 +266,7 @@ function Ensure-VipHasEntries {
         $zip.Dispose()
     }
 
-    $stillMissing = $RequiredEntries | Where-Object { -not ($finalEntries -contains $_.ToLowerInvariant()) }
+    $stillMissing = @($RequiredEntries | Where-Object { -not ($finalEntries -contains $_.ToLowerInvariant()) })
     if ($stillMissing.Count -gt 0) {
         throw ("Built VIP missing expected entries after injection attempt: {0}" -f ($stillMissing -join '; '))
     }
