@@ -410,6 +410,11 @@ catch {
     $LASTEXITCODE = 1
 }
 
+# Ensure the log file exists even if vipm/tee didn't create it (for downstream artifact collection)
+if (-not (Test-Path -LiteralPath $logFile)) {
+    "vipm build completed but no log was emitted by vipm." | Set-Content -LiteralPath $logFile -Encoding UTF8
+}
+
 if ($LASTEXITCODE -ne 0) {
     if (Test-Path $logFile) {
         Write-Information ("---- vipm build log ({0}) ----" -f $logFile) -InformationAction Continue
