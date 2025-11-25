@@ -32,7 +32,7 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
 WORKDIR /github/workspace
 
 # Copy entrypoint script and GitHub Action metadata
-COPY entrypoint.sh /entrypoint.sh
+COPY scripts/entrypoint.sh /entrypoint.sh
 COPY action.yml /action.yml
 
 # Copy golden sample template files for seeding (included in the image for reference)
