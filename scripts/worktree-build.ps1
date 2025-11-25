@@ -110,7 +110,20 @@ if ($LvlibpBitness -ne 'both') {
 $SourceRepoPath = (Resolve-Path -LiteralPath $SourceRepoPath).Path
 
 if (-not $WorktreePath) {
-    $suffix = [Guid]::NewGuid().ToString('N').Substring(0, 8)
+    $suffix = $null
+    try {
+        $suffix = (git -C $SourceRepoPath rev-parse --short $Ref).Trim()
+    }
+    catch {
+        $suffix = $null
+    }
+    if (-not $suffix) {
+        $suffix = [Guid]::NewGuid().ToString('N').Substring(0, 8)
+        Write-Host "Commit hash unavailable for ref '$Ref'; using random suffix $suffix for worktree name."
+    }
+    else {
+        Write-Host "Using ref '$Ref' short hash $suffix for worktree name."
+    }
     $WorktreePath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "lv-ie-worktree-$suffix"
 }
 
