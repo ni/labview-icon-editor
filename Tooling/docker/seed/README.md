@@ -65,10 +65,10 @@ The tasks live in `.vscode/tasks.json`. They are optional; skip if you don’t u
   - JSON patch file (e.g., `patch.json`)
   - Output `.vipb` path (where the patched file is written)
 - Typical flow:
-  1) Export a baseline JSON: run `seed: vipb -> json` or `seed vipb json ...`
-  2) Edit the JSON or create a patch file with your changes
-  3) Run `seed: apply patch` to produce a patched `.vipb`
-  4) Optionally re-export to JSON to verify the patch applied as expected
+  1) Export a baseline JSON (`seed: vipb -> json` or `seed vipb json ...`).
+  2) Author a small patch JSON with your changes.
+  3) Run `seed: apply patch` to produce a patched `.vipb`.
+  4) (Optional) Re-export to JSON to confirm the patch.
 - Patch format: a JSON merge file that overlays fields (for example):
   ```json
   {
@@ -81,5 +81,5 @@ The tasks live in `.vscode/tasks.json`. They are optional; skip if you don’t u
   Point the task’s patch path to this file; the tool merges it into the VIPB and writes the patched copy.
 - Tips:
   - Keep the patch file in the repo (e.g., `Tooling/seed/patches/my-change.json`) so paths are stable.
-  - The merge is additive/overwriting; omitted fields stay unchanged.
+  - Merge is additive/overwriting; omitted fields stay unchanged.
   - To drop a field entirely, set it to `null` in the patch JSON.
