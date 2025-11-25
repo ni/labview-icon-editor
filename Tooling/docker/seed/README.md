@@ -1,21 +1,19 @@
 # Seed Docker helper
 
-Run the Seed CLI straight from the published container image so you don't have to install it locally.
+Run the Seed CLI from a locally built image so each fork can own its own tag without relying on GHCR.
 
-- Image: `ghcr.io/labview-community-ci-cd/seed:latest`
+- Build context: vendored source under `Tooling/seed` (Dockerfile in that folder).
+- Local image tag: `seed-local:latest`.
 - Mounts the repo at `/workspace` by default.
 
 ## Usage
-1) Ensure Docker is installed and (if required) you are logged in to GHCR:
-   ```
-   docker login ghcr.io
-   ```
-2) Show Seed help from the container:
+1) Ensure Docker is installed. The compose file will build the local image on first run.
+2) Show Seed help from the container (builds if needed):
    ```
    docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed
    ```
    (By default the service runs `seed --help`.)
-3) Run a specific Seed command:
+3) Run a specific Seed command (builds if needed):
    ```
    docker compose -f Tooling/docker/seed/docker-compose.yml run --rm seed seed <args>
    ```

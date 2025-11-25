@@ -1,6 +1,9 @@
 services:
   seed:
-    image: ghcr.io/labview-community-ci-cd/seed:latest
+    build:
+      context: ../../seed
+      dockerfile: Dockerfile
+    image: seed-local:latest
     stdin_open: true
     tty: true
     volumes:
