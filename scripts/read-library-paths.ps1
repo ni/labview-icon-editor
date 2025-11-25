@@ -17,7 +17,7 @@ if (-not $RepositoryPath) {
 }
 
 $RepositoryPath = (Resolve-Path -LiteralPath $RepositoryPath).Path
-$helperPath = Resolve-Path (Join-Path $PSScriptRoot '..\.github\actions\add-token-to-labview\LocalhostLibraryPaths.ps1')
+$helperPath = Resolve-Path (Join-Path $PSScriptRoot 'add-token-to-labview\LocalhostLibraryPaths.ps1')
 . $helperPath
 
 function Get-LabVIEWVersionFromVipb {
