@@ -458,7 +458,7 @@ jobs:
           pwsh -NoProfile -File $script -Repo $env:GH_REPO -Token $env:GH_TOKEN
   build-worktree:
     name: Build (worktree)
-    needs: [verify-checklist-sync, version, resolve-labview-version]
+    needs: [verify-checklist-sync, version, resolve-labview-version, test-compute-version-bump, test-tag-existence-check, rtm-gates, docs-quality, list-collaborators]
     runs-on: self-hosted-windows-lv
     defaults:
       run:
