@@ -10,6 +10,7 @@ param(
     [string]$Bitness = 'both',
 
     [switch]$Force,
+    [switch]$AutoFixOtherRepo,
     [switch]$DryRun,
     [switch]$SummaryOnly,
     [string]$JsonOutputPath
@@ -370,7 +371,9 @@ else {
             continue
         }
 
-        $conflictsOtherRepo = (-not [string]::IsNullOrWhiteSpace($currentNorm)) -and ($currentNorm -ne $expectedNorm) -and -not $Force
+        $autoForce = (-not [string]::IsNullOrWhiteSpace($currentNorm)) -and ($currentNorm -ne $expectedNorm) -and $AutoFixOtherRepo -and -not $Force
+        $forceApplied = $Force -or $autoForce
+        $conflictsOtherRepo = (-not [string]::IsNullOrWhiteSpace($currentNorm)) -and ($currentNorm -ne $expectedNorm) -and -not $forceApplied
         if ($conflictsOtherRepo) {
             $res.status = 'fail'
             $res.message = "LocalHost.LibraryPaths points to another path ($($res.current_path)); use -Force to overwrite."
@@ -432,6 +435,9 @@ else {
             if ($postMatch) {
                 $res.status = 'success'
                 $res.message = 'Bound development mode (token set and packed libs cleared)'
+                if ($autoForce) {
+                    $res.message += " (auto-fixed prior binding from $($res.current_path))"
+                }
             }
             else {
                 $res.status = 'fail'
