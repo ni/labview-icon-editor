@@ -9,7 +9,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $repo = (Resolve-Path -LiteralPath $RepositoryPath).Path
-$bindScript = Join-Path $PSScriptRoot '..\.github\actions\bind-development-mode\BindDevelopmentMode.ps1'
+$bindScript = Join-Path $PSScriptRoot 'bind-development-mode/BindDevelopmentMode.ps1'
 
 if (-not $VipbPath) {
     $deployment = Join-Path $repo 'Tooling/deployment'

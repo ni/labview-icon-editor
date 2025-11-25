@@ -9,7 +9,7 @@ if (-not $IsWindows) {
 
 Describe "BindDevelopmentMode.ps1 JSON output and requirement coverage" {
     BeforeAll {
-        $scriptPath = (Resolve-Path (Join-Path $PSScriptRoot '..\.github\actions\bind-development-mode\BindDevelopmentMode.ps1')).Path
+        $scriptPath = (Resolve-Path (Join-Path $PSScriptRoot '..\scripts\bind-development-mode\BindDevelopmentMode.ps1')).Path
         $repoRoot = Join-Path $TestDrive 'repo'
         New-Item -ItemType Directory -Path (Join-Path $repoRoot 'scripts') -Force | Out-Null
         function New-StubVipb {

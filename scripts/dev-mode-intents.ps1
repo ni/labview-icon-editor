@@ -161,7 +161,7 @@ function Invoke-DevModeIntents {
         [Parameter(Mandatory)][string]$Phrase,
         [string]$RepositoryPath = (Get-Location).Path,
         [string]$SummaryPath,
-        [string]$BindScriptPath = (Join-Path $PSScriptRoot '..\.github\actions\bind-development-mode\BindDevelopmentMode.ps1')
+        [string]$BindScriptPath = (Join-Path $PSScriptRoot 'bind-development-mode/BindDevelopmentMode.ps1')
     )
 
     $RepositoryPath = (Resolve-Path -LiteralPath $RepositoryPath).Path

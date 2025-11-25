@@ -1,6 +1,6 @@
 # Dev Mode Bind/Unbind Helper (BIND)
 
-The bind/unbind composite (`scripts/bind-development-mode`) and helper script (`BindDevelopmentMode.ps1`) provide a deterministic way to:
+The bind/unbind helper script (`scripts/bind-development-mode/BindDevelopmentMode.ps1`) provides a deterministic way to:
 - Point LabVIEW at the repo source via `LocalHost.LibraryPaths`.
 - Clear packed libraries so edits/builds use source.
 - Unbind cleanly to avoid cross-repo side effects.
@@ -16,19 +16,6 @@ pwsh scripts/bind-development-mode/BindDevelopmentMode.ps1 `
   -Force `                  # optional: overwrite other-path tokens
   -DryRun `                 # optional: report only
   -JsonOutputPath "reports/dev-mode-bind.json"
-```
-
-### Composite action (CI/task)
-```yaml
-- uses: ./scripts/bind-development-mode
-  with:
-    repository_path: ${{ github.workspace }}
-    mode: bind       # or unbind/status
-    bitness: both
-    force: false
-    dry_run: false
-    json_output_path: reports/dev-mode-bind.json
-# json_path output is always set (even on failure)
 ```
 
 ## Outputs
