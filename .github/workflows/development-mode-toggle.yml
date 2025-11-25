@@ -88,16 +88,16 @@ jobs:
 
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
             if ($mode -eq 'enable') {
-              ./.github/actions/set-development-mode/Set_Development_Mode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
+              ./scripts/set-development-mode/Set_Development_Mode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
             } else {
-              ./.github/actions/revert-development-mode/RevertDevelopmentMode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
+              ./scripts/revert-development-mode/RevertDevelopmentMode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
             }
           }
           else {
             if ($mode -eq 'enable') {
-              ./.github/actions/set-development-mode/Set_Development_Mode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
+              ./scripts/set-development-mode/Set_Development_Mode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
             } else {
-              ./.github/actions/revert-development-mode/RevertDevelopmentMode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
+              ./scripts/revert-development-mode/RevertDevelopmentMode.ps1 -RepositoryPath $env:GITHUB_WORKSPACE -SupportedBitness $bitness
             }
           }
       #
@@ -147,3 +147,4 @@ jobs:
 
     outputs:
       environment_details: ${{ steps.set_output.outputs.environment_details }}
+

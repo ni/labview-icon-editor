@@ -231,7 +231,7 @@ agent:
 - **Respond:**  
   - Recommend rerun with Force to rebind to this repo:  
     - VS Code: Terminal → Run Task → "Dev Mode (interactive bind/unbind)" → bind + Force (bitness as needed).  
-    - CLI: `pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath . -Mode bind -Bitness both -Force`  
+    - CLI: `pwsh scripts/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath . -Mode bind -Bitness both -Force`  
   - If other repos might rely on existing bindings, ask for confirmation before forcing.  
   - For malformed/double-rooted tokens, suggest unbind + Force for the affected version/bitness.  
 - **Reference:** Link the user to `docs/troubleshooting/bind-dev-mode-force.md` and `reports/dev-mode-bind.json` for details.
@@ -245,7 +245,7 @@ agent:
   - Read `reports/dev-mode-bind.json`; if `expected_path` ≠ repo root or LabVIEW.ini missing for the requested bitness, stop and ask for confirmation.  
   - If VIPB-derived version ≠ requested year, warn and require confirmation.  
   - If `current_path` already matches for the bitness, skip that intent.
-- **Execution mapping:** For each approved intent, run `.github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath . -Mode <bind|unbind> -Bitness <32|64|both>` plus `-Force` only when allowed. Execute intents sequentially.
+- **Execution mapping:** For each approved intent, run `scripts/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath . -Mode <bind|unbind> -Bitness <32|64|both>` plus `-Force` only when allowed. Execute intents sequentially.
 - **Post-check:** Reload `reports/dev-mode-bind.json`; return a per-bitness summary (expected_path, current_path, action, status, message).
 - **Safety:** Cap at 3 intents per request; log the parsed intents and whether Force was applied; ignore phrases without the required prefix.
 
@@ -365,3 +365,4 @@ How will we test and measure success? (link tests, dry-runs, dashboards)
 
 > **Change History**
 > - v0.1 — Initial baseline: responsibilities, requirements, interfaces, guardrails, RTM, change mgmt.
+

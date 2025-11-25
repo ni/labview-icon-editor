@@ -177,7 +177,7 @@ if (-not (Get-Command vipm -ErrorAction SilentlyContinue)) {
     throw "vipm CLI not found on PATH. Install VIPM CLI before packaging."
 }
 
-$buildVipScript = Join-Path -Path $repoRoot -ChildPath ".github/actions/build-vip/build_vip.ps1"
+$buildVipScript = Join-Path -Path $repoRoot -ChildPath "scripts/build-vip/build_vip.ps1"
 if (-not (Test-Path -LiteralPath $buildVipScript)) {
     throw "build_vip.ps1 not found at $buildVipScript"
 }

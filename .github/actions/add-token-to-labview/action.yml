@@ -11,8 +11,8 @@ runs:
     - name: Run AddTokenToLabVIEW.ps1
       shell: pwsh
       run: |
-        $lvVer = pwsh -NoProfile -File "${{ github.action_path }}/../../scripts/get-package-lv-version.ps1" -RepositoryPath "${{ inputs.repository_path }}"
-        & "${{ github.action_path }}/AddTokenToLabVIEW.ps1" \
+        $lvVer = pwsh -NoProfile -File "${{ github.workspace }}/scripts/get-package-lv-version.ps1" -RepositoryPath "${{ inputs.repository_path }}"
+        & "${{ github.workspace }}/scripts/add-token-to-labview/AddTokenToLabVIEW.ps1" \
           -Package_LabVIEW_Version $lvVer \
           -SupportedBitness ${{ inputs.supported_bitness }} \
           -RepositoryPath "${{ inputs.repository_path }}"

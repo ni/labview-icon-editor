@@ -14,7 +14,7 @@ $repo = (Resolve-Path -LiteralPath $RepositoryPath -ErrorAction Stop).ProviderPa
 $getVer = Join-Path $repo 'scripts/get-package-lv-version.ps1'
 $ciGate = Join-Path $repo 'scripts/check-ci-gate.ps1'
 $build  = Join-Path $repo 'scripts/run-build-or-package.ps1'
-$analyze = Join-Path $repo '.github/actions/analyze-vi-package/run-local.ps1'
+$analyze = Join-Path $repo 'scripts/analyze-vi-package/run-local.ps1'
 $vipDir = Join-Path $repo 'builds/VI Package'
 
 if (-not (Test-Path -LiteralPath $getVer))  { throw "Missing get-package-lv-version.ps1 at $getVer" }

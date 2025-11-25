@@ -11,7 +11,7 @@ runs:
     - name: Run unit_tests.ps1
       shell: pwsh
       run: |
-        & "${{ github.action_path }}/unit_tests.ps1" \
+        & "${{ github.workspace }}/scripts/unit-tests/unit_tests.ps1" \
           -RepositoryPath "${{ inputs.repository_path }}"
 inputs:
   repository_path:

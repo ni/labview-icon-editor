@@ -47,7 +47,7 @@ By adopting these patterns, maintainers can run alpha, beta, and RC pipelines in
    - Creating tags or GitHub releases would require additional permissions and a separate workflow.
 
 3. **Labels**
-  - Pull requests may include at most one of `major`, `minor`, or `patch` to increment those fields. If none is provided, the workflow defaults to a patch bump. Multiple release labels cause the workflow to fail. See [`compute-version`](../../../.github/actions/compute-version/action.yml) for the label-handling logic.
+  - Pull requests may include at most one of `major`, `minor`, or `patch` to increment those fields. If none is provided, the workflow defaults to a patch bump. Multiple release labels cause the workflow to fail. See [`compute-version`](../../../scripts/compute-version/action.yml) for the label-handling logic.
 
 
 <a name="configuration--branch-patterns"></a>
@@ -225,3 +225,4 @@ Any commit to these branches triggers an alpha/beta/rc suffix. Merging to `main`
 ## **9. Conclusion**
 
 By supporting **multiple pre-release channels** (Alpha, Beta, RC), this updated release workflow offers greater flexibility for iterative testing stages. Each branch pattern yields a distinct suffix (`-alpha.<commitCount>`, `-beta.<commitCount>`, or `-rc.<commitCount>`). Merging into a final branch (e.g., `main`) produces a stable release with no suffix, but still uses **commit-based** build numbering—so the pre-release number and build number are always identical. Combined with label-based major/minor/patch increments, you have a **robust**, **fork-friendly**, and **multi-stage** CI/CD pipeline for LabVIEW.
+

@@ -29,5 +29,6 @@ More details: see `docs/vscode-tasks.md`.
 - Build & tasks: `docs/vscode-tasks.md`
 - CI overview: `docs/ci-workflows.md`
 - VIPM Docker helper: `Tooling/docker/vipm/README.md`
-- Dev mode toggle: `.github/actions/set-development-mode/run-dev-mode.ps1` and `.github/actions/revert-development-mode/run-dev-mode.ps1`
+- Dev mode toggle: `scripts/set-development-mode/run-dev-mode.ps1` and `scripts/revert-development-mode/run-dev-mode.ps1`
 - Tests: `docs/testing/policy.md` (and `Test/` for Pester)
+

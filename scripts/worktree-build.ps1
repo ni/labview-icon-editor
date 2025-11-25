@@ -153,11 +153,11 @@ try {
     git -C $WorktreePath checkout $Ref | Out-Null
     $worktreeAdded = $true
 
-    $setDevScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath '.github/actions/set-development-mode/Set_Development_Mode.ps1')
-    $revertDevScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath '.github/actions/revert-development-mode/RevertDevelopmentMode.ps1')
-    $bindDevScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath '.github/actions/bind-development-mode/BindDevelopmentMode.ps1')
-    $analyzeVipScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath '.github/actions/analyze-vi-package/run-local.ps1')
-    $buildScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath '.github/actions/build/Build.ps1')
+    $setDevScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath 'scripts/set-development-mode/Set_Development_Mode.ps1')
+    $revertDevScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath 'scripts/revert-development-mode/RevertDevelopmentMode.ps1')
+    $bindDevScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath 'scripts/bind-development-mode/BindDevelopmentMode.ps1')
+    $analyzeVipScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath 'scripts/analyze-vi-package/run-local.ps1')
+    $buildScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath 'scripts/build/Build.ps1')
 
     foreach ($path in @($setDevScript, $revertDevScript, $bindDevScript, $buildScript, $analyzeVipScript)) {
         if (-not (Test-Path -LiteralPath $path)) {

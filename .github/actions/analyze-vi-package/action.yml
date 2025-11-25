@@ -16,7 +16,7 @@ runs:
       run: |
         $ErrorActionPreference = 'Stop'
         Set-StrictMode -Off
-        $work = $PSScriptRoot
+        $work = Join-Path "${{ github.workspace }}" "scripts/analyze-vi-package"
         Set-Location $work
         # Ensure Pester 5.7.1 (align with local runner to avoid v6 alpha differences)
         $desiredVersion = [version]'5.7.1'

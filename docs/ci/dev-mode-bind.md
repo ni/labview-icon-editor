@@ -1,6 +1,6 @@
 # Dev Mode Bind/Unbind Helper (BIND)
 
-The bind/unbind composite (`.github/actions/bind-development-mode`) and helper script (`BindDevelopmentMode.ps1`) provide a deterministic way to:
+The bind/unbind composite (`scripts/bind-development-mode`) and helper script (`BindDevelopmentMode.ps1`) provide a deterministic way to:
 - Point LabVIEW at the repo source via `LocalHost.LibraryPaths`.
 - Clear packed libraries so edits/builds use source.
 - Unbind cleanly to avoid cross-repo side effects.
@@ -9,7 +9,7 @@ The bind/unbind composite (`.github/actions/bind-development-mode`) and helper s
 ## Usage
 ### Local (PowerShell)
 ```pwsh
-pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 `
+pwsh scripts/bind-development-mode/BindDevelopmentMode.ps1 `
   -RepositoryPath "$PWD" `
   -Mode bind `              # bind | unbind | status
   -Bitness both `           # 32 | 64 | both
@@ -20,7 +20,7 @@ pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 `
 
 ### Composite action (CI/task)
 ```yaml
-- uses: ./.github/actions/bind-development-mode
+- uses: ./scripts/bind-development-mode
   with:
     repository_path: ${{ github.workspace }}
     mode: bind       # or unbind/status
@@ -48,3 +48,4 @@ pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 `
 - Default JSON path is under `reports/`; adjust if CI uploads artifacts from another directory.
 - Use `status` mode to inspect current state without changing INI or files.
 - Force only when you intend to overwrite tokens belonging to other paths.
+

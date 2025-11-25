@@ -14,7 +14,7 @@ This plan distills the findings from **Resolving the __Run Unit Tests (x64)__ Wo
 - [ ] Document the chosen approach in the action README (or inline comments) to prevent reintroduction of duplicate resolution logic.
 
 ## Phase 2 — Fix Script Invocation (if Option B is chosen)
-- [ ] Update `.github/actions/run-unit-tests/action.yml` to call `scripts/get-package-lv-version.ps1` using a workspace-absolute path (e.g., `$env:GITHUB_WORKSPACE\\scripts\\get-package-lv-version.ps1`) to avoid relative-path failures on Windows.
+- [ ] Update `scripts/run-unit-tests/action.yml` to call `scripts/get-package-lv-version.ps1` using a workspace-absolute path (e.g., `$env:GITHUB_WORKSPACE\\scripts\\get-package-lv-version.ps1`) to avoid relative-path failures on Windows.
 - [ ] Verify that `scripts/get-package-lv-version.ps1` is present in the repository and executable on Windows runners.
 - [ ] Add a preflight step in the action to fail fast with a clear error if the script is missing or returns a non-zero exit code.
 
@@ -46,3 +46,4 @@ This plan distills the findings from **Resolving the __Run Unit Tests (x64)__ Wo
 - The `Run Unit Tests (x64)` job completes successfully in CI with a correctly resolved `Package_LabVIEW_Version`.
 - Only one LabVIEW version-resolution strategy is active and documented.
 - New CI logs confirm the script invocation/path is correct and no longer fails on Windows runners.
+

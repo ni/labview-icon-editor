@@ -92,7 +92,7 @@ $vipcGitAuthor = $null
 try {
     $gitCmd = Get-Command git -ErrorAction Stop
 
-    # Try to source metadata from the tracked VIPC under .github/actions if the root copy is untracked.
+    # Try to source metadata from the tracked VIPC under scripts/apply-vipc if the root copy is untracked.
     $repoPrefix = $ResolvedRepositoryPath.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
     $vipcMetadataPaths = @($VIPCPath)
     $trackedVipcCandidate = Join-Path $ResolvedRepositoryPath 'scripts\apply-vipc\runner_dependencies.vipc'

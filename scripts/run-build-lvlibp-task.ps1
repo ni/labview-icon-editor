@@ -33,7 +33,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "LocalHost.LibraryPaths check failed (exit $LASTEXITCODE). Run 'Set Dev Mode (LabVIEW)' for bitness $SupportedBitness and try again."
 }
 
-$buildScript = Join-Path -Path $repo -ChildPath ".github/actions/build-lvlibp/Build_lvlibp.ps1"
+$buildScript = Join-Path -Path $repo -ChildPath "scripts/build-lvlibp/Build_lvlibp.ps1"
 if (-not (Test-Path -LiteralPath $buildScript)) {
     throw "Build_lvlibp.ps1 not found at $buildScript"
 }

@@ -573,7 +573,7 @@ $hintLines = New-Object System.Collections.Generic.List[string]
 if (@($results | Where-Object { $_.status -eq 'fail' -and $_.message -match 'use -Force' }).Count -gt 0) {
     $hintLines.Add("Open VS Code > Terminal > Run Task, pick 'Dev Mode (interactive bind/unbind)'.")
     $hintLines.Add("Choose bind + Force to overwrite, or unbind + Force to clear the other token (same as BindDevelopmentMode.ps1 flags).")
-    $hintLines.Add("CLI: pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '$RepositoryPath' -Mode bind -Bitness both -Force")
+    $hintLines.Add("CLI: pwsh scripts/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '$RepositoryPath' -Mode bind -Bitness both -Force")
 }
 if ($missingIniArchs.Count -gt 0) {
     $archText = ($missingIniArchs | ForEach-Object { "$_-bit" }) -join '/'
@@ -656,7 +656,7 @@ $( $anomalyLines -join "`n")
 
 ## Action
 - VS Code: Terminal → Run Task → 'Dev Mode (interactive bind/unbind)' → choose bind + Force (or unbind + Force).
-- CLI: pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '$RepositoryPath' -Mode bind -Bitness both -Force
+- CLI: pwsh scripts/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '$RepositoryPath' -Mode bind -Bitness both -Force
 
 ## JSON
 - $JsonOutputPath
@@ -670,7 +670,7 @@ What you should do:
 1) Diagnose using the log and `reports/dev-mode-bind.json` (paths, statuses, anomalies).
 2) Recommend rerunning with Force to bind this repo:
    - VS Code: Terminal → Run Task → “Dev Mode (interactive bind/unbind)” → **bind** + **Force** (bitness as needed).
-   - CLI: `pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath . -Mode bind -Bitness both -Force`
+   - CLI: `pwsh scripts/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath . -Mode bind -Bitness both -Force`
 3) If other repos might rely on current bindings, warn and ask before overwriting.
 4) Flag and suggest cleaning suspicious/double-rooted tokens (unbind + Force for that version/bitness if not needed).
 5) Include next steps and the JSON path in your reply.

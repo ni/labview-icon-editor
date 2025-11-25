@@ -11,7 +11,7 @@ runs:
     - name: Run Set_Development_Mode.ps1
       shell: pwsh
       run: |
-        & "${{ github.action_path }}/Set_Development_Mode.ps1" \
+        & "${{ github.workspace }}/scripts/set-development-mode/Set_Development_Mode.ps1" \
           -RepositoryPath "${{ inputs.repository_path }}"
 inputs:
   repository_path:

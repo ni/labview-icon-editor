@@ -18,7 +18,7 @@ if (-not $repoRoot) {
 
 Write-Host ("DEBUG init scriptPath={0} repoRoot={1} pwd={2}" -f $scriptPath, $repoRoot, (Get-Location).ProviderPath)
 $script:RepoRoot = $repoRoot
-$actionsPath = Join-Path $script:RepoRoot ".github/actions"
+$actionsPath = Join-Path $script:RepoRoot "scripts"
 $buildScript = Join-Path $actionsPath "build/Build.ps1"
 Import-Module "$testDir/Support/BuildTaskMocks.psm1"
 

@@ -14,7 +14,7 @@ We need a repeatable way to point LabVIEW at the repo source (via LocalHost.Libr
 - **C** — Rely only on CI worktrees/build scripts; leave local dev-mode manual. (Pros: smallest footprint; Cons: poor local ergonomics, no guarantees on INI state.)
 
 ## Decision
-Choose **Option A**. Standardize on `.github/actions/bind-development-mode` backed by `BindDevelopmentMode.ps1` to: (a) detect LocalHost.LibraryPaths per bitness; (b) bind only when missing/mismatched or packed libs remain; (c) unbind by clearing tokens and running revert; (d) emit JSON + console summaries with exit codes; (e) support dry-run and force to guard cross-repo tokens; (f) write outputs to a predictable path for CI/tasks.
+Choose **Option A**. Standardize on `scripts/bind-development-mode` backed by `BindDevelopmentMode.ps1` to: (a) detect LocalHost.LibraryPaths per bitness; (b) bind only when missing/mismatched or packed libs remain; (c) unbind by clearing tokens and running revert; (d) emit JSON + console summaries with exit codes; (e) support dry-run and force to guard cross-repo tokens; (f) write outputs to a predictable path for CI/tasks.
 
 ## Consequences
 - **+** Deterministic, auditable dev-mode binding across bitness with JSON for CI/tasks.
@@ -27,4 +27,5 @@ Choose **Option A**. Standardize on `.github/actions/bind-development-mode` back
 - [ ] Add tests/lints for JSON schema and BIND requirement coverage. (QA/Automation)
 - [ ] Document usage and failure modes in `docs/ci` or `docs/requirements`. (Docs)
 
-> Traceability: BIND-001..BIND-014; scripts: `.github/actions/bind-development-mode/BindDevelopmentMode.ps1`, `.github/actions/bind-development-mode/action.yml`; helpers: `.github/actions/set-development-mode/Set_Development_Mode.ps1`, `.github/actions/revert-development-mode/RevertDevelopmentMode.ps1`.
+> Traceability: BIND-001..BIND-014; scripts: `scripts/bind-development-mode/BindDevelopmentMode.ps1`, `scripts/bind-development-mode/action.yml`; helpers: `scripts/set-development-mode/Set_Development_Mode.ps1`, `scripts/revert-development-mode/RevertDevelopmentMode.ps1`.
+

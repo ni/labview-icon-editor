@@ -11,7 +11,7 @@ runs:
     - name: Run RevertDevelopmentMode.ps1
       shell: pwsh
       run: |
-        & "${{ github.action_path }}/RevertDevelopmentMode.ps1" \
+        & "${{ github.workspace }}/scripts/revert-development-mode/RevertDevelopmentMode.ps1" \
           -RepositoryPath "${{ inputs.repository_path }}"
 inputs:
   repository_path:

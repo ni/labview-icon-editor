@@ -65,7 +65,7 @@ Scope: project-level strategy for the LabVIEW Icon Editor in this repository. It
 
 ## Test Levels, Types, and Techniques
 - Functional / Unit: LabVIEW tests under `Test/Unit Tests/...` validate editor positioning/config persistence. Techniques: boundary-value combinations for INI states, state reset fixtures, and golden comparisons for persisted coordinates.
-- Functional / Workflow: Pester suite `Test/ModifyVIPBDisplayInfo.Tests.ps1` drives `.github/actions/modify-vipb-display-info` against fixtures to guarantee release metadata correctness. Techniques: scenario scripting, isolated temp fixtures, and XML field assertions.
+- Functional / Workflow: Pester suite `Test/ModifyVIPBDisplayInfo.Tests.ps1` drives `scripts/modify-vipb-display-info` against fixtures to guarantee release metadata correctness. Techniques: scenario scripting, isolated temp fixtures, and XML field assertions.
 - Static / Compliance: RTM validation, RTM coverage, ADR lint, and Docs Link Check enforce traceability and documentation integrity. Techniques: rule-based linting, structural coverage across RTM rows, and broken-link detection.
 - Performance: Timed smoke checks on editor startup/position adjustment flows and VIPB metadata update script. Techniques: measured runs (`Measure-Command` or LabVIEW profiler samples) compared to the last tagged baseline and recorded in the completion report. Triggered on High/Critical RTM items or before release.
 - Portability: Cross-architecture runs on `test-2021-x64` and `test-2021-x86` for LabVIEW unit tests and workflow/Pester checks. Techniques: identical suites across architectures; any arch-specific failure is a release blocker unless explicitly waived and logged in RTM plus the completion report.
@@ -113,3 +113,4 @@ Scope: project-level strategy for the LabVIEW Icon Editor in this repository. It
 | 2025-11-20 | 1.2.0 | Added performance baseline format/runbook and repository locations. |
 | 2025-11-20 | 1.1.0 | Documented test levels/types (functional, performance, portability), techniques, completion criteria, communication, and staffing. |
 | 2025-11-20 | 1.0.0 | Added §5.2 document control header, glossary reference, and change log starter. |
+

@@ -23,7 +23,7 @@ You do **not** need to copy/paste the entire workflow snippet here, as it’s al
    - Go to the “Actions” tab on your (or your fork’s) GitHub repository.
    - Select the **“Toggle Development Mode”** workflow.
    - Click “Run workflow” and choose either `enable` or `disable` from the dropdown.
-   - This will execute the PowerShell scripts ([`Set_Development_Mode.ps1`](../../../.github/actions/set-development-mode/Set_Development_Mode.ps1) or [`RevertDevelopmentMode.ps1`](../../../.github/actions/revert-development-mode/RevertDevelopmentMode.ps1)) on the **target self-hosted runner** (your personal machine or a shared machine).
+   - This will execute the PowerShell scripts ([`Set_Development_Mode.ps1`](../../../scripts/set-development-mode/Set_Development_Mode.ps1) or [`RevertDevelopmentMode.ps1`](../../../scripts/revert-development-mode/RevertDevelopmentMode.ps1)) on the **target self-hosted runner** (your personal machine or a shared machine).
 
 2. **Important Note for Testing**
    - If your system is set to dev mode (`enable`), you won’t be able to open the icon editor after you install the VI Package.
@@ -106,16 +106,16 @@ Here, you might see something like `githubuser/labview-icon-editor-fork/.github/
 
 ## 4. Customization
 
-All “dev mode” logic resides in two PowerShell scripts located under `.github/actions`:
+All “dev mode” logic resides in two PowerShell scripts located under `scripts`:
 
-- **[`Set_Development_Mode.ps1`](../../../.github/actions/set-development-mode/Set_Development_Mode.ps1)** – Called when mode is `enable`.
-- **[`RevertDevelopmentMode.ps1`](../../../.github/actions/revert-development-mode/RevertDevelopmentMode.ps1)** – Called when mode is `disable`.
+- **[`Set_Development_Mode.ps1`](../../../scripts/set-development-mode/Set_Development_Mode.ps1)** – Called when mode is `enable`.
+- **[`RevertDevelopmentMode.ps1`](../../../scripts/revert-development-mode/RevertDevelopmentMode.ps1)** – Called when mode is `disable`.
 
 These scripts currently do things like update environment variables, configure LabVIEW paths, or install certain dependencies. **To change** how “dev mode” behaves, **edit those scripts** directly. 
 
 ### Pull Requests with Script Updates
 Collaborators are free to:
-1. **Modify** [`Set_Development_Mode.ps1`](../../../.github/actions/set-development-mode/Set_Development_Mode.ps1) or [`RevertDevelopmentMode.ps1`](../../../.github/actions/revert-development-mode/RevertDevelopmentMode.ps1) on their forks.
+1. **Modify** [`Set_Development_Mode.ps1`](../../../scripts/set-development-mode/Set_Development_Mode.ps1) or [`RevertDevelopmentMode.ps1`](../../../scripts/revert-development-mode/RevertDevelopmentMode.ps1) on their forks.
 2. **Enable dev mode** on their self-hosted runner (via their fork), capturing the GitHub Actions logs as proof that their changes worked as intended.
 3. **Open a Pull Request** to merge these script changes back into the upstream repository, referencing the successful action logs as additional evidence.
 
@@ -126,3 +126,4 @@ Collaborators are free to:
 - GitHub Docs: https://docs.github.com/en/actions/using-workflows/reusing-workflows#calling-a-reusable-workflow
 
 ---
+

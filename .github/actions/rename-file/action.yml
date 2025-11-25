@@ -12,7 +12,7 @@ runs:
     - name: Run Rename-file.ps1
       shell: pwsh
       run: |
-        & "${{ github.action_path }}/Rename-file.ps1" `
+        & "${{ github.workspace }}/scripts/rename-file/Rename-file.ps1" `
           -CurrentFilename "${{ inputs.current_filename }}" `
           -NewFilename "${{ inputs.new_filename }}"
 inputs:

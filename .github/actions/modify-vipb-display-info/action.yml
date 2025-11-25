@@ -21,15 +21,15 @@ runs:
         $repo = "${{ inputs.repository_path }}"
         $candidates = @(
           (Join-Path $repo 'scripts/get-package-lv-version.ps1'),
-          (Join-Path $repo '.github/scripts/get-package-lv-version.ps1')
+          (Join-Path '${{ github.workspace }}' 'scripts/get-package-lv-version.ps1')
         )
         $lvScript = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
         if (-not $lvScript) {
-          throw "Unable to locate get-package-lv-version.ps1 under '$repo/scripts' or '$repo/.github/scripts'."
+          throw "Unable to locate get-package-lv-version.ps1 under '$repo/scripts' or '${{ github.workspace }}/scripts'."
         }
 
         $lvVer = pwsh -NoProfile -File $lvScript -RepositoryPath $repo
-        & "${{ github.action_path }}/ModifyVIPBDisplayInfo.ps1" `
+        & "${{ github.workspace }}/scripts/modify-vipb-display-info/ModifyVIPBDisplayInfo.ps1" `
           -SupportedBitness ${{ inputs.supported_bitness }} `
           -RepositoryPath "${{ inputs.repository_path }}" `
           -VIPBPath "${{ inputs.vipb_path }}" `

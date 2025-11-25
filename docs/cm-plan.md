@@ -56,7 +56,7 @@ Local:
 2) `python3 .github/scripts/validate_rtm.py`
 3) `python3 .github/scripts/check_rtm_coverage.py`
 4) `python3 .github/scripts/lint_requirements_language.py`
-5) `pwsh -File .github/actions/unit-tests/unit_tests.ps1 -RepositoryPath \"$PWD\"`
+5) `pwsh -File scripts/unit-tests/unit_tests.ps1 -RepositoryPath \"$PWD\"`
 
 CI/PR:
 - DoD Aggregator / `dod-aggregator.yml` runs RTM validation, RTM coverage, ADR lint, docs link check; uploads DoD summary artifact.
@@ -71,4 +71,5 @@ Release:
 - TRW checklist: `docs/requirements/TRW_Verification_Checklist.md`
 - ADR index: `docs/adr/adr-index.md`
 - Release workflow: `.github/workflows/draft-release.yml`
+
 

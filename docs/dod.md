@@ -23,7 +23,7 @@ python3 .github/scripts/check_rtm_coverage.py
 
 python3 .github/scripts/lint_requirements_language.py
 
-pwsh -File .github/actions/unit-tests/unit_tests.ps1 -RepositoryPath "$PWD"
+pwsh -File scripts/unit-tests/unit_tests.ps1 -RepositoryPath "$PWD"
 
 If touching High/Critical RTM items or pre-release, capture performance samples (3 runs, take median) per scenario/architecture using `Measure-Command` or the LabVIEW profiler; record entries in `docs/testing/performance-baselines.json` (see `docs/testing/templates/performance-baseline.json`).
 Save measured samples for the run in `reports/performance-measurements.json` (see `docs/testing/templates/performance-measurements.json`) and portability run results in `reports/portability-status.json` (see `docs/testing/templates/portability-status.json`) so the completion report can ingest them.
@@ -57,4 +57,5 @@ Expected artifacts: lychee report, RTM CSV, XLSX, unit test results, RTM coverag
 EXIT CRITERIA
 
 All gates green on PR to release/* and final tag vX.Y.Z produced; artifacts present; no broken links; RTM validated; LabVIEW env status vars = `success`; performance samples recorded or waived per baseline policy.
+
 

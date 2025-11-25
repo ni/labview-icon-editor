@@ -30,8 +30,7 @@ runs:
         if (-not $lvVer) {
           $candidates = @(
             "$repo/scripts/get-package-lv-version.ps1",
-            "$repo/.github/scripts/get-package-lv-version.ps1",
-            "${{ github.action_path }}/../../scripts/get-package-lv-version.ps1"
+            "$env:GITHUB_WORKSPACE/scripts/get-package-lv-version.ps1"
           )
           $verScript = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
           if (-not $verScript) {
@@ -40,7 +39,7 @@ runs:
           $lvVer = pwsh -NoProfile -File $verScript -RepositoryPath $repo
         }
 
-        & "${{ github.action_path }}/Build_lvlibp.ps1" `
+        & "${{ github.workspace }}/scripts/build-lvlibp/Build_lvlibp.ps1" `
           -Package_LabVIEW_Version $lvVer `
           -SupportedBitness ${{ inputs.supported_bitness }} `
           -RepositoryPath $repo `

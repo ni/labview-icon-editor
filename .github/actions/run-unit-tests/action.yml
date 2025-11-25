@@ -15,8 +15,7 @@ runs:
         Set-StrictMode -Version Latest
 
         $repo = Resolve-Path "${{ inputs.repository_path }}"
-        $actionRoot = Resolve-Path "${{ github.action_path }}"
-        $scriptPath = Join-Path $actionRoot "RunUnitTests.ps1"
+        $scriptPath = Resolve-Path "${{ github.workspace }}/scripts/run-unit-tests/RunUnitTests.ps1"
 
         $lvVer = "${{ inputs.labview_version }}"
         $versionSource = 'inputs.labview_version'

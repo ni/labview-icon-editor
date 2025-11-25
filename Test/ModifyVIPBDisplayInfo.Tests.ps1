@@ -7,7 +7,7 @@ $tempRoot = $null
 Describe "ModifyVIPBDisplayInfo.ps1" {
     BeforeAll {
         $script:repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
-        $script:scriptPath = Join-Path $script:repoRoot ".github/actions/modify-vipb-display-info/ModifyVIPBDisplayInfo.ps1"
+        $script:scriptPath = Join-Path $script:repoRoot "scripts/modify-vipb-display-info/ModifyVIPBDisplayInfo.ps1"
         # Locate the single .vipb in the repo instead of hard-coding a fixture
         $vipbFiles = Get-ChildItem -Path $script:repoRoot -Filter *.vipb -File -Recurse
         if ($vipbFiles.Count -eq 1) {

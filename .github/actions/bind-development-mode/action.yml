@@ -46,7 +46,7 @@ runs:
         if ('${{ inputs.dry_run }}' -eq 'true') { $params += '-DryRun' }
         if ('${{ inputs.json_output_path }}') { $params += "-JsonOutputPath '${{ inputs.json_output_path }}'" }
 
-        $cmd = "& '${{ github.action_path }}/BindDevelopmentMode.ps1' " + ($params -join ' ')
+        $cmd = "& '${{ github.workspace }}/scripts/bind-development-mode/BindDevelopmentMode.ps1' " + ($params -join ' ')
         Write-Host "Running: $cmd"
         Invoke-Expression $cmd
 

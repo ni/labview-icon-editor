@@ -18,7 +18,7 @@ Enable a single-pass, per-machine/job signing of all repository PowerShell scrip
   - Discovers target files and signs them with one cert and timestamp server.
   - Emits a manifest (default `reports/script-signing.json`) and returns thumbprint and counts.
   - Optional cleanup removes the cert from `My`, `TrustedPublisher`, `Root` (if added), and deletes the exported `.cer`.
-- `.github/actions/sign-pwsh-scripts` (composite)
+- `scripts/sign-pwsh-scripts` (composite)
   - Thin wrapper around the script for CI.
   - Inputs: `repository_path` (default `${{ github.workspace }}`), `trust_publisher` (bool), `trust_root` (bool, default false), `timestamp_server` (default `http://timestamp.digicert.com`), `include`/`exclude` globs, `manifest_path`, `cleanup`, `what_if`.
   - Outputs: `cert_thumbprint`, `manifest_path`, `signed_count`, `cert_subject`.
@@ -49,7 +49,7 @@ pwsh ./scripts/sign-pwsh-scripts.ps1 `
 ### GitHub Actions (per job that needs it)
 ```yaml
 - name: Ephemeral sign PowerShell scripts
-  uses: ./.github/actions/sign-pwsh-scripts
+  uses: ./scripts/sign-pwsh-scripts
   with:
     repository_path: ${{ github.workspace }}
     trust_publisher: true        # required if the job enforces AllSigned
@@ -70,3 +70,4 @@ pwsh ./scripts/sign-pwsh-scripts.ps1 `
 - Confirm exclude list is correct for this repo (e.g., whether to sign under `Tooling/` or `Test/`).  
 - Validate the timestamp server to use (current proposal: `http://timestamp.digicert.com`).  
 - Choose failure policy: fail fast on any signing error vs. warn and continue; proposal is fail when cert creation/trust fails, warn on individual file failures but surface a non-zero exit if any files fail to sign.
+

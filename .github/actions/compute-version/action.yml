@@ -95,7 +95,7 @@ runs:
       shell: pwsh
       run: |
         $ErrorActionPreference = 'Stop'
-        $script = Join-Path -Path $PWD -ChildPath ".github/actions/compute-version/Get-LastTag.ps1"
+        $script = Join-Path -Path $PWD -ChildPath "scripts/compute-version/Get-LastTag.ps1"
         $tag = ''
         $isFirst = $false
         if (Test-Path $script) {

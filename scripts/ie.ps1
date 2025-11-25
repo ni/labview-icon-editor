@@ -189,7 +189,7 @@ switch ($Command) {
     }
 
     'dev-set' {
-        $scriptPath = Resolve-Script -RepoRoot $repoRoot -RelativePath ".github/actions/set-development-mode/run-dev-mode.ps1"
+        $scriptPath = Resolve-Script -RepoRoot $repoRoot -RelativePath "scripts/set-development-mode/run-dev-mode.ps1"
         $args = @{
             SupportedBitness = $SupportedBitness
         }
@@ -197,7 +197,7 @@ switch ($Command) {
     }
 
     'dev-bind' {
-        $scriptPath = Resolve-Script -RepoRoot $repoRoot -RelativePath ".github/actions/bind-development-mode/BindDevelopmentMode.ps1"
+        $scriptPath = Resolve-Script -RepoRoot $repoRoot -RelativePath "scripts/bind-development-mode/BindDevelopmentMode.ps1"
         $args = @{
             RepositoryPath = $repoRoot
             Mode           = 'bind'
@@ -208,7 +208,7 @@ switch ($Command) {
     }
 
     'dev-revert' {
-        $scriptPath = Resolve-Script -RepoRoot $repoRoot -RelativePath ".github/actions/revert-development-mode/run-dev-mode.ps1"
+        $scriptPath = Resolve-Script -RepoRoot $repoRoot -RelativePath "scripts/revert-development-mode/run-dev-mode.ps1"
         $args = @{
             SupportedBitness = $SupportedBitness
         }

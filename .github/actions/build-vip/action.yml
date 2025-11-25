@@ -103,11 +103,11 @@ runs:
         $repo = "${{ inputs.repository_path }}"
         $candidates = @(
           (Join-Path $repo 'scripts/get-package-lv-version.ps1'),
-          (Join-Path $repo '.github/scripts/get-package-lv-version.ps1')
+          (Join-Path '${{ github.workspace }}' 'scripts/get-package-lv-version.ps1')
         )
         $lvScript = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
         if (-not $lvScript) {
-          throw "Unable to locate get-package-lv-version.ps1 under '$repo/scripts' or '$repo/.github/scripts'."
+          throw "Unable to locate get-package-lv-version.ps1 under '$repo/scripts' or '${{ github.workspace }}/scripts'."
         }
 
         $lvVer = pwsh -NoProfile -File $lvScript -RepositoryPath $repo
@@ -134,7 +134,7 @@ runs:
           $splat.SkipPPLCheck = $true
         }
 
-        & "${{ github.action_path }}/build_vip.ps1" @splat
+        & "${{ github.workspace }}/scripts/build-vip/build_vip.ps1" @splat
 
     - name: Dump vipm build logs on failure
       if: failure()

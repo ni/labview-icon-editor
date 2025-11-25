@@ -16,4 +16,4 @@ runs:
     - name: Generate release notes
       shell: pwsh
       run: |
-        & "${{ github.action_path }}/GenerateReleaseNotes.ps1" -OutputPath "${{ inputs.output_path }}"
+        & "${{ github.workspace }}/scripts/generate-release-notes/GenerateReleaseNotes.ps1" -OutputPath "${{ inputs.output_path }}"

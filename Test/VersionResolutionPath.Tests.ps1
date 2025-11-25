@@ -23,13 +23,12 @@ Describe "LabVIEW version resolution wiring" {
 
         $script:repoRoot = $repoRoot
         $script:workflowPath = Join-Path $script:repoRoot '.github/workflows/ci.yml'
-        $script:actionPath = Join-Path $script:repoRoot '.github/actions/run-unit-tests/action.yml'
+        $script:actionPath = Join-Path $script:repoRoot 'scripts/run-unit-tests/RunUnitTests.ps1'
 
         Test-Path -LiteralPath $script:workflowPath | Should -BeTrue
         Test-Path -LiteralPath $script:actionPath   | Should -BeTrue
 
         $script:Workflow = Get-Content -LiteralPath $script:workflowPath -Raw | ConvertFrom-Yaml
-        $script:Action   = Get-Content -LiteralPath $script:actionPath -Raw   | ConvertFrom-Yaml
     }
 
     Context "resolve-labview-version job" {

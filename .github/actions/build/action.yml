@@ -11,7 +11,7 @@ runs:
     - name: Run Build.ps1
       shell: pwsh
       run: |
-        & "${{ github.action_path }}/Build.ps1" `
+        & "${{ github.workspace }}/scripts/build/Build.ps1" `
           -RepositoryPath "${{ inputs.repository_path }}" `
           -Major ${{ inputs.major }} `
           -Minor ${{ inputs.minor }} `

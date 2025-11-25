@@ -40,7 +40,7 @@ function Resolve-GitRoot {
 function Resolve-SemverFromLatestTag {
     param([Parameter(Mandatory)][string]$RepoRoot)
 
-    $helper = Join-Path -Path $RepoRoot -ChildPath ".github/actions/compute-version/Get-LastTag.ps1"
+    $helper = Join-Path -Path $RepoRoot -ChildPath "scripts/compute-version/Get-LastTag.ps1"
     $tag = ''
     if (Test-Path -LiteralPath $helper) {
         $info = & $helper -RequireTag
@@ -202,9 +202,9 @@ if ($Simulate) {
     exit 0
 }
 
-$buildScript = Join-Path -Path $ws -ChildPath ".github/actions/build/Build.ps1"
+$buildScript = Join-Path -Path $ws -ChildPath "scripts/build/Build.ps1"
 $singleScript = Join-Path -Path $ws -ChildPath "scripts/build-vip-single-arch.ps1"
-$buildLvlibpScript = Join-Path -Path $ws -ChildPath ".github/actions/build-lvlibp/Build_lvlibp.ps1"
+$buildLvlibpScript = Join-Path -Path $ws -ChildPath "scripts/build-lvlibp/Build_lvlibp.ps1"
 switch ($BuildMode) {
     'vip+lvlibp' {
         if ($LvlibpBitness -eq '32') {

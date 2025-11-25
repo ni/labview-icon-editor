@@ -93,7 +93,7 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 **Solution**:
 1. Make sure the label is exactly `major`, `minor`, or `patch` in lowercase (unless your workflow script also checks for capitalized labels).  
 2. Confirm you’re actually using a Pull Request event (not a direct push).  
-3. Check the CI Pipeline logs for the **version** job’s “Determine bump type” step (from `.github/actions/compute-version`).
+3. Check the CI Pipeline logs for the **version** job’s “Determine bump type” step (from `scripts/compute-version`).
 
 ---
 
@@ -123,7 +123,7 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 - Another step re-applied the `Set_Development_Mode.ps1` script.
 
 **Solution**:
-1. Run the bind/unbind helper in unbind mode: `BindDevelopmentMode.ps1 -Mode unbind -Bitness both -RepositoryPath <repo> [-Force]` (or the composite `.github/actions/bind-development-mode` with `mode: unbind`).  
+1. Run the bind/unbind helper in unbind mode: `BindDevelopmentMode.ps1 -Mode unbind -Bitness both -RepositoryPath <repo> [-Force]` (or the composite `scripts/bind-development-mode` with `mode: unbind`).  
 2. Check `reports/dev-mode-bind.json` for per-bitness status; `json_path` is surfaced even on failure.  
 3. If the INI token points to another repo, rerun with `-Force` to clear it intentionally.  
 4. Confirm your pipeline sequence: enable dev mode only when needed, then unbind before final builds.
@@ -322,7 +322,7 @@ Technically yes, if you don’t rely on alpha/beta/rc branch naming. But the wor
 ### Q8: Why Is My Dev Mode Toggle Not Working Locally?
 
 **Answer**:  
-Use the bind/unbind helper directly instead of the toggle workflow: `pwsh .github/actions/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath <repo> -Mode bind|unbind -Bitness both`. Ensure `g-cli` is on PATH and `Tooling/deployment/Create_LV_INI_Token.vi` exists. The script reads the LabVIEW version from your VIPB and targets the canonical LabVIEW.ini under Program Files; check `reports/dev-mode-bind.json` for per-bitness status and rerun with `-Force` only when overwriting another repo’s token intentionally.
+Use the bind/unbind helper directly instead of the toggle workflow: `pwsh scripts/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath <repo> -Mode bind|unbind -Bitness both`. Ensure `g-cli` is on PATH and `Tooling/deployment/Create_LV_INI_Token.vi` exists. The script reads the LabVIEW version from your VIPB and targets the canonical LabVIEW.ini under Program Files; check `reports/dev-mode-bind.json` for per-bitness status and rerun with `-Force` only when overwriting another repo’s token intentionally.
 
 ---
 
@@ -368,3 +368,4 @@ PowerShell **named parameters** typically start with a single dash (`-Parameter`
 
 **Answer**:  
 Absolutely. You can modify `$jsonObject` in your script to include new keys, such as `"Product Description"` or `"Special Internal ID"`. Just be sure that the VI that updates the `.vipb` file (`Modify_VIPB_Display_Information.vi`) knows how to handle those additional fields, or they might be ignored.
+

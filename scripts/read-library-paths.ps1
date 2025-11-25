@@ -62,7 +62,7 @@ if (-not $entries -or $entries.Count -eq 0) {
     $msg = "No LocalHost.LibraryPaths entries found in $iniPath"
     Write-Warning $msg
     if ($FailOnMissing) {
-        Write-Host "Hint: Run the VSCode task 'Set Dev Mode (LabVIEW)' for bitness $SupportedBitness, or call .github/actions/set-development-mode/run-dev-mode.ps1 -SupportedBitness $SupportedBitness to populate the INI." -ForegroundColor Yellow
+        Write-Host "Hint: Run the VSCode task 'Set Dev Mode (LabVIEW)' for bitness $SupportedBitness, or call scripts/set-development-mode/run-dev-mode.ps1 -SupportedBitness $SupportedBitness to populate the INI." -ForegroundColor Yellow
         Write-Error $msg
         exit 2
     }

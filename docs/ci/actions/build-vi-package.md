@@ -99,7 +99,7 @@ That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Th
 ### 3.2 Configurable Inputs / Parameters
 `ci.yml` calls this action and provides all required inputs automatically. When invoking
 `build-vip` from another workflow, supply the following parameters
-(see [action.yml](../../../.github/actions/build-vip/action.yml) for details):
+(see [action.yml](../../../scripts/build-vip/action.yml) for details):
 
 | Input | Description |
 | --- | --- |
@@ -160,7 +160,7 @@ components remain unchanged and only the build number increases.
 
 4. **Compute Final Version**
    - Merges the label-based bump with existing tags (if any).
-   - If on `release-alpha/*`, `release-beta/*`, or `release-rc/*`, appends `-alpha.<commitCount>`, `-beta.<commitCount>`, or `-rc.<commitCount>` respectively. Here `<N>` equals the commit count, matching [`compute-version`](../../../.github/actions/compute-version/action.yml).
+   - If on `release-alpha/*`, `release-beta/*`, or `release-rc/*`, appends `-alpha.<commitCount>`, `-beta.<commitCount>`, or `-rc.<commitCount>` respectively. Here `<N>` equals the commit count, matching [`compute-version`](../../../scripts/compute-version/action.yml).
    - Always adds `-build<BUILD_NUMBER>` last, e.g. `v1.2.3-rc.37-build37`. Because both values use the commit count, the pre-release number and build number are identical.
 
 5. **Build the Icon Editor VI Package**
@@ -279,7 +279,7 @@ components remain unchanged and only the build number increases.
 ### 8.3 LabVIEW-Specific QA
 - If you have LabVIEW unit tests, integrate them by adding a step in the YAML:
   ```yaml
-  - uses: ./.github/actions/run-unit-tests
+  - uses: ./scripts/run-unit-tests
     with:
       repository_path: ${{ github.workspace }}
       supported_bitness: ${{ matrix.bitness }}
@@ -329,5 +329,6 @@ components remain unchanged and only the build number increases.
 ## 11. **Conclusion**
 
 By properly setting up environment variables, referencing your LabVIEW environment on a self-hosted runner, and using label-based version increments plus a commit-based build number, this GitHub Action automates your `.vip` build and artifact upload process. Maintainers can extend the pipeline with tagging or release steps if desired. Follow the troubleshooting steps if anything goes awry, and enjoy streamlined LabVIEW CI/CD!
+
 
 
