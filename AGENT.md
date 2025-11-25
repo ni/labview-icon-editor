@@ -248,7 +248,7 @@ agent:
 - **Execution mapping:** For each approved intent, run `scripts/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath . -Mode <bind|unbind> -Bitness <32|64|both>` plus `-Force` only when allowed. Execute intents sequentially.
 - **Post-check:** Reload `reports/dev-mode-bind.json`; return a per-bitness summary (expected_path, current_path, action, status, message).
 - **Safety:** Cap at 3 intents per request; log the parsed intents and whether Force was applied; ignore phrases without the required prefix.
-- **Implementation pointer:** The intent shim lives in `tools/DevModeAgentCli/Program.cs`. Update that file when binder flags/behavior change so automation stays in sync with the PowerShell binder.
+- **Implementation pointer:** The intent shim lives in `Tooling/dotnet/DevModeAgentCli/Program.cs`. Update that file when binder flags/behavior change so automation stays in sync with the PowerShell binder.
 - **Console cue:** If console output shows `[OTHER-REPO]` for the VIPB-targeted version/bitness, suggest rerunning bind with `-Force` (or the task equivalent) and link `reports/dev-mode-bind.json` for context; ask before overwriting if another repo might rely on that token.
 
 ---

@@ -36,5 +36,4 @@ pwsh scripts/bind-development-mode/BindDevelopmentMode.ps1 `
 - Default JSON path is under `reports/`; adjust if CI uploads artifacts from another directory.
 - Use `status` mode to inspect current state without changing INI or files.
 - Force only when you intend to overwrite tokens belonging to other paths.
-- Automation shim: natural-language dev-mode intents are parsed/executed by `tools/DevModeAgentCli/Program.cs`; keep it in sync with binder flags/behavior.
-
+- Automation shim: natural-language dev-mode intents are parsed/executed by `Tooling/dotnet/DevModeAgentCli/Program.cs`; keep it in sync with binder flags/behavior.

@@ -23,7 +23,7 @@ Choose **C**. Introduce a dedicated agent-only CLI that consumes constrained dev
 - **-** Requires wiring into agent workflows and ongoing maintenance to track binder changes.
 
 ## Follow-ups
-- [ ] Scaffold `tools/DevModeAgentCli` with intent parser, plan/guard evaluation, JSON output, and optional execution against the PowerShell binder. (Owner: Automation QA)
+- [ ] Scaffold `Tooling/dotnet/DevModeAgentCli` with intent parser, plan/guard evaluation, JSON output, and optional execution against the PowerShell binder. (Owner: Automation QA)
 - [ ] Add unit/integration tests for parsing, guardrails, and binder invocation; wire into CI. (Owner: Automation QA)
 - [ ] Document usage/contract in AGENT.md and link from troubleshooting for automation scenarios (not for LabVIEW users). (Owner: Docs)
 

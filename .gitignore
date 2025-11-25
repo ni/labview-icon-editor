@@ -18,8 +18,8 @@
 *.xml
 
 # .NET build output
-tools/RequirementsSummarizer/bin/
-tools/RequirementsSummarizer/obj/
+Tooling/dotnet/**/bin/
+Tooling/dotnet/**/obj/
 
 # Generated requirement reports (artifact outputs)
 reports/req-summary.md
