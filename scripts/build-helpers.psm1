@@ -27,7 +27,7 @@ function Get-CanonicalVipcPath {
 
     $resolved = (Resolve-Path -LiteralPath $RepoPath -ErrorAction Stop).Path
     $rootVipc = Join-Path $resolved "runner_dependencies.vipc"
-    $nestedVipc = Join-Path $resolved ".github\actions\apply-vipc\runner_dependencies.vipc"
+    $nestedVipc = Join-Path $resolved "scripts\apply-vipc\runner_dependencies.vipc"
 
     if (Test-Path -LiteralPath $rootVipc) {
         return $rootVipc

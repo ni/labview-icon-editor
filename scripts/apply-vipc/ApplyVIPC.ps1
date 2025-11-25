@@ -95,7 +95,7 @@ try {
     # Try to source metadata from the tracked VIPC under .github/actions if the root copy is untracked.
     $repoPrefix = $ResolvedRepositoryPath.TrimEnd([System.IO.Path]::DirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
     $vipcMetadataPaths = @($VIPCPath)
-    $trackedVipcCandidate = Join-Path $ResolvedRepositoryPath '.github\actions\apply-vipc\runner_dependencies.vipc'
+    $trackedVipcCandidate = Join-Path $ResolvedRepositoryPath 'scripts\apply-vipc\runner_dependencies.vipc'
     if ($trackedVipcCandidate -notin $vipcMetadataPaths) {
         $vipcMetadataPaths += $trackedVipcCandidate
     }

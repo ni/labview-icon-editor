@@ -28,7 +28,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 
 > **Prerequisites**:
 > - **LabVIEW 2021 SP1 (32-bit and 64-bit)** – and **LabVIEW 2023 (64-bit) for building the package**.
-> - The relevant **VIPC** file is `runner_dependencies.vipc` (preferred at repo root; a copy also lives at `.github/actions/apply-vipc/runner_dependencies.vipc`).
+> - The relevant **VIPC** file is `runner_dependencies.vipc` (preferred at repo root; a copy also lives at `scripts/apply-vipc/runner_dependencies.vipc`).
 > - [PowerShell 7+](https://github.com/PowerShell/PowerShell/releases/latest)
 > - [Git for Windows](https://github.com/git-for-windows/git/releases/latest)
 

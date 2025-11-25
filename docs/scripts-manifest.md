@@ -27,7 +27,7 @@
   - MinLabVIEW [String] default="21.0"
 - Outputs: *(not explicitly declared)*
 
-## `/mnt/c/repos/labview-icon-editor-community-ci-cd/.github/actions/apply-vipc/ApplyVIPC.ps1`
+## `/mnt/c/repos/labview-icon-editor-community-ci-cd/scripts/apply-vipc/ApplyVIPC.ps1`
 - Inputs:
   - MinimumSupportedLVVersion [String]
   - VIP_LVVersion [String]

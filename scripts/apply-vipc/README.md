@@ -1,6 +1,6 @@
 # Apply VIPC Dependencies 📦
 
-Ensure a runner has all required LabVIEW packages installed before building or testing. This composite action calls **`ApplyVIPC.ps1`** to apply a `.vipc` container through the **VIPM CLI**.
+Ensure a runner has all required LabVIEW packages installed before building or testing. Use **`ApplyVIPC.ps1`** directly to apply a `.vipc` container through the **VIPM CLI**.
 
 ---
 
@@ -51,12 +51,13 @@ Ensure a runner has all required LabVIEW packages installed before building or t
 steps:
   - uses: actions/checkout@v4
   - name: Install LabVIEW dependencies
-    uses: ./.github/actions/apply-vipc
-    with:
-      package_labview_version: 2024
-      supported_bitness: 64
-      repository_path: ${{ github.workspace }}
-      vipc_path: Tooling/deployment/runner_dependencies.vipc
+    shell: pwsh
+    run: |
+      pwsh -File scripts/apply-vipc/ApplyVIPC.ps1 `
+        -Package_LabVIEW_Version 2024 `
+        -SupportedBitness 64 `
+        -RepositoryPath "${{ github.workspace }}" `
+        -VIPCPath "Tooling/deployment/runner_dependencies.vipc"
 ```
 
 ---

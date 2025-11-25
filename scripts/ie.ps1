@@ -14,6 +14,7 @@ param(
         'build-pipeline',
         'build-lvlibp',
         'build-vip',
+        'apply-vipc',
         'dev-set',
         'dev-bind',
         'dev-revert',
@@ -36,8 +37,10 @@ param(
     [string]$CompanyName = 'LabVIEW-Community-CI-CD',
     [string]$AuthorName = 'Local Developer',
     [int]$LabVIEWMinorRevision = 3,
+    [string]$PackageLabVIEWVersion = '2021',
 
     # VIP/VIPB inputs
+    [string]$VipcPath = 'runner_dependencies.vipc',
     [string]$VipbPath = 'Tooling/deployment/labview-icon-editor.vipb',
     [ValidateSet('32','64','both')]
     [string]$Bitness = '64',
@@ -161,6 +164,17 @@ switch ($Command) {
             Bitness        = $Bitness
         }
         if ($SkipCIGate) { $args.SkipCIGate = $true }
+        Invoke-Script -Path $scriptPath -ArgumentMap $args
+    }
+
+    'apply-vipc' {
+        $scriptPath = Resolve-Script -RepoRoot $repoRoot -RelativePath "scripts/apply-vipc/ApplyVIPC.ps1"
+        $args = @{
+            Package_LabVIEW_Version = $PackageLabVIEWVersion
+            SupportedBitness        = $SupportedBitness
+            RepositoryPath          = $repoRoot
+            VIPCPath                = $VipcPath
+        }
         Invoke-Script -Path $scriptPath -ArgumentMap $args
     }
 

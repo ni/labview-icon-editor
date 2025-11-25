@@ -5,7 +5,7 @@ This repository defines several reusable [composite actions](https://docs.github
 | Action | Description |
 |---|---|
 | [add-token-to-labview](../../../.github/actions/add-token-to-labview) | Adds a `LocalHost.LibraryPaths` token to the LabVIEW INI. |
-| [apply-vipc](../../../.github/actions/apply-vipc) | Installs runner dependencies for a given LabVIEW version and bitness. |
+| [apply-vipc](../../../scripts/apply-vipc) | Installs runner dependencies for a given LabVIEW version and bitness. |
 | [auto-issue-branch](../../../.github/actions/auto-issue-branch) | Automatically creates branches for issues with required metadata; used by [auto-issue-branch workflow](../../../.github/workflows/auto-issue-branch.yml). |
 | [build](../../../.github/actions/build) | **Deprecated**: previously orchestrated the full build and packaging process. |
 | [build-lvlibp](../../../.github/actions/build-lvlibp) | Creates the editor packed library. |

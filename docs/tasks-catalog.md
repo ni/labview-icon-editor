@@ -2,7 +2,7 @@
 
 Generated from `scripts/tasks-coverage.json`. Run `python scripts/generate-tasks-coverage.py` to refresh.
 
-New single entry point: `pwsh -File scripts/ie.ps1 <command>` mirrors the tasks below without passing nested script paths (e.g., `build-worktree`, `build-pipeline`, `build-lvlibp`, `build-vip`, `dev-bind`, `dev-set`, `dev-revert`, `dev-force-clean`).
+New single entry point: `pwsh -File scripts/ie.ps1 <command>` mirrors the tasks below without passing nested script paths (e.g., `build-worktree`, `build-pipeline`, `build-lvlibp`, `build-vip`, `apply-vipc`, `dev-bind`, `dev-set`, `dev-revert`, `dev-force-clean`).
 
 ## Task List
 - Dev Mode Bind (check + run) — Intent CLI plan+execute for dev-mode bind; default phrase `/devmode bind 2021 both force`
