@@ -86,58 +86,27 @@ Describe "VSCode Build Task wiring" {
             { & $buildScript @params } | Should -Throw
         }
 
-        It "has required flags in the VS Code task definition" {
+        It "exposes only the Build LVAddon task with expected defaults" {
             Write-Host ("DEBUG repoRoot={0}" -f $script:RepoRoot)
             Write-Host ("DEBUG in-it PSCommandPath={0} MyPath={1} PSScriptRoot={2} pwd={3}" -f $PSCommandPath, $MyInvocation.MyCommand.Path, $PSScriptRoot, (Get-Location).ProviderPath)
             $script:RepoRoot | Should -Not -BeNullOrEmpty
+
             $tasksPath = Join-Path $script:RepoRoot '.vscode/tasks.json'
-            $tasksPath | Should -Not -BeNullOrEmpty
             Test-Path -LiteralPath $tasksPath | Should -BeTrue
+
             $json = Get-Content -LiteralPath $tasksPath -Raw | ConvertFrom-Json
-            $buildTask = $json.tasks | Where-Object { $_.label -eq "Build/Package VIP" } | Select-Object -First 1
+            $json.tasks.Count | Should -Be 1
+
+            $buildTask = $json.tasks | Where-Object { $_.label -eq "Build LVAddon (VI Package)" } | Select-Object -First 1
             $buildTask | Should -Not -BeNullOrEmpty
+
             $command = ($buildTask.args -join ' ')
-            # Ensure the entry point and expected flags are present
             $command | Should -Match "scripts/ie\.ps1"
-            $command | Should -Match "-Command\s+build-pipeline"
+            $command | Should -Match "-Command\s+build-worktree"
             $command | Should -Match "-RepositoryPath"
-            $command | Should -Match "-LabVIEWMinorRevision"
-            $command | Should -Match "-LvlibpBitness"
-        }
-
-        It "uses a fixed build mode (build-pipeline) for the unified task" {
-            $tasksPath = Join-Path $script:RepoRoot '.vscode/tasks.json'
-            Test-Path -LiteralPath $tasksPath | Should -BeTrue
-            $json = Get-Content -LiteralPath $tasksPath -Raw | ConvertFrom-Json
-            $buildTask = $json.tasks | Where-Object { $_.label -eq "Build/Package VIP" } | Select-Object -First 1
-            $buildTask | Should -Not -BeNullOrEmpty
-            ($buildTask.args -join ' ') | Should -Match '-Command\s+build-pipeline'
-        }
-
-        It "quotes command arguments to avoid parser errors" {
-            $tasksPath = Join-Path $script:RepoRoot '.vscode/tasks.json'
-            Test-Path -LiteralPath $tasksPath | Should -BeTrue
-            $json = Get-Content -LiteralPath $tasksPath -Raw | ConvertFrom-Json
-
-            $buildTask = $json.tasks | Where-Object { $_.label -eq "Build/Package VIP" } | Select-Object -First 1
-            $buildTask | Should -Not -BeNullOrEmpty
-            $command = ($buildTask.args -join ' ')
-
-            # Ensure the command flag and key args are present and parseable
-            $command | Should -Match "scripts/ie\.ps1"
-            $command | Should -Match "-Command\s+build-pipeline"
-            $command | Should -Match "-RepositoryPath"
-            $command | Should -Match "-LvlibpBitness"
-        }
-
-        It "parses after substituting sample values to catch mode/operator parser errors" {
-            $tasksPath = Join-Path $script:RepoRoot '.vscode/tasks.json'
-            $json = Get-Content -LiteralPath $tasksPath -Raw | ConvertFrom-Json
-            $buildTask = $json.tasks | Where-Object { $_.label -eq "Build/Package VIP" } | Select-Object -First 1
-            $buildTask | Should -Not -BeNullOrEmpty
-            $command = ($buildTask.args -join ' ')
-            $command | Should -Match "scripts/ie\.ps1"
-            $command | Should -Match "-Command\s+build-pipeline"
+            $command | Should -Match "-SupportedBitness\s+64"
+            $command | Should -Match "-LvlibpBitness\s+both"
+            $command | Should -Match "-Major\s+0\s+-Minor\s+1\s+-Patch\s+0\s+-Build\s+1"
         }
     }
 }
