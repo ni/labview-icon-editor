@@ -61,7 +61,7 @@ function Acquire-GCliMutex {
     $lockDir = Split-Path -Parent $lockPath
     if (-not (Test-Path -LiteralPath $lockDir)) {
         try { New-Item -ItemType Directory -Path $lockDir -Force | Out-Null } catch {
-            throw ("Unable to create g-cli lock directory '{0}': {1}. Set -GcliLockFilePath to a writable location." -f $lockDir, $_.Exception.Message)
+            throw ("Unable to create g-cli/VIPM lock directory '{0}': {1}. Set -GcliLockFilePath to a writable location." -f $lockDir, $_.Exception.Message)
         }
     }
 
@@ -79,11 +79,11 @@ function Acquire-GCliMutex {
             break
         }
         catch [System.UnauthorizedAccessException] {
-            throw ("Access denied creating or locking '{0}'. Set -GcliLockFilePath to a writable location." -f $lockPath)
+            throw ("Access denied creating or locking '{0}' for g-cli/VIPM synchronization. Set -GcliLockFilePath to a writable location." -f $lockPath)
         }
         catch {
             if ([DateTime]::UtcNow -ge $deadline) {
-                throw ("Another LabVIEW/g-cli job is already running (lock '{0}' held; key '{1}'). Wait for it to finish or rerun with a longer -GcliLockTimeoutSeconds." -f $lockPath, $Name)
+                throw ("Another LabVIEW/g-cli/VIPM job is already running (lock '{0}' held; key '{1}'). Wait for it to finish or rerun with a longer -GcliLockTimeoutSeconds." -f $lockPath, $Name)
             }
             Start-Sleep -Seconds 1
         }
@@ -256,9 +256,9 @@ $devModeConfigured = @()
 $gcliMutex = $null
 $gcliLockPath = Resolve-GCliLockPath -OverridePath $GcliLockFilePath
 
-Write-Host ("Waiting for LabVIEW/g-cli lock '{0}' (timeout: {1}s; file: {2})..." -f $GcliMutexName, $GcliLockTimeoutSeconds, $gcliLockPath)
+Write-Host ("Waiting for LabVIEW g-cli/VIPM lock '{0}' (timeout: {1}s; file: {2})..." -f $GcliMutexName, $GcliLockTimeoutSeconds, $gcliLockPath)
 $gcliMutex = Acquire-GCliMutex -Name $GcliMutexName -TimeoutSeconds $GcliLockTimeoutSeconds -LockFilePath $gcliLockPath
-Write-Host ("g-cli lock acquired: {0}" -f $GcliMutexName)
+Write-Host ("CLI lock acquired: {0}" -f $GcliMutexName)
 
 $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 try {
@@ -385,7 +385,7 @@ finally {
     }
 
     if ($gcliMutex) {
-        Write-Host ("Releasing LabVIEW/g-cli lock '{0}'" -f $GcliMutexName)
+        Write-Host ("Releasing LabVIEW g-cli/VIPM lock '{0}'" -f $GcliMutexName)
         Release-GCliMutex -Lock $gcliMutex
     }
 }
