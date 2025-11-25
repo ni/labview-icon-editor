@@ -36,7 +36,7 @@ param(
     [ValidateSet('both','64')]
     [string]$LvlibpBitness = 'both',
 
-    [string]$VIPBPath = 'Tooling\deployment\NI Icon editor.vipb',
+[string]$VIPBPath = 'Tooling\deployment\labview-icon-editor.vipb',
 
     # New parameters that will populate the JSON fields
     [Parameter(Mandatory = $true)]
@@ -450,7 +450,7 @@ try {
     Invoke-ScriptSafe -ScriptPath $ModifyVIPB -ArgumentMap @{
         SupportedBitness         = '64'
         RepositoryPath           = $RepositoryPath
-        VIPBPath                 = 'Tooling\deployment\NI Icon editor.vipb'
+        VIPBPath                 = $VIPBPath
         Package_LabVIEW_Version  = $lvVersion
         LabVIEWMinorRevision     = $LabVIEWMinorRevision
         Major                    = $Major
@@ -469,7 +469,7 @@ try {
     Invoke-ScriptSafe -ScriptPath $BuildVip -ArgumentMap @{
         SupportedBitness         = '64'
         RepositoryPath           = $RepositoryPath
-        VIPBPath                 = 'Tooling\deployment\NI Icon editor.vipb'
+        VIPBPath                 = $VIPBPath
         Package_LabVIEW_Version  = $lvVersion
         LabVIEWMinorRevision     = $LabVIEWMinorRevision
         Major                    = $Major

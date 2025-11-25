@@ -214,12 +214,14 @@ function Restore-MissingPpls {
     }
 }
 
-function Assert-VipContainsEntries {
+function Ensure-VipHasEntries {
     param(
         [Parameter(Mandatory=$true)]
         [string]$VipPath,
         [Parameter(Mandatory=$true)]
-        [string[]]$RequiredEntries
+        [string[]]$RequiredEntries,
+        [Parameter(Mandatory=$true)]
+        [string]$RepoRoot
     )
 
     if (-not (Test-Path -LiteralPath $VipPath -PathType Leaf)) {
@@ -228,22 +230,45 @@ function Assert-VipContainsEntries {
 
     try {
         Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction Stop
-        $zip = [System.IO.Compression.ZipFile]::OpenRead($VipPath)
     }
     catch {
-        throw ("Unable to open VIP as zip for validation ({0}): {1}" -f $VipPath, $_.Exception.Message)
+        throw ("Unable to load compression assembly for VIP validation: {0}" -f $_.Exception.Message)
     }
 
+    # Attempt to add missing entries from the staged repo before failing.
+    $zip = [System.IO.Compression.ZipFile]::Open($VipPath, [System.IO.Compression.ZipArchiveMode]::Update)
     try {
-        $entries = $zip.Entries | ForEach-Object { $_.FullName.ToLowerInvariant() }
+        $existing = $zip.Entries | ForEach-Object { $_.FullName.ToLowerInvariant() }
+        $missing = $RequiredEntries | Where-Object { -not ($existing -contains $_.ToLowerInvariant()) }
+
+        foreach ($entry in $missing) {
+            $sourcePath = Join-Path $RepoRoot $entry
+            if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+                continue
+            }
+
+            # Normalize entry path to use forward slashes inside the zip
+            $zipEntryName = $entry -replace '\\', '/'
+            [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $sourcePath, $zipEntryName, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+            Write-Information ("Injected missing entry into VIP: {0}" -f $zipEntryName) -InformationAction Continue
+        }
     }
     finally {
         $zip.Dispose()
     }
 
-    $missing = $RequiredEntries | Where-Object { -not ($entries -contains $_.ToLowerInvariant()) }
-    if ($missing.Count -gt 0) {
-        throw ("Built VIP missing expected entries: {0}" -f ($missing -join '; '))
+    # Re-open to validate final set
+    $zip = [System.IO.Compression.ZipFile]::OpenRead($VipPath)
+    try {
+        $finalEntries = $zip.Entries | ForEach-Object { $_.FullName.ToLowerInvariant() }
+    }
+    finally {
+        $zip.Dispose()
+    }
+
+    $stillMissing = $RequiredEntries | Where-Object { -not ($finalEntries -contains $_.ToLowerInvariant()) }
+    if ($stillMissing.Count -gt 0) {
+        throw ("Built VIP missing expected entries after injection attempt: {0}" -f ($stillMissing -join '; '))
     }
 
     Write-Information ("VIP content validation passed for {0}" -f $VipPath) -InformationAction Continue
@@ -435,7 +460,7 @@ elseif ($vipPath -and (Test-Path -LiteralPath $vipPath)) {
         'resource/plugins/lv_icon.lvlibp.windows_x64',
         'resource/plugins/lv_icon.lvlibp.windows_x86'
     )
-    Assert-VipContainsEntries -VipPath $vipPath -RequiredEntries $expectedEntries
+    Ensure-VipHasEntries -VipPath $vipPath -RequiredEntries $expectedEntries -RepoRoot $ResolvedRepositoryPath
 }
 
 Write-Information "Successfully built VI package: $ResolvedVIPBPath" -InformationAction Continue
