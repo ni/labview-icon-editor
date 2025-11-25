@@ -22,8 +22,10 @@ internal static class Program
         string? bitness,
         string? expected_path,
         string? current_path,
+        string? post_path,
         string? status,
-        string? message);
+        string? message,
+        bool? available);
 
     private record Plan
     {
@@ -67,6 +69,7 @@ internal static class Program
         }
 
         var plans = BuildPlans(intents, summaryEntries, options);
+        var hints = BuildHints(intents, summaryEntries);
         var blocked = plans.Where(p => p.Action == "blocked").ToList();
         if (blocked.Count > 0)
         {
@@ -74,6 +77,14 @@ internal static class Program
             foreach (var b in blocked)
             {
                 Console.Error.WriteLine($"- {b.Mode} {b.Year} {b.Bitness}-bit: {b.Reason}");
+            }
+        }
+        if (hints.Count > 0)
+        {
+            Console.Error.WriteLine("Hints:");
+            foreach (var h in hints.Distinct())
+            {
+                Console.Error.WriteLine($"- {h}");
             }
         }
 
@@ -359,6 +370,34 @@ internal static class Program
         }
 
         return plans;
+    }
+
+    private static List<string> BuildHints(IEnumerable<Intent> intents, IEnumerable<SummaryEntry> summary)
+    {
+        var hints = new List<string>();
+        foreach (var intent in intents)
+        {
+            var bitnessTargets = intent.Bitness == "both"
+                ? new List<string> { "32", "64" }
+                : new List<string> { intent.Bitness };
+
+            foreach (var bit in bitnessTargets)
+            {
+                var entry = summary.FirstOrDefault(e => string.Equals(e.bitness, bit, StringComparison.OrdinalIgnoreCase));
+                if (entry == null) { continue; }
+
+                // No LocalHost.LibraryPaths entry recorded for this bitness/version (tagged as NONE in script output).
+                var noToken = string.IsNullOrWhiteSpace(entry.current_path) &&
+                              string.IsNullOrWhiteSpace(entry.post_path) &&
+                              !string.Equals(entry.status, "fail", StringComparison.OrdinalIgnoreCase) &&
+                              (entry.available ?? true);
+                if (noToken)
+                {
+                    hints.Add($"LabVIEW {intent.Year} ({bit}-bit) has no LocalHost.LibraryPaths entry; run dev-mode bind for that bitness to populate the INI token.");
+                }
+            }
+        }
+        return hints;
     }
 
     private static (int ExitCode, string? Error) RunBinder(string pwshPath, string binderPath, string repoPath, Plan plan)

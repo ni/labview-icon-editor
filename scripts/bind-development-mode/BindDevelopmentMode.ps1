@@ -575,6 +575,18 @@ if (@($results | Where-Object { $_.status -eq 'fail' -and $_.message -match 'use
     $hintLines.Add("Choose bind + Force to overwrite, or unbind + Force to clear the other token (same as BindDevelopmentMode.ps1 flags).")
     $hintLines.Add("CLI: pwsh scripts/bind-development-mode/BindDevelopmentMode.ps1 -RepositoryPath '$RepositoryPath' -Mode bind -Bitness both -Force")
 }
+# If a target bitness has no LocalHost.LibraryPaths entry, suggest binding for that bitness.
+$missingTokens = $crossVersion | Where-Object { $_.version -like "$lvVersion*" -and $_.tag -eq 'NONE' }
+if ($missingTokens.Count -gt 0) {
+    $archText = ($missingTokens | ForEach-Object { "$($_.arch)-bit" }) -join '/'
+    $hintLines.Add("No LocalHost.LibraryPaths entry found for $archText LabVIEW $lvVersion; run dev-mode bind for that bitness to populate the INI token.")
+}
+# Guardrail: target version tokens should point to this repo for all bitnesses
+$wrongRepo = $crossVersion | Where-Object { $_.version -like "$lvVersion*" -and $_.tag -ne 'THIS-REPO' -and $_.tag -ne 'NONE' }
+if ($wrongRepo.Count -gt 0) {
+    $archText = ($wrongRepo | ForEach-Object { "$($_.arch)-bit" }) -join '/'
+    $hintLines.Add("LabVIEW $lvVersion ($archText) LocalHost.LibraryPaths points elsewhere; bind those bitnesses so both tokens point to this repo.")
+}
 if ($missingIniArchs.Count -gt 0) {
     $archText = ($missingIniArchs | ForEach-Object { "$_-bit" }) -join '/'
     $hintLines.Add(("Install LabVIEW {0} ({1}) so the canonical LabVIEW.ini exists, or update the VIPB to a version that is installed, then rerun." -f $lvVersion, $archText))

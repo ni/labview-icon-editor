@@ -110,6 +110,7 @@ if ($LvlibpBitness -ne 'both') {
 $SourceRepoPath = (Resolve-Path -LiteralPath $SourceRepoPath).Path
 
 if (-not $WorktreePath) {
+    $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
     $suffix = $null
     try {
         $suffix = (git -C $SourceRepoPath rev-parse --short $Ref).Trim()
@@ -124,7 +125,8 @@ if (-not $WorktreePath) {
     else {
         Write-Host "Using ref '$Ref' short hash $suffix for worktree name."
     }
-    $WorktreePath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath "lv-ie-worktree-$suffix"
+    $worktreeName = "lv-ie-worktree-$timestamp-$suffix"
+    $WorktreePath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath $worktreeName
 }
 
 if (-not $OutputDirectory) {
