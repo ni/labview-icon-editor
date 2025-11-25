@@ -3,8 +3,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$RepositoryPath,
 
-    [ValidateSet('bind','unbind','status')]
-    [string]$Mode = 'bind',
+[ValidateSet('bind','unbind','status','cleanup')]
+[string]$Mode = 'bind',
 
     [ValidateSet('both','32','64')]
     [string]$Bitness = 'both',
@@ -96,6 +96,32 @@ if (-not (Test-Path -LiteralPath $helperScript)) {
 }
 . $helperScript
 
+function Remove-LibraryPathsEntries {
+    param(
+        [string]$LvVersion,
+        [string]$Arch
+    )
+    try {
+        $lvIniPath = Resolve-LVIniPath -LvVersion $LvVersion -Arch $Arch
+        $lines = Get-Content -LiteralPath $lvIniPath -ErrorAction Stop
+        if ($lines -isnot [System.Array]) { $lines = @($lines) }
+        $pattern = 'LocalHost\.LibraryPaths\d*\s*='
+        $filtered = $lines | Where-Object { $_ -notmatch $pattern }
+        if ($filtered.Count -eq $lines.Count) {
+            Write-Information ("No LocalHost.LibraryPaths entries to remove for {0}-bit LabVIEW {1}." -f $Arch, $LvVersion) -InformationAction Continue
+        }
+        else {
+            Set-Content -LiteralPath $lvIniPath -Value ($filtered -join \"`r`n\")
+            Write-Information (\"Removed LocalHost.LibraryPaths entries from {0} for {1}-bit LabVIEW {2}.\" -f $lvIniPath, $Arch, $LvVersion) -InformationAction Continue
+        }
+        return $true
+    }
+    catch {
+        Write-Warning (\"Failed to remove LocalHost.LibraryPaths entries for {0}-bit LabVIEW {1}: {2}\" -f $Arch, $LvVersion, $_.Exception.Message)
+        return $false
+    }
+}
+
 $versionScriptCandidates = @(
     (Join-Path $RepositoryPath 'scripts/get-package-lv-version.ps1'),
     (Join-Path $RepositoryPath '.github/scripts/get-package-lv-version.ps1'),
@@ -114,7 +140,7 @@ try {
     }
 
     $iniTokenVi = Join-Path -Path $RepositoryPath -ChildPath 'Tooling/deployment/Create_LV_INI_Token.vi'
-    if (($Mode -ne 'status') -and -not (Test-Path -LiteralPath $iniTokenVi)) {
+    if ($Mode -in @('bind','unbind') -and -not (Test-Path -LiteralPath $iniTokenVi)) {
         throw "Missing Create_LV_INI_Token.vi at $iniTokenVi"
     }
 
@@ -382,6 +408,29 @@ else {
             $hadFailure = $true
             $anomalies.Add("Target version $lvVersion ($arch-bit) currently bound to another path: $($res.current_path)")
             $forceNeededThisRun = $true
+            continue
+        }
+
+        if ($Mode -eq 'cleanup') {
+            if ($DryRun) {
+                $res.status = 'dry-run'
+                $res.message = 'Dry run: would remove LocalHost.LibraryPaths entries'
+                $res.post_path = $res.current_path
+                $results.Add($res)
+                continue
+            }
+            $ok = Remove-LibraryPathsEntries -LvVersion $lvVersion -Arch $arch
+            $res.post_path = ''
+            if ($ok) {
+                $res.status = 'success'
+                $res.message = 'Cleaned LocalHost.LibraryPaths entries'
+            }
+            else {
+                $res.status = 'fail'
+                $res.message = 'Cleanup failed (see warnings)'
+                $hadFailure = $true
+            }
+            $results.Add($res)
             continue
         }
 
