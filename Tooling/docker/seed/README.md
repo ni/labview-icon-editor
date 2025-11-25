@@ -69,3 +69,13 @@ The tasks live in `.vscode/tasks.json`. They are optional; skip if you don’t u
   2) Edit the JSON or create a patch file with your changes
   3) Run `seed: apply patch` to produce a patched `.vipb`
   4) Optionally re-export to JSON to verify the patch applied as expected
+- Patch format: a JSON merge file that overlays fields (for example):
+  ```json
+  {
+    "Package": {
+      "Version": "0.1.0.1509",
+      "Display Name": "LabVIEW Icon Editor (patched)"
+    }
+  }
+  ```
+  Point the task’s patch path to this file; the tool merges it into the VIPB and writes the patched copy.
