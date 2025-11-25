@@ -3,14 +3,18 @@
 
 [CmdletBinding()]
 param(
-    [string]$VipPath,
-    [string]$MinLVVersion
+[string]$VipPath,
+[string]$MinLVVersion
 )
 
 # Tests run in a dedicated scope; relax strict mode locally to avoid expansion of placeholder tokens like <application>.
 Set-StrictMode -Off
 
-Import-Module "$PSScriptRoot/VIPReader.psm1" -Force
+$vipReaderPath = Join-Path $PSScriptRoot 'VIPReader.psm1'
+$pendingSkipReason = $null
+if (-not (Test-Path -LiteralPath $vipReaderPath)) {
+    $pendingSkipReason = "VIPReader module not found at $vipReaderPath; skipping Analyze-VIP."
+}
 
 # Resolve VIP path during discovery so we can decide whether to skip.
 $vipPath = if ($VipPath) { $VipPath } else { $env:VIP_PATH }
@@ -59,6 +63,19 @@ if (-not $script:ResolvedVipPath -or -not (Test-Path -LiteralPath $script:Resolv
     Describe "Analyze VIP" -Skip:$true { It "skipped" { } }
     return
 }
+
+# Skip if we intentionally emitted a placeholder VIP to represent a skipped vipm build.
+if ($script:ResolvedVipPath -like '*vipm-skipped-placeholder.vip') {
+    $pendingSkipReason = "Placeholder VIP detected (vipm build skipped); skipping Analyze-VIP."
+}
+
+if ($pendingSkipReason) {
+    Write-Warning $pendingSkipReason
+    Describe "Analyze VIP" -Skip:$true { It "skipped" { } }
+    return
+}
+
+Import-Module -Name $vipReaderPath -Force
 
 # Ensure a minimum LabVIEW version is present for comparison logic.
 if (-not $env:MIN_LV_VERSION -and $MinLVVersion) {
