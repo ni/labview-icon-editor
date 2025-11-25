@@ -328,4 +328,8 @@ Describe "Presence of core files in the VIP" {
         $systemPackage = $entryNames | Where-Object { $_ -match '_system-\d+\.\d+\.\d+\.\d+\.vip$' } | Select-Object -First 1
         $systemPackage | Should -Not -BeNullOrEmpty -Because "Expected system sub-package (*.vip) to be present."
     }
+    It "VIP-CONTENT-004: Build lvlibp SHALL be included under resource/plugins" {
+        $lvlibpEntries = $entries | Where-Object { $_.ToLowerInvariant() -like 'resource/plugins/lv_icon*.lvlibp*' }
+        $lvlibpEntries | Should -Not -BeNullOrEmpty -Because "Expected lv_icon*.lvlibp produced by build-lvlibp to be packaged."
+    }
 }
