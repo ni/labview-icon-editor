@@ -328,4 +328,13 @@ Describe "Presence of core files in the VIP" {
         $systemPackage = $entryNames | Where-Object { $_ -match '_system-\d+\.\d+\.\d+\.\d+\.vip$' } | Select-Object -First 1
         $systemPackage | Should -Not -BeNullOrEmpty -Because "Expected system sub-package (*.vip) to be present."
     }
+    It "VIP-CONTENT-004: Neutral lvlibp SHALL be included under resource/plugins" {
+        $entries | ForEach-Object { $_.ToLowerInvariant() } | Should -Contain 'resource/plugins/lv_icon.lvlibp' -Because "Expected neutral lv_icon.lvlibp inside the package."
+    }
+    It "VIP-CONTENT-005: Windows x64 lvlibp SHALL be included under resource/plugins" {
+        $entries | ForEach-Object { $_.ToLowerInvariant() } | Should -Contain 'resource/plugins/lv_icon.lvlibp.windows_x64' -Because "Expected x64 lv_icon.lvlibp.windows_x64 inside the package."
+    }
+    It "VIP-CONTENT-006: Windows x86 lvlibp SHALL be included under resource/plugins" {
+        $entries | ForEach-Object { $_.ToLowerInvariant() } | Should -Contain 'resource/plugins/lv_icon.lvlibp.windows_x86' -Because "Expected x86 lv_icon.lvlibp.windows_x86 inside the package."
+    }
 }
