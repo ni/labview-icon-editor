@@ -19,14 +19,15 @@ Run from `Terminal -> Run Task…` in VS Code (or `Ctrl/Cmd+Shift+B`), then pick
   - Uses the `minLv` input to set the minimum LabVIEW version for the analyzer.
 
 - **Build/Package VIP**  
-  - Input `buildMode=full`: executes `scripts/build/Build.ps1`, which:  
-    - Applies VIPC, builds lvlibp for the requested bitness (32+64 by default; set `lvlibpBitness=64` to skip 32-bit), updates display info, then packages the VIP.  
-    - Auto-semver from latest tag; build number = commit count; commit hash from HEAD.  
-    - Metadata defaults: Company = git remote owner; Author = `git config user.name` (fallback to owner). VIPB is auto-discovered (first `*.vipb`); override with `-VipbPath` if needed.  
-    - If you only have LabVIEW 32-bit, set `lvlibpBitness=32` and the task will build/package 32-bit only.  
-  - Input `buildMode=package-only`: executes `scripts/build-vip-single-arch.ps1`, which:  
-    - Uses the auto-discovered VIPB, prunes the other arch, and packages a single-arch VIP.  
-    - Assumes the target lvlibp already exists (use the lvlibp build task first).  
+  - Input `buildMode=full`: executes `scripts/build/Build.ps1`, which:
+    - Applies VIPC, builds lvlibp for the requested bitness (32+64 by default; set `lvlibpBitness=64` to skip 32-bit), updates display info, then packages the VIP.
+    - Auto-semver from latest tag; build number = commit count; commit hash from HEAD.
+    - Metadata defaults: Company = git remote owner; Author = `git config user.name` (fallback to owner). VIPB is auto-discovered (first `*.vipb`); override with `-VipbPath` if needed.
+    - If you only have LabVIEW 32-bit, set `lvlibpBitness=32` and the task will build/package 32-bit only.
+    - If `vipm` is missing from PATH, VIPC/VIPM steps are skipped; the lvlibp still builds and a placeholder `builds/VI Package/vipm-skipped-placeholder.vip` is written. After adding VIPM to PATH, delete the placeholder and rerun the task to build the real VIP.
+  - Input `buildMode=package-only`: executes `scripts/build-vip-single-arch.ps1`, which:
+    - Uses the auto-discovered VIPB, prunes the other arch, and packages a single-arch VIP.
+    - Assumes the target lvlibp already exists (use the lvlibp build task first).
     - Same auto-semver/build/metadata defaults as above.
 
 - **Build lvlibp (LabVIEW)**  
