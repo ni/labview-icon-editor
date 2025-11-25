@@ -20,6 +20,10 @@ pwsh -NoProfile -File scripts/analyze-vi-package/run-workflow-local.ps1 -VipArti
 pwsh -NoProfile -File scripts/analyze-vi-package/run-workflow-local.ps1 -VipArtifactPath "path/to/package.vip" -MinLabVIEW "21.0"
 ```
 
+## Troubleshooting
+- **VIPReader module not found:** Confirm `scripts/analyze-vi-package/VIPReader.psm1` exists (for example, it may be missing if the repo checkout is incomplete).
+- **No `.vip` found:** Ensure the package is available under `builds/VI Package` or explicitly set `VIP_PATH` to the `.vip` file you want analyzed.
+
 ## GitHub Actions usage
 ```yaml
 jobs:
