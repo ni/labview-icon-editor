@@ -1,5 +1,6 @@
 #!/bin/bash
-set -euo pipefail
+# Relax -u so local runs without GH Action env vars don't fail on unset inputs.
+set -eo pipefail
 
 # Read inputs provided to the action (default to help-friendly values for local use)
 MODE="${INPUT_MODE:-help}"
