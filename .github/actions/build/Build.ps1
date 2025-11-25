@@ -131,6 +131,41 @@ function Invoke-ScriptSafe {
     }
 }
 
+function Assert-ExpectedPPLSet {
+    param(
+        [string]$PluginsDir,
+        [string[]]$ExpectedNames
+    )
+
+    if (-not (Test-Path -LiteralPath $PluginsDir)) {
+        throw "Plugins folder not found at $PluginsDir"
+    }
+
+    $files = Get-ChildItem -LiteralPath $PluginsDir -Filter '*.lvlibp' -File -ErrorAction SilentlyContinue
+    $names = $files | ForEach-Object { $_.Name }
+
+    $missing = $ExpectedNames | Where-Object { $names -notcontains $_ }
+    $extra   = $names | Where-Object { $ExpectedNames -notcontains $_ }
+
+    if ($missing.Count -gt 0) {
+        throw ("Expected PPL(s) missing from {0}: {1}" -f $PluginsDir, ($missing -join ', '))
+    }
+    if ($extra.Count -gt 0) {
+        throw ("Unexpected PPL(s) present in {0}: {1}" -f $PluginsDir, ($extra -join ', '))
+    }
+
+    Write-Information "PPL set validated: $($ExpectedNames -join ', ')" -InformationAction Continue
+    foreach ($f in $files | Sort-Object Name) {
+        try {
+            $hash = Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256
+            Write-Information ("PPL {0} SHA256={1}" -f $f.Name, $hash.Hash) -InformationAction Continue
+        }
+        catch {
+            Write-Warning ("Could not hash {0}: {1}" -f $f.FullName, $_.Exception.Message)
+        }
+    }
+}
+
 function Ensure-VipmReady {
     param(
         [switch]$Interactive
@@ -467,6 +502,10 @@ try {
         catch {
             Write-Warning "Failed to stage neutral/suffixed PPL copies: $($_.Exception.Message)"
         }
+
+        # Idempotency guard: validate expected PPL set and log hashes
+        $expectedPpls = @('lv_icon.lvlibp','lv_icon.lvlibp.windows_x64','lv_icon.lvlibp.windows_x86')
+        Assert-ExpectedPPLSet -PluginsDir $pplDir -ExpectedNames $expectedPpls
 
     # -------------------------------------------------------------------------
     # 8) Construct the JSON for "Company Name" & "Author Name", plus version
