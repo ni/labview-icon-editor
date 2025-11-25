@@ -8,9 +8,12 @@ jobs:
   seed-metadata:
     runs-on: ubuntu-latest
     steps:
-      - name: Guard: Linux runner
-        if: ${{ runner.os != 'Linux' }}
-        run: exit 1
+      - name: "Guard: Linux runner"
+        run: |
+          if [ "${RUNNER_OS}" != "Linux" ]; then
+            echo "This job must run on Linux."
+            exit 1
+          fi
       - name: Checkout
         uses: actions/checkout@v4
         with:

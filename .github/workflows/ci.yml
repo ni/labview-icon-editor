@@ -44,7 +44,7 @@ jobs:
     name: Requirements
     runs-on: ubuntu-latest
     steps:
-      - name: Guard: Linux runner
+      - name: "Guard: Linux runner"
         if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -199,7 +199,7 @@ jobs:
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     steps:
-      - name: Guard: Linux runner
+      - name: "Guard: Linux runner"
         if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - name: Simulate tag existence/mismatch scenarios
@@ -255,7 +255,7 @@ jobs:
     name: Enforce jobs depend on verify-checklist-sync
     runs-on: ubuntu-latest
     steps:
-      - name: Guard: Linux runner
+      - name: "Guard: Linux runner"
         if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -298,7 +298,7 @@ jobs:
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     steps:
-      - name: Guard: Linux runner
+      - name: "Guard: Linux runner"
         if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -340,7 +340,7 @@ jobs:
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     steps:
-      - name: Guard: Linux runner
+      - name: "Guard: Linux runner"
         if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -391,7 +391,7 @@ jobs:
     needs: [verify-checklist-sync, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     steps:
-      - name: Guard: Linux runner
+      - name: "Guard: Linux runner"
         if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -420,7 +420,7 @@ jobs:
     outputs:
       minimum_supported_lv_version: ${{ steps.read.outputs.lv_version }}
     steps:
-      - name: Guard: Linux runner
+      - name: "Guard: Linux runner"
         if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -474,7 +474,7 @@ jobs:
         with:
           set-safe-directory: true
           fetch-depth: 0
-      - name: Guard: Windows runner
+      - name: "Guard: Windows runner"
         if: ${{ runner.os != 'Windows' }}
         run: exit 1
       - id: compute
@@ -487,7 +487,7 @@ jobs:
     needs: [verify-checklist-sync]
     runs-on: ubuntu-latest
     steps:
-      - name: Guard: Linux runner
+      - name: "Guard: Linux runner"
         if: ${{ runner.os != 'Linux' }}
         run: exit 1
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -522,7 +522,7 @@ jobs:
         with:
           set-safe-directory: true
           fetch-depth: 0
-      - name: Guard: Windows runner
+      - name: "Guard: Windows runner"
         if: ${{ runner.os != 'Windows' }}
         run: exit 1
       - name: Build via worktree (includes VIPC, missing-in-project, lvlibp, VIP)
