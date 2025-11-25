@@ -240,8 +240,8 @@ foreach ($root in @('C:\Program Files\National Instruments','C:\Program Files (x
 
 if (-not $SummaryOnly) {
     if ($installedStates.Count -gt 0) {
-        $targetStates = $installedStates | Where-Object { $_.version -like "$lvVersion*" }
-        $otherStates  = $installedStates | Where-Object { $_.version -notlike "$lvVersion*" }
+        $targetStates = @($installedStates | Where-Object { $_.version -like "$lvVersion*" })
+        $otherStates  = @($installedStates | Where-Object { $_.version -notlike "$lvVersion*" })
 
         Write-Host "=== Target LabVIEW INI tokens (version $lvVersion) ==="
         foreach ($arch in @('32','64')) {
@@ -688,7 +688,7 @@ if ($hintLines.Count -gt 0) {
 }
 
 if ($crossVersion.Count -gt 0) {
-    $suspicious = $crossVersion | Where-Object { $_.path -match 'C:\\.*C:\\' }
+    $suspicious = @($crossVersion | Where-Object { $_.path -match 'C:\\.*C:\\' })
     if ($suspicious.Count -gt 0) {
         $suspiciousText = ($suspicious | ForEach-Object { "{0}-bit {1}: {2}" -f $_.arch, $_.version, $_.path } | Select-Object -First 3)
         $anomalies.Add("Suspicious token paths detected (possible double-rooted): " + ($suspiciousText -join '; '))
