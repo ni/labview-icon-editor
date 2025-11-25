@@ -12,6 +12,7 @@ Prerequisites
 ### Build LVAddon (VI Package)
 
 Use **Terminal → Run Task → Build LVAddon (VI Package)** in VS Code to run the isolated worktree build (`scripts/ie.ps1 -Command build-worktree`) and package the icon editor; outputs land in `builds/VI Package/` (VIP artifact) and `resource/plugins/lv_icon.lvlibp` (overwritten for each bitness built).
+Default version inputs are `Major=0`, `Minor=1`, `Patch=0`, and `Build=1` (override in `.vscode/tasks.json` or when invoking the task).
 
 VIPM not available?
 - If `vipm` is not on PATH, the build skips VIPC/VIPM steps, still builds the lvlibp, and writes a placeholder `builds/VI Package/vipm-skipped-placeholder.vip` so you know packaging was skipped.
