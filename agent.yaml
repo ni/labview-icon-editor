@@ -51,6 +51,9 @@ capabilities:
       allow_force_default: false
     tools:
       - shell_command
+    guidance:
+      - trigger: "console shows \\[OTHER-REPO\\] for target LabVIEW version/bitness or message suggests using -Force"
+        response: "Recommend rerunning bind with -Force for the affected bitness (or both) and point to reports/dev-mode-bind.json for details; confirm before overwriting if another repo might rely on the token."
 
 tools:
   - id: shell_command
