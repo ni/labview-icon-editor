@@ -48,11 +48,35 @@ param(
 
 $ReleaseNotesFile = Join-Path $RepositoryPath 'Tooling\deployment\release_notes.md'
 $helpersPath = Join-Path $RepositoryPath 'scripts/build-helpers.psm1'
+$metaUtilsPath = Join-Path $RepositoryPath 'scripts/build-meta-utils.psm1'
 if (-not (Test-Path -LiteralPath $helpersPath)) {
     Write-Error "Helper module not found at $helpersPath"
     exit 1
 }
 Import-Module -Name $helpersPath -Force
+if (-not (Test-Path -LiteralPath $metaUtilsPath)) {
+    Write-Error "Metadata helper module not found at $metaUtilsPath"
+    exit 1
+}
+Import-Module -Name $metaUtilsPath -Force
+
+$hasStyle = ($PSStyle -ne $null)
+$bitnessPalette = @{
+    '32' = if ($hasStyle) { $PSStyle.Foreground.BrightCyan } else { '' }
+    '64' = if ($hasStyle) { $PSStyle.Foreground.BrightMagenta } else { '' }
+}
+$resetColor = if ($hasStyle) { $PSStyle.Reset } else { '' }
+function Show-BitnessBanner {
+    param([string]$Arch)
+    $color = $bitnessPalette[$Arch]
+    Write-Host ("{0}==== {1}-bit build phase ===={2}" -f $color, $Arch, $resetColor)
+}
+
+function Show-BitnessDone {
+    param([string]$Arch)
+    $color = $bitnessPalette[$Arch]
+    Write-Host ("{0}---- {1}-bit phase complete ----{2}" -f $color, $Arch, $resetColor)
+}
 
 # Helper function to verify a file/folder path exists
 function Test-PathExistence {
@@ -211,6 +235,11 @@ try {
     $lvVersion = Get-LabVIEWVersionOrFail -RepoPath $RepositoryPath
     Write-Information ("Using LabVIEW version from VIPB: {0}" -f $lvVersion) -InformationAction Continue
 
+    $companyResolved = Resolve-CompanyName -CompanyName $CompanyName -RepoPath $RepositoryPath
+    Write-Information ("Using Company Name: {0}" -f $companyResolved) -InformationAction Continue
+    $authorResolved = Resolve-AuthorName -AuthorName $AuthorName -RepoPath $RepositoryPath
+    Write-Information ("Using Author Name: {0}" -f $authorResolved) -InformationAction Continue
+
     # Validate needed folders after version is known
     Test-PathExistence $RepositoryPath "RepositoryPath"
     Test-PathExistence "$RepositoryPath\resource\plugins" "Plugins folder"
@@ -249,6 +278,7 @@ try {
     $RenameFile = Join-Path $ActionsPath "rename-file/Rename-file.ps1"
 
     if ($LvlibpBitness -eq 'both') {
+        Show-BitnessBanner -Arch '32'
         # 2) Apply VIPC (32-bit)
         Write-Information "Applying VIPC (dependencies) for 32-bit..." -InformationAction Continue
         Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
@@ -293,6 +323,7 @@ try {
             CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
             NewFilename     = 'lv_icon_x86.lvlibp'
         }
+        Show-BitnessDone -Arch '32'
 
         # 5.1) Restore project to avoid cross-bitness saves before 64-bit build
         if (Get-Command git -ErrorAction SilentlyContinue) {
@@ -310,6 +341,7 @@ try {
     }
 
     # 6) Apply VIPC (64-bit)
+    Show-BitnessBanner -Arch '64'
     Write-Information "Applying VIPC (dependencies) for 64-bit..." -InformationAction Continue
     Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
         Package_LabVIEW_Version   = $lvVersion
@@ -324,6 +356,7 @@ try {
         Package_LabVIEW_Version = $lvVersion
         SupportedBitness        = '64'
     }
+    Show-BitnessDone -Arch '64'
 
     # 7) Build LV Library (64-bit)
     Write-Verbose "Building LV library (64-bit)..."
@@ -399,8 +432,8 @@ try {
             "build" = $Build
         }
         "Product Name"                    = "LabVIEW Icon Editor"
-        "Company Name"                    = $CompanyName
-        "Author Name (Person or Company)" = $AuthorName
+        "Company Name"                    = $companyResolved
+        "Author Name (Person or Company)" = $authorResolved
         "Product Homepage (URL)"          = "https://github.com/LabVIEW-Community-CI-CD/labview-icon-editor"
         "Legal Copyright"                 = "LabVIEW-Community-CI-CD"
         "License Agreement Name"          = ""

@@ -18,7 +18,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$AuthorName,
     [string]$OutputDirectory,
-    [switch]$KeepWorktree
+    [switch]$KeepWorktree,
+    [switch]$AnalyzeVIP
 )
 
 $ErrorActionPreference = 'Stop'
@@ -31,6 +32,23 @@ function Ensure-Command {
 }
 
 Ensure-Command -Name git
+
+$hasStyle = ($PSStyle -ne $null)
+$bitnessPalette = @{
+    '32' = if ($hasStyle) { $PSStyle.Foreground.BrightCyan } else { '' }
+    '64' = if ($hasStyle) { $PSStyle.Foreground.BrightMagenta } else { '' }
+}
+$resetColor = if ($hasStyle) { $PSStyle.Reset } else { '' }
+function Write-BitnessBanner {
+    param([string]$Arch)
+    $color = $bitnessPalette[$Arch]
+    Write-Host ("{0}==== {1}-bit phase ===={2}" -f $color, $Arch, $resetColor)
+}
+
+# Guard: the VIP packaging step expects both x86 and x64 PPLs to be staged.
+if ($LvlibpBitness -ne 'both') {
+    throw "Worktree builds require LvlibpBitness=both so the build-vip step can find both x86/x64 PPLs. Rerun with LvlibpBitness=both (see VS Code task input)."
+}
 
 $SourceRepoPath = (Resolve-Path -LiteralPath $SourceRepoPath).Path
 
@@ -53,8 +71,9 @@ Write-Host "Worktree path:   $WorktreePath"
 Write-Host "Output dir:      $OutputDirectory"
 
 $worktreeAdded = $false
-$devModeConfigured = $false
+$devModeConfigured = @()
 
+$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 try {
     git -C $SourceRepoPath rev-parse --verify $Ref | Out-Null
 
@@ -65,17 +84,27 @@ try {
 
     $setDevScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/set-development-mode/Set_Development_Mode.ps1'
     $revertDevScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/revert-development-mode/RevertDevelopmentMode.ps1'
+    $bindDevScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/bind-development-mode/BindDevelopmentMode.ps1'
+    $analyzeVipScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/analyze-vi-package/run-local.ps1'
     $buildScript = Join-Path -Path $WorktreePath -ChildPath '.github/actions/build/Build.ps1'
 
-    foreach ($path in @($setDevScript, $revertDevScript, $buildScript)) {
+    foreach ($path in @($setDevScript, $revertDevScript, $bindDevScript, $buildScript, $analyzeVipScript)) {
         if (-not (Test-Path -LiteralPath $path)) {
             throw "Expected script not found: $path"
         }
     }
 
-    Write-Host "Setting development mode ($SupportedBitness-bit)..."
-    & $setDevScript -RepositoryPath $WorktreePath -SupportedBitness $SupportedBitness
-    $devModeConfigured = $true
+    $bitnessList = if ($LvlibpBitness -eq 'both') { @('32','64') } else { @($SupportedBitness) }
+    Write-Host ("Dev-mode preparation for bitness(es): {0}" -f ($bitnessList -join ', '))
+    foreach ($arch in ($bitnessList | Select-Object -Unique)) {
+        Write-BitnessBanner -Arch $arch
+        Write-Host "Setting development mode ($arch-bit)..."
+        & $setDevScript -RepositoryPath $WorktreePath -SupportedBitness $arch
+        $devModeConfigured += $arch
+
+        Write-Host "Binding dev mode (Force) to worktree ($arch-bit)..."
+        & $bindDevScript -RepositoryPath $WorktreePath -Mode bind -Bitness $arch -Force
+    }
 
     if (-not $Commit) {
         $Commit = (git -C $WorktreePath rev-parse --short HEAD).Trim()
@@ -111,15 +140,27 @@ try {
     }
 
     Write-Host "Build completed. Artifacts staged in: $OutputDirectory"
+
+    $shouldAnalyze = $AnalyzeVIP.IsPresent -or -not $PSBoundParameters.ContainsKey('AnalyzeVIP')
+    if ($shouldAnalyze) {
+        Write-Host "Analyzing built VIP package..."
+        $vipDir = Join-Path $WorktreePath 'builds\VI Package'
+        & $analyzeVipScript -VipArtifactPath $vipDir -MinLabVIEW '21.0'
+    }
+    else {
+        Write-Host "Skipping VIP analyze (AnalyzeVIP not requested)."
+    }
 }
 finally {
-    if ($devModeConfigured) {
-        try {
-            Write-Host "Reverting development mode..."
-            & $revertDevScript -RepositoryPath $WorktreePath -SupportedBitness $SupportedBitness
-        }
-        catch {
-            Write-Warning "Failed to revert development mode: $($_.Exception.Message)"
+    if ($devModeConfigured.Count -gt 0) {
+        foreach ($arch in ($devModeConfigured | Select-Object -Unique)) {
+            try {
+                Write-Host "Reverting development mode ($arch-bit)..."
+                & $revertDevScript -RepositoryPath $WorktreePath -SupportedBitness $arch
+            }
+            catch {
+                Write-Warning "Failed to revert development mode ($arch-bit): $($_.Exception.Message)"
+            }
         }
     }
 
@@ -139,3 +180,6 @@ finally {
         Write-Host "Keeping worktree at $WorktreePath (per -KeepWorktree)."
     }
 }
+
+$stopwatch.Stop()
+Write-Host ("Total duration: {0:N1} seconds" -f ($stopwatch.Elapsed.TotalSeconds))
