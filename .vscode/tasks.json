@@ -2,16 +2,6 @@
   "version": "2.0.0",
   "inputs": [
     {
-      "id": "buildMode",
-      "type": "pickString",
-      "description": "Artifact type: VIP + lvlibp builds, or single-arch VIP only",
-      "options": [
-        "vip+lvlibp",
-        "vip-single"
-      ],
-      "default": "vip+lvlibp"
-    },
-    {
       "id": "devModeBitness",
       "type": "pickString",
       "description": "Target LabVIEW bitness for dev-mode tasks",
@@ -20,51 +10,6 @@
         "64"
       ],
       "default": "64"
-    },
-    {
-      "id": "lvlibpBitness",
-      "type": "pickString",
-      "description": "Bitness for VIP build task",
-      "options": [
-        "both"
-      ],
-      "default": "both"
-    },
-    {
-      "id": "semverMajor",
-      "type": "promptString",
-      "description": "Major version",
-      "default": "0"
-    },
-    {
-      "id": "semverMinor",
-      "type": "promptString",
-      "description": "Minor version",
-      "default": "1"
-    },
-    {
-      "id": "semverPatch",
-      "type": "promptString",
-      "description": "Patch version",
-      "default": "0"
-    },
-    {
-      "id": "buildNumber",
-      "type": "promptString",
-      "description": "Build number",
-      "default": "1"
-    },
-    {
-      "id": "companyName",
-      "type": "promptString",
-      "description": "Company name for Build.ps1",
-      "default": "LabVIEW-Community-CI-CD"
-    },
-    {
-      "id": "authorName",
-      "type": "promptString",
-      "description": "Author name for Build.ps1",
-      "default": "Local Developer"
     },
     {
       "id": "devmodePhrase",
@@ -82,7 +27,7 @@
       "id": "vipbPath",
       "type": "promptString",
       "description": "Path to the VIPB used by dev-mode (relative to repo root)"
-    },
+    }
   ],
   "tasks": [
     {
@@ -151,7 +96,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "\"$ErrorActionPreference='Stop'; if (-not $IsWindows) { Write-Error 'Build (isolated worktree) requires Windows/PowerShell'; exit 1 }; $script = Join-Path '${workspaceFolder}' 'scripts/worktree-build.ps1'; $scriptArgs = @('-SourceRepoPath','${workspaceFolder}','-Ref','HEAD','-SupportedBitness','64','-LvlibpBitness','${input:lvlibpBitness}','-Major','${input:semverMajor}','-Minor','${input:semverMinor}','-Patch','${input:semverPatch}','-Build','${input:buildNumber}','-CompanyName','${input:companyName}','-AuthorName','${input:authorName}'); $innerArgs = @('\"' + $script + '\"') + $scriptArgs; $inner = '& ' + ($innerArgs -join ' ') + '; $code = `$LASTEXITCODE; Write-Host \"\"; Write-Host \"Press Enter to close this window.\"; Read-Host | Out-Null; exit $code'; $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoLogo','-NoProfile','-Command', $inner -WindowStyle Normal -PassThru -Wait; exit $proc.ExitCode\""
+        "\"& { $ErrorActionPreference='Stop'; if (-not $IsWindows) { Write-Error 'Build (isolated worktree) requires Windows/PowerShell'; exit 1 }; Write-Output '##vscode[notification type=info;title=Build]Isolated worktree build started'; $script = Join-Path '${workspaceFolder}' 'scripts/worktree-build.ps1'; $scriptArgs = @('-SourceRepoPath','${workspaceFolder}','-Ref','HEAD','-SupportedBitness','64','-LvlibpBitness','both','-Major','0','-Minor','1','-Patch','0','-Build','1','-CompanyName','LabVIEW-Community-CI-CD','-AuthorName','Local Developer'); $body = '& ''$script'' ' + ($scriptArgs -join ' '); $inner = '$ErrorActionPreference=\"Stop\"; ' + $body + '; exit `$LASTEXITCODE'; $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoLogo','-NoProfile','-Command', $inner -WindowStyle Normal -PassThru -Wait; $code = $proc.ExitCode; if ($code -eq 0) { Write-Output ''##vscode[notification type=info;title=Build]Isolated worktree build succeeded'' } else { Write-Output ''##vscode[notification type=error;title=Build]Isolated worktree build failed (exit '' + $code + '')'' }; exit $code }\""
       ],
       "options": {
         "cwd": "${workspaceFolder}"
@@ -195,7 +140,7 @@
       "args": [
         "-NoProfile",
         "-Command",
-        "& { & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"${input:buildMode}\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"${input:lvlibpBitness}\" }"
+        "& { & \"${workspaceFolder}/scripts/run-build-or-package.ps1\" -BuildMode \"vip+lvlibp\" -WorkspacePath \"${workspaceFolder}\" -LabVIEWMinorRevision 3 -LvlibpBitness \"both\" }"
       ],
       "options": {
         "cwd": "${workspaceFolder}"
