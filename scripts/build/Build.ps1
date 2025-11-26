@@ -631,13 +631,6 @@ try {
             Write-Warning "Skipping VIPC application for 32-bit because vipm CLI is not available."
         }
 
-        # Ensure LabVIEW is closed before running missing-in-project to avoid UI prompts/locks
-        Write-Verbose "Pre-missing-in-project: closing LabVIEW (32-bit) to ensure a clean session..."
-        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-            Package_LabVIEW_Version = $lvVersion
-            SupportedBitness        = '32'
-        } -TimeoutSec 180 -DisplayName "Close LabVIEW (pre-missing 32-bit)"
-
         # Ensure LocalHost.LibraryPaths exist before missing-in-project
         Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '32' -DevModeScript $SetDevMode
 
@@ -656,13 +649,6 @@ try {
             SupportedBitness        = '32'
             AbsoluteProjectPath     = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
         } -TimeoutSec 1200 -DisplayName "Unit tests (32-bit)"
-
-        # Close LabVIEW (32-bit) post-tests
-        Write-Verbose "Closing LabVIEW (32-bit) after tests..." -Verbose
-        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-            Package_LabVIEW_Version = $lvVersion
-            SupportedBitness        = '32'
-        } -TimeoutSec 180 -DisplayName "Close LabVIEW (post-tests 32-bit)"
     }
     else {
         Write-Information "Skipping 32-bit dependency/apply/build steps (LvlibpBitness=$LvlibpBitness)." -InformationAction Continue
@@ -694,13 +680,6 @@ try {
             Write-Warning "Skipping VIPC application for 64-bit because vipm CLI is not available."
         }
 
-        # Ensure LabVIEW is closed before running missing-in-project to avoid UI prompts/locks
-        Write-Verbose "Pre-missing-in-project: closing LabVIEW (64-bit) to ensure a clean session..."
-        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-            Package_LabVIEW_Version = $lvVersion
-            SupportedBitness        = '64'
-        } -TimeoutSec 180 -DisplayName "Close LabVIEW (pre-missing 64-bit)"
-
         # Ensure LocalHost.LibraryPaths exist before missing-in-project
         Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '64' -DevModeScript $SetDevMode
 
@@ -722,13 +701,9 @@ try {
     }
 
     # 7) Build LV Library (64-bit) first
-    Write-Verbose "Pre-build: closing LabVIEW (64-bit) to ensure a clean session..."
-    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-        Package_LabVIEW_Version = $lvVersion
-        SupportedBitness        = '64'
-    } -TimeoutSec 180 -DisplayName "Close LabVIEW (pre-build 64-bit)"
-    Show-BitnessBanner -Arch '64'
-    Write-Verbose "Building LV library (64-bit)..."
+    if ($do64) {
+        Show-BitnessBanner -Arch '64'
+        Write-Verbose "Building LV library (64-bit)..."
     $argsLvlibp64 = @{
         Package_LabVIEW_Version   = $lvVersion
         SupportedBitness          = '64'
@@ -741,21 +716,20 @@ try {
     }
     Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp64 -TimeoutSec 900 -DisplayName "Build icon PPL (64-bit)"
 
-    Write-Verbose "Closing LabVIEW (64-bit)..."
-    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-        Package_LabVIEW_Version = $lvVersion
-        SupportedBitness        = '64'
-    } -TimeoutSec 180 -DisplayName "Close LabVIEW (post-build 64-bit)"
-
-    Write-Verbose "Renaming .lvlibp file to lv_icon_x64.lvlibp..."
-    Invoke-ScriptSafe -ScriptPath $RenameFile -ArgumentMap @{
-        CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
-        NewFilename     = 'lv_icon_x64.lvlibp'
+        Write-Verbose "Renaming .lvlibp file to lv_icon_x64.lvlibp..."
+        Invoke-ScriptSafe -ScriptPath $RenameFile -ArgumentMap @{
+            CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
+            NewFilename     = 'lv_icon_x64.lvlibp'
+        }
+        Show-BitnessDone -Arch '64'
     }
-    Show-BitnessDone -Arch '64'
 
     # 8) Build LV Library (32-bit) after 64-bit succeeds
-    if ($LvlibpBitness -eq 'both') {
+    if ($do32 -and $do64) {
+        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+            Package_LabVIEW_Version = $lvVersion
+            SupportedBitness        = '64'
+        } -TimeoutSec 180 -DisplayName "Close LabVIEW (switch to 32-bit)"
         Show-BitnessBanner -Arch '32'
         Write-Verbose "Building LV library (32-bit)..."
         $argsLvlibp32 = @{
@@ -769,12 +743,6 @@ try {
             Commit                    = $Commit
         }
         Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp32 -TimeoutSec 900 -DisplayName "Build icon PPL (32-bit)"
-
-        Write-Verbose "Closing LabVIEW (32-bit)..."
-        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-            Package_LabVIEW_Version = $lvVersion
-            SupportedBitness        = '32'
-        } -TimeoutSec 180 -DisplayName "Close LabVIEW (32-bit)"
 
         Write-Verbose "Renaming .lvlibp file to lv_icon_x86.lvlibp..."
         Invoke-ScriptSafe -ScriptPath $RenameFile -ArgumentMap @{
