@@ -576,6 +576,16 @@ try {
     $BindDevMode = Join-Path $RepositoryPath "scripts/bind-development-mode/BindDevelopmentMode.ps1"
     $RunUnitTestsSingle = Join-Path $ActionsPath "run-unit-tests/RunUnitTests.ps1"
 
+    # Guard: start from a clean slate so no bitness overlap can happen
+    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+        Package_LabVIEW_Version = $lvVersion
+        SupportedBitness        = '64'
+    } -TimeoutSec 60 -DisplayName "Close LabVIEW (pre-flight 64-bit)"
+    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+        Package_LabVIEW_Version = $lvVersion
+        SupportedBitness        = '32'
+    } -TimeoutSec 60 -DisplayName "Close LabVIEW (pre-flight 32-bit)"
+
     # 1) Clean up old .lvlibp in the plugins folder
     Write-Information "Cleaning up old .lvlibp files in plugins folder..." -InformationAction Continue
     Write-Verbose "Looking for .lvlibp files in $($RepositoryPath)\resource\plugins..."
@@ -600,6 +610,7 @@ try {
     $MissingHelper = Join-Path $RepositoryPath "scripts/missing-in-project/Invoke-MissingInProjectCLI.ps1"
     $BuildLvlibp = Join-Path $ActionsPath "build-lvlibp/Build_lvlibp.ps1"
     $CloseLabVIEW = Join-Path $RepositoryPath "scripts/close-labview/Close_LabVIEW.ps1"
+    $RevertDevMode = Join-Path $RepositoryPath "scripts/revert-development-mode/RevertDevelopmentMode.ps1"
     $RenameFile = Join-Path $ActionsPath "rename-file/Rename-file.ps1"
 
     $do32 = ($LvlibpBitness -eq 'both' -or $LvlibpBitness -eq '32')
@@ -649,13 +660,6 @@ try {
             SupportedBitness        = '64'
             AbsoluteProjectPath     = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
         } -TimeoutSec 1200 -DisplayName "Unit tests (64-bit)"
-    }
-
-    if ($do64 -and $do32) {
-        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-            Package_LabVIEW_Version = $lvVersion
-            SupportedBitness        = '64'
-        } -TimeoutSec 180 -DisplayName "Close LabVIEW (switch to 32-bit)"
     }
 
     if ($do32) {
@@ -920,6 +924,30 @@ try {
             Write-Warning ("Failed to create placeholder VIP output: {0}" -f $_.Exception.Message)
         }
     }
+
+    # Revert development mode for built bitnesses to leave LabVIEW clean
+    if ($do64 -and (Test-Path -LiteralPath $RevertDevMode)) {
+        Invoke-ScriptSafe -ScriptPath $RevertDevMode -ArgumentMap @{
+            RepositoryPath    = $RepositoryPath
+            SupportedBitness  = '64'
+        } -TimeoutSec 300 -DisplayName "Revert development mode (64-bit)"
+    }
+    if ($do32 -and (Test-Path -LiteralPath $RevertDevMode)) {
+        Invoke-ScriptSafe -ScriptPath $RevertDevMode -ArgumentMap @{
+            RepositoryPath    = $RepositoryPath
+            SupportedBitness  = '32'
+        } -TimeoutSec 300 -DisplayName "Revert development mode (32-bit)"
+    }
+
+    # Final safety: ensure no LabVIEW instances remain running
+    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+        Package_LabVIEW_Version = $lvVersion
+        SupportedBitness        = '64'
+    } -TimeoutSec 60 -DisplayName "Close LabVIEW (final 64-bit)"
+    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+        Package_LabVIEW_Version = $lvVersion
+        SupportedBitness        = '32'
+    } -TimeoutSec 60 -DisplayName "Close LabVIEW (final 32-bit)"
 
     # 12) Close LabVIEW (64-bit)
     Write-Verbose "Closing LabVIEW (64-bit)..."
