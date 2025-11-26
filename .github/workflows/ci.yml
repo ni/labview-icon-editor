@@ -519,6 +519,7 @@ jobs:
       AUTHOR_NAME: ${{ github.actor }}
       VIPM_LIST_TIMEOUT_SEC: 20
       VIPM_SANITY_SKIP: 1
+      SKIP_VIPM: 1
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:

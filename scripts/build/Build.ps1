@@ -616,10 +616,12 @@ try {
         exit 1
     }
 
-    $vipmCommand = Get-Command vipm -ErrorAction SilentlyContinue
-    $vipmAvailable = [bool]$vipmCommand
+    $skipVipmAll = $env:SKIP_VIPM -eq '1'
+    $vipmCommand = if (-not $skipVipmAll) { Get-Command vipm -ErrorAction SilentlyContinue } else { $null }
+    $vipmAvailable = -not $skipVipmAll -and [bool]$vipmCommand
     if (-not $vipmAvailable) {
-        Write-Warning "vipm CLI not found on PATH; will skip VIPC application and VI Package build, but continue with missing-in-project checks and lvlibp build steps."
+        $why = if ($skipVipmAll) { "SKIP_VIPM=1" } else { "vipm CLI not found on PATH" }
+        Write-Warning "$why; will skip VIPC application and VI Package build, but continue with missing-in-project checks and lvlibp build steps."
     }
     else {
         if (-not $PSBoundParameters.ContainsKey('PromptForVipmReady')) {
