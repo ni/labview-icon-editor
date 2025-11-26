@@ -293,14 +293,30 @@ function Assert-LabVIEWPath {
 function Assert-VipmAccess {
     param(
         [Parameter(Mandatory)][string]$LvMajor,
-        [Parameter(Mandatory)][string]$Bitness
+        [Parameter(Mandatory)][string]$Bitness,
+        [int]$TimeoutSec = 180
     )
 
     $args = @("--labview-version", $LvMajor, "--labview-bitness", $Bitness, "list", "--installed")
     Write-Information ("Sanity: vipm {0}" -f ($args -join ' ')) -InformationAction Continue
-    $result = & vipm @args 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        $joined = ($result -join '; ')
+
+    $job = Start-Job -ScriptBlock {
+        param($vipmArgs)
+        $out = & vipm @vipmArgs 2>&1
+        [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $out }
+    } -ArgumentList @($args)
+
+    if (-not (Wait-Job $job -Timeout $TimeoutSec)) {
+        Stop-Job $job -Force | Out-Null
+        throw ("vipm list --installed timed out after {0}s for LabVIEW {1} ({2}-bit)" -f $TimeoutSec, $LvMajor, $Bitness)
+    }
+
+    $result = Receive-Job $job -Wait -AutoRemoveJob
+    $exitCode = $result.ExitCode
+    $output = $result.Output
+
+    if ($exitCode -ne 0) {
+        $joined = ($output -join '; ')
         throw ("vipm list --installed failed for LabVIEW {0} ({1}-bit). Output: {2}" -f $LvMajor, $Bitness, $joined)
     }
 }
