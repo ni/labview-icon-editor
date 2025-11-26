@@ -1201,10 +1201,24 @@ try {
     if ($vipmAvailable -and $do64 -and $do32) {
         Write-Verbose "Pre-VIPM: closing LabVIEW (32-bit) to avoid cross-bitness interference..."
         Write-Step -Step "3.15" -Message "Build VI Package (64-bit)" -Color "Green"
-        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-            Package_LabVIEW_Version = $lvVersion
-            SupportedBitness        = '32'
-        } -TimeoutSec 2 -DisplayName "Close LabVIEW (pre-VIPM 32-bit)"
+        $preVipmClosed = $false
+        try {
+            Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+                Package_LabVIEW_Version = $lvVersion
+                SupportedBitness        = '32'
+            } -TimeoutSec 45 -DisplayName "Close LabVIEW (pre-VIPM 32-bit)"
+            $preVipmClosed = $true
+        }
+        catch {
+            Write-Warning "Close LabVIEW (pre-VIPM 32-bit) timed out; force-terminating LabVIEW 2021 (32-bit) processes."
+            Stop-LabVIEWForBitness -Bitness '32' -LvVer $lvVersion
+        }
+        if ($preVipmClosed) {
+            Write-Step -Step "3.151" -Message "LabVIEW 2021 (32-bit) closed before VIPM" -Color "Green" -Symbol "✓"
+        }
+        else {
+            Write-Step -Step "3.151" -Message "LabVIEW 2021 (32-bit) force-terminated before VIPM" -Color "Yellow" -Symbol "!"
+        }
 
         Write-Verbose "Building VI Package (64-bit)..."
         $BuildVip = Join-Path $ActionsPath "build-vip/build_vip.ps1"
