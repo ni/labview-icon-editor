@@ -352,7 +352,8 @@ function Ensure-LibraryPathsAbsent {
     param(
         [Parameter(Mandatory)][string]$RepoPath,
         [Parameter(Mandatory)][string]$Bitness,
-        [Parameter(Mandatory)][string]$BindScript
+        [Parameter(Mandatory)][string]$BindScript,
+        [Parameter(Mandatory)][string]$LvVersion
     )
 
     if (-not (Test-Path -LiteralPath $BindScript)) {
@@ -361,9 +362,9 @@ function Ensure-LibraryPathsAbsent {
     }
 
     $iniPath = if ($Bitness -eq '64') {
-        "C:\Program Files\National Instruments\LabVIEW $lvVersion\LabVIEW.ini"
+        "C:\Program Files\National Instruments\LabVIEW $LvVersion\LabVIEW.ini"
     } else {
-        "C:\Program Files (x86)\National Instruments\LabVIEW $lvVersion\LabVIEW.ini"
+        "C:\Program Files (x86)\National Instruments\LabVIEW $LvVersion\LabVIEW.ini"
     }
 
     if (-not (Test-Path -LiteralPath $iniPath)) {
@@ -371,7 +372,6 @@ function Ensure-LibraryPathsAbsent {
         return
     }
 
-    $repoNorm = ([System.IO.Path]::GetFullPath($RepoPath)).TrimEnd('\','/').ToLowerInvariant()
     $lines = Get-Content -LiteralPath $iniPath -ErrorAction SilentlyContinue
     if (-not $lines) { $lines = @() }
     $entries = @($lines | Where-Object { $_ -match '^LocalHost\.LibraryPaths\d*=' })
@@ -380,22 +380,7 @@ function Ensure-LibraryPathsAbsent {
         return
     }
 
-    $allMatch = $true
-    foreach ($entry in $entries) {
-        $parts = $entry -split '=',2
-        $val = if ($parts.Count -gt 1) { $parts[1].Trim('"') } else { '' }
-        if ([string]::IsNullOrWhiteSpace($val)) { continue }
-        $norm = ([System.IO.Path]::GetFullPath($val)).TrimEnd('\','/').ToLowerInvariant()
-        if ($norm -ne $repoNorm) { $allMatch = $false; break }
-    }
-
-    if ($allMatch) {
-        # Token already points to this repo; avoid unbind to save time
-        Write-Verbose ("LocalHost.LibraryPaths for {0}-bit already points to repo; skipping unbind before dependencies." -f $Bitness) -Verbose
-        return
-    }
-
-    # Foreign tokens present; unbind this bitness, then ensure cleared
+    # Entries present (any path) -> unbind this bitness to enforce NONE before dependency apply
     Invoke-ScriptSafe -ScriptPath $BindScript -ArgumentMap @{
         RepositoryPath = $RepoPath
         Mode           = 'unbind'
@@ -620,11 +605,11 @@ try {
         Show-BitnessBanner -Arch '32'
         # 2) Apply VIPC (32-bit)
         if ($vipmAvailable) {
-        Write-Information "Applying VIPC (dependencies) for 32-bit..." -InformationAction Continue
+            Write-Information "Applying VIPC (dependencies) for 32-bit..." -InformationAction Continue
         # Ensure LocalHost.LibraryPaths does not exist before applying dependencies
-        Ensure-LibraryPathsAbsent -RepoPath $RepositoryPath -Bitness '32' -BindScript $BindDevMode
-        Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
-            Package_LabVIEW_Version   = $lvVersion
+            Ensure-LibraryPathsAbsent -RepoPath $RepositoryPath -Bitness '32' -BindScript $BindDevMode -LvVersion $lvVersion
+            Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
+                Package_LabVIEW_Version   = $lvVersion
                 SupportedBitness          = '32'
                 RepositoryPath            = $RepositoryPath
                 VIPCPath                  = $vipcPath
@@ -663,7 +648,7 @@ try {
     if ($vipmAvailable) {
         Write-Information "Applying VIPC (dependencies) for 64-bit..." -InformationAction Continue
         # Ensure LocalHost.LibraryPaths does not exist before applying dependencies
-        Ensure-LibraryPathsAbsent -RepoPath $RepositoryPath -Bitness '64' -BindScript $BindDevMode
+        Ensure-LibraryPathsAbsent -RepoPath $RepositoryPath -Bitness '64' -BindScript $BindDevMode -LvVersion $lvVersion
         Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
             Package_LabVIEW_Version   = $lvVersion
             SupportedBitness          = '64'
