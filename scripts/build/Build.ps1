@@ -90,6 +90,25 @@ function Show-BitnessDone {
     Write-Host ("{0}---- {1}-bit phase complete ----{2}" -f $color, $Arch, $resetColor)
 }
 
+# Structured step logger with timestamp/elapsed and optional color
+function Write-Step {
+    param(
+        [string]$Step,
+        [string]$Message,
+        [string]$Color
+    )
+    $now = Get-Date
+    $ts = $now.ToString("HH:mm:ss")
+    $elapsed = if ($script:BuildStart) { ($now - $script:BuildStart).TotalSeconds } else { 0 }
+    $prefix = "[STEP $Step $ts +${elapsed:n1}s]"
+    if ($hasStyle -and $Color) {
+        Write-Host "$prefix $Message" -ForegroundColor $Color
+    }
+    else {
+        Write-Host "$prefix $Message"
+    }
+}
+
 # Helper function to verify a file/folder path exists
 function Test-PathExistence {
     param(
@@ -496,6 +515,9 @@ try {
     Write-Verbose " - CompanyName: $CompanyName"
     Write-Verbose " - AuthorName: $AuthorName"
 
+    # Track build start for elapsed logging
+    $script:BuildStart = Get-Date
+
     # Ensure the repo root exists before reading the VIPB version
     if (-not (Test-Path -LiteralPath $RepositoryPath)) {
         Write-Error "RepositoryPath does not exist: $RepositoryPath"
@@ -606,10 +628,12 @@ try {
         Package_LabVIEW_Version = $lvVersion
         SupportedBitness        = '64'
     } -TimeoutSec 60 -DisplayName "Close LabVIEW (pre-flight 64-bit)"
+    Write-Step -Step "0.1" -Message "Pre-flight close requested for 64-bit LabVIEW" -Color "Cyan"
     Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
         Package_LabVIEW_Version = $lvVersion
         SupportedBitness        = '32'
     } -TimeoutSec 60 -DisplayName "Close LabVIEW (pre-flight 32-bit)"
+    Write-Step -Step "0.2" -Message "Pre-flight close requested for 32-bit LabVIEW" -Color "Cyan"
 
     # Verify no LabVIEW instances are running before proceeding; force-kill if needed
     try {
@@ -619,7 +643,7 @@ try {
         $preProcs = @()
     }
     if ($preProcs) {
-        Write-Warning ("LabVIEW running before build start; terminating {0}" -f ($preProcs.Id -join ', '))
+        Write-Step -Step "0.3" -Message ("LabVIEW running before build start; terminating {0}" -f ($preProcs.Id -join ', ')) -Color "Yellow"
         $preProcs | Stop-Process -Force -ErrorAction SilentlyContinue
         Start-Sleep -Seconds 2
         $preProcs = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' }
@@ -629,6 +653,7 @@ try {
     }
 
     # 1) Clean up old .lvlibp in the plugins folder
+    Write-Step -Step "1.0" -Message "Clean plugins folder" -Color "Cyan"
     Write-Information "Cleaning up old .lvlibp files in plugins folder..." -InformationAction Continue
     Write-Verbose "Looking for .lvlibp files in $($RepositoryPath)\resource\plugins..."
     try {
@@ -654,6 +679,7 @@ try {
     if ($do64) {
         # 6) Apply VIPC (64-bit)
         Show-BitnessBanner -Arch '64'
+        Write-Step -Step "2.0" -Message "Apply VIPC (64-bit)" -Color "Cyan"
         if ($vipmAvailable) {
             Write-Information "Applying VIPC (dependencies) for 64-bit..." -InformationAction Continue
             # Ensure LocalHost.LibraryPaths does not exist before applying dependencies
@@ -681,6 +707,7 @@ try {
         Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '64' -DevModeScript $SetDevMode
 
         # 6.1) Preflight missing items using existing missing-in-project helper (64-bit)
+        Write-Step -Step "2.1" -Message "Missing-in-project (64-bit)" -Color "Cyan"
         Write-Information "Preflight: checking for missing project items via missing-in-project..." -InformationAction Continue
         Invoke-ScriptSafe -ScriptPath $MissingHelper -ArgumentMap @{
             LVVersion   = $lvVersion
@@ -689,6 +716,7 @@ try {
         } -TimeoutSec 300 -DisplayName "Missing in project (64-bit)"
 
         # 6.2) Run unit tests (64-bit) immediately after missing-in-project
+        Write-Step -Step "2.2" -Message "Unit tests (64-bit)" -Color "Cyan"
         Write-Information "Running unit tests (64-bit)..." -InformationAction Continue
         Invoke-ScriptSafe -ScriptPath $RunUnitTestsSingle -ArgumentMap @{
             Package_LabVIEW_Version = $lvVersion
@@ -698,9 +726,34 @@ try {
     }
 
     if ($do32) {
+        if ($do64) {
+            # Ensure 64-bit LabVIEW is down before entering any 32-bit work
+            Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+                Package_LabVIEW_Version = $lvVersion
+                SupportedBitness        = '64'
+            } -TimeoutSec 120 -DisplayName "Close LabVIEW (pre-32-bit entry)"
+            Write-Step -Step "6.9" -Message "Ensuring 64-bit LabVIEW is closed before 32-bit phase" -Color "Yellow"
+            try {
+                $lv64pre = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' -and $_.Path -like '*LabVIEW 2021\\LabVIEW.exe' -and $_.MainModule.FileName -like '*Program Files*' }
+            }
+            catch {
+                $lv64pre = @()
+            }
+            if ($lv64pre) {
+                Write-Step -Step "6.10" -Message ("64-bit LabVIEW still running before 32-bit phase; terminating IDs {0}" -f ($lv64pre.Id -join ', ')) -Color "Yellow"
+                $lv64pre | Stop-Process -Force -ErrorAction SilentlyContinue
+                Start-Sleep -Seconds 2
+                $lv64pre = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' -and $_.Path -like '*LabVIEW 2021\\LabVIEW.exe' -and $_.MainModule.FileName -like '*Program Files*' }
+                if ($lv64pre) {
+                    throw "64-bit LabVIEW process(es) remain before 32-bit phase: $($lv64pre.Id -join ', ')."
+                }
+            }
+        }
+
         Show-BitnessBanner -Arch '32'
         # 2) Apply VIPC (32-bit)
         if ($vipmAvailable) {
+            Write-Step -Step "3.0" -Message "Apply VIPC (32-bit)" -Color "Cyan"
             Write-Information "Applying VIPC (dependencies) for 32-bit..." -InformationAction Continue
             # Ensure LocalHost.LibraryPaths does not exist before applying dependencies
             Ensure-LibraryPathsAbsent -RepoPath $RepositoryPath -Bitness '32' -BindScript $BindDevMode -LvVersion $lvVersion
@@ -727,6 +780,7 @@ try {
         Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '32' -DevModeScript $SetDevMode
 
         # 2.1) Preflight missing items using existing missing-in-project helper (32-bit)
+        Write-Step -Step "3.1" -Message "Missing-in-project (32-bit)" -Color "Cyan"
         Write-Information "Preflight: checking for missing project items via missing-in-project..." -InformationAction Continue
         Invoke-ScriptSafe -ScriptPath $MissingHelper -ArgumentMap @{
             LVVersion   = $lvVersion
@@ -735,6 +789,7 @@ try {
         } -TimeoutSec 300 -DisplayName "Missing in project (32-bit)"
 
         # 2.2) Run unit tests for 32-bit immediately after missing-in-project
+        Write-Step -Step "3.2" -Message "Unit tests (32-bit)" -Color "Cyan"
         Write-Information "Running unit tests (32-bit)..." -InformationAction Continue
         Invoke-ScriptSafe -ScriptPath $RunUnitTestsSingle -ArgumentMap @{
             Package_LabVIEW_Version = $lvVersion
@@ -750,6 +805,7 @@ try {
     if ($do64) {
         Show-BitnessBanner -Arch '64'
         Write-Verbose "Building LV library (64-bit)..."
+        Write-Step -Step "4.0" -Message "Build PPL (64-bit)" -Color "Green"
     $argsLvlibp64 = @{
         Package_LabVIEW_Version   = $lvVersion
         SupportedBitness          = '64'
@@ -760,7 +816,18 @@ try {
         Build                     = $Build
         Commit                    = $Commit
     }
-    Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp64 -TimeoutSec 900 -DisplayName "Build icon PPL (64-bit)"
+    try {
+        Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp64 -TimeoutSec 900 -DisplayName "Build icon PPL (64-bit)"
+    }
+    catch {
+        Write-Step -Step "7.1" -Message "Build icon PPL (64-bit) failed; retrying after forcing LabVIEW close..." -Color "Yellow"
+        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+            Package_LabVIEW_Version = $lvVersion
+            SupportedBitness        = '64'
+        } -TimeoutSec 60 -DisplayName "Close LabVIEW (retry 64-bit build)"
+        Start-Sleep -Seconds 3
+        Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp64 -TimeoutSec 900 -DisplayName "Build icon PPL (64-bit retry)"
+    }
 
         Write-Verbose "Renaming .lvlibp file to lv_icon_x64.lvlibp..."
         Invoke-ScriptSafe -ScriptPath $RenameFile -ArgumentMap @{
@@ -797,6 +864,7 @@ try {
         }
         Show-BitnessBanner -Arch '32'
         Write-Verbose "Building LV library (32-bit)..."
+        Write-Step -Step "4.1" -Message "Build PPL (32-bit)" -Color "Green"
         $argsLvlibp32 = @{
             Package_LabVIEW_Version   = $lvVersion
             SupportedBitness          = '32'
@@ -826,6 +894,7 @@ try {
         $win64Copy = Join-Path $pplDir 'lv_icon.lvlibp.windows_x64'
         $win86Copy = Join-Path $pplDir 'lv_icon.lvlibp.windows_x86'
 
+        Write-Step -Step "5.0" -Message "Stage neutral/windows PPLs" -Color "Green"
         if (Test-Path -LiteralPath $pplX64) {
             Copy-Item -LiteralPath $pplX64 -Destination $neutral -Force
             Copy-Item -LiteralPath $pplX64 -Destination $win64Copy -Force
@@ -890,6 +959,7 @@ try {
         Write-Information "Release notes generation skipped by flag." -InformationAction Continue
     }
     else {
+        Write-Step -Step "6.0" -Message "Generate release notes" -Color "Cyan"
         Write-ReleaseNotesFromGit -RepoPath $RepositoryPath -DestinationPath $ReleaseNotesFile -RefSpec $ReleaseNotesRef
     }
 
@@ -915,6 +985,7 @@ try {
 
     # 9) Modify VIPB Display Information
     Write-Verbose "Modify VIPB Display Information (64-bit)..."
+    Write-Step -Step "6.1" -Message "Update VIPB display info" -Color "Cyan"
     $ModifyVIPB = Join-Path $ActionsPath "modify-vipb-display-info/ModifyVIPBDisplayInfo.ps1"
     Invoke-ScriptSafe -ScriptPath $ModifyVIPB -ArgumentMap @{
         SupportedBitness         = '64'
@@ -936,6 +1007,7 @@ try {
     $vipOutputDir = Join-Path $RepositoryPath 'builds\VI Package'
     if ($vipmAvailable -and $do64 -and $do32) {
         Write-Verbose "Pre-VIPM: closing LabVIEW (32-bit) to avoid cross-bitness interference..."
+        Write-Step -Step "7.0" -Message "Build VI Package (64-bit)" -Color "Green"
         Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
             Package_LabVIEW_Version = $lvVersion
             SupportedBitness        = '32'
@@ -979,12 +1051,14 @@ try {
 
     # Revert development mode for built bitnesses to leave LabVIEW clean
     if ($do64 -and (Test-Path -LiteralPath $RevertDevMode)) {
+        Write-Step -Step "8.0" -Message "Revert development mode (64-bit)" -Color "Cyan"
         Invoke-ScriptSafe -ScriptPath $RevertDevMode -ArgumentMap @{
             RepositoryPath    = $RepositoryPath
             SupportedBitness  = '64'
         } -TimeoutSec 300 -DisplayName "Revert development mode (64-bit)"
     }
     if ($do32 -and (Test-Path -LiteralPath $RevertDevMode)) {
+        Write-Step -Step "8.1" -Message "Revert development mode (32-bit)" -Color "Cyan"
         Invoke-ScriptSafe -ScriptPath $RevertDevMode -ArgumentMap @{
             RepositoryPath    = $RepositoryPath
             SupportedBitness  = '32'
@@ -992,10 +1066,12 @@ try {
     }
 
     # Final safety: ensure no LabVIEW instances remain running
+    Write-Step -Step "9.0" -Message "Close LabVIEW (final 64-bit)" -Color "Cyan"
     Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
         Package_LabVIEW_Version = $lvVersion
         SupportedBitness        = '64'
     } -TimeoutSec 60 -DisplayName "Close LabVIEW (final 64-bit)"
+    Write-Step -Step "9.1" -Message "Close LabVIEW (final 32-bit)" -Color "Cyan"
     Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
         Package_LabVIEW_Version = $lvVersion
         SupportedBitness        = '32'
@@ -1009,7 +1085,7 @@ try {
         $lvProcs = @()
     }
     if ($lvProcs) {
-        Write-Warning ("LabVIEW still running after final close; terminating {0}" -f ($lvProcs.Id -join ', '))
+        Write-Step -Step "12.1" -Message ("LabVIEW still running after final close; terminating {0}" -f ($lvProcs.Id -join ', ')) -Color "Yellow"
         $lvProcs | Stop-Process -Force -ErrorAction SilentlyContinue
         Start-Sleep -Seconds 2
         $lvProcs = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' }
