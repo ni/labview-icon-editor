@@ -39,10 +39,15 @@ function Invoke-ScriptSafe {
     Write-Information ("Executing: {0} {1}" -f $ScriptPath, ($ArgumentList -join ' ')) -InformationAction Continue
     try {
         & $ScriptPath @ArgumentList
-
+        $code = $LASTEXITCODE
+        if ($code -ne 0) {
+            Write-Error ("Error occurred while executing: {0} with exit code {1}" -f $ScriptPath, $code)
+            exit $code
+        }
     } catch {
-        Write-Error "Error occurred while executing: $ScriptPath with arguments: $($ArgumentList -join ' '). Exiting."
-        exit 1
+        $code = if ($LASTEXITCODE) { $LASTEXITCODE } else { 1 }
+        Write-Error "Error occurred while executing: $ScriptPath with arguments: $($ArgumentList -join ' '). Exiting. Details: $($_.Exception.Message)"
+        exit $code
     }
 }
 
