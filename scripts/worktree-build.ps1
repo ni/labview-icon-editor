@@ -342,7 +342,6 @@ try {
         foreach ($lane in @('64','32')) {
             $laneArgs = $baseBuildArgs.Clone()
             $laneArgs.LvlibpBitness = $lane
-            $laneArgs.SupportedBitness = $lane
             Write-Host "Running isolated build lane for bitness: $lane"
             Write-Separator ("Build start ({0}-bit lane)" -f $lane)
             & $buildScript @laneArgs
@@ -351,7 +350,6 @@ try {
     else {
         $buildArgs = $baseBuildArgs.Clone()
         $buildArgs.LvlibpBitness = $LvlibpBitness
-        $buildArgs.SupportedBitness = $SupportedBitness
         Write-Host "Running full build (bitness: $LvlibpBitness)..."
         Write-Separator "Build start"
         & $buildScript @buildArgs
