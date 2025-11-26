@@ -574,6 +574,7 @@ try {
     $vipcPath = Get-CanonicalVipcPath -RepoPath $RepositoryPath
     $SetDevMode = Join-Path $RepositoryPath "scripts/set-development-mode/Set_Development_Mode.ps1"
     $BindDevMode = Join-Path $RepositoryPath "scripts/bind-development-mode/BindDevelopmentMode.ps1"
+    $RunUnitTestsSingle = Join-Path $ActionsPath "run-unit-tests/RunUnitTests.ps1"
 
     # 1) Clean up old .lvlibp in the plugins folder
     Write-Information "Cleaning up old .lvlibp files in plugins folder..." -InformationAction Continue
