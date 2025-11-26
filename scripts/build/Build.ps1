@@ -722,10 +722,14 @@ try {
                 $lv32pre = @()
             }
             if ($lv32pre) {
-                Write-Step -Step "3.81" -Message ("32-bit LabVIEW still running before 64-bit build phase; terminating IDs {0}" -f ($lv32pre.Id -join ', ')) -Color "Yellow"
-                $lv32pre | Stop-Process -Force -ErrorAction SilentlyContinue
-                Start-Sleep -Seconds 2
-                $lv32pre = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' -and $_.Path -like '*LabVIEW 2021\\LabVIEW.exe' -and $_.MainModule.FileName -like '*Program Files (x86)*' }
+                Write-Step -Step "3.81" -Message ("32-bit LabVIEW still running before 64-bit build phase; waiting for exit (PIDs: {0})" -f ($lv32pre.Id -join ', ')) -Color "Yellow"
+                $deadline = (Get-Date).AddSeconds(120)
+                do {
+                    Start-Sleep -Seconds 2
+                    try {
+                        $lv32pre = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' -and $_.Path -like '*LabVIEW 2021\\LabVIEW.exe' -and $_.MainModule.FileName -like '*Program Files (x86)*' }
+                    } catch { $lv32pre = @() }
+                } while ($lv32pre -and (Get-Date) -lt $deadline)
                 if ($lv32pre) {
                     throw "32-bit LabVIEW process(es) remain before 64-bit build phase: $($lv32pre.Id -join ', ')."
                 }
