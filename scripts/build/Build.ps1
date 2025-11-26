@@ -605,19 +605,27 @@ try {
         Show-BitnessBanner -Arch '32'
         # 2) Apply VIPC (32-bit)
         if ($vipmAvailable) {
-            Write-Information "Applying VIPC (dependencies) for 32-bit..." -InformationAction Continue
+        Write-Information "Applying VIPC (dependencies) for 32-bit..." -InformationAction Continue
         # Ensure LocalHost.LibraryPaths does not exist before applying dependencies
-            Ensure-LibraryPathsAbsent -RepoPath $RepositoryPath -Bitness '32' -BindScript $BindDevMode -LvVersion $lvVersion
-            Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
-                Package_LabVIEW_Version   = $lvVersion
-                SupportedBitness          = '32'
-                RepositoryPath            = $RepositoryPath
-                VIPCPath                  = $vipcPath
-            } -TimeoutSec 600 -DisplayName "Apply VIPC (32-bit)"
-        }
-        else {
-            Write-Warning "Skipping VIPC application for 32-bit because vipm CLI is not available."
-        }
+        Ensure-LibraryPathsAbsent -RepoPath $RepositoryPath -Bitness '32' -BindScript $BindDevMode -LvVersion $lvVersion
+        Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
+            Package_LabVIEW_Version   = $lvVersion
+            SupportedBitness          = '32'
+            RepositoryPath            = $RepositoryPath
+            VIPCPath                  = $vipcPath
+        } -TimeoutSec 600 -DisplayName "Apply VIPC (32-bit)"
+
+        # Rebind dev mode for this repo so downstream checks (missing-in-project/tests) have tokens set
+        Invoke-ScriptSafe -ScriptPath $BindDevMode -ArgumentMap @{
+            RepositoryPath = $RepositoryPath
+            Mode           = 'bind'
+            Bitness        = '32'
+            Force          = $true
+        } -DisplayName "Dev mode bind (32-bit)"
+    }
+    else {
+        Write-Warning "Skipping VIPC application for 32-bit because vipm CLI is not available."
+    }
 
         # Ensure LabVIEW is closed before running missing-in-project to avoid UI prompts/locks
         Write-Verbose "Pre-missing-in-project: closing LabVIEW (32-bit) to ensure a clean session..."
@@ -655,6 +663,14 @@ try {
             RepositoryPath            = $RepositoryPath
             VIPCPath                  = $vipcPath
         } -TimeoutSec 600 -DisplayName "Apply VIPC (64-bit)"
+
+        # Rebind dev mode for this repo so downstream checks (missing-in-project/tests) have tokens set
+        Invoke-ScriptSafe -ScriptPath $BindDevMode -ArgumentMap @{
+            RepositoryPath = $RepositoryPath
+            Mode           = 'bind'
+            Bitness        = '64'
+            Force          = $true
+        } -DisplayName "Dev mode bind (64-bit)"
     }
     else {
         Write-Warning "Skipping VIPC application for 64-bit because vipm CLI is not available."
