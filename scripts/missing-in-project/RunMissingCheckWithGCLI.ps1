@@ -167,13 +167,10 @@ if ($exitCode -eq 0) {
 # close LabVIEW if still running (harmless if not)
 $closeScript = Join-Path (Split-Path $PSScriptRoot -Parent) 'close-labview\Close_LabVIEW.ps1'
 try {
-    if (Test-Path -LiteralPath $closeScript) {
-        & $closeScript -Package_LabVIEW_Version $LVVersion -SupportedBitness $Arch | Out-Null
+    if (-not (Test-Path -LiteralPath $closeScript)) {
+        throw "Close_LabVIEW.ps1 not found at expected path: $closeScript"
     }
-    else {
-        Write-Warning ("Close_LabVIEW.ps1 not found at {0}; falling back to g-cli QuitLabVIEW." -f $closeScript)
-        & g-cli --lv-ver $LVVersion --arch $Arch QuitLabVIEW | Out-Null
-    }
+    & $closeScript -Package_LabVIEW_Version $LVVersion -SupportedBitness $Arch | Out-Null
 }
 catch {
     Write-Warning ("Failed to close LabVIEW after missing-in-project run: {0}" -f $_.Exception.Message)

@@ -75,13 +75,10 @@ function Invoke-CloseLabVIEW {
         [string]$LvVersion
     )
     $closeScript = Join-Path $PSScriptRoot '..\close-labview\Close_LabVIEW.ps1'
-    if (Test-Path -LiteralPath $closeScript) {
-        & $closeScript -Package_LabVIEW_Version $LvVersion -SupportedBitness $Bitness
+    if (-not (Test-Path -LiteralPath $closeScript)) {
+        throw "Close_LabVIEW.ps1 not found at expected path: $closeScript"
     }
-    else {
-        Write-Warning ("Close_LabVIEW.ps1 not found at {0}; falling back to g-cli QuitLabVIEW." -f $closeScript)
-        g-cli --lv-ver $LvVersion --arch $Bitness QuitLabVIEW
-    }
+    & $closeScript -Package_LabVIEW_Version $LvVersion -SupportedBitness $Bitness
 }
 
 # --------------------------------------------------------------------
