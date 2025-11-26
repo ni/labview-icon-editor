@@ -149,6 +149,25 @@
       },
       "problemMatcher": [],
       "detail": "Find latest .vip under builds-isolated\\builds\\VI Package, set VIP_PATH, and run Analyze-VIP tests."
+    },
+    {
+      "label": "Draft Release (CI green, no VIPM)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "pwsh -NoProfile -File \"${workspaceFolder}/scripts/ie.ps1\" -Command draft-release -RepositoryPath \"${workspaceFolder}\" -SkipVipm"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "SKIP_VIPM": "1",
+          "VIPM_SANITY_SKIP": "1"
+        }
+      },
+      "problemMatcher": [],
+      "detail": "Draft a release using the CI-produced artifacts without invoking VIPM (SKIP_VIPM set)."
     }
   ]
 }

@@ -402,6 +402,13 @@ finally {
         try {
             Write-Host "Removing worktree..."
             git -C $SourceRepoPath worktree remove --force "$WorktreePath" | Out-Null
+            if ($LASTEXITCODE -ne 0 -or (Test-Path -LiteralPath $WorktreePath)) {
+                Write-Warning ("git worktree remove returned exit {0} or path still exists; attempting filesystem cleanup." -f $LASTEXITCODE)
+                if (Test-Path -LiteralPath $WorktreePath) {
+                    Remove-Item -LiteralPath $WorktreePath -Recurse -Force -ErrorAction SilentlyContinue
+                    Start-Sleep -Milliseconds 500
+                }
+            }
         }
         catch {
             Write-Warning "git worktree remove failed; attempting filesystem cleanup. $_"
