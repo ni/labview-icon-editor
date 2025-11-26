@@ -33,7 +33,7 @@ param(
     [Parameter(Mandatory = $false)]
     [int]$LabVIEWMinorRevision = 3,
 
-    [ValidateSet('both','64')]
+    [ValidateSet('both','64','32')]
     [string]$LvlibpBitness = 'both',
 
 [string]$VIPBPath = 'Tooling\deployment\seed.vipb',

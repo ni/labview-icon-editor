@@ -5,7 +5,7 @@ param(
     [string]$WorktreePath,
     [ValidateSet('32','64')]
     [string]$SupportedBitness = '64',
-    [ValidateSet('both','64')]
+    [ValidateSet('both','64','32')]
     [string]$LvlibpBitness = 'both',
     [int]$Major = 0,
     [int]$Minor = 1,
