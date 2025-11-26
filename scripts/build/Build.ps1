@@ -518,6 +518,22 @@ try {
     # Track build start for elapsed logging
     $script:BuildStart = Get-Date
 
+    # Begin transcript to capture console output
+    $transcriptStarted = $false
+    try {
+        $logDir = Join-Path $RepositoryPath 'builds/logs'
+        if (-not (Test-Path -LiteralPath $logDir)) {
+            New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+        }
+        $logFile = Join-Path $logDir ("build-{0:yyyyMMdd-HHmmss}.log" -f $script:BuildStart)
+        Start-Transcript -Path $logFile -Append -ErrorAction Stop | Out-Null
+        $transcriptStarted = $true
+        Write-Information ("Transcript logging enabled at {0}" -f $logFile) -InformationAction Continue
+    }
+    catch {
+        Write-Warning ("Failed to start transcript logging: {0}" -f $_.Exception.Message)
+    }
+
     # Ensure the repo root exists before reading the VIPB version
     if (-not (Test-Path -LiteralPath $RepositoryPath)) {
         Write-Error "RepositoryPath does not exist: $RepositoryPath"
@@ -1096,9 +1112,15 @@ try {
 
     Write-Information "All scripts executed successfully!" -InformationAction Continue
     Write-Verbose "Script: Build.ps1 completed without errors."
+    if ($transcriptStarted) {
+        try { Stop-Transcript | Out-Null } catch { Write-Warning ("Failed to stop transcript: {0}" -f $_.Exception.Message) }
+    }
 }
 catch {
     Write-Error "An unexpected error occurred during script execution: $($_.Exception.Message)"
     Write-Verbose "Stack Trace: $($_.Exception.StackTrace)"
+    if ($transcriptStarted) {
+        try { Stop-Transcript | Out-Null } catch { Write-Warning ("Failed to stop transcript after error: {0}" -f $_.Exception.Message) }
+    }
     exit 1
 }
