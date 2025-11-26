@@ -817,7 +817,6 @@ try {
     catch {
         Write-Warning ("Failed to remove temporary PPL copies: {0}" -f $_.Exception.Message)
     }
-
     # Idempotency guard: validate expected PPL set and log hashes
     $expectedPpls = @('lv_icon.lvlibp')
     if ($do64) { $expectedPpls += 'lv_icon.lvlibp.windows_x64' }
