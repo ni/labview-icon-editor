@@ -1274,15 +1274,32 @@ try {
 
     # Final safety: ensure no LabVIEW instances remain running
     Write-Step -Step "3.18" -Message "Close LabVIEW (final 64-bit)" -Color "Cyan"
-    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-        Package_LabVIEW_Version = $lvVersion
-        SupportedBitness        = '64'
-    } -TimeoutSec 2 -DisplayName "Close LabVIEW (final 64-bit)"
+    $final64Closed = $false
+    try {
+        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+            Package_LabVIEW_Version = $lvVersion
+            SupportedBitness        = '64'
+        } -TimeoutSec 45 -DisplayName "Close LabVIEW (final 64-bit)"
+        $final64Closed = $true
+    }
+    catch {
+        Write-Warning "Close LabVIEW (final 64-bit) timed out; force-terminating LabVIEW 2021 (64-bit) processes."
+        Stop-LabVIEWForBitness -Bitness '64' -LvVer $lvVersion
+    }
+
     Write-Step -Step "3.19" -Message "Close LabVIEW (final 32-bit)" -Color "Cyan"
-    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-        Package_LabVIEW_Version = $lvVersion
-        SupportedBitness        = '32'
-    } -TimeoutSec 2 -DisplayName "Close LabVIEW (final 32-bit)"
+    $final32Closed = $false
+    try {
+        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+            Package_LabVIEW_Version = $lvVersion
+            SupportedBitness        = '32'
+        } -TimeoutSec 45 -DisplayName "Close LabVIEW (final 32-bit)"
+        $final32Closed = $true
+    }
+    catch {
+        Write-Warning "Close LabVIEW (final 32-bit) timed out; force-terminating LabVIEW 2021 (32-bit) processes."
+        Stop-LabVIEWForBitness -Bitness '32' -LvVer $lvVersion
+    }
 
     # Verify both bitnesses are gone; force-kill lingering LabVIEW if needed
     try {
