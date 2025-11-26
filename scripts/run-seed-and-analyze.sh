@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# Prefer pipefail when available; fall back to POSIX set -eu if the shell lacks it.
+set -euo pipefail 2>/dev/null || set -eu
 
 # Linux/WSL helper to export Seed metadata, run Pester tests (when pwsh is available),
 # and execute Analyze-VIP against the newest built .vip artifact.

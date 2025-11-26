@@ -155,7 +155,8 @@ BeforeAll {
         else { $env:MIN_LV_VERSION = '21.0' }
     }
 
-    $localVip = (Get-Variable -Scope Script -Name ResolvedVipPath -ErrorAction SilentlyContinue).Value
+    $localVipVar = Get-Variable -Scope Script -Name ResolvedVipPath -ErrorAction SilentlyContinue
+    $localVip = if ($localVipVar) { $localVipVar.Value } else { $null }
     if (-not $localVip -or -not (Test-Path -LiteralPath $localVip -PathType Leaf)) {
         $localVip = Resolve-VipPath -ExplicitPath $VipPath
     }
