@@ -654,6 +654,13 @@ try {
         Write-Information "Skipping 32-bit dependency/apply/build steps (LvlibpBitness=$LvlibpBitness)." -InformationAction Continue
     }
 
+    if ($do32 -and $do64) {
+        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+            Package_LabVIEW_Version = $lvVersion
+            SupportedBitness        = '32'
+        } -TimeoutSec 180 -DisplayName "Close LabVIEW (switch to 64-bit)"
+    }
+
     if ($do64) {
         # 6) Apply VIPC (64-bit)
         Show-BitnessBanner -Arch '64'
