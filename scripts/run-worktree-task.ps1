@@ -46,8 +46,7 @@ $forward = @{
     AuthorName       = $AuthorName
 }
 
-# Default to separate lanes when building both bitnesses, unless explicitly disabled
-if ($RunBothBitnessSeparately -or $LvlibpBitness -eq 'both') {
+if ($RunBothBitnessSeparately) {
     $forward.RunBothBitnessSeparately = $true
 }
 

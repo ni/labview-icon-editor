@@ -605,7 +605,7 @@ try {
     $do32 = ($LvlibpBitness -eq 'both' -or $LvlibpBitness -eq '32')
     $do64 = ($LvlibpBitness -eq 'both' -or $LvlibpBitness -eq '64')
 
-    if ($do32 -and -not $do64) {
+    if ($do32) {
         Show-BitnessBanner -Arch '32'
         # 2) Apply VIPC (32-bit)
         if ($vipmAvailable) {
@@ -724,12 +724,14 @@ try {
         Show-BitnessDone -Arch '64'
     }
 
-    # 8) Build LV Library (32-bit) after 64-bit succeeds
-    if ($do32 -and $do64) {
-        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-            Package_LabVIEW_Version = $lvVersion
-            SupportedBitness        = '64'
-        } -TimeoutSec 180 -DisplayName "Close LabVIEW (switch to 32-bit)"
+    # 8) Build LV Library (32-bit)
+    if ($do32) {
+        if ($do64) {
+            Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+                Package_LabVIEW_Version = $lvVersion
+                SupportedBitness        = '64'
+            } -TimeoutSec 180 -DisplayName "Close LabVIEW (switch to 32-bit)"
+        }
         Show-BitnessBanner -Arch '32'
         Write-Verbose "Building LV library (32-bit)..."
         $argsLvlibp32 = @{
@@ -771,6 +773,10 @@ try {
         }
 
         if (Test-Path -LiteralPath $pplX86) {
+            if (-not (Test-Path -LiteralPath $neutral)) {
+                Copy-Item -LiteralPath $pplX86 -Destination $neutral -Force
+                Write-Information "Staged neutral PPL from x86 build at $pplDir" -InformationAction Continue
+            }
             Copy-Item -LiteralPath $pplX86 -Destination $win86Copy -Force
             Write-Information "Staged windows_x86 PPL at $pplDir" -InformationAction Continue
         }
