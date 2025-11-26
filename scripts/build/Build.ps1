@@ -348,6 +348,44 @@ function Ensure-LibraryPathsReady {
     }
 }
 
+function Ensure-LibraryPathsAbsent {
+    param(
+        [Parameter(Mandatory)][string]$RepoPath,
+        [Parameter(Mandatory)][string]$Bitness,
+        [Parameter(Mandatory)][string]$BindScript
+    )
+
+    $readPaths = Join-Path $RepoPath 'scripts/read-library-paths.ps1'
+    if (-not (Test-Path -LiteralPath $BindScript)) {
+        Write-Verbose "BindDevelopmentMode.ps1 not found at $BindScript; cannot clear LocalHost.LibraryPaths before dependency apply." -Verbose
+        return
+    }
+    if (-not (Test-Path -LiteralPath $readPaths)) {
+        Write-Verbose "read-library-paths.ps1 not found at $readPaths; cannot verify LocalHost.LibraryPaths absence." -Verbose
+        return
+    }
+
+    # First attempt to unbind/clear tokens for the target bitness
+    Invoke-ScriptSafe -ScriptPath $BindScript -ArgumentMap @{
+        RepositoryPath = $RepoPath
+        Mode           = 'unbind'
+        Bitness        = $Bitness
+        Force          = $true
+    } -DisplayName ("Dev mode unbind ({0}-bit)" -f $Bitness)
+
+    # Verify absence: read-library-paths with FailOnMissing exits 2 when none are present; treat 2 as success here.
+    & $readPaths -RepositoryPath $RepoPath -SupportedBitness $Bitness -FailOnMissing
+    if ($LASTEXITCODE -eq 2) {
+        return
+    }
+    elseif ($LASTEXITCODE -eq 0) {
+        throw ("LocalHost.LibraryPaths still present for {0}-bit after unbind; cannot apply dependencies while token exists." -f $Bitness)
+    }
+    else {
+        throw ("LocalHost.LibraryPaths verification failed for {0}-bit (exit {1})." -f $Bitness, $LASTEXITCODE)
+    }
+}
+
 function Write-ReleaseNotesFromGit {
     param(
         [string]$RepoPath,
@@ -526,18 +564,7 @@ try {
     # Ensure VIPC dependencies exist (mirrors CI prep). Only use the canonical VIPC under scripts/apply-vipc.
     $vipcPath = Get-CanonicalVipcPath -RepoPath $RepositoryPath
     $SetDevMode = Join-Path $RepositoryPath "scripts/set-development-mode/Set_Development_Mode.ps1"
-
-    # Preflight dev-mode (LocalHost.LibraryPaths) before heavy work
-    if ($LvlibpBitness -eq 'both') {
-        Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '32' -DevModeScript $SetDevMode
-        Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '64' -DevModeScript $SetDevMode
-    }
-    elseif ($LvlibpBitness -eq '64') {
-        Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '64' -DevModeScript $SetDevMode
-    }
-    else {
-        Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '32' -DevModeScript $SetDevMode
-    }
+    $BindDevMode = Join-Path $RepositoryPath "scripts/bind-development-mode/BindDevelopmentMode.ps1"
 
     # 1) Clean up old .lvlibp in the plugins folder
     Write-Information "Cleaning up old .lvlibp files in plugins folder..." -InformationAction Continue
@@ -570,6 +597,8 @@ try {
         # 2) Apply VIPC (32-bit)
         if ($vipmAvailable) {
             Write-Information "Applying VIPC (dependencies) for 32-bit..." -InformationAction Continue
+            # Ensure LocalHost.LibraryPaths does not exist before applying dependencies
+            Ensure-LibraryPathsAbsent -RepoPath $RepositoryPath -Bitness '32' -BindScript $BindDevMode
             Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
                 Package_LabVIEW_Version   = $lvVersion
                 SupportedBitness          = '32'
@@ -609,6 +638,8 @@ try {
     Show-BitnessBanner -Arch '64'
     if ($vipmAvailable) {
         Write-Information "Applying VIPC (dependencies) for 64-bit..." -InformationAction Continue
+        # Ensure LocalHost.LibraryPaths does not exist before applying dependencies
+        Ensure-LibraryPathsAbsent -RepoPath $RepositoryPath -Bitness '64' -BindScript $BindDevMode
         Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
             Package_LabVIEW_Version   = $lvVersion
             SupportedBitness          = '64'
