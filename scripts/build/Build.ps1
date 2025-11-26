@@ -46,7 +46,16 @@ param(
     [string]$AuthorName,
 
     # When true (default for non-CI), prompt the user to acknowledge any first-launch LabVIEW/VIPM dialog.
-    [switch]$PromptForVipmReady
+    [switch]$PromptForVipmReady,
+
+    # Determinism and host expectation knobs
+    [int]$BuildNumberOverride,
+    [switch]$SkipReleaseNotes,
+    [string]$ReleaseNotesRef,
+    [string]$ExpectedVipmVersion,
+    [string]$ExpectedLabVIEWPath32,
+    [string]$ExpectedLabVIEWPath64,
+    [switch]$AssertLabVIEWPaths
 )
 
 $ReleaseNotesFile = Join-Path $RepositoryPath 'Tooling\deployment\release_notes.md'
@@ -239,38 +248,148 @@ function Ensure-VipmReady {
     Write-Information ("vipm version: {0}" -f ($ver -join ' ')) -InformationAction Continue
 }
 
+function Assert-VipmVersion {
+    param(
+        [string]$Expected
+    )
+    if ([string]::IsNullOrWhiteSpace($Expected)) { return }
+    try {
+        $ver = & vipm --version 2>&1
+        if ($LASTEXITCODE -ne 0 -or -not $ver) {
+            throw "vipm --version failed with exit code $LASTEXITCODE"
+        }
+        $actual = ($ver -join ' ').Trim()
+        if ($actual -notlike "*$Expected*") {
+            throw ("vipm version mismatch. Expected substring '{0}', got '{1}'." -f $Expected, $actual)
+        }
+        Write-Information ("vipm version matches expected '{0}'." -f $Expected) -InformationAction Continue
+    }
+    catch {
+        throw ("vipm version check failed: {0}" -f $_.Exception.Message)
+    }
+}
+
+function Assert-LabVIEWPath {
+    param(
+        [Parameter(Mandatory)][string]$LvVersion,
+        [Parameter(Mandatory)][string]$Bitness,
+        [string]$PathOverride
+    )
+
+    $defaultPath = if ($Bitness -eq '32') {
+        "C:\Program Files (x86)\National Instruments\LabVIEW $LvVersion\LabVIEW.exe"
+    }
+    else {
+        "C:\Program Files\National Instruments\LabVIEW $LvVersion\LabVIEW.exe"
+    }
+
+    $candidate = if ($PathOverride) { $PathOverride } else { $defaultPath }
+    if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+        throw ("LabVIEW {0}-bit executable not found at '{1}'. Set ExpectedLabVIEWPath{0} or install LabVIEW {2} for {0}-bit." -f $Bitness, $candidate, $LvVersion)
+    }
+    Write-Information ("Validated LabVIEW {0}-bit at {1}" -f $Bitness, $candidate) -InformationAction Continue
+}
+
+function Assert-VipmAccess {
+    param(
+        [Parameter(Mandatory)][string]$LvMajor,
+        [Parameter(Mandatory)][string]$Bitness
+    )
+
+    $args = @("--labview-version", $LvMajor, "--labview-bitness", $Bitness, "list", "--installed")
+    Write-Information ("Sanity: vipm {0}" -f ($args -join ' ')) -InformationAction Continue
+    $result = & vipm @args 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $joined = ($result -join '; ')
+        throw ("vipm list --installed failed for LabVIEW {0} ({1}-bit). Output: {2}" -f $LvMajor, $Bitness, $joined)
+    }
+}
+
+function Ensure-LibraryPathsReady {
+    param(
+        [Parameter(Mandatory)][string]$RepoPath,
+        [Parameter(Mandatory)][string]$Bitness,
+        [Parameter(Mandatory)][string]$DevModeScript
+    )
+
+    $readPaths = Join-Path $RepoPath 'scripts/read-library-paths.ps1'
+    if (-not (Test-Path -LiteralPath $readPaths)) {
+        Write-Verbose "read-library-paths.ps1 not found at $readPaths; skipping library path preflight." -Verbose
+        return
+    }
+    if (-not (Test-Path -LiteralPath $DevModeScript)) {
+        Write-Verbose "Set_Development_Mode.ps1 not found at $DevModeScript; skipping auto dev-mode remediation." -Verbose
+        return
+    }
+
+    $testArgs = @{
+        RepositoryPath   = $RepoPath
+        SupportedBitness = $Bitness
+        FailOnMissing    = $true
+    }
+
+    $TestPaths = {
+        & $using:readPaths @using:testArgs
+        return $LASTEXITCODE -eq 0
+    }
+
+    $ok = $TestPaths.Invoke()
+    if ($ok) { return }
+
+    Write-Information ("LocalHost.LibraryPaths missing for {0}-bit; running Set_Development_Mode to populate INI tokens..." -f $Bitness) -InformationAction Continue
+    Invoke-ScriptSafe -ScriptPath $DevModeScript -ArgumentMap @{
+        RepositoryPath   = $RepoPath
+        SupportedBitness = $Bitness
+    } -DisplayName ("Set Development Mode ({0}-bit)" -f $Bitness)
+
+    $ok = $TestPaths.Invoke()
+    if (-not $ok) {
+        throw ("LocalHost.LibraryPaths still missing after Set_Development_Mode for {0}-bit. Check LabVIEW.ini and rerun." -f $Bitness)
+    }
+}
+
 function Write-ReleaseNotesFromGit {
     param(
         [string]$RepoPath,
-        [string]$DestinationPath
+        [string]$DestinationPath,
+        [string]$RefSpec
     )
+
+    if ($RefSpec) {
+        $range = $RefSpec
+        $header = "Release Notes (ref: $RefSpec)"
+    }
+    else {
+        $lastTag = $null
+        if (Get-Command git -ErrorAction SilentlyContinue) {
+            try {
+                $lastTag = git -C $RepoPath describe --tags --abbrev=0 2>$null
+            }
+            catch {
+                $lastTag = $null
+            }
+        }
+        if (-not $lastTag) {
+            $range  = 'HEAD'
+            $header = 'Release Notes'
+        }
+        else {
+            $range  = "$lastTag..HEAD"
+            $header = "Release Notes (since $lastTag)"
+        }
+    }
+
+    $log = if (Get-Command git -ErrorAction SilentlyContinue) {
+        git -C $RepoPath log $range --pretty='- %h %s' --no-merges
+    } else { $null }
+
+    if (-not $log) {
+        $log = "No commits found for $range."
+    }
 
     if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
         Write-Verbose "git not found; skipping release notes generation from git."
         return
-    }
-
-    try {
-        $lastTag = git -C $RepoPath describe --tags --abbrev=0 2>$null
-    }
-    catch {
-        $lastTag = $null
-    }
-
-    if (-not $lastTag) {
-        Write-Verbose "No tags found; using HEAD for release notes."
-        $range  = 'HEAD'
-        $header = 'Release Notes'
-    }
-    else {
-        Write-Verbose ("Last tag detected: {0}" -f $lastTag)
-        $range  = "$lastTag..HEAD"
-        $header = "Release Notes (since $lastTag)"
-    }
-
-    $log = git -C $RepoPath log $range --pretty='- %h %s' --no-merges
-    if (-not $log) {
-        $log = if ($lastTag) { 'No commits since last tag.' } else { 'No commits found.' }
     }
 
     $body = "$header`n`n$log`n"
@@ -330,27 +449,66 @@ try {
     }
 
     # Derive build number from total commits when available
-    try {
-        git -C $RepositoryPath fetch --unshallow 2>$null | Out-Null
+    $envBuildOverride = $env:BUILD_NUMBER_OVERRIDE
+    $buildOverrideValue = $BuildNumberOverride
+    if (-not $buildOverrideValue -and $envBuildOverride) {
+        [int]::TryParse($envBuildOverride, [ref]$buildOverrideValue) | Out-Null
     }
-    catch {
-        $global:LASTEXITCODE = 0
+    if ($buildOverrideValue) {
+        $Build = $buildOverrideValue
+        Write-Information ("Using provided build number override: {0}" -f $Build) -InformationAction Continue
     }
-    try {
-        $commitCount = git -C $RepositoryPath rev-list --count HEAD 2>$null
-        if ($LASTEXITCODE -eq 0 -and $commitCount) {
-            $Build = [int]$commitCount
-            Write-Information ("Using commit count for build number: {0}" -f $Build) -InformationAction Continue
+    else {
+        try {
+            git -C $RepositoryPath fetch --unshallow 2>$null | Out-Null
         }
-    }
-    catch {
-        Write-Verbose "Commit count unavailable; using provided build number." -Verbose
-        $global:LASTEXITCODE = 0
+        catch {
+            $global:LASTEXITCODE = 0
+        }
+        try {
+            $commitCount = git -C $RepositoryPath rev-list --count HEAD 2>$null
+            if ($LASTEXITCODE -eq 0 -and $commitCount) {
+                $Build = [int]$commitCount
+                Write-Information ("Using commit count for build number: {0}" -f $Build) -InformationAction Continue
+            }
+        }
+        catch {
+            Write-Verbose "Commit count unavailable; using provided build number." -Verbose
+            $global:LASTEXITCODE = 0
+        }
     }
 
     # Derive LabVIEW version from VIPB as the first consumer step
     $lvVersion = Get-LabVIEWVersionOrFail -RepoPath $RepositoryPath
     Write-Information ("Using LabVIEW version from VIPB: {0}" -f $lvVersion) -InformationAction Continue
+
+    # Host sanity checks
+    if ($vipmAvailable) {
+        $expectedVipm = if ($PSBoundParameters.ContainsKey('ExpectedVipmVersion')) { $ExpectedVipmVersion } else { $env:EXPECTED_VIPM_VERSION }
+        Assert-VipmVersion -Expected $expectedVipm
+    }
+    $lvPath32 = if ($PSBoundParameters.ContainsKey('ExpectedLabVIEWPath32')) { $ExpectedLabVIEWPath32 } else { $env:EXPECTED_LABVIEW_PATH_32 }
+    $lvPath64 = if ($PSBoundParameters.ContainsKey('ExpectedLabVIEWPath64')) { $ExpectedLabVIEWPath64 } else { $env:EXPECTED_LABVIEW_PATH_64 }
+    $shouldAssertPaths = $AssertLabVIEWPaths -or $lvPath32 -or $lvPath64
+    if ($shouldAssertPaths) {
+        if ($LvlibpBitness -eq 'both') {
+            Assert-LabVIEWPath -LvVersion $lvVersion -Bitness '32' -PathOverride $lvPath32
+            Assert-LabVIEWPath -LvVersion $lvVersion -Bitness '64' -PathOverride $lvPath64
+        }
+        elseif ($LvlibpBitness -eq '64') {
+            Assert-LabVIEWPath -LvVersion $lvVersion -Bitness '64' -PathOverride $lvPath64
+        }
+        else {
+            Assert-LabVIEWPath -LvVersion $lvVersion -Bitness '32' -PathOverride $lvPath32
+        }
+    }
+
+    if ($vipmAvailable) {
+        if ($LvlibpBitness -eq 'both') {
+            Assert-VipmAccess -LvMajor $lvVersion -Bitness '32'
+        }
+        Assert-VipmAccess -LvMajor $lvVersion -Bitness '64'
+    }
 
     $companyResolved = Resolve-CompanyName -CompanyName $CompanyName -RepoPath $RepositoryPath
     Write-Information ("Using Company Name: {0}" -f $companyResolved) -InformationAction Continue
@@ -367,6 +525,19 @@ try {
 
     # Ensure VIPC dependencies exist (mirrors CI prep). Only use the canonical VIPC under scripts/apply-vipc.
     $vipcPath = Get-CanonicalVipcPath -RepoPath $RepositoryPath
+    $SetDevMode = Join-Path $RepositoryPath "scripts/set-development-mode/Set_Development_Mode.ps1"
+
+    # Preflight dev-mode (LocalHost.LibraryPaths) before heavy work
+    if ($LvlibpBitness -eq 'both') {
+        Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '32' -DevModeScript $SetDevMode
+        Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '64' -DevModeScript $SetDevMode
+    }
+    elseif ($LvlibpBitness -eq '64') {
+        Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '64' -DevModeScript $SetDevMode
+    }
+    else {
+        Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '32' -DevModeScript $SetDevMode
+    }
 
     # 1) Clean up old .lvlibp in the plugins folder
     Write-Information "Cleaning up old .lvlibp files in plugins folder..." -InformationAction Continue
@@ -416,6 +587,9 @@ try {
             Package_LabVIEW_Version = $lvVersion
             SupportedBitness        = '32'
         } -TimeoutSec 180 -DisplayName "Close LabVIEW (pre-missing 32-bit)"
+
+        # Ensure LocalHost.LibraryPaths exist before missing-in-project
+        Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '32' -DevModeScript $SetDevMode
 
         # 2.1) Preflight missing items using existing missing-in-project helper (32-bit)
         Write-Information "Preflight: checking for missing project items via missing-in-project..." -InformationAction Continue
@@ -490,6 +664,9 @@ try {
         Package_LabVIEW_Version = $lvVersion
         SupportedBitness        = '64'
     } -TimeoutSec 180 -DisplayName "Close LabVIEW (pre-missing 64-bit)"
+
+    # Ensure LocalHost.LibraryPaths exist before missing-in-project
+    Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '64' -DevModeScript $SetDevMode
 
     # 6.1) Preflight missing items using existing missing-in-project helper (64-bit)
     Write-Information "Preflight: checking for missing project items via missing-in-project..." -InformationAction Continue
@@ -599,7 +776,13 @@ try {
     # We include "Package Version" with your script parameters.
     # The rest of the fields remain empty or default as needed.
     Write-Verbose "Generating release notes from git..."
-    Write-ReleaseNotesFromGit -RepoPath $RepositoryPath -DestinationPath $ReleaseNotesFile
+    if ($SkipReleaseNotes) {
+        Set-Content -Path $ReleaseNotesFile -Value "Release notes generation skipped (SkipReleaseNotes flag)." -Encoding utf8
+        Write-Information "Release notes generation skipped by flag." -InformationAction Continue
+    }
+    else {
+        Write-ReleaseNotesFromGit -RepoPath $RepositoryPath -DestinationPath $ReleaseNotesFile -RefSpec $ReleaseNotesRef
+    }
 
     $jsonObject = @{
         "Package Version" = @{

@@ -218,23 +218,32 @@ if ($LvlibpBitness -ne 'both') {
 $SourceRepoPath = (Resolve-Path -LiteralPath $SourceRepoPath).Path
 
 if (-not $WorktreePath) {
-    $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-    $suffix = $null
-    try {
-        $suffix = (git -C $SourceRepoPath rev-parse --short $Ref).Trim()
-    }
-    catch {
+    $baseRoot = if ($env:LVIE_WORKTREE_BASE) { $env:LVIE_WORKTREE_BASE } else { [System.IO.Path]::GetTempPath() }
+    $nameOverride = $env:LVIE_WORKTREE_NAME
+
+    if (-not $nameOverride) {
+        $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
         $suffix = $null
-    }
-    if (-not $suffix) {
-        $suffix = [Guid]::NewGuid().ToString('N').Substring(0, 8)
-        Write-Host "Commit hash unavailable for ref '$Ref'; using random suffix $suffix for worktree name."
+        try {
+            $suffix = (git -C $SourceRepoPath rev-parse --short $Ref).Trim()
+        }
+        catch {
+            $suffix = $null
+        }
+        if (-not $suffix) {
+            $suffix = [Guid]::NewGuid().ToString('N').Substring(0, 8)
+            Write-Host "Commit hash unavailable for ref '$Ref'; using random suffix $suffix for worktree name."
+        }
+        else {
+            Write-Host "Using ref '$Ref' short hash $suffix for worktree name."
+        }
+        $nameOverride = "lv-ie-worktree-$timestamp-$suffix"
     }
     else {
-        Write-Host "Using ref '$Ref' short hash $suffix for worktree name."
+        Write-Host ("Using LVIE_WORKTREE_NAME override: {0}" -f $nameOverride)
     }
-    $worktreeName = "lv-ie-worktree-$timestamp-$suffix"
-    $WorktreePath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath $worktreeName
+
+    $WorktreePath = Join-Path -Path $baseRoot -ChildPath $nameOverride
 }
 
 if (-not $OutputDirectory) {
