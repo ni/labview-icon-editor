@@ -507,7 +507,7 @@ function Apply-ForTarget {
 
     $installAttempted = $true
     if ($pre.Missing.Count -eq 0 -and $pre.Mismatch.Count -eq 0) {
-        Write-Information ("No missing/mismatched packages detected for {0}; skipping vipm install." -f $label) -InformationAction Continue
+        Write-Information ("No missing/mismatched packages detected for {0}; skipping vipm install (pre-check clean)." -f $label) -InformationAction Continue
         $installAttempted = $false
     }
     else {
@@ -533,8 +533,17 @@ function Apply-ForTarget {
     }
 
     if ($post.Missing.Count -gt 0 -or $post.Mismatch.Count -gt 0) {
-        Write-Error ("After vipm install, packages are still missing or mismatched for {0}. Missing: {1}; Mismatched: {2}" -f $label, ($post.Missing -join ', '), ($post.Mismatch -join '; '))
-        exit 1
+        if (-not $installAttempted) {
+            Write-Warning ("Post-check found missing/mismatched packages for {0} despite clean pre-check; forcing vipm install and re-verifying." -f $label)
+            Invoke-VipmInstall -LvMajor $LvMajor -Bitness $SupportedBitness -VipcPath $ResolvedVIPCPath -DisplayVersion $DisplayVersion
+            $installedAfter = Get-InstalledPackages -LvMajor $LvMajor -Bitness $SupportedBitness
+            $post = Write-PackageDiff -Expected $expectedPackages -Installed $installedAfter -Label "$label (post-retry)"
+        }
+
+        if ($post.Missing.Count -gt 0 -or $post.Mismatch.Count -gt 0) {
+            Write-Error ("After vipm install, packages are still missing or mismatched for {0}. Missing: {1}; Mismatched: {2}" -f $label, ($post.Missing -join ', '), ($post.Mismatch -join '; '))
+            exit 1
+        }
     }
 }
 
