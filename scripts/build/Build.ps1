@@ -447,7 +447,8 @@ function Ensure-LibraryPathsAbsent {
     $lines = Get-Content -LiteralPath $iniPath -ErrorAction SilentlyContinue
     if (-not $lines) { $lines = @() }
     $entries = @($lines | Where-Object { $_ -match '^LocalHost\.LibraryPaths\d*=' })
-    if ($entries.Count -eq 0) {
+    $entryCount = @($entries).Count
+    if ($entryCount -eq 0) {
         # None present; fine to proceed
         return
     }
@@ -455,7 +456,7 @@ function Ensure-LibraryPathsAbsent {
     # If existing entries already point at this repo, keep them (stage 1 handles binding)
     $repoFull = [System.IO.Path]::GetFullPath($RepoPath)
     $entryTargets = @()
-    foreach ($e in $entries) {
+    foreach ($e in @($entries)) {
         $split = $e -split '=', 2
         if ($split.Count -lt 2) { continue }
         try {
@@ -465,9 +466,10 @@ function Ensure-LibraryPathsAbsent {
             $entryTargets += $split[1].Trim()
         }
     }
-    $allMatchRepo = $entryTargets.Count -gt 0 -and ($entryTargets | Where-Object {
+    $entryTargetsArr = @($entryTargets)
+    $allMatchRepo = $entryTargetsArr.Count -gt 0 -and (@($entryTargetsArr | Where-Object {
         -not [string]::Equals($_, $repoFull, [System.StringComparison]::OrdinalIgnoreCase)
-    }).Count -eq 0
+    })).Count -eq 0
     if ($allMatchRepo) {
         Write-Verbose "LocalHost.LibraryPaths already targets $repoFull for $Bitness-bit; skipping unbind before dependency apply."
         return
@@ -483,7 +485,7 @@ function Ensure-LibraryPathsAbsent {
 
     $lines = Get-Content -LiteralPath $iniPath -ErrorAction SilentlyContinue
     $entries = @($lines | Where-Object { $_ -match '^LocalHost\.LibraryPaths\d*=' })
-    if ($entries.Count -gt 0) {
+    if (@($entries).Count -gt 0) {
         throw ("LocalHost.LibraryPaths still present for {0}-bit after unbind; cannot apply dependencies while token exists." -f $Bitness)
     }
 }
