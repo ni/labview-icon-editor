@@ -80,26 +80,39 @@ try {
         Write-Information "No .lvlibp files found to delete." -InformationAction Continue
     }
 
-    # Run Unit Tests (32-bit then 64-bit)
+    # Resolve LV version and run Unit Tests (32-bit then 64-bit) with explicit splatting
     $RunUnitTests = Join-Path $ActionsPath "run-unit-tests/RunUnitTests.ps1"
     $CloseLabVIEW = Join-Path $RepositoryPath "scripts/close-labview/Close_LabVIEW.ps1"
     Test-PathExistence $CloseLabVIEW "Close_LabVIEW script"
     $lvprojPath = Join-Path $RepositoryPath 'lv_icon_editor.lvproj'
-    Invoke-ScriptSafe -ScriptPath $RunUnitTests -ArgumentList @(
-        '-Package_LabVIEW_Version','2021',
-        '-SupportedBitness','32',
-        '-AbsoluteProjectPath', $lvprojPath
-    )
+    $getLvScript = Join-Path $RepositoryPath 'scripts/get-package-lv-version.ps1'
+    $lvVersion = '2021'
+    if (Test-Path -LiteralPath $getLvScript) {
+        try {
+            $lvVersion = & $getLvScript -RepositoryPath $RepositoryPath
+        }
+        catch {
+            Write-Warning "Failed to resolve LabVIEW version from VIPB; falling back to $lvVersion. $_"
+        }
+    }
 
-    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentList @('-Package_LabVIEW_Version','2021','-SupportedBitness','32')
+    foreach ($arch in @('32','64')) {
+        $runArgs = @{
+            Package_LabVIEW_Version = $lvVersion
+            SupportedBitness        = $arch
+            AbsoluteProjectPath     = $lvprojPath
+        }
+        Invoke-ScriptSafe -ScriptPath $RunUnitTests -ArgumentList @(
+            '-Package_LabVIEW_Version', $runArgs.Package_LabVIEW_Version,
+            '-SupportedBitness',        $runArgs.SupportedBitness,
+            '-AbsoluteProjectPath',     $runArgs.AbsoluteProjectPath
+        )
 
-    Invoke-ScriptSafe -ScriptPath $RunUnitTests -ArgumentList @(
-        '-Package_LabVIEW_Version','2021',
-        '-SupportedBitness','64',
-        '-AbsoluteProjectPath', $lvprojPath
-    )
-
-    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentList @('-Package_LabVIEW_Version','2021','-SupportedBitness','64')
+        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentList @(
+            '-Package_LabVIEW_Version', $lvVersion,
+            '-SupportedBitness',        $arch
+        )
+    }
 
     Write-Information "All scripts executed successfully!" -InformationAction Continue
 } catch {
