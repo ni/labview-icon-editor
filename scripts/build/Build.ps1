@@ -640,16 +640,24 @@ try {
     $RenameFile = Join-Path $ActionsPath "rename-file/Rename-file.ps1"
 
     # Guard: start from a clean slate so no bitness overlap can happen
-    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-        Package_LabVIEW_Version = $lvVersion
-        SupportedBitness        = '64'
-    } -TimeoutSec 60 -DisplayName "Close LabVIEW (pre-flight 64-bit)"
-    Write-Step -Step "0.1" -Message "Pre-flight close requested for 64-bit LabVIEW" -Color "Cyan"
-    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-        Package_LabVIEW_Version = $lvVersion
-        SupportedBitness        = '32'
-    } -TimeoutSec 60 -DisplayName "Close LabVIEW (pre-flight 32-bit)"
-    Write-Step -Step "0.2" -Message "Pre-flight close requested for 32-bit LabVIEW" -Color "Cyan"
+    $existingLv = @()
+    try { $existingLv = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' } } catch { $existingLv = @() }
+    if ($existingLv) {
+        Write-Step -Step "0.0" -Message ("LabVIEW detected before build (PIDs: {0}); issuing pre-flight closes" -f ($existingLv.Id -join ', ')) -Color "Yellow"
+        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+            Package_LabVIEW_Version = $lvVersion
+            SupportedBitness        = '64'
+        } -TimeoutSec 60 -DisplayName "Close LabVIEW (pre-flight 64-bit)"
+        Write-Step -Step "0.1" -Message "Pre-flight close requested for 64-bit LabVIEW" -Color "Cyan"
+        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+            Package_LabVIEW_Version = $lvVersion
+            SupportedBitness        = '32'
+        } -TimeoutSec 60 -DisplayName "Close LabVIEW (pre-flight 32-bit)"
+        Write-Step -Step "0.2" -Message "Pre-flight close requested for 32-bit LabVIEW" -Color "Cyan"
+    }
+    else {
+        Write-Step -Step "0.0" -Message "No LabVIEW processes detected pre-flight; skipping close commands" -Color "Green"
+    }
 
     # Verify no LabVIEW instances are running before proceeding; force-kill if needed
     try {
