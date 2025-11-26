@@ -84,10 +84,11 @@ try {
     $RunUnitTests = Join-Path $ActionsPath "run-unit-tests/RunUnitTests.ps1"
     $CloseLabVIEW = Join-Path $RepositoryPath "scripts/close-labview/Close_LabVIEW.ps1"
     Test-PathExistence $CloseLabVIEW "Close_LabVIEW script"
+    $lvprojPath = Join-Path $RepositoryPath 'lv_icon_editor.lvproj'
     Invoke-ScriptSafe -ScriptPath $RunUnitTests -ArgumentList @(
         '-Package_LabVIEW_Version','2021',
         '-SupportedBitness','32',
-        '-RepositoryPath', $RepositoryPath
+        '-AbsoluteProjectPath', $lvprojPath
     )
 
     Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentList @('-Package_LabVIEW_Version','2021','-SupportedBitness','32')
@@ -95,7 +96,7 @@ try {
     Invoke-ScriptSafe -ScriptPath $RunUnitTests -ArgumentList @(
         '-Package_LabVIEW_Version','2021',
         '-SupportedBitness','64',
-        '-RepositoryPath', $RepositoryPath
+        '-AbsoluteProjectPath', $lvprojPath
     )
 
     Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentList @('-Package_LabVIEW_Version','2021','-SupportedBitness','64')
