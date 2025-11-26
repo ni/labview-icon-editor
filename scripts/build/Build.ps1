@@ -297,23 +297,26 @@ function Assert-VipmAccess {
         [int]$TimeoutSec = 180
     )
 
-    $args = @("--labview-version", $LvMajor, "--labview-bitness", $Bitness, "list", "--installed")
+    $args = @("list", "--labview-version", $LvMajor, "--labview-bitness", $Bitness, "--installed")
     Write-Information ("Sanity: vipm {0}" -f ($args -join ' ')) -InformationAction Continue
 
+    # vipm expects the command first; use a background job with timeout
+    $vipmArgs = $args
+    $argList = ,$vipmArgs
     $job = Start-Job -ScriptBlock {
-        param($vipmArgs)
-        $out = & vipm @vipmArgs 2>&1
+        param($argsArray)
+        $out = & vipm @argsArray 2>&1
         [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $out }
-    } -ArgumentList @($args)
+    } -ArgumentList $argList
 
     if (-not (Wait-Job $job -Timeout $TimeoutSec)) {
         Stop-Job $job -Force | Out-Null
         throw ("vipm list --installed timed out after {0}s for LabVIEW {1} ({2}-bit)" -f $TimeoutSec, $LvMajor, $Bitness)
     }
 
-    $result = Receive-Job $job -Wait -AutoRemoveJob
-    $exitCode = $result.ExitCode
-    $output = $result.Output
+    $resultObj = Receive-Job $job -Wait -AutoRemoveJob
+    $exitCode = $resultObj.ExitCode
+    $output = $resultObj.Output
 
     if ($exitCode -ne 0) {
         $joined = ($output -join '; ')
@@ -591,6 +594,12 @@ try {
     $SetDevMode = Join-Path $RepositoryPath "scripts/set-development-mode/Set_Development_Mode.ps1"
     $BindDevMode = Join-Path $RepositoryPath "scripts/bind-development-mode/BindDevelopmentMode.ps1"
     $RunUnitTestsSingle = Join-Path $ActionsPath "run-unit-tests/RunUnitTests.ps1"
+    $ApplyVIPC = Join-Path $RepositoryPath "scripts/apply-vipc/ApplyVIPC.ps1"
+    $MissingHelper = Join-Path $RepositoryPath "scripts/missing-in-project/Invoke-MissingInProjectCLI.ps1"
+    $BuildLvlibp = Join-Path $ActionsPath "build-lvlibp/Build_lvlibp.ps1"
+    $CloseLabVIEW = Join-Path $RepositoryPath "scripts/close-labview/Close_LabVIEW.ps1"
+    $RevertDevMode = Join-Path $RepositoryPath "scripts/revert-development-mode/RevertDevelopmentMode.ps1"
+    $RenameFile = Join-Path $ActionsPath "rename-file/Rename-file.ps1"
 
     # Guard: start from a clean slate so no bitness overlap can happen
     Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
@@ -638,13 +647,6 @@ try {
         Write-Error "Error occurred while retrieving .lvlibp files: $($_.Exception.Message)"
         Write-Verbose "Stack Trace: $($_.Exception.StackTrace)"
     }
-
-    $ApplyVIPC = Join-Path $RepositoryPath "scripts/apply-vipc/ApplyVIPC.ps1"
-    $MissingHelper = Join-Path $RepositoryPath "scripts/missing-in-project/Invoke-MissingInProjectCLI.ps1"
-    $BuildLvlibp = Join-Path $ActionsPath "build-lvlibp/Build_lvlibp.ps1"
-    $CloseLabVIEW = Join-Path $RepositoryPath "scripts/close-labview/Close_LabVIEW.ps1"
-    $RevertDevMode = Join-Path $RepositoryPath "scripts/revert-development-mode/RevertDevelopmentMode.ps1"
-    $RenameFile = Join-Path $ActionsPath "rename-file/Rename-file.ps1"
 
     $do32 = ($LvlibpBitness -eq 'both' -or $LvlibpBitness -eq '32')
     $do64 = ($LvlibpBitness -eq 'both' -or $LvlibpBitness -eq '64')

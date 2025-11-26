@@ -291,6 +291,11 @@ try {
     if (Test-Path -LiteralPath $sourceBinder) {
         Copy-Item -LiteralPath $sourceBinder -Destination $bindDevScript -Force
     }
+    # Ensure the worktree uses the local Build.ps1 (pick up uncommitted fixes)
+    $sourceBuild = Join-Path -Path $SourceRepoPath -ChildPath 'scripts/build/Build.ps1'
+    if (Test-Path -LiteralPath $sourceBuild) {
+        Copy-Item -LiteralPath $sourceBuild -Destination $buildScript -Force
+    }
 
     foreach ($path in @($setDevScript, $revertDevScript, $bindDevScript, $buildScript, $analyzeVipScript)) {
         if (-not (Test-Path -LiteralPath $path)) {
