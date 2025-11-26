@@ -22,7 +22,8 @@ param(
     [switch]$AnalyzeVIP,
     [int]$GcliLockTimeoutSeconds = 300,
     [string]$GcliMutexName = 'Global\LabVIEW-IconEditor-gcli',
-    [string]$GcliLockFilePath
+    [string]$GcliLockFilePath,
+    [switch]$PrepDevMode  # optional: prepare dev mode before build; defaults to off to avoid repeated token cycles
 )
 
 $ErrorActionPreference = 'Stop'
@@ -261,7 +262,7 @@ Write-Host "Output dir:      $OutputDirectory"
 Write-Separator "Initialize worktree"
 
 $worktreeAdded = $false
-$devModeConfigured = @()
+    $devModeConfigured = @()
 $gcliMutex = $null
 $gcliLockPath = Resolve-GCliLockPath -OverridePath $GcliLockFilePath
 
@@ -304,18 +305,20 @@ try {
         Write-Host "Copied runner_dependencies.vipc to worktree root: $vipcTarget"
     }
 
-    $bitnessList = if ($LvlibpBitness -eq 'both') { @('32','64') } else { @($SupportedBitness) }
-    Write-Host ("Dev-mode preparation for bitness(es): {0}" -f ($bitnessList -join ', '))
-    foreach ($arch in ($bitnessList | Select-Object -Unique)) {
-        Write-Separator ("Dev-mode bind {0}-bit" -f $arch)
-        Write-BitnessBanner -Arch $arch
-        Write-Host "Setting development mode ($arch-bit)..."
-        & $setDevScript -RepositoryPath $WorktreePath -SupportedBitness $arch
-        $devModeConfigured += $arch
+    if ($PrepDevMode) {
+        $bitnessList = if ($LvlibpBitness -eq 'both') { @('32','64') } else { @($SupportedBitness) }
+        Write-Host ("Dev-mode preparation for bitness(es): {0}" -f ($bitnessList -join ', '))
+        foreach ($arch in ($bitnessList | Select-Object -Unique)) {
+            Write-Separator ("Dev-mode bind {0}-bit" -f $arch)
+            Write-BitnessBanner -Arch $arch
+            Write-Host "Setting development mode ($arch-bit)..."
+            & $setDevScript -RepositoryPath $WorktreePath -SupportedBitness $arch
+            $devModeConfigured += $arch
 
-        Write-Host "Binding dev mode (Force) to worktree ($arch-bit)..."
-        & $bindDevScript -RepositoryPath $WorktreePath -Mode bind -Bitness $arch -Force
-        Assert-DevModeBindOk -RepoPath $WorktreePath -Arch $arch
+            Write-Host "Binding dev mode (Force) to worktree ($arch-bit)..."
+            & $bindDevScript -RepositoryPath $WorktreePath -Mode bind -Bitness $arch -Force
+            Assert-DevModeBindOk -RepoPath $WorktreePath -Arch $arch
+        }
     }
 
     if (-not $Commit) {
