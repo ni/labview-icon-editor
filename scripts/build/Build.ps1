@@ -329,11 +329,11 @@ function Ensure-LibraryPathsReady {
     }
 
     $TestPaths = {
-        & $using:readPaths @using:testArgs
+        & $readPaths @testArgs
         return $LASTEXITCODE -eq 0
     }
 
-    $ok = $TestPaths.Invoke()
+    $ok = & $TestPaths
     if ($ok) { return }
 
     Write-Information ("LocalHost.LibraryPaths missing for {0}-bit; running Set_Development_Mode to populate INI tokens..." -f $Bitness) -InformationAction Continue
@@ -342,7 +342,7 @@ function Ensure-LibraryPathsReady {
         SupportedBitness = $Bitness
     } -DisplayName ("Set Development Mode ({0}-bit)" -f $Bitness)
 
-    $ok = $TestPaths.Invoke()
+    $ok = & $TestPaths
     if (-not $ok) {
         throw ("LocalHost.LibraryPaths still missing after Set_Development_Mode for {0}-bit. Check LabVIEW.ini and rerun." -f $Bitness)
     }
