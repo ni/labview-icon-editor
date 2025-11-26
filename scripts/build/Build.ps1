@@ -374,15 +374,28 @@ function Ensure-LibraryPathsAbsent {
     } -DisplayName ("Dev mode unbind ({0}-bit)" -f $Bitness)
 
     # Verify absence: read-library-paths with FailOnMissing exits 2 when none are present; treat 2 as success here.
-    & $readPaths -RepositoryPath $RepoPath -SupportedBitness $Bitness -FailOnMissing
-    if ($LASTEXITCODE -eq 2) {
+    $origErr = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $readPaths -RepositoryPath $RepoPath -SupportedBitness $Bitness -FailOnMissing
+        $code = $LASTEXITCODE
+    }
+    catch {
+        $code = $LASTEXITCODE
+        if (-not $code) { $code = 1 }
+    }
+    finally {
+        $ErrorActionPreference = $origErr
+    }
+
+    if ($code -eq 2) {
         return
     }
-    elseif ($LASTEXITCODE -eq 0) {
+    elseif ($code -eq 0) {
         throw ("LocalHost.LibraryPaths still present for {0}-bit after unbind; cannot apply dependencies while token exists." -f $Bitness)
     }
     else {
-        throw ("LocalHost.LibraryPaths verification failed for {0}-bit (exit {1})." -f $Bitness, $LASTEXITCODE)
+        throw ("LocalHost.LibraryPaths verification failed for {0}-bit (exit {1})." -f $Bitness, $code)
     }
 }
 
