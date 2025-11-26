@@ -20,6 +20,7 @@ param(
     [string]$OutputDirectory,
     [switch]$KeepWorktree,
     [switch]$AnalyzeVIP,
+    [switch]$RunBothBitnessSeparately,
     [int]$GcliLockTimeoutSeconds = 300,
     [string]$GcliMutexName = 'Global\LabVIEW-IconEditor-gcli',
     [string]$GcliLockFilePath,
@@ -325,7 +326,7 @@ try {
         $Commit = (git -C $WorktreePath rev-parse --short HEAD).Trim()
     }
 
-    $buildArgs = @{
+    $baseBuildArgs = @{
         RepositoryPath       = $WorktreePath
         Major                = $Major
         Minor                = $Minor
@@ -333,14 +334,28 @@ try {
         Build                = $Build
         Commit               = $Commit
         LabVIEWMinorRevision = $LabVIEWMinorRevision
-        LvlibpBitness        = $LvlibpBitness
         CompanyName          = $CompanyName
         AuthorName           = $AuthorName
     }
 
-    Write-Host "Running full build (bitness: $LvlibpBitness)..."
-    Write-Separator "Build start"
-    & $buildScript @buildArgs
+    if ($RunBothBitnessSeparately -and $LvlibpBitness -eq 'both') {
+        foreach ($lane in @('64','32')) {
+            $laneArgs = $baseBuildArgs.Clone()
+            $laneArgs.LvlibpBitness = $lane
+            $laneArgs.SupportedBitness = $lane
+            Write-Host "Running isolated build lane for bitness: $lane"
+            Write-Separator ("Build start ({0}-bit lane)" -f $lane)
+            & $buildScript @laneArgs
+        }
+    }
+    else {
+        $buildArgs = $baseBuildArgs.Clone()
+        $buildArgs.LvlibpBitness = $LvlibpBitness
+        $buildArgs.SupportedBitness = $SupportedBitness
+        Write-Host "Running full build (bitness: $LvlibpBitness)..."
+        Write-Separator "Build start"
+        & $buildScript @buildArgs
+    }
 
     if (Test-Path -LiteralPath $OutputDirectory) {
         Remove-Item -LiteralPath $OutputDirectory -Recurse -Force
