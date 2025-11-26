@@ -34,11 +34,23 @@ function Test-PathExistence {
 function Invoke-ScriptSafe {
     param(
         [string]$ScriptPath,
-        [string[]]$ArgumentList
+        [string[]]$ArgumentList,
+        [hashtable]$ArgumentMap
     )
-    Write-Information ("Executing: {0} {1}" -f $ScriptPath, ($ArgumentList -join ' ')) -InformationAction Continue
+
+    $render = if ($ArgumentMap) {
+        ($ArgumentMap.GetEnumerator() | ForEach-Object { "-$($_.Key) $($_.Value)" }) -join ' '
+    } else {
+        ($ArgumentList -join ' ')
+    }
+    Write-Information ("Executing: {0} {1}" -f $ScriptPath, $render) -InformationAction Continue
     try {
-        & $ScriptPath @ArgumentList
+        if ($ArgumentMap) {
+            & $ScriptPath @ArgumentMap
+        }
+        else {
+            & $ScriptPath @ArgumentList
+        }
         $code = $LASTEXITCODE
         if ($code -ne 0) {
             Write-Error ("Error occurred while executing: {0} with exit code {1}" -f $ScriptPath, $code)
@@ -46,7 +58,7 @@ function Invoke-ScriptSafe {
         }
     } catch {
         $code = if ($LASTEXITCODE) { $LASTEXITCODE } else { 1 }
-        Write-Error "Error occurred while executing: $ScriptPath with arguments: $($ArgumentList -join ' '). Exiting. Details: $($_.Exception.Message)"
+        Write-Error ("Error occurred while executing: {0}. Exiting. Details: {1}" -f $ScriptPath, $_.Exception.Message)
         exit $code
     }
 }
@@ -102,16 +114,12 @@ try {
             SupportedBitness        = $arch
             AbsoluteProjectPath     = $lvprojPath
         }
-        Invoke-ScriptSafe -ScriptPath $RunUnitTests -ArgumentList @(
-            '-Package_LabVIEW_Version', $runArgs.Package_LabVIEW_Version,
-            '-SupportedBitness',        $runArgs.SupportedBitness,
-            '-AbsoluteProjectPath',     $runArgs.AbsoluteProjectPath
-        )
+        Invoke-ScriptSafe -ScriptPath $RunUnitTests -ArgumentMap $runArgs
 
-        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentList @(
-            '-Package_LabVIEW_Version', $lvVersion,
-            '-SupportedBitness',        $arch
-        )
+        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+            Package_LabVIEW_Version = $lvVersion
+            SupportedBitness        = $arch
+        }
     }
 
     Write-Information "All scripts executed successfully!" -InformationAction Continue
