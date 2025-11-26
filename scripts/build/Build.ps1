@@ -605,6 +605,59 @@ try {
     $do32 = ($LvlibpBitness -eq 'both' -or $LvlibpBitness -eq '32')
     $do64 = ($LvlibpBitness -eq 'both' -or $LvlibpBitness -eq '64')
 
+    if ($do64) {
+        # 6) Apply VIPC (64-bit)
+        Show-BitnessBanner -Arch '64'
+        if ($vipmAvailable) {
+            Write-Information "Applying VIPC (dependencies) for 64-bit..." -InformationAction Continue
+            # Ensure LocalHost.LibraryPaths does not exist before applying dependencies
+            Ensure-LibraryPathsAbsent -RepoPath $RepositoryPath -Bitness '64' -BindScript $BindDevMode -LvVersion $lvVersion
+            Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
+                Package_LabVIEW_Version   = $lvVersion
+                SupportedBitness          = '64'
+                RepositoryPath            = $RepositoryPath
+                VIPCPath                  = $vipcPath
+            } -TimeoutSec 600 -DisplayName "Apply VIPC (64-bit)"
+
+            # Rebind dev mode for this repo so downstream checks (missing-in-project/tests) have tokens set
+            Invoke-ScriptSafe -ScriptPath $BindDevMode -ArgumentMap @{
+                RepositoryPath = $RepositoryPath
+                Mode           = 'bind'
+                Bitness        = '64'
+                Force          = $true
+            } -DisplayName "Dev mode bind (64-bit)"
+        }
+        else {
+            Write-Warning "Skipping VIPC application for 64-bit because vipm CLI is not available."
+        }
+
+        # Ensure LocalHost.LibraryPaths exist before missing-in-project
+        Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '64' -DevModeScript $SetDevMode
+
+        # 6.1) Preflight missing items using existing missing-in-project helper (64-bit)
+        Write-Information "Preflight: checking for missing project items via missing-in-project..." -InformationAction Continue
+        Invoke-ScriptSafe -ScriptPath $MissingHelper -ArgumentMap @{
+            LVVersion   = $lvVersion
+            Arch        = '64'
+            ProjectFile = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
+        } -TimeoutSec 300 -DisplayName "Missing in project (64-bit)"
+
+        # 6.2) Run unit tests (64-bit) immediately after missing-in-project
+        Write-Information "Running unit tests (64-bit)..." -InformationAction Continue
+        Invoke-ScriptSafe -ScriptPath $RunUnitTestsSingle -ArgumentMap @{
+            Package_LabVIEW_Version = $lvVersion
+            SupportedBitness        = '64'
+            AbsoluteProjectPath     = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
+        } -TimeoutSec 1200 -DisplayName "Unit tests (64-bit)"
+    }
+
+    if ($do64 -and $do32) {
+        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+            Package_LabVIEW_Version = $lvVersion
+            SupportedBitness        = '64'
+        } -TimeoutSec 180 -DisplayName "Close LabVIEW (switch to 32-bit)"
+    }
+
     if ($do32) {
         Show-BitnessBanner -Arch '32'
         # 2) Apply VIPC (32-bit)
@@ -652,59 +705,6 @@ try {
     }
     else {
         Write-Information "Skipping 32-bit dependency/apply/build steps (LvlibpBitness=$LvlibpBitness)." -InformationAction Continue
-    }
-
-    if ($do32 -and $do64) {
-        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-            Package_LabVIEW_Version = $lvVersion
-            SupportedBitness        = '32'
-        } -TimeoutSec 180 -DisplayName "Close LabVIEW (switch to 64-bit)"
-    }
-
-    if ($do64) {
-        # 6) Apply VIPC (64-bit)
-        Show-BitnessBanner -Arch '64'
-        if ($vipmAvailable) {
-            Write-Information "Applying VIPC (dependencies) for 64-bit..." -InformationAction Continue
-            # Ensure LocalHost.LibraryPaths does not exist before applying dependencies
-            Ensure-LibraryPathsAbsent -RepoPath $RepositoryPath -Bitness '64' -BindScript $BindDevMode -LvVersion $lvVersion
-            Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
-                Package_LabVIEW_Version   = $lvVersion
-                SupportedBitness          = '64'
-                RepositoryPath            = $RepositoryPath
-                VIPCPath                  = $vipcPath
-            } -TimeoutSec 600 -DisplayName "Apply VIPC (64-bit)"
-
-            # Rebind dev mode for this repo so downstream checks (missing-in-project/tests) have tokens set
-            Invoke-ScriptSafe -ScriptPath $BindDevMode -ArgumentMap @{
-                RepositoryPath = $RepositoryPath
-                Mode           = 'bind'
-                Bitness        = '64'
-                Force          = $true
-            } -DisplayName "Dev mode bind (64-bit)"
-        }
-        else {
-            Write-Warning "Skipping VIPC application for 64-bit because vipm CLI is not available."
-        }
-
-        # Ensure LocalHost.LibraryPaths exist before missing-in-project
-        Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '64' -DevModeScript $SetDevMode
-
-        # 6.1) Preflight missing items using existing missing-in-project helper (64-bit)
-        Write-Information "Preflight: checking for missing project items via missing-in-project..." -InformationAction Continue
-        Invoke-ScriptSafe -ScriptPath $MissingHelper -ArgumentMap @{
-            LVVersion   = $lvVersion
-            Arch        = '64'
-            ProjectFile = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
-        } -TimeoutSec 300 -DisplayName "Missing in project (64-bit)"
-
-        # 6.2) Run unit tests (64-bit) immediately after missing-in-project
-        Write-Information "Running unit tests (64-bit)..." -InformationAction Continue
-        Invoke-ScriptSafe -ScriptPath $RunUnitTestsSingle -ArgumentMap @{
-            Package_LabVIEW_Version = $lvVersion
-            SupportedBitness        = '64'
-            AbsoluteProjectPath     = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
-        } -TimeoutSec 1200 -DisplayName "Unit tests (64-bit)"
     }
 
     # 7) Build LV Library (64-bit) first
