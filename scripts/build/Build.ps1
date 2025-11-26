@@ -784,6 +784,41 @@ try {
             SupportedBitness        = '64'
             AbsoluteProjectPath     = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
         } -TimeoutSec 1200 -DisplayName "Unit tests (64-bit)"
+
+        # Build 64-bit PPL immediately after 64-bit tests
+        Write-Host ('-' * 80)
+        Write-Host "-- 64-bit build (post-tests)"
+        Write-Host ('-' * 80)
+        Write-Step -Step "2.3" -Message "Build PPL (64-bit)" -Color "Green"
+        $argsLvlibp64 = @{
+            Package_LabVIEW_Version   = $lvVersion
+            SupportedBitness          = '64'
+            RepositoryPath            = $RepositoryPath
+            Major                     = $Major
+            Minor                     = $Minor
+            Patch                     = $Patch
+            Build                     = $Build
+            Commit                    = $Commit
+        }
+        try {
+            Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp64 -TimeoutSec 900 -DisplayName "Build icon PPL (64-bit)"
+        }
+        catch {
+            Write-Step -Step "2.31" -Message "Build icon PPL (64-bit) failed; retrying after forcing LabVIEW close..." -Color "Yellow"
+            Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+                Package_LabVIEW_Version = $lvVersion
+                SupportedBitness        = '64'
+            } -TimeoutSec 60 -DisplayName "Close LabVIEW (retry 64-bit build)"
+            Start-Sleep -Seconds 3
+            Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp64 -TimeoutSec 900 -DisplayName "Build icon PPL (64-bit retry)"
+        }
+
+        Write-Verbose "Renaming .lvlibp file to lv_icon_x64.lvlibp..."
+        Invoke-ScriptSafe -ScriptPath $RenameFile -ArgumentMap @{
+            CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
+            NewFilename     = 'lv_icon_x64.lvlibp'
+        }
+        Show-BitnessDone -Arch '64'
     }
 
     if ($do32) {
