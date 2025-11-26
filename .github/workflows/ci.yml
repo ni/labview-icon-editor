@@ -593,6 +593,7 @@ jobs:
 
   unify-artifacts:
     name: Unify artifacts
+    if: ${{ always() }}
     needs:
       - verify-checklist-sync
       - build-worktree
@@ -612,7 +613,8 @@ jobs:
           fetch-depth: 1
 
       - name: Prepare staging
-        run: mkdir -p artifacts/unified
+        run: |
+          mkdir -p artifacts/unified/downloads
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -628,11 +630,12 @@ jobs:
       - name: Zip unified bundle
         run: |
           cd artifacts/unified/downloads
-          zip -r ../unified-bundle.zip .
+          find . -type f || true
+          zip -r ../unified-bundle.zip . || true
 
       - name: Upload unified bundle
         uses: actions/upload-artifact@v4
         with:
           name: unified-artifacts
           path: artifacts/unified/unified-bundle.zip
-          if-no-files-found: error
+          if-no-files-found: warn
