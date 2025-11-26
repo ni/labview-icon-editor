@@ -349,6 +349,13 @@ function Assert-VipmAccess {
         [int]$TimeoutSec = [int]::TryParse($env:VIPM_LIST_TIMEOUT_SEC, [ref]0) ? [int]$env:VIPM_LIST_TIMEOUT_SEC : 180
     )
 
+    if ($env:VIPM_SANITY_SKIP -eq '1') {
+        Write-Warning ("Skipping vipm list sanity for LabVIEW {0} ({1}-bit) because VIPM_SANITY_SKIP=1 is set." -f $LvMajor, $Bitness)
+        return
+    }
+
+    $skipOnTimeout = ($env:VIPM_SANITY_MODE -eq 'warn')
+
     $args = @("list", "--labview-version", $LvMajor, "--labview-bitness", $Bitness, "--installed")
     Write-Information ("Sanity: vipm {0}" -f ($args -join ' ')) -InformationAction Continue
 
@@ -365,6 +372,10 @@ function Assert-VipmAccess {
         # Stop-Job in PowerShell Core lacks -Force; stop then remove any stray job
         Stop-Job $job -ErrorAction SilentlyContinue | Out-Null
         Remove-Job $job -Force -ErrorAction SilentlyContinue | Out-Null
+        if ($skipOnTimeout) {
+            Write-Warning ("vipm list --installed timed out after {0}s for LabVIEW {1} ({2}-bit); VIPM_SANITY_MODE=warn, continuing." -f $TimeoutSec, $LvMajor, $Bitness)
+            return
+        }
         throw ("vipm list --installed timed out after {0}s for LabVIEW {1} ({2}-bit)" -f $TimeoutSec, $LvMajor, $Bitness)
     }
 
@@ -374,6 +385,10 @@ function Assert-VipmAccess {
 
     if ($exitCode -ne 0) {
         $joined = ($output -join '; ')
+        if ($skipOnTimeout) {
+            Write-Warning ("vipm list --installed failed for LabVIEW {0} ({1}-bit) with exit {2}; VIPM_SANITY_MODE=warn, continuing. Output: {3}" -f $LvMajor, $Bitness, $exitCode, $joined)
+            return
+        }
         throw ("vipm list --installed failed for LabVIEW {0} ({1}-bit). Output: {2}" -f $LvMajor, $Bitness, $joined)
     }
 }
