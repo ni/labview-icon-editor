@@ -9,6 +9,11 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# Allow callers to bypass enforcement (useful in CI when skipping VIPM)
+if (($env:SKIP_LIBRARYPATH_ASSERT -eq '1') -or ($env:SKIP_VIPM -eq '1')) {
+    $FailOnMissing = $false
+}
+
 # Resolve repository root (default: git top-level)
 if (-not $RepositoryPath) {
     $repo = (git -C $PSScriptRoot rev-parse --show-toplevel 2>$null)
