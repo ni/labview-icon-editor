@@ -68,6 +68,38 @@ function Wait-LabVIEWExit {
         throw ("LabVIEW {0}-bit still running after wait ({1}); PIDs: {2}" -f $Bitness, $Context, ($procs.Id -join ', '))
     }
 }
+
+# Helpers for LabVIEW process handling (bitness-aware)
+function Get-LabVIEWProcesses {
+    param([string]$Bitness, [string]$LvVersion)
+    $pattern = if ($Bitness -eq '32') { '*Program Files (x86)*' } else { '*Program Files*' }
+    try {
+        return Get-Process -ErrorAction SilentlyContinue | Where-Object {
+            $_.ProcessName -like 'LabVIEW*' -and $_.Path -like "*LabVIEW $LvVersion\\LabVIEW.exe" -and $_.MainModule.FileName -like $pattern
+        }
+    }
+    catch { return @() }
+}
+
+function Wait-LabVIEWExit {
+    param(
+        [string]$Bitness,
+        [string]$LvVersion,
+        [int]$TimeoutSec = 120,
+        [string]$Context = "pre-test"
+    )
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    $procs = Get-LabVIEWProcesses -Bitness $Bitness -LvVersion $LvVersion
+    if (-not $procs) { return }
+    Write-Information ("Waiting for LabVIEW {0}-bit to exit ({1}; PIDs: {2})" -f $Bitness, $Context, ($procs.Id -join ', ')) -InformationAction Continue
+    do {
+        Start-Sleep -Seconds 2
+        $procs = Get-LabVIEWProcesses -Bitness $Bitness -LvVersion $LvVersion
+    } while ($procs -and (Get-Date) -lt $deadline)
+    if ($procs) {
+        throw ("LabVIEW {0}-bit still running after wait ({1}); PIDs: {2}" -f $Bitness, $Context, ($procs.Id -join ', '))
+    }
+}
 # --------------------------------------------------------------------
 # 1) Locate exactly one .lvproj file (use provided path when available, else search upward)
 # --------------------------------------------------------------------

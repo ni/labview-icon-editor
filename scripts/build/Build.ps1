@@ -793,7 +793,7 @@ try {
                 Package_LabVIEW_Version = $lvVersion
                 SupportedBitness        = '64'
             } -TimeoutSec 120 -DisplayName "Close LabVIEW (pre-32-bit entry)"
-            Write-Step -Step "6.9" -Message "Ensuring 64-bit LabVIEW is closed before 32-bit phase" -Color "Yellow"
+            Write-Step -Step "3.9" -Message "Ensuring 64-bit LabVIEW is closed before 32-bit phase" -Color "Yellow"
             try {
                 $lv64pre = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' -and $_.Path -like '*LabVIEW 2021\\LabVIEW.exe' -and $_.MainModule.FileName -like '*Program Files*' }
             }
@@ -801,10 +801,14 @@ try {
                 $lv64pre = @()
             }
             if ($lv64pre) {
-                Write-Step -Step "6.10" -Message ("64-bit LabVIEW still running before 32-bit phase; terminating IDs {0}" -f ($lv64pre.Id -join ', ')) -Color "Yellow"
-                $lv64pre | Stop-Process -Force -ErrorAction SilentlyContinue
-                Start-Sleep -Seconds 2
-                $lv64pre = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' -and $_.Path -like '*LabVIEW 2021\\LabVIEW.exe' -and $_.MainModule.FileName -like '*Program Files*' }
+                Write-Step -Step "3.91" -Message ("64-bit LabVIEW still running before 32-bit phase; waiting for exit (PIDs: {0})" -f ($lv64pre.Id -join ', ')) -Color "Yellow"
+                $deadline = (Get-Date).AddSeconds(120)
+                do {
+                    Start-Sleep -Seconds 2
+                    try {
+                        $lv64pre = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' -and $_.Path -like '*LabVIEW 2021\\LabVIEW.exe' -and $_.MainModule.FileName -like '*Program Files*' }
+                    } catch { $lv64pre = @() }
+                } while ($lv64pre -and (Get-Date) -lt $deadline)
                 if ($lv64pre) {
                     throw "64-bit LabVIEW process(es) remain before 32-bit phase: $($lv64pre.Id -join ', ')."
                 }
@@ -857,6 +861,30 @@ try {
             SupportedBitness        = '32'
             AbsoluteProjectPath     = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
         } -TimeoutSec 1200 -DisplayName "Unit tests (32-bit)"
+
+        # Build 32-bit PPL immediately after tests
+        Write-Host ('-' * 80)
+        Write-Host "-- 32-bit build (post-tests)"
+        Write-Host ('-' * 80)
+        Write-Step -Step "3.3" -Message "Build PPL (32-bit)" -Color "Green"
+        $argsLvlibp32 = @{
+            Package_LabVIEW_Version   = $lvVersion
+            SupportedBitness          = '32'
+            RepositoryPath            = $RepositoryPath
+            Major                     = $Major
+            Minor                     = $Minor
+            Patch                     = $Patch
+            Build                     = $Build
+            Commit                    = $Commit
+        }
+        Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp32 -TimeoutSec 900 -DisplayName "Build icon PPL (32-bit)"
+
+        Write-Verbose "Renaming .lvlibp file to lv_icon_x86.lvlibp..."
+        Invoke-ScriptSafe -ScriptPath $RenameFile -ArgumentMap @{
+            CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
+            NewFilename     = 'lv_icon_x86.lvlibp'
+        }
+        Show-BitnessDone -Arch '32'
     }
     else {
         Write-Information "Skipping 32-bit dependency/apply/build steps (LvlibpBitness=$LvlibpBitness)." -InformationAction Continue
@@ -896,54 +924,6 @@ try {
             NewFilename     = 'lv_icon_x64.lvlibp'
         }
         Show-BitnessDone -Arch '64'
-    }
-
-    # 8) Build LV Library (32-bit)
-    if ($do32) {
-        if ($do64) {
-            Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-                Package_LabVIEW_Version = $lvVersion
-                SupportedBitness        = '64'
-            } -TimeoutSec 180 -DisplayName "Close LabVIEW (switch to 32-bit)"
-
-            # Verify 64-bit LabVIEW is gone before starting 32-bit; force-kill if needed
-            try {
-                $lv64 = Get-Process | Where-Object { $_.ProcessName -like 'LabVIEW*' -and $_.Path -like '*LabVIEW 2021\\LabVIEW.exe' -and $_.MainModule.FileName -like '*Program Files*' }
-            }
-            catch {
-                $lv64 = @()
-            }
-            if ($lv64) {
-                Write-Warning "Detected 64-bit LabVIEW still running after close; terminating to avoid cross-bitness overlap."
-                $lv64 | Stop-Process -Force -ErrorAction SilentlyContinue
-            }
-            # Double-check after kill attempt
-            $lv64 = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' -and $_.Path -like '*LabVIEW 2021\\LabVIEW.exe' -and $_.MainModule.FileName -like '*Program Files*' }
-            if ($lv64) {
-                throw "64-bit LabVIEW process(es) remain after forced close: $($lv64.Id -join ', '). Aborting to prevent bitness overlap."
-            }
-        }
-        Show-BitnessBanner -Arch '32'
-        Write-Verbose "Building LV library (32-bit)..."
-        Write-Step -Step "4.1" -Message "Build PPL (32-bit)" -Color "Green"
-        $argsLvlibp32 = @{
-            Package_LabVIEW_Version   = $lvVersion
-            SupportedBitness          = '32'
-            RepositoryPath            = $RepositoryPath
-            Major                     = $Major
-            Minor                     = $Minor
-            Patch                     = $Patch
-            Build                     = $Build
-            Commit                    = $Commit
-        }
-        Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp32 -TimeoutSec 900 -DisplayName "Build icon PPL (32-bit)"
-
-        Write-Verbose "Renaming .lvlibp file to lv_icon_x86.lvlibp..."
-        Invoke-ScriptSafe -ScriptPath $RenameFile -ArgumentMap @{
-            CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
-            NewFilename     = 'lv_icon_x86.lvlibp'
-        }
-        Show-BitnessDone -Arch '32'
     }
 
     # 9) Final staging of neutral and suffixed PPLs after both builds
