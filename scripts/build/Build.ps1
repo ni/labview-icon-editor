@@ -721,19 +721,63 @@ try {
     }
 
     Write-Stage -Label "Stage 2: Close LabVIEW (clean slate)" -StageKey 'close'
+    function Stop-LabVIEWForBitness {
+        param([string]$Bitness,[string]$LvVer)
+        try {
+            $procs = Get-Process -ErrorAction SilentlyContinue | Where-Object {
+                $path = $null
+                try { $path = $_.MainModule.FileName } catch { $path = $null }
+                if (-not $path) { return $false }
+                $_.ProcessName -like 'LabVIEW*' -and
+                $path -like ("*LabVIEW {0}\\LabVIEW.exe*" -f $LvVer) -and
+                $path -like (if ($Bitness -eq '64') { '*Program Files*' } else { '*Program Files (x86)*' })
+            }
+            if ($procs) { $procs | Stop-Process -Force -ErrorAction SilentlyContinue }
+        }
+        catch { }
+    }
+
     if ($do64) {
         Write-Step -Step "2.0" -Message "Close LabVIEW (64-bit)" -Color "Magenta"
-        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-            Package_LabVIEW_Version = $lvVersion
-            SupportedBitness        = '64'
-        } -TimeoutSec 10 -DisplayName "Close LabVIEW (stage 2 - 64-bit)"
+        $lv64Closed = $false
+        try {
+            Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+                Package_LabVIEW_Version = $lvVersion
+                SupportedBitness        = '64'
+            } -TimeoutSec 45 -DisplayName "Close LabVIEW (stage 2 - 64-bit)"
+            $lv64Closed = $true
+        }
+        catch {
+            Write-Warning "Close LabVIEW (64-bit) timed out; force-terminating LabVIEW 2021 (64-bit) processes."
+            Stop-LabVIEWForBitness -Bitness '64' -LvVer $lvVersion
+        }
+        if ($lv64Closed) {
+            Write-Step -Step "2.1" -Message "LabVIEW 2021 (64-bit) closed or not running" -Color "Green" -Symbol "✓"
+        }
+        else {
+            Write-Step -Step "2.1" -Message "LabVIEW 2021 (64-bit) force-terminated after timeout" -Color "Yellow" -Symbol "!"
+        }
     }
     if ($do32) {
-        Write-Step -Step "2.1" -Message "Close LabVIEW (32-bit)" -Color "Magenta"
-        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-            Package_LabVIEW_Version = $lvVersion
-            SupportedBitness        = '32'
-        } -TimeoutSec 10 -DisplayName "Close LabVIEW (stage 2 - 32-bit)"
+        Write-Step -Step "2.2" -Message "Close LabVIEW (32-bit)" -Color "Magenta"
+        $lv32Closed = $false
+        try {
+            Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+                Package_LabVIEW_Version = $lvVersion
+                SupportedBitness        = '32'
+            } -TimeoutSec 45 -DisplayName "Close LabVIEW (stage 2 - 32-bit)"
+            $lv32Closed = $true
+        }
+        catch {
+            Write-Warning "Close LabVIEW (32-bit) timed out; force-terminating LabVIEW 2021 (32-bit) processes."
+            Stop-LabVIEWForBitness -Bitness '32' -LvVer $lvVersion
+        }
+        if ($lv32Closed) {
+            Write-Step -Step "2.3" -Message "LabVIEW 2021 (32-bit) closed or not running" -Color "Green" -Symbol "✓"
+        }
+        else {
+            Write-Step -Step "2.3" -Message "LabVIEW 2021 (32-bit) force-terminated after timeout" -Color "Yellow" -Symbol "!"
+        }
     }
 
     # Verify no LabVIEW instances are running before proceeding; force-kill if needed
@@ -744,7 +788,7 @@ try {
         $preProcs = @()
     }
     if ($preProcs) {
-        Write-Step -Step "2.2" -Message ("LabVIEW still running after close stage; waiting for exit (PIDs: {0})" -f ($preProcs.Id -join ', ')) -Color "Yellow"
+        Write-Step -Step "2.4" -Message ("LabVIEW still running after close stage; waiting for exit (PIDs: {0})" -f ($preProcs.Id -join ', ')) -Color "Yellow"
         $deadline = (Get-Date).AddSeconds(2)
         do {
             Start-Sleep -Seconds 2
@@ -756,11 +800,11 @@ try {
             throw ("LabVIEW process(es) remain after close stage: {0}. Please close LabVIEW and retry." -f ($preProcs.Id -join ', '))
         }
         else {
-            Write-Step -Step "2.3" -Message "LabVIEW not running after close stage" -Color "Green" -Symbol "✓"
+            Write-Step -Step "2.5" -Message "LabVIEW not running after close stage" -Color "Green" -Symbol "✓"
         }
     }
     else {
-        Write-Step -Step "2.3" -Message "LabVIEW not running after close stage" -Color "Green" -Symbol "✓"
+        Write-Step -Step "2.4" -Message "LabVIEW not running after close stage" -Color "Green" -Symbol "✓"
     }
 
     Write-Stage -Label "Stage 3: Build & package" -StageKey 'build'
