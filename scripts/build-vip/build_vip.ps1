@@ -314,6 +314,27 @@ if (-not $SkipPPLCheck) {
     Write-Host "Skipping staged PPL presence check (SkipPPLCheck enabled)." -ForegroundColor Yellow
 }
 
+# 3c) Preflight custom-action VIs referenced by VIPB (fail fast if missing)
+$vipbDir = Split-Path -Parent $ResolvedVIPBPath
+$customActionsDir = Join-Path $vipbDir 'custom-actions'
+$expectedCustomActions = @(
+    'VIP_Pre-Install Custom Action.vi',
+    'VIP_Post-Install Custom Action.vi',
+    'VIP_Pre-Uninstall Custom Action.vi',
+    'VIP_Post-Uninstall Custom Action.vi'
+)
+$missingActions = @()
+foreach ($ca in $expectedCustomActions) {
+    $candidate = Join-Path $customActionsDir $ca
+    if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+        $missingActions += $candidate
+    }
+}
+if ($missingActions.Count -gt 0) {
+    Write-Error ("VIPM custom-action VI(s) missing: {0}. Ensure they exist relative to the VIPB at {1}" -f ($missingActions -join '; '), $customActionsDir)
+    exit 1
+}
+
 # 3) Resolve LabVIEW version from VIPB to ensure determinism, overriding any inbound value
 $versionScriptCandidates = @(
     (Join-Path $ResolvedRepositoryPath 'scripts/get-package-lv-version.ps1'),
