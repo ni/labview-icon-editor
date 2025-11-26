@@ -502,6 +502,9 @@ function Get-LabVIEWVersionFromVipb {
 }
 
 try {
+    Write-Host ('-' * 80)
+    Write-Host "-- Build start"
+    Write-Host ('-' * 80)
     Write-Verbose "Script: Build.ps1 starting."
     Write-Verbose "Parameters received:"
     Write-Verbose " - RepositoryPath: $RepositoryPath"
@@ -667,12 +670,16 @@ try {
         $preProcs = @()
     }
     if ($preProcs) {
-        Write-Step -Step "0.3" -Message ("LabVIEW running before build start; terminating {0}" -f ($preProcs.Id -join ', ')) -Color "Yellow"
-        $preProcs | Stop-Process -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 2
-        $preProcs = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' }
+        Write-Step -Step "0.3" -Message ("LabVIEW running before build start; waiting for exit (PIDs: {0})" -f ($preProcs.Id -join ', ')) -Color "Yellow"
+        $deadline = (Get-Date).AddSeconds(120)
+        do {
+            Start-Sleep -Seconds 2
+            try {
+                $preProcs = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' }
+            } catch { $preProcs = @() }
+        } while ($preProcs -and (Get-Date) -lt $deadline)
         if ($preProcs) {
-            throw ("LabVIEW process(es) remain after forced termination pre-flight: {0}" -f ($preProcs.Id -join ', '))
+            throw ("LabVIEW process(es) remain before build start: {0}. Please close LabVIEW and retry." -f ($preProcs.Id -join ', '))
         }
     }
 
@@ -701,6 +708,32 @@ try {
     $do64 = ($LvlibpBitness -eq 'both' -or $LvlibpBitness -eq '64')
 
     if ($do64) {
+        if ($do32) {
+            # Ensure 32-bit LabVIEW is down before running 64-bit build phase
+            Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+                Package_LabVIEW_Version = $lvVersion
+                SupportedBitness        = '32'
+            } -TimeoutSec 120 -DisplayName "Close LabVIEW (pre-64-bit build)"
+            Write-Step -Step "3.8" -Message "Ensuring 32-bit LabVIEW is closed before 64-bit build phase" -Color "Yellow"
+            try {
+                $lv32pre = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' -and $_.Path -like '*LabVIEW 2021\\LabVIEW.exe' -and $_.MainModule.FileName -like '*Program Files (x86)*' }
+            }
+            catch {
+                $lv32pre = @()
+            }
+            if ($lv32pre) {
+                Write-Step -Step "3.81" -Message ("32-bit LabVIEW still running before 64-bit build phase; terminating IDs {0}" -f ($lv32pre.Id -join ', ')) -Color "Yellow"
+                $lv32pre | Stop-Process -Force -ErrorAction SilentlyContinue
+                Start-Sleep -Seconds 2
+                $lv32pre = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' -and $_.Path -like '*LabVIEW 2021\\LabVIEW.exe' -and $_.MainModule.FileName -like '*Program Files (x86)*' }
+                if ($lv32pre) {
+                    throw "32-bit LabVIEW process(es) remain before 64-bit build phase: $($lv32pre.Id -join ', ')."
+                }
+            }
+        }
+        Write-Host ('-' * 80)
+        Write-Host "-- 64-bit phase"
+        Write-Host ('-' * 80)
         # 6) Apply VIPC (64-bit)
         Show-BitnessBanner -Arch '64'
         Write-Step -Step "2.0" -Message "Apply VIPC (64-bit)" -Color "Cyan"
