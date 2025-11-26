@@ -601,31 +601,34 @@ try {
     $CloseLabVIEW = Join-Path $RepositoryPath "scripts/close-labview/Close_LabVIEW.ps1"
     $RenameFile = Join-Path $ActionsPath "rename-file/Rename-file.ps1"
 
-    if ($LvlibpBitness -eq 'both') {
+    $do32 = ($LvlibpBitness -eq 'both' -or $LvlibpBitness -eq '32')
+    $do64 = ($LvlibpBitness -eq 'both' -or $LvlibpBitness -eq '64')
+
+    if ($do32) {
         Show-BitnessBanner -Arch '32'
         # 2) Apply VIPC (32-bit)
         if ($vipmAvailable) {
-        Write-Information "Applying VIPC (dependencies) for 32-bit..." -InformationAction Continue
-        # Ensure LocalHost.LibraryPaths does not exist before applying dependencies
-        Ensure-LibraryPathsAbsent -RepoPath $RepositoryPath -Bitness '32' -BindScript $BindDevMode -LvVersion $lvVersion
-        Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
-            Package_LabVIEW_Version   = $lvVersion
-            SupportedBitness          = '32'
-            RepositoryPath            = $RepositoryPath
-            VIPCPath                  = $vipcPath
-        } -TimeoutSec 600 -DisplayName "Apply VIPC (32-bit)"
+            Write-Information "Applying VIPC (dependencies) for 32-bit..." -InformationAction Continue
+            # Ensure LocalHost.LibraryPaths does not exist before applying dependencies
+            Ensure-LibraryPathsAbsent -RepoPath $RepositoryPath -Bitness '32' -BindScript $BindDevMode -LvVersion $lvVersion
+            Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
+                Package_LabVIEW_Version   = $lvVersion
+                SupportedBitness          = '32'
+                RepositoryPath            = $RepositoryPath
+                VIPCPath                  = $vipcPath
+            } -TimeoutSec 600 -DisplayName "Apply VIPC (32-bit)"
 
-        # Rebind dev mode for this repo so downstream checks (missing-in-project/tests) have tokens set
-        Invoke-ScriptSafe -ScriptPath $BindDevMode -ArgumentMap @{
-            RepositoryPath = $RepositoryPath
-            Mode           = 'bind'
-            Bitness        = '32'
-            Force          = $true
-        } -DisplayName "Dev mode bind (32-bit)"
-    }
-    else {
-        Write-Warning "Skipping VIPC application for 32-bit because vipm CLI is not available."
-    }
+            # Rebind dev mode for this repo so downstream checks (missing-in-project/tests) have tokens set
+            Invoke-ScriptSafe -ScriptPath $BindDevMode -ArgumentMap @{
+                RepositoryPath = $RepositoryPath
+                Mode           = 'bind'
+                Bitness        = '32'
+                Force          = $true
+            } -DisplayName "Dev mode bind (32-bit)"
+        }
+        else {
+            Write-Warning "Skipping VIPC application for 32-bit because vipm CLI is not available."
+        }
 
         # Ensure LabVIEW is closed before running missing-in-project to avoid UI prompts/locks
         Write-Verbose "Pre-missing-in-project: closing LabVIEW (32-bit) to ensure a clean session..."
@@ -645,7 +648,20 @@ try {
             ProjectFile = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
         } -TimeoutSec 300 -DisplayName "Missing in project (32-bit)"
 
-        # Defer 32-bit build until after unit tests
+        # 2.2) Run unit tests for 32-bit immediately after missing-in-project
+        Write-Information "Running unit tests (32-bit)..." -InformationAction Continue
+        Invoke-ScriptSafe -ScriptPath $RunUnitTestsSingle -ArgumentMap @{
+            Package_LabVIEW_Version = $lvVersion
+            SupportedBitness        = '32'
+            AbsoluteProjectPath     = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
+        } -TimeoutSec 1200 -DisplayName "Unit tests (32-bit)"
+
+        # Close LabVIEW (32-bit) post-tests
+        Write-Verbose "Closing LabVIEW (32-bit) after tests..." -Verbose
+        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+            Package_LabVIEW_Version = $lvVersion
+            SupportedBitness        = '32'
+        } -TimeoutSec 180 -DisplayName "Close LabVIEW (post-tests 32-bit)"
     }
     else {
         Write-Information "Skipping 32-bit dependency/apply/build steps (LvlibpBitness=$LvlibpBitness)." -InformationAction Continue
@@ -694,23 +710,49 @@ try {
         ProjectFile = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
     } -TimeoutSec 300 -DisplayName "Missing in project (64-bit)"
 
-    # 6.2) Run unit tests after missing-in-project (before any lvlibp builds)
-    Write-Information "Running unit tests..." -InformationAction Continue
-    $RunUnitTests = Join-Path $ActionsPath "unit-tests/unit_tests.ps1"
-    Invoke-ScriptSafe -ScriptPath $RunUnitTests -ArgumentMap @{
-        RepositoryPath = $RepositoryPath
-    } -TimeoutSec 1800 -DisplayName "Unit tests"
+    # 6.2) Run unit tests (64-bit) immediately after missing-in-project
+    Write-Information "Running unit tests (64-bit)..." -InformationAction Continue
+    Invoke-ScriptSafe -ScriptPath $RunUnitTestsSingle -ArgumentMap @{
+        Package_LabVIEW_Version = $lvVersion
+        SupportedBitness        = '64'
+        AbsoluteProjectPath     = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
+    } -TimeoutSec 1200 -DisplayName "Unit tests (64-bit)"
 
-    # 6.1) Ensure LabVIEW 64-bit is closed before building to avoid loaded NIIconEditor collisions
+    # 7) Build LV Library (64-bit) first
     Write-Verbose "Pre-build: closing LabVIEW (64-bit) to ensure a clean session..."
     Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
         Package_LabVIEW_Version = $lvVersion
         SupportedBitness        = '64'
     } -TimeoutSec 180 -DisplayName "Close LabVIEW (pre-build 64-bit)"
+    Show-BitnessBanner -Arch '64'
+    Write-Verbose "Building LV library (64-bit)..."
+    $argsLvlibp64 = @{
+        Package_LabVIEW_Version   = $lvVersion
+        SupportedBitness          = '64'
+        RepositoryPath            = $RepositoryPath
+        Major                     = $Major
+        Minor                     = $Minor
+        Patch                     = $Patch
+        Build                     = $Build
+        Commit                    = $Commit
+    }
+    Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp64 -TimeoutSec 900 -DisplayName "Build icon PPL (64-bit)"
+
+    Write-Verbose "Closing LabVIEW (64-bit)..."
+    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+        Package_LabVIEW_Version = $lvVersion
+        SupportedBitness        = '64'
+    } -TimeoutSec 180 -DisplayName "Close LabVIEW (post-build 64-bit)"
+
+    Write-Verbose "Renaming .lvlibp file to lv_icon_x64.lvlibp..."
+    Invoke-ScriptSafe -ScriptPath $RenameFile -ArgumentMap @{
+        CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
+        NewFilename     = 'lv_icon_x64.lvlibp'
+    }
     Show-BitnessDone -Arch '64'
 
+    # 8) Build LV Library (32-bit) after 64-bit succeeds
     if ($LvlibpBitness -eq 'both') {
-        # 3) Build LV Library (32-bit) after tests
         Show-BitnessBanner -Arch '32'
         Write-Verbose "Building LV library (32-bit)..."
         $argsLvlibp32 = @{
@@ -725,111 +767,76 @@ try {
         }
         Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp32 -TimeoutSec 900 -DisplayName "Build icon PPL (32-bit)"
 
-        # 4) Close LabVIEW (32-bit)
         Write-Verbose "Closing LabVIEW (32-bit)..."
         Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
             Package_LabVIEW_Version = $lvVersion
             SupportedBitness        = '32'
         } -TimeoutSec 180 -DisplayName "Close LabVIEW (32-bit)"
 
-        # 5) Rename .lvlibp -> lv_icon_x86.lvlibp
         Write-Verbose "Renaming .lvlibp file to lv_icon_x86.lvlibp..."
         Invoke-ScriptSafe -ScriptPath $RenameFile -ArgumentMap @{
             CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
             NewFilename     = 'lv_icon_x86.lvlibp'
         }
         Show-BitnessDone -Arch '32'
-
-        # 5.1) Restore project to avoid cross-bitness saves before 64-bit build
-        if (Get-Command git -ErrorAction SilentlyContinue) {
-            Write-Verbose "Restoring lv_icon_editor.lvproj from source control before 64-bit build..."
-            $restore = & git -C $RepositoryPath checkout -- "lv_icon_editor.lvproj" 2>&1
-            if ($LASTEXITCODE -ne 0) {
-                Write-Warning "Failed to restore lv_icon_editor.lvproj: $($restore -join '; ')"
-            }
-        } else {
-            Write-Warning "git not found; skipping lvproj restore before 64-bit build."
-        }
     }
 
-    # 7) Build LV Library (64-bit)
-    Write-Verbose "Building LV library (64-bit)..."
-    $argsLvlibp64 = @{
-        Package_LabVIEW_Version   = $lvVersion
-        SupportedBitness          = '64'
-        RepositoryPath            = $RepositoryPath
-        Major                     = $Major
-        Minor                     = $Minor
-        Patch                     = $Patch
-        Build                     = $Build
-        Commit                    = $Commit
+    # 9) Final staging of neutral and suffixed PPLs after both builds
+    try {
+        $pplDir    = Join-Path $RepositoryPath 'resource\plugins'
+        $pplX64    = Join-Path $pplDir 'lv_icon_x64.lvlibp'
+        $pplX86    = Join-Path $pplDir 'lv_icon_x86.lvlibp'
+        $neutral   = Join-Path $pplDir 'lv_icon.lvlibp'
+        $win64Copy = Join-Path $pplDir 'lv_icon.lvlibp.windows_x64'
+        $win86Copy = Join-Path $pplDir 'lv_icon.lvlibp.windows_x86'
+
+        if (Test-Path -LiteralPath $pplX64) {
+            Copy-Item -LiteralPath $pplX64 -Destination $neutral -Force
+            Copy-Item -LiteralPath $pplX64 -Destination $win64Copy -Force
+            Write-Information "Staged neutral and windows_x64 PPLs at $pplDir" -InformationAction Continue
+        }
+        else {
+            Write-Warning "x64 PPL not found at $pplX64; skipping neutral/windows_x64 staging."
+        }
+
+        if (Test-Path -LiteralPath $pplX86) {
+            Copy-Item -LiteralPath $pplX86 -Destination $win86Copy -Force
+            Write-Information "Staged windows_x86 PPL at $pplDir" -InformationAction Continue
+        }
+        else {
+            Write-Warning "x86 PPL not found at $pplX86; skipping windows_x86 staging."
+        }
     }
-    Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp64 -TimeoutSec 900 -DisplayName "Build icon PPL (64-bit)"
+    catch {
+        Write-Warning "Failed to stage neutral/suffixed PPL copies: $($_.Exception.Message)"
+    }
 
-    # 7.1) Close LabVIEW (64-bit)
-    Write-Verbose "Closing LabVIEW (64-bit)..."
-    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-        Package_LabVIEW_Version = $lvVersion
-        SupportedBitness        = '64'
-    } -TimeoutSec 180 -DisplayName "Close LabVIEW (post-build 64-bit)"
-
-    # Rename .lvlibp -> lv_icon_x64.lvlibp
-        Write-Verbose "Renaming .lvlibp file to lv_icon_x64.lvlibp..."
-        Invoke-ScriptSafe -ScriptPath $RenameFile -ArgumentMap @{
-            CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
-            NewFilename     = 'lv_icon_x64.lvlibp'
+    # Remove temporary x86/x64-specific PPL files to keep the plugins folder idempotent for downstream checks
+    try {
+        $tempCopies = @()
+        if (Test-Path -LiteralPath (Join-Path $RepositoryPath 'resource\plugins\lv_icon_x64.lvlibp')) {
+            $tempCopies += (Join-Path $RepositoryPath 'resource\plugins\lv_icon_x64.lvlibp')
         }
-
-        # 7.2) Stage neutral and suffixed PPLs for post-install selector
-        try {
-            $pplDir    = Join-Path $RepositoryPath 'resource\plugins'
-            $pplX64    = Join-Path $pplDir 'lv_icon_x64.lvlibp'
-            $pplX86    = Join-Path $pplDir 'lv_icon_x86.lvlibp'
-            $neutral   = Join-Path $pplDir 'lv_icon.lvlibp'
-            $win64Copy = Join-Path $pplDir 'lv_icon.lvlibp.windows_x64'
-            $win86Copy = Join-Path $pplDir 'lv_icon.lvlibp.windows_x86'
-
-            if (Test-Path -LiteralPath $pplX64) {
-                Copy-Item -LiteralPath $pplX64 -Destination $neutral -Force
-                Copy-Item -LiteralPath $pplX64 -Destination $win64Copy -Force
-                Write-Information "Staged neutral and windows_x64 PPLs at $pplDir" -InformationAction Continue
-            }
-            else {
-                Write-Warning "x64 PPL not found at $pplX64; skipping neutral/windows_x64 staging."
-            }
-
-            if (Test-Path -LiteralPath $pplX86) {
-                Copy-Item -LiteralPath $pplX86 -Destination $win86Copy -Force
-                Write-Information "Staged windows_x86 PPL at $pplDir" -InformationAction Continue
-            }
-            else {
-                Write-Warning "x86 PPL not found at $pplX86; skipping windows_x86 staging."
-            }
+        if (Test-Path -LiteralPath (Join-Path $RepositoryPath 'resource\plugins\lv_icon_x86.lvlibp')) {
+            $tempCopies += (Join-Path $RepositoryPath 'resource\plugins\lv_icon_x86.lvlibp')
         }
-        catch {
-            Write-Warning "Failed to stage neutral/suffixed PPL copies: $($_.Exception.Message)"
+        $removed = @()
+        foreach ($tmp in $tempCopies) {
+            Remove-Item -LiteralPath $tmp -Force -ErrorAction Stop
+            $removed += (Split-Path $tmp -Leaf)
         }
+        if ($removed.Count -gt 0) {
+            $removedList = [string]::Join(', ', $removed)
+            Write-Information ("Cleaned temporary PPL copies: {0}" -f $removedList) -InformationAction Continue
+        }
+    }
+    catch {
+        Write-Warning ("Failed to remove temporary PPL copies: {0}" -f $_.Exception.Message)
+    }
 
-        # Remove temporary x86/x64-specific PPL files to keep the plugins folder idempotent for downstream checks
-        try {
-            $tempCopies = @($pplX64, $pplX86) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
-            $removed = @()
-            foreach ($tmp in $tempCopies) {
-                Remove-Item -LiteralPath $tmp -Force -ErrorAction Stop
-                $removed += (Split-Path $tmp -Leaf)
-            }
-            if ($removed.Count -gt 0) {
-                $removedList = [string]::Join(', ', $removed)
-                Write-Information ("Cleaned temporary PPL copies: {0}" -f $removedList) -InformationAction Continue
-            }
-        }
-        catch {
-            Write-Warning ("Failed to remove temporary PPL copies: {0}" -f $_.Exception.Message)
-        }
-
-        # Idempotency guard: validate expected PPL set and log hashes
-        $expectedPpls = @('lv_icon.lvlibp','lv_icon.lvlibp.windows_x64','lv_icon.lvlibp.windows_x86')
-        Assert-ExpectedPPLSet -PluginsDir $pplDir -ExpectedNames $expectedPpls
+    # Idempotency guard: validate expected PPL set and log hashes
+    $expectedPpls = @('lv_icon.lvlibp','lv_icon.lvlibp.windows_x64','lv_icon.lvlibp.windows_x86')
+    Assert-ExpectedPPLSet -PluginsDir (Join-Path $RepositoryPath 'resource\plugins') -ExpectedNames $expectedPpls
 
     # -------------------------------------------------------------------------
     # 8) Construct the JSON for "Company Name" & "Author Name", plus version
