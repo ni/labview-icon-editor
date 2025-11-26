@@ -80,7 +80,7 @@ try {
         Write-Information "No .lvlibp files found to delete." -InformationAction Continue
     }
 
-    # Run Unit Tests
+    # Run Unit Tests (32-bit then 64-bit)
     $RunUnitTests = Join-Path $ActionsPath "run-unit-tests/RunUnitTests.ps1"
     $CloseLabVIEW = Join-Path $RepositoryPath "scripts/close-labview/Close_LabVIEW.ps1"
     Test-PathExistence $CloseLabVIEW "Close_LabVIEW script"
@@ -90,17 +90,14 @@ try {
         '-RepositoryPath', $RepositoryPath
     )
 
-    # Close LabVIEW
     Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentList @('-Package_LabVIEW_Version','2021','-SupportedBitness','32')
 
-    # Run Unit Tests
     Invoke-ScriptSafe -ScriptPath $RunUnitTests -ArgumentList @(
         '-Package_LabVIEW_Version','2021',
         '-SupportedBitness','64',
         '-RepositoryPath', $RepositoryPath
     )
 
-        # Close LabVIEW
     Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentList @('-Package_LabVIEW_Version','2021','-SupportedBitness','64')
 
     Write-Information "All scripts executed successfully!" -InformationAction Continue
