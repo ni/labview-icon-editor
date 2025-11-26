@@ -726,14 +726,14 @@ try {
         Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
             Package_LabVIEW_Version = $lvVersion
             SupportedBitness        = '64'
-        } -TimeoutSec 2 -DisplayName "Close LabVIEW (stage 2 - 64-bit)"
+        } -TimeoutSec 10 -DisplayName "Close LabVIEW (stage 2 - 64-bit)"
     }
     if ($do32) {
         Write-Step -Step "2.1" -Message "Close LabVIEW (32-bit)" -Color "Magenta"
         Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
             Package_LabVIEW_Version = $lvVersion
             SupportedBitness        = '32'
-        } -TimeoutSec 2 -DisplayName "Close LabVIEW (stage 2 - 32-bit)"
+        } -TimeoutSec 10 -DisplayName "Close LabVIEW (stage 2 - 32-bit)"
     }
 
     # Verify no LabVIEW instances are running before proceeding; force-kill if needed
