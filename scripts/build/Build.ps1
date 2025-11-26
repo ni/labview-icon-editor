@@ -864,16 +864,15 @@ try {
         Verbose                  = $true
     }
 
-    # Guard: ensure 32-bit LabVIEW is not running before invoking VIPM packaging
-    Write-Verbose "Pre-VIPM: closing LabVIEW (32-bit) to avoid cross-bitness interference..."
-    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-        Package_LabVIEW_Version = $lvVersion
-        SupportedBitness        = '32'
-    } -TimeoutSec 120 -DisplayName "Close LabVIEW (pre-VIPM 32-bit)"
-
+    # Guard: ensure required PPLs exist before invoking VIPM packaging; only build VIP when both bitnesses were built
     $vipOutputDir = Join-Path $RepositoryPath 'builds\VI Package'
-    # 11) Build VI Package (64-bit) 2023
-    if ($vipmAvailable) {
+    if ($vipmAvailable -and $do64 -and $do32) {
+        Write-Verbose "Pre-VIPM: closing LabVIEW (32-bit) to avoid cross-bitness interference..."
+        Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+            Package_LabVIEW_Version = $lvVersion
+            SupportedBitness        = '32'
+        } -TimeoutSec 120 -DisplayName "Close LabVIEW (pre-VIPM 32-bit)"
+
         Write-Verbose "Building VI Package (64-bit)..."
         $BuildVip = Join-Path $ActionsPath "build-vip/build_vip.ps1"
         Invoke-ScriptSafe -ScriptPath $BuildVip -ArgumentMap @{
@@ -893,7 +892,7 @@ try {
         }
     }
     else {
-        Write-Warning "Skipping VI Package build because vipm CLI is not available."
+        Write-Warning "Skipping VI Package build because prerequisites are missing (vipm available: $vipmAvailable; built 64-bit: $do64; built 32-bit: $do32)."
         try {
             if (-not (Test-Path -LiteralPath $vipOutputDir)) {
                 New-Item -ItemType Directory -Path $vipOutputDir -Force | Out-Null
@@ -902,8 +901,8 @@ try {
                 Get-ChildItem -LiteralPath $vipOutputDir -Force -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
             }
             $placeholderVip = Join-Path $vipOutputDir 'vipm-skipped-placeholder.vip'
-            "VIPM build skipped because vipm CLI is not available on this runner." | Set-Content -LiteralPath $placeholderVip -Encoding UTF8
-            Write-Information ("Created placeholder VIP artifact at {0} (vipm missing)" -f $placeholderVip) -InformationAction Continue
+            "VIPM build skipped because prerequisites were not met (requires both x64/x86 PPLs)." | Set-Content -LiteralPath $placeholderVip -Encoding UTF8
+            Write-Information ("Created placeholder VIP artifact at {0} (prereqs missing)" -f $placeholderVip) -InformationAction Continue
         }
         catch {
             Write-Warning ("Failed to create placeholder VIP output: {0}" -f $_.Exception.Message)
