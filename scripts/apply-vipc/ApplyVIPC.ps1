@@ -297,6 +297,55 @@ function Invoke-VipmCommand {
     }
 }
 
+function Is-TransientVipmFailure {
+    param(
+        [Parameter(Mandatory)][int]$ExitCode,
+        [string[]]$OutputLines
+    )
+
+    if ($ExitCode -eq 0) { return $false }
+    $joined = if ($OutputLines) { $OutputLines -join ' ' } else { '' }
+
+    if ($joined -match 'VIPM command .*timed out' -or $joined -match 'timed out after') {
+        return $true
+    }
+    if ($joined -match 'library_list' -and $joined -match 'timed out') {
+        return $true
+    }
+
+    return $false
+}
+
+function Invoke-VipmCommandWithRetry {
+    param(
+        [Parameter(Mandatory)][string[]]$Arguments,
+        [Parameter(Mandatory)][string]$Description,
+        [int]$TimeoutSeconds = 600,
+        [int]$MaxAttempts = 3,
+        [int]$RetryDelaySeconds = 15
+    )
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        $attemptLabel = if ($MaxAttempts -gt 1) { " (attempt $attempt/$MaxAttempts)" } else { "" }
+        $result = Invoke-VipmCommand -Arguments $Arguments -Description ("{0}{1}" -f $Description, $attemptLabel) -TimeoutSeconds $TimeoutSeconds
+        if ($result.ExitCode -eq 0) {
+            return $result
+        }
+
+        $joined = ($result.Output -join ' ')
+        $transient = Is-TransientVipmFailure -ExitCode $result.ExitCode -OutputLines $result.Output
+        if ($attempt -lt $MaxAttempts -and $transient) {
+            Write-Warning ("vipm {0} failed (attempt {1}/{2}); retrying in {3}s. Output: {4}" -f $Description, $attempt, $MaxAttempts, $RetryDelaySeconds, $joined)
+            if ($RetryDelaySeconds -gt 0) {
+                Start-Sleep -Seconds $RetryDelaySeconds
+            }
+            continue
+        }
+
+        return $result
+    }
+}
+
 function New-PackageDiff {
     param(
         [Parameter(Mandatory)]$Expected,
@@ -344,7 +393,7 @@ function Parse-VipmListOutput {
 
 function Get-VipcPackages {
     param([Parameter(Mandatory)][string]$VipcPath)
-    $result = Invoke-VipmCommand -Arguments @("list", $VipcPath) -Description "list expected packages from VIPC '$VipcPath'"
+    $result = Invoke-VipmCommandWithRetry -Arguments @("list", $VipcPath) -Description "list expected packages from VIPC '$VipcPath'" -MaxAttempts 3 -RetryDelaySeconds 15
     if ($result.ExitCode -ne 0) {
         $joined = ($result.Output -join '; ')
         Write-Error "vipm list failed for VIPC '$VipcPath' (exit $($result.ExitCode)). Output: $joined"
@@ -364,7 +413,7 @@ function Get-InstalledPackages {
         "list",
         "--installed"
     )
-    $result = Invoke-VipmCommand -Arguments $args -Description "list installed packages for LabVIEW $LvMajor ($Bitness-bit)"
+    $result = Invoke-VipmCommandWithRetry -Arguments $args -Description "list installed packages for LabVIEW $LvMajor ($Bitness-bit)" -MaxAttempts 3 -RetryDelaySeconds 20
     if ($result.ExitCode -ne 0) {
         $joined = ($result.Output -join '; ')
         Write-Error ("vipm --labview-version {0} --labview-bitness {1} list --installed failed (exit {2}). Output: {3}" -f $LvMajor, $Bitness, $result.ExitCode, $joined)
@@ -418,7 +467,7 @@ function Invoke-VipmInstall {
         $VipcPath
     )
 
-    $result = Invoke-VipmCommand -Arguments $vipmArgs -Description "install VIPC for $DisplayVersion"
+    $result = Invoke-VipmCommandWithRetry -Arguments $vipmArgs -Description "install VIPC for $DisplayVersion" -MaxAttempts 2 -RetryDelaySeconds 20
     if ($result.ExitCode -ne 0) {
         $joined = ($result.Output -join '; ')
         Write-Error "vipm install failed for LabVIEW $DisplayVersion (exit $($result.ExitCode)). Output: $joined"
