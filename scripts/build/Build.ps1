@@ -365,7 +365,30 @@ function Ensure-LibraryPathsAbsent {
         return
     }
 
-    # First attempt to unbind/clear tokens for the target bitness
+    # Check current state: read-library-paths with FailOnMissing exits 2 when none are present; 0 means entries exist.
+    $origErr = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $readPaths -RepositoryPath $RepoPath -SupportedBitness $Bitness -FailOnMissing
+        $code = $LASTEXITCODE
+    }
+    catch {
+        $code = $LASTEXITCODE
+        if (-not $code) { $code = 1 }
+    }
+    finally {
+        $ErrorActionPreference = $origErr
+    }
+
+    if ($code -eq 2) {
+        # No entries; nothing to clear
+        return
+    }
+    elseif ($code -ne 0) {
+        throw ("LocalHost.LibraryPaths verification failed for {0}-bit (exit {1})." -f $Bitness, $code)
+    }
+
+    # Entries exist; unbind this bitness, then confirm absence
     Invoke-ScriptSafe -ScriptPath $BindScript -ArgumentMap @{
         RepositoryPath = $RepoPath
         Mode           = 'unbind'
@@ -373,8 +396,6 @@ function Ensure-LibraryPathsAbsent {
         Force          = $true
     } -DisplayName ("Dev mode unbind ({0}-bit)" -f $Bitness)
 
-    # Verify absence: read-library-paths with FailOnMissing exits 2 when none are present; treat 2 as success here.
-    $origErr = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
         & $readPaths -RepositoryPath $RepoPath -SupportedBitness $Bitness -FailOnMissing
@@ -391,12 +412,8 @@ function Ensure-LibraryPathsAbsent {
     if ($code -eq 2) {
         return
     }
-    elseif ($code -eq 0) {
-        throw ("LocalHost.LibraryPaths still present for {0}-bit after unbind; cannot apply dependencies while token exists." -f $Bitness)
-    }
-    else {
-        throw ("LocalHost.LibraryPaths verification failed for {0}-bit (exit {1})." -f $Bitness, $code)
-    }
+
+    throw ("LocalHost.LibraryPaths still present for {0}-bit after unbind; cannot apply dependencies while token exists. (exit {1})" -f $Bitness, $code)
 }
 
 function Write-ReleaseNotesFromGit {
@@ -609,11 +626,11 @@ try {
         Show-BitnessBanner -Arch '32'
         # 2) Apply VIPC (32-bit)
         if ($vipmAvailable) {
-            Write-Information "Applying VIPC (dependencies) for 32-bit..." -InformationAction Continue
-            # Ensure LocalHost.LibraryPaths does not exist before applying dependencies
-            Ensure-LibraryPathsAbsent -RepoPath $RepositoryPath -Bitness '32' -BindScript $BindDevMode
-            Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
-                Package_LabVIEW_Version   = $lvVersion
+        Write-Information "Applying VIPC (dependencies) for 32-bit..." -InformationAction Continue
+        # Ensure LocalHost.LibraryPaths does not exist before applying dependencies
+        Ensure-LibraryPathsAbsent -RepoPath $RepositoryPath -Bitness '32' -BindScript $BindDevMode
+        Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
+            Package_LabVIEW_Version   = $lvVersion
                 SupportedBitness          = '32'
                 RepositoryPath            = $RepositoryPath
                 VIPCPath                  = $vipcPath
