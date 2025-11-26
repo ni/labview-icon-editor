@@ -599,7 +599,63 @@ try {
             ProjectFile = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
         } -TimeoutSec 300 -DisplayName "Missing in project (32-bit)"
 
-        # 3) Build LV Library (32-bit)
+        # Defer 32-bit build until after unit tests
+    }
+    else {
+        Write-Information "Skipping 32-bit dependency/apply/build steps (LvlibpBitness=$LvlibpBitness)." -InformationAction Continue
+    }
+
+    # 6) Apply VIPC (64-bit)
+    Show-BitnessBanner -Arch '64'
+    if ($vipmAvailable) {
+        Write-Information "Applying VIPC (dependencies) for 64-bit..." -InformationAction Continue
+        Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
+            Package_LabVIEW_Version   = $lvVersion
+            SupportedBitness          = '64'
+            RepositoryPath            = $RepositoryPath
+            VIPCPath                  = $vipcPath
+        } -TimeoutSec 600 -DisplayName "Apply VIPC (64-bit)"
+    }
+    else {
+        Write-Warning "Skipping VIPC application for 64-bit because vipm CLI is not available."
+    }
+
+    # Ensure LabVIEW is closed before running missing-in-project to avoid UI prompts/locks
+    Write-Verbose "Pre-missing-in-project: closing LabVIEW (64-bit) to ensure a clean session..."
+    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+        Package_LabVIEW_Version = $lvVersion
+        SupportedBitness        = '64'
+    } -TimeoutSec 180 -DisplayName "Close LabVIEW (pre-missing 64-bit)"
+
+    # Ensure LocalHost.LibraryPaths exist before missing-in-project
+    Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '64' -DevModeScript $SetDevMode
+
+    # 6.1) Preflight missing items using existing missing-in-project helper (64-bit)
+    Write-Information "Preflight: checking for missing project items via missing-in-project..." -InformationAction Continue
+    Invoke-ScriptSafe -ScriptPath $MissingHelper -ArgumentMap @{
+        LVVersion   = $lvVersion
+        Arch        = '64'
+        ProjectFile = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
+    } -TimeoutSec 300 -DisplayName "Missing in project (64-bit)"
+
+    # 6.2) Run unit tests after missing-in-project (before any lvlibp builds)
+    Write-Information "Running unit tests..." -InformationAction Continue
+    $RunUnitTests = Join-Path $ActionsPath "unit-tests/unit_tests.ps1"
+    Invoke-ScriptSafe -ScriptPath $RunUnitTests -ArgumentMap @{
+        RepositoryPath = $RepositoryPath
+    } -TimeoutSec 1800 -DisplayName "Unit tests"
+
+    # 6.1) Ensure LabVIEW 64-bit is closed before building to avoid loaded NIIconEditor collisions
+    Write-Verbose "Pre-build: closing LabVIEW (64-bit) to ensure a clean session..."
+    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
+        Package_LabVIEW_Version = $lvVersion
+        SupportedBitness        = '64'
+    } -TimeoutSec 180 -DisplayName "Close LabVIEW (pre-build 64-bit)"
+    Show-BitnessDone -Arch '64'
+
+    if ($LvlibpBitness -eq 'both') {
+        # 3) Build LV Library (32-bit) after tests
+        Show-BitnessBanner -Arch '32'
         Write-Verbose "Building LV library (32-bit)..."
         $argsLvlibp32 = @{
             Package_LabVIEW_Version   = $lvVersion
@@ -639,57 +695,6 @@ try {
             Write-Warning "git not found; skipping lvproj restore before 64-bit build."
         }
     }
-    else {
-        Write-Information "Skipping 32-bit dependency/apply/build steps (LvlibpBitness=$LvlibpBitness)." -InformationAction Continue
-    }
-
-    # 6) Apply VIPC (64-bit)
-    Show-BitnessBanner -Arch '64'
-    if ($vipmAvailable) {
-        Write-Information "Applying VIPC (dependencies) for 64-bit..." -InformationAction Continue
-        Invoke-ScriptSafe -ScriptPath $ApplyVIPC -ArgumentMap @{
-            Package_LabVIEW_Version   = $lvVersion
-            SupportedBitness          = '64'
-            RepositoryPath            = $RepositoryPath
-            VIPCPath                  = $vipcPath
-        } -TimeoutSec 600 -DisplayName "Apply VIPC (64-bit)"
-    }
-    else {
-        Write-Warning "Skipping VIPC application for 64-bit because vipm CLI is not available."
-    }
-
-    # Ensure LabVIEW is closed before running missing-in-project to avoid UI prompts/locks
-    Write-Verbose "Pre-missing-in-project: closing LabVIEW (64-bit) to ensure a clean session..."
-    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-        Package_LabVIEW_Version = $lvVersion
-        SupportedBitness        = '64'
-    } -TimeoutSec 180 -DisplayName "Close LabVIEW (pre-missing 64-bit)"
-
-    # Ensure LocalHost.LibraryPaths exist before missing-in-project
-    Ensure-LibraryPathsReady -RepoPath $RepositoryPath -Bitness '64' -DevModeScript $SetDevMode
-
-    # 6.1) Preflight missing items using existing missing-in-project helper (64-bit)
-    Write-Information "Preflight: checking for missing project items via missing-in-project..." -InformationAction Continue
-    Invoke-ScriptSafe -ScriptPath $MissingHelper -ArgumentMap @{
-        LVVersion   = $lvVersion
-        Arch        = '64'
-        ProjectFile = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
-    } -TimeoutSec 300 -DisplayName "Missing in project (64-bit)"
-
-    # 6.2) Run unit tests after missing-in-project to catch regressions early (runs 32- and 64-bit)
-    Write-Information "Running unit tests..." -InformationAction Continue
-    $RunUnitTests = Join-Path $ActionsPath "unit-tests/unit_tests.ps1"
-    Invoke-ScriptSafe -ScriptPath $RunUnitTests -ArgumentMap @{
-        RepositoryPath = $RepositoryPath
-    } -TimeoutSec 1800 -DisplayName "Unit tests"
-
-    # 6.1) Ensure LabVIEW 64-bit is closed before building to avoid loaded NIIconEditor collisions
-    Write-Verbose "Pre-build: closing LabVIEW (64-bit) to ensure a clean session..."
-    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-        Package_LabVIEW_Version = $lvVersion
-        SupportedBitness        = '64'
-    } -TimeoutSec 180 -DisplayName "Close LabVIEW (pre-build 64-bit)"
-    Show-BitnessDone -Arch '64'
 
     # 7) Build LV Library (64-bit)
     Write-Verbose "Building LV library (64-bit)..."
