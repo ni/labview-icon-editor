@@ -12,13 +12,24 @@ METADATA_OUTPUT="/workspace/artifacts/seed/metadata.json"
 export PSModulePath="/usr/local/share/powershell/Modules:${PSModulePath:-}"
 
 echo "Building Seed image..."
-docker compose -f "$COMPOSE_FILE" build seed
+if [[ "${SEED_OFFLINE:-}" == "1" || "${SKIP_SEED_BUILD:-}" == "1" ]]; then
+  if ! docker image inspect seed-local:latest >/dev/null 2>&1; then
+    echo "Offline/skip-build requested but seed-local:latest is missing. Build it once with network access or docker load an exported tarball." >&2
+    exit 1
+  fi
+  echo "Offline/skip-build mode: reusing existing seed-local:latest image (no docker build)."
+  compose_build_flags=(--no-build)
+else
+  docker compose -f "$COMPOSE_FILE" build seed
+  compose_build_flags=()
+fi
 
 echo "Exporting VIPB metadata to $METADATA_OUTPUT ..."
 docker compose -f "$COMPOSE_FILE" run --rm \
   -e INPUT_MODE=vipb2json \
   -e INPUT_INPUT="$VIPB_INPUT" \
   -e INPUT_OUTPUT="$METADATA_OUTPUT" \
+  "${compose_build_flags[@]}" \
   seed
 
 if command -v pwsh >/dev/null 2>&1; then

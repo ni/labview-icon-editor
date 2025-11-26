@@ -134,6 +134,21 @@
       },
       "problemMatcher": [],
       "detail": "Containerized runner (includes pwsh + docker CLI) for Seed export + Analyze-VIP."
+    },
+    {
+      "label": "Analyze VIP (latest builds-isolated)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "$vip = Get-ChildItem -Path \"${workspaceFolder}\\builds-isolated\\builds\\VI Package\" -Filter *.vip -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1; if (-not $vip) { Write-Error 'No .vip found under builds-isolated\\\\builds\\\\VI Package'; exit 1 }; $env:VIP_PATH = $vip.FullName; Write-Host \"Using VIP_PATH=$($env:VIP_PATH)\"; Invoke-Pester \"${workspaceFolder}\\scripts\\analyze-vi-package\\Analyze-VIP.Tests.ps1\" -Output Detailed"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Find latest .vip under builds-isolated\\builds\\VI Package, set VIP_PATH, and run Analyze-VIP tests."
     }
   ]
 }

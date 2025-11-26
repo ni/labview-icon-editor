@@ -44,10 +44,18 @@ if ($hasBuildx) {
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
+$composeRunArgs = @()
+foreach ($varName in "SEED_OFFLINE","SKIP_SEED_BUILD") {
+    $val = [Environment]::GetEnvironmentVariable($varName)
+    if (![string]::IsNullOrWhiteSpace($val)) {
+        $composeRunArgs += @("-e", "$varName=$val")
+    }
+}
+
 Write-Host "Running seed-runner ..."
 if ($hasBuildx) {
-    & docker compose -f $composeFile run --rm seed-runner
+    & docker compose -f $composeFile run --rm @composeRunArgs seed-runner
 } else {
-    & docker compose -f $composeFile run --rm --no-build seed-runner
+    & docker compose -f $composeFile run --rm --no-build @composeRunArgs seed-runner
 }
 exit $LASTEXITCODE
