@@ -1,7 +1,7 @@
-<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2025-11-26 00:09:26" Creator="svelderr" Comments="" ID="02038048fa0fad04ac1b1ea259598d97">
+<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2025-11-26 00:18:19" Creator="svelderr" Comments="" ID="dd8db4f7b6155528a4b46020012c778c">
   <Library_General_Settings>
     <Package_File_Name>NI_Icon_editor</Package_File_Name>
-    <Library_Version>0.1.0.1634</Library_Version>
+    <Library_Version>0.1.0.1635</Library_Version>
     <Auto_Increment_Version>false</Auto_Increment_Version>
     <Library_Source_Folder>..\..</Library_Source_Folder>
     <Library_Output_Folder>..\..\builds\VI Package</Library_Output_Folder>
@@ -25,10 +25,10 @@
     <Custom_Action_VIs>
       <Pre-Build_VI>custom-actions\VIP_Pre-Build Custom Action.vi</Pre-Build_VI>
       <Post-Build_VI>custom-actions\VIP_Post-Build Custom Action.vi</Post-Build_VI>
-      <Pre-Install_VI>custom-actions/VIP_Pre-Install Custom Action.vi</Pre-Install_VI>
-      <Post-Install_VI>custom-actions/VIP_Post-Install Custom Action.vi</Post-Install_VI>
-      <Pre-Uninstall_VI>custom-actions/VIP_Pre-Uninstall Custom Action.vi</Pre-Uninstall_VI>
-      <Post-Uninstall_VI>custom-actions/VIP_Post-Uninstall Custom Action.vi</Post-Uninstall_VI>
+      <Pre-Install_VI>custom-actions\VIP_Pre-Install Custom Action 2021.vi</Pre-Install_VI>
+      <Post-Install_VI>custom-actions\VIP_Post-Install Custom Action 2021.vi</Post-Install_VI>
+      <Pre-Uninstall_VI>custom-actions\VIP_Pre-Uninstall Custom Action 2021.vi</Pre-Uninstall_VI>
+      <Post-Uninstall_VI>custom-actions\VIP_Post-Uninstall Custom Action 2021.vi</Post-Uninstall_VI>
     </Custom_Action_VIs>
     <VI_Package_Configuration_File>seed.vipc</VI_Package_Configuration_File>
     <Description>
@@ -36,9 +36,9 @@
       <Description>Community-driven icon editor for LabVIEW including custom icon APIs.
 
 Commit: 5dc305a</Description>
-      <Copyright>LabVIEW-Community-CI-CD</Copyright>
+      <Copyright>NI</Copyright>
       <Packager>svelderrainruiz</Packager>
-      <URL>https://github.com/LabVIEW-Community-CI-CD/labview-icon-editor</URL>
+      <URL>https://github.com/ni/labview-icon-editor</URL>
       <Release_Notes>Release Notes (since v0.1.0)
 
 - 5dc305a pre-vipm close labview - 6cdbfaa safer check - 5f63576 made stage 2 resilient - c2751aa adjusted timeouts - f6b1d2d test - 63f063c stages - daaa923 test - f91b663 unified more - 30eb7f1 Unified to Close_LabVIEW - abddfef Added resilience - e9bf5df fast fail timeouts - 89bb4e3 baseline search iteration 0 - f04d988 test - cf1456a Reorder 32-bit build after tests and add LabVIEW wait guards - 7cdd560 idempotency - 4891490 Improve build logging and LabVIEW wait guards - 47f3baa 1 - bcc368f transcript - a147c58 added logging robustiness - f5057a5 fix - 0198614 vipm sanity - 20e1207 harden closing - 948c573 revert in the end, no cross bitness executions. - 85483d6 test - ca83999 Added pre and post build - de2aac9 test - d82b5af Added an explicit teardown before switching lanes - 69ff023 test - fc423c6 Allow 32-bit-only lanes - 1d9a086 Implemented guardrails so VIP packaging only runs when both bitness PPLs are available - 82ab822 force install - 0413156 optimizing labview closing logic - 732e502 per bitness lane - 0ab0e7e test - 22ad059 test - 85dc901 automated ΓÇ£two-laneΓÇ¥ - 1a30cd5 test - e24a64c test - 3fa14bd TEST - 1469ea5 test - 2919265 32 bit then 64 - 336a8c3 diagnostics - 21f09b0 fix - 185093d adjusted dependency gate - 78c922b dependencies first - bf64bdb refined - 3c8999a refined - 6eaf22f test - 6f88eeb test - 8351f5c run unit tests - 040d745 test - bf42632 fix - d0bcfc8 restoring the expected 18-column shape - 625b098 retry - 8f5683c reqs - c67e282 fix - 4a71be6 Build scripts run tests directly - d600381 Added a downstream unify job to gather all artifacts - ab42b69 fix - 17f5aab fix - de43264 fix - effcb0c fix - 3abd6b0 ard-stops a job if it ever starts on the wrong OS - de60749 fix - 498544b Placed custom action VIs into a folder - f8d6e66 delete report - a40f565 Progress - 18399bc removed old reference .vipb - 6f2a47c Folder adjustment - db45e87 test - 2c61186 Update if-no-files-found condition in workflow - a230e7e Removed the leading --- - 624997a This should resolve the syntax error GitHub reported on line 29. - 89d04f7 fix - 64bc9d2 normalized the workflow header and triggers to fix the YAML parsing - 7b6e46e Updated the seed-metadata workflow to pull the baseline from the current branch first - 1bcea65 no dependency on gitignored bin - 575d3a6 update - 812aadf fix - 4878f46 Adjusted the Seed image to be self-contained - 1ef5b8f Add containerized Seed runner and CI job - ab763d6 Log skip instead of error when no VIP found in deep task - ca15023 Limit deep task VIP search to builds-isolated and skip analyze otherwise - 989b8bd Skip analyze step when no VIP is found in deep task - a59726d Cache vip path variable in deep Seed+Analyze task - b33218b Quote VipArtifactPath value in deep Seed+Analyze task - 9a97a7d Call analyze script directly in deep Seed+Analyze task - c78ae0b Quote VipArtifactPath in deep Seed+Analyze task - d9d8882 Handle missing VIP gracefully in deep Seed+Analyze task - 6863c83 Wrap deep Seed+Analyze task in script block to fix parsing - 9f8f540 Escape Pester path in deep Seed+Analyze task - eefaf98 Scope deep Seed+Analyze task to workspace-relative compose and tests - 3071198 Scope deep Seed+Analyze task to workspace and silence access-denied - 74800e8 Fix path/quoting in deep Seed+Analyze task command - dc3e071 Fix quoting in deep Seed+Analyze VS Code task - 191d319 Add deep Seed+Analyze compound task and document it - f293ed5 Document env-driven Seed usage - f6deb6b Stabilize Seed metadata tests with hashtable parsing - db66060 Make Seed runs env-driven and include libicu runtime - 9d30d87 Allow VIPB root alternatives in buildspec converters - 0399b29 Add Seed-based metadata workflow and Pester checks - 0fec4db Refine Seed apply patch task wording - 6a2d6e4 Clarify Seed apply patch task usage and tips - 1c255e5 Add patch format example to Seed apply patch task - 0de0f8f Expand Seed apply patch task documentation - 4bba9c9 Add per-task documentation for Seed VS Code tasks - d8d3eda Ensure Seed VS Code tasks build image before run - d93b936 Always build Seed image before VS Code tasks run - 78a31ff Relax Seed entrypoint to tolerate unset inputs for local runs - 6b94f0c Make Seed entrypoint tolerates help/default mode for local runs - 7c834bd Install yq via upstream binary in Seed Dockerfile - d0627dc Clarify Seed compose builds locally with no pulls - 50e7ab2 Prevent pulling seed-local image when running compose - c66e56e Point Seed Dockerfile to vendored entrypoint script - c83843b Add optional Seed VS Code tasks and doc updates - 091c148 Document optional Seed docker helper usage - a0fb3c8 Clarify Seed docker helper assumes Docker Desktop running - d96f518 Tighten Seed docker helper intro - ef84a62 Refine Seed docker helper wording - f0da03d Improve Seed docker helper docs - 04e0649 Build seed docker helper from vendored source - 0753f88 Vendor seed source under Tooling/seed - b8b31ed Add seed source as submodule - 86b5738 Add Seed docker helper - ccee9f1 Organize dotnet tooling under Tooling - 478bdcd test refinement - 579a6c8 vipm lock guard - e830755 cross user lock for runners/tasks - d232221 closing LabVIEW (32-bit) to avoid cross-bitness interference - 2cdeb3a Added pre-missing-in-project LabVIEW shutdowns in scripts/build/Build.ps1 for both 32- and 64-bit phases. - 2e3be44 Force rebind on stale references - 842d673 Clarify lvlibp build step labels - 119c979 Document VIPReader details in scripts manifest - ccc4fe0 Clarify Analyze VI Package CLI usage - 66cd10f Normalize build defaults and outputs across docs - ffd6082 Align VIPM fallback wording across docs - 574e279 Clarify single VS Code task in README - 8099ebb Prune legacy VS Code tasks - dad451b Update VS Code task documentation - a75f1d8 Add dev-mode anomaly guidance for bind output - 4eb5c1d Add Analyze-VIP troubleshooting guidance - a314c6e Document VIPM fallback when CLI missing - 60ece56 docs: clarify analyze-vip workflow usage - 801ca2a Document Build LVAddon task in README - 67837aa remove old log - 33d09fc renamed - 9a9d23d LVAddon task - bdea034 VIP Reader module - bf95413 Hardened scripts/build-vip/build_vip.ps1 against null/strict-mode Count errors - 1702476 Added robust skips to scripts/analyze-vi-package/Analyze-VIP.Tests.ps1 - 961626d Hardened scripts/build-vip/build_vip.ps1 - 1ac1307 VIP safe skip for setups that dont have vipm cli - 0377e92 fixed a warning, almost build the vip - 21be253 Added an idempotency cleanup in scripts/build/Build.ps1 - 67533c1 Selective VIPM - 003639a fix - 291d4bd fix - 04aa7ff fix - e6c5e11 test - f420338 harden - 32145ed simplified - 1a11e68 simplified - ad4dc40 test - 94e741f test - 8cac18c tightened the dev-mode binder - 5c837ce test - bdbf61f test - 45d36d1 fix - 694f8a6 test - f0886b5 test - bf07b74 refactor - 3fb97d8 refactored - 8ee51bc Fix - 9e30991 Flattened Close Labview composite - ff72d4c test - ec38fea fix - b51e2d9 fix - 5050909 Simplified CI - 92cbc47 consolidated worktree build and artifacts - 1076323 Added MIP 64-bit - be7289d test - 477aef4 runner dependencies relocation - a1bdd51 test - a489794 test - 60d29eb test - 558f4cc test - 2d96dfa fix - 9d2ffe9 Fixed the failing Pester tests to align with the new ie.ps1 - 22f4039 Addressed the flattened ApplyVIPC move so builds and CI reference the new location - fb4ac50 test - e341b63 progress - a462271 test - c5ac167 test - e73340e test - 7d19752 Applied initial flattening of several composites to direct PowerShell script calls - 8d339a5 chore: safety snapshot before flattening actions - f6ae511 test - eece819 adding hash - ced4173 TEST - 0764cd6 test - 49c26c4 test - 37499f9 test - 0420b7b Added VS Code toast notifications to the ΓÇ£Build (isolated worktree)ΓÇ¥ task - 969dd09 Popping out a windows console - 51b53d9 Updated the ΓÇ£Build (isolated worktree)ΓÇ¥ - dd48133 launches a visible PowerShell window - 819675b prints the job table if it shows up - 08f2631 Running on a single pwsh process - 5e9a213 test - 9a763ef Fixed the VS Code ΓÇ£Build (isolated worktree)ΓÇ¥ - e39f714 Added timeout - c7534da Linux runners no longer report 0% coverage for dev-mode scripts - f8f990f Removed the unsupported Pester config line so CI wonΓÇÖt fail - 4661ce9 Added an idempotency guard and hashing to the build - 081abd0 dropped early prototype of uninstaller backup - 5cb87b6 platform/INI-availability check to the relevant tests - 8fa953a Console separators - 81bf99c Added path normalization to tolerate stray leading colons in script paths - 32089c4 fix - fbd986a detect failure status from dev-mode- - 9c20b19 Implemented ensure VIPM Ready - 6d3757c build - 836c08c neutral VIPB - 96bb5f0 Added more artifact tests - 0d5e246 1 - c4e0734 dropped workflow - 152e4d3 Fixed the Pester regression and updated the VIP content expectation - 8a0c05a test - 2fe0c11 dasd - faaecb3 stopwatch implementation - dce458a deterministic artifact - f07792c test - 4a70cb1 Added end-of-phase markers so you can see when each bitness finishes and spot overlap: - eeac3d2 builds a vi package - d967886 Added color-coded phase banners so the console clearly separates work per bitness: - b8ff685 removed bind - 3e90f77 works - 4ab3a4a trimmer - 36cde64 dasd - fb21c9d added guardrails - 9efbfc7 bug on double path error - cf3cb62 Updated dev-mode helpers to make tests injectable and restore CI pass - 09941c6 Establishing first coverage pass - ca1f6c4 das - a1eb888 dasd - d8e5e43 RWE - a51753c dynamic - f2f6e63 sd - e8a1e70 add - 2ad4ad0 add - 4d4bbc7 success - 15e8de9 dev - 73dfbb8 writes mode data - 7fed24e Dev mode bind (force clean) - a9ad7d1 rebuilt - a82ad45 task - dec6e23 scaffolding - 493cfc2 catalog - 990ef51 test - 359166f tasks catalog - 742b49e renamed and regrouped - 016ccdd 1 - 9cd711b fixed reqs - 7fa5c6c devmode - e48d1e0 test - 7ad3596 agent - c9e610f introducing dev mode intent - 1457ec9 path - ea11ddd test - 20bb4ae 123 - 9597519 test - 640f566 test - cc52686 more changes - 3f10cda  Paste to your codex agent advice - 334f746 more stuff - c5cb765 bid dev mode guidance - c91c5f9 test - 5ec9c95 removed warning by only making it emit on verbose - 3034824 distinctive color to this - 566ccbe devx - d2eca8f devx - 8709ac2 Improved devx - 1ef74b8 Made the developer-facing output cleaner and more robust - 4ca4570 devx - 334c65b working prototype of bind - d09faa8 made bind also point to other labview verions - 08f00b1 reordered and clarified bitness - 3f13eaf fix - 10466af better hint - adc2d83 Implemented "what to do next" hint - 58f7b2e Made INI handling deterministic and removed the non-canonical/test overrides. - 7a80a20 passing test - 1c662c9 Implemented persistent hint warnings - bfeb382 refined - 873dcdd Bind mode hint working - d118193 bind dev mode - e8e54ab made bind mode task more console readable - 12c9c6c Add VS Code task for bind/unbind dev mode - 678f9a8 Add artifact location snippet to troubleshooting - a1b8915 Rewrite troubleshooting for current CI, release, and dev-mode flows - 3acd35f Align troubleshooting with current build/release/dev-mode flows - 87fe662 Cross-link troubleshooting to actions and CI doc - 5a2297e Link troubleshooting to dev-mode bind docs - 69cf049 Update dev-mode troubleshooting guidance - 5b3bc15 1 - f16a98e Add BIND dev-mode bind JSON tests - 8d44539 Accept ADR-2025-003 for dev-mode binding - d6f7520 Implemented the BIND requirement adjustments - 243ff1a Introducing more BIND reqs - 39feac7 Added requirements for the BIND stack - beddfef introducing worktree build - 9dbc9de deleted unused composite - 2681088 Swapped every workflow to call the pinned actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 directly - 11983ad finalized migration to checkout v6 from v4 - b3ba536 adding changes - 131fa4a Added a more thorough preflight - dd024ad Adjusted VIPB for multiplatform - 441b9b1 harden - 7d1581b fix - 5ed3ac1 fix - c061e3e 2 - 11e9940 1 - 41d7f3a default to pwsh - 9c058c9 refined - 02d5e89 docker - 8889f95 fix - af30050 fix - 0e11cd0 fix - 74e1f81 fix - 82d7979 test docker - 8ac500f adding test task to dockers - 48a2447 introducing docker vipm - 3e5df68 Adding vipb self discovery - c4415b0 added dry-run mode - 856d6c2 Hardened commands - cb0efa9 Taken from examples-vipm-package-building (multi platform ppls) - 55620af Multiplatform ppls - c39ff0c removing spaces from vipb - c2fbc96 test - 4b4c720 Fixing unit tests - 8ff8bd4 Clarification - b70562d Fix - 8e681d6 test - 7bbcff6 test - 5ebc512 removed redundancy - b48e406 works - ace60dd Implemented a shared build helper module and wired builds to use it - 38d3c05 renamed labels - 78fcf6f removed details - 101a3ad Every build flavor runs analyzer - d19ccab compound task - a8093ee refined - d17e58e bugfix - 452853c test - e0cdf99 fix - 72843d6 fix - d9c35be fix for local path that dont need a result from ci - ab7feaa adding VSCode path for both 32 and 64 - 9a97562 better error handling on dev mode not set - 4282785 more sensible approach on stopping - b11c899 added a failsafe for ppl builders that dont set development mode - 2c9d22f Introducing VIPM CLI builds - 705b1d5 Added a vipm-gate - 11764c0 Squashed commit of the following:
@@ -250,6 +250,54 @@ Commit: 5dc305a</Description>
       </Exclusions>
       <Exclusions>
         <Path>Tooling/deployment/Modify_VIPB_Display_Information.vi</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>.agent</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>.github</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>.vscode</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>artifacts</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>builds-isolated</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>reports</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Test</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>Tooling</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>.gitattributes</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>.gitignore</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>AGENT.md</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>agent.yaml</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>INSTALL.md</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>labview-icon-editor-final-fork.sln</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>missing_files.txt</Path>
+      </Exclusions>
+      <Exclusions>
+        <Path>testResults.xml</Path>
       </Exclusions>
       <Compile_Exclusions>
         <Path>.</Path>
