@@ -517,11 +517,13 @@ jobs:
     env:
       COMPANY_NAME: ${{ github.repository_owner }}
       AUTHOR_NAME: ${{ github.actor }}
+      VIPM_LIST_TIMEOUT_SEC: 300
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           set-safe-directory: true
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: "Guard: Windows runner"
         if: ${{ runner.os != 'Windows' }}
         run: exit 1
