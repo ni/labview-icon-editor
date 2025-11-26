@@ -345,7 +345,8 @@ function Assert-VipmAccess {
     param(
         [Parameter(Mandatory)][string]$LvMajor,
         [Parameter(Mandatory)][string]$Bitness,
-        [int]$TimeoutSec = 60
+        # VIPM can be slow to start on some hosts; allow override via env, default 180s.
+        [int]$TimeoutSec = [int]::TryParse($env:VIPM_LIST_TIMEOUT_SEC, [ref]0) ? [int]$env:VIPM_LIST_TIMEOUT_SEC : 180
     )
 
     $args = @("list", "--labview-version", $LvMajor, "--labview-bitness", $Bitness, "--installed")
