@@ -815,6 +815,17 @@ try {
             CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
             NewFilename     = 'lv_icon_x64.lvlibp'
         }
+        try {
+            $pplStashDir = Join-Path $RepositoryPath 'builds\ppl-stash'
+            if (-not (Test-Path -LiteralPath $pplStashDir)) {
+                New-Item -ItemType Directory -Path $pplStashDir -Force | Out-Null
+            }
+            Copy-Item -LiteralPath (Join-Path $RepositoryPath 'resource\plugins\lv_icon_x64.lvlibp') -Destination (Join-Path $pplStashDir 'lv_icon_x64.lvlibp') -Force
+            Write-Information "Stashed lv_icon_x64.lvlibp to $pplStashDir" -InformationAction Continue
+        }
+        catch {
+            Write-Warning ("Failed to stash lv_icon_x64.lvlibp: {0}" -f $_.Exception.Message)
+        }
         Show-BitnessDone -Arch '64'
     }
 
@@ -913,6 +924,17 @@ try {
             CurrentFilename = "$RepositoryPath\resource\plugins\lv_icon.lvlibp"
             NewFilename     = 'lv_icon_x86.lvlibp'
         }
+        try {
+            $pplStashDir = Join-Path $RepositoryPath 'builds\ppl-stash'
+            if (-not (Test-Path -LiteralPath $pplStashDir)) {
+                New-Item -ItemType Directory -Path $pplStashDir -Force | Out-Null
+            }
+            Copy-Item -LiteralPath (Join-Path $RepositoryPath 'resource\plugins\lv_icon_x86.lvlibp') -Destination (Join-Path $pplStashDir 'lv_icon_x86.lvlibp') -Force
+            Write-Information "Stashed lv_icon_x86.lvlibp to $pplStashDir" -InformationAction Continue
+        }
+        catch {
+            Write-Warning ("Failed to stash lv_icon_x86.lvlibp: {0}" -f $_.Exception.Message)
+        }
         Show-BitnessDone -Arch '32'
     }
     else {
@@ -927,6 +949,18 @@ try {
         $neutral   = Join-Path $pplDir 'lv_icon.lvlibp'
         $win64Copy = Join-Path $pplDir 'lv_icon.lvlibp.windows_x64'
         $win86Copy = Join-Path $pplDir 'lv_icon.lvlibp.windows_x86'
+        $pplStashDir = Join-Path $RepositoryPath 'builds\ppl-stash'
+        $pplX64Stash = Join-Path $pplStashDir 'lv_icon_x64.lvlibp'
+        $pplX86Stash = Join-Path $pplStashDir 'lv_icon_x86.lvlibp'
+
+        if (-not (Test-Path -LiteralPath $pplX64) -and (Test-Path -LiteralPath $pplX64Stash)) {
+            Copy-Item -LiteralPath $pplX64Stash -Destination $pplX64 -Force
+            Write-Warning "Restored lv_icon_x64.lvlibp from stash before staging."
+        }
+        if (-not (Test-Path -LiteralPath $pplX86) -and (Test-Path -LiteralPath $pplX86Stash)) {
+            Copy-Item -LiteralPath $pplX86Stash -Destination $pplX86 -Force
+            Write-Warning "Restored lv_icon_x86.lvlibp from stash before staging."
+        }
 
         Write-Step -Step "5.0" -Message "Stage neutral/windows PPLs" -Color "Green"
         if (Test-Path -LiteralPath $pplX64) {
