@@ -19,7 +19,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$CompanyName,
     [Parameter(Mandatory = $true)]
-    [string]$AuthorName
+    [string]$AuthorName,
+    [switch]$RunBothBitnessSeparately
 )
 
 $ErrorActionPreference = 'Stop'
@@ -43,6 +44,11 @@ $forward = @{
     Build            = $Build
     CompanyName      = $CompanyName
     AuthorName       = $AuthorName
+}
+
+# Default to separate lanes when building both bitnesses, unless explicitly disabled
+if ($RunBothBitnessSeparately -or $LvlibpBitness -eq 'both') {
+    $forward.RunBothBitnessSeparately = $true
 }
 
 if ($PSBoundParameters.ContainsKey('Verbose')) {

@@ -820,7 +820,7 @@ try {
         if (Test-Path -LiteralPath (Join-Path $RepositoryPath 'resource\plugins\lv_icon_x64.lvlibp')) {
             $tempCopies += (Join-Path $RepositoryPath 'resource\plugins\lv_icon_x64.lvlibp')
         }
-        if (Test-Path -LiteralPath (Join-Path $RepositoryPath 'resource\plugins\lv_icon_x86.lvlibp')) {
+        if ($do32 -and (Test-Path -LiteralPath (Join-Path $RepositoryPath 'resource\plugins\lv_icon_x86.lvlibp'))) {
             $tempCopies += (Join-Path $RepositoryPath 'resource\plugins\lv_icon_x86.lvlibp')
         }
         $removed = @()
@@ -838,7 +838,9 @@ try {
     }
 
     # Idempotency guard: validate expected PPL set and log hashes
-    $expectedPpls = @('lv_icon.lvlibp','lv_icon.lvlibp.windows_x64','lv_icon.lvlibp.windows_x86')
+    $expectedPpls = @('lv_icon.lvlibp')
+    if ($do64) { $expectedPpls += 'lv_icon.lvlibp.windows_x64' }
+    if ($do32) { $expectedPpls += 'lv_icon.lvlibp.windows_x86' }
     Assert-ExpectedPPLSet -PluginsDir (Join-Path $RepositoryPath 'resource\plugins') -ExpectedNames $expectedPpls
 
     # -------------------------------------------------------------------------

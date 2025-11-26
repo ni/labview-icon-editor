@@ -38,6 +38,7 @@ param(
     [string]$AuthorName = 'Local Developer',
     [int]$LabVIEWMinorRevision = 3,
     [string]$PackageLabVIEWVersion = '2021',
+    [switch]$RunBothBitnessSeparately,
 
     # VIP/VIPB inputs
     [string]$VipcPath = 'runner_dependencies.vipc',
@@ -125,6 +126,7 @@ switch ($Command) {
             CompanyName      = $CompanyName
             AuthorName       = $AuthorName
         }
+        if ($RunBothBitnessSeparately) { $args.RunBothBitnessSeparately = $true }
         Invoke-Script -Path $scriptPath -ArgumentMap $args
     }
 
