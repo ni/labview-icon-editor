@@ -151,8 +151,10 @@ function Invoke-ScriptSafe {
                 [pscustomobject]@{ ExitCode = $LASTEXITCODE }
             } -ArgumentList @($ScriptPath,$ArgumentMap,$ArgumentList, [bool]$ArgumentMap)
             if (-not (Wait-Job $job -Timeout $TimeoutSec)) {
-                Stop-Job $job -Force | Out-Null
+                # Stop-Job in PowerShell Core doesn't support -Force; Stop then remove explicitly
+                Stop-Job $job -ErrorAction SilentlyContinue | Out-Null
                 Receive-Job $job -Keep | ForEach-Object { Write-Host $_ }
+                Remove-Job $job -Force -ErrorAction SilentlyContinue | Out-Null
                 throw ("{0} timed out after {1} seconds (possible UI prompt or hang)." -f $label, $TimeoutSec)
             }
             $output = Receive-Job $job -Wait -AutoRemoveJob
@@ -329,7 +331,9 @@ function Assert-VipmAccess {
     } -ArgumentList $argList
 
     if (-not (Wait-Job $job -Timeout $TimeoutSec)) {
-        Stop-Job $job -Force | Out-Null
+        # Stop-Job in PowerShell Core lacks -Force; stop then remove any stray job
+        Stop-Job $job -ErrorAction SilentlyContinue | Out-Null
+        Remove-Job $job -Force -ErrorAction SilentlyContinue | Out-Null
         throw ("vipm list --installed timed out after {0}s for LabVIEW {1} ({2}-bit)" -f $TimeoutSec, $LvMajor, $Bitness)
     }
 
