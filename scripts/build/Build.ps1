@@ -586,6 +586,23 @@ try {
         SupportedBitness        = '32'
     } -TimeoutSec 60 -DisplayName "Close LabVIEW (pre-flight 32-bit)"
 
+    # Verify no LabVIEW instances are running before proceeding; force-kill if needed
+    try {
+        $preProcs = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' }
+    }
+    catch {
+        $preProcs = @()
+    }
+    if ($preProcs) {
+        Write-Warning ("LabVIEW running before build start; terminating {0}" -f ($preProcs.Id -join ', '))
+        $preProcs | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 2
+        $preProcs = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' }
+        if ($preProcs) {
+            throw ("LabVIEW process(es) remain after forced termination pre-flight: {0}" -f ($preProcs.Id -join ', '))
+        }
+    }
+
     # 1) Clean up old .lvlibp in the plugins folder
     Write-Information "Cleaning up old .lvlibp files in plugins folder..." -InformationAction Continue
     Write-Verbose "Looking for .lvlibp files in $($RepositoryPath)\resource\plugins..."
@@ -742,6 +759,23 @@ try {
                 Package_LabVIEW_Version = $lvVersion
                 SupportedBitness        = '64'
             } -TimeoutSec 180 -DisplayName "Close LabVIEW (switch to 32-bit)"
+
+            # Verify 64-bit LabVIEW is gone before starting 32-bit; force-kill if needed
+            try {
+                $lv64 = Get-Process | Where-Object { $_.ProcessName -like 'LabVIEW*' -and $_.Path -like '*LabVIEW 2021\\LabVIEW.exe' -and $_.MainModule.FileName -like '*Program Files*' }
+            }
+            catch {
+                $lv64 = @()
+            }
+            if ($lv64) {
+                Write-Warning "Detected 64-bit LabVIEW still running after close; terminating to avoid cross-bitness overlap."
+                $lv64 | Stop-Process -Force -ErrorAction SilentlyContinue
+            }
+            # Double-check after kill attempt
+            $lv64 = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' -and $_.Path -like '*LabVIEW 2021\\LabVIEW.exe' -and $_.MainModule.FileName -like '*Program Files*' }
+            if ($lv64) {
+                throw "64-bit LabVIEW process(es) remain after forced close: $($lv64.Id -join ', '). Aborting to prevent bitness overlap."
+            }
         }
         Show-BitnessBanner -Arch '32'
         Write-Verbose "Building LV library (32-bit)..."
@@ -949,11 +983,21 @@ try {
         SupportedBitness        = '32'
     } -TimeoutSec 60 -DisplayName "Close LabVIEW (final 32-bit)"
 
-    # 12) Close LabVIEW (64-bit)
-    Write-Verbose "Closing LabVIEW (64-bit)..."
-    Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
-        Package_LabVIEW_Version = $lvVersion
-        SupportedBitness        = '64'
+    # Verify both bitnesses are gone; force-kill lingering LabVIEW if needed
+    try {
+        $lvProcs = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' }
+    }
+    catch {
+        $lvProcs = @()
+    }
+    if ($lvProcs) {
+        Write-Warning ("LabVIEW still running after final close; terminating {0}" -f ($lvProcs.Id -join ', '))
+        $lvProcs | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 2
+        $lvProcs = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' }
+        if ($lvProcs) {
+            throw ("LabVIEW process(es) remain after forced termination: {0}" -f ($lvProcs.Id -join ', '))
+        }
     }
 
     Write-Information "All scripts executed successfully!" -InformationAction Continue
