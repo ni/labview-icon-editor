@@ -53,7 +53,7 @@ function Wait-LabVIEWExit {
     param(
         [string]$Bitness,
         [string]$LvVersion,
-        [int]$TimeoutSec = 120,
+        [int]$TimeoutSec = 2,
         [string]$Context = "pre-test"
     )
     $deadline = (Get-Date).AddSeconds($TimeoutSec)

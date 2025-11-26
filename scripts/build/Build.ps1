@@ -313,7 +313,7 @@ function Assert-VipmAccess {
     param(
         [Parameter(Mandatory)][string]$LvMajor,
         [Parameter(Mandatory)][string]$Bitness,
-        [int]$TimeoutSec = 180
+        [int]$TimeoutSec = 60
     )
 
     $args = @("list", "--labview-version", $LvMajor, "--labview-bitness", $Bitness, "--installed")
@@ -747,7 +747,7 @@ try {
                 SupportedBitness          = '64'
                 RepositoryPath            = $RepositoryPath
                 VIPCPath                  = $vipcPath
-            } -TimeoutSec 600 -DisplayName "Apply VIPC (64-bit)"
+            } -TimeoutSec 60 -DisplayName "Apply VIPC (64-bit)"
 
             # Rebind dev mode for this repo so downstream checks (missing-in-project/tests) have tokens set
             Invoke-ScriptSafe -ScriptPath $BindDevMode -ArgumentMap @{
@@ -771,7 +771,7 @@ try {
             LVVersion   = $lvVersion
             Arch        = '64'
             ProjectFile = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
-        } -TimeoutSec 300 -DisplayName "Missing in project (64-bit)"
+        } -TimeoutSec 60 -DisplayName "Missing in project (64-bit)"
 
         # 6.2) Run unit tests (64-bit) immediately after missing-in-project
         Write-Step -Step "2.2" -Message "Unit tests (64-bit)" -Color "Cyan"
@@ -780,7 +780,7 @@ try {
             Package_LabVIEW_Version = $lvVersion
             SupportedBitness        = '64'
             AbsoluteProjectPath     = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
-        } -TimeoutSec 1200 -DisplayName "Unit tests (64-bit)"
+        } -TimeoutSec 180 -DisplayName "Unit tests (64-bit)"
 
         # Build 64-bit PPL immediately after 64-bit tests
         Write-Host ('-' * 80)
@@ -798,7 +798,7 @@ try {
             Commit                    = $Commit
         }
         try {
-            Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp64 -TimeoutSec 900 -DisplayName "Build icon PPL (64-bit)"
+            Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp64 -TimeoutSec 180 -DisplayName "Build icon PPL (64-bit)"
         }
         catch {
             Write-Step -Step "2.31" -Message "Build icon PPL (64-bit) failed; retrying after forcing LabVIEW close..." -Color "Yellow"
@@ -807,7 +807,7 @@ try {
                 SupportedBitness        = '64'
             } -TimeoutSec 2 -DisplayName "Close LabVIEW (retry 64-bit build)"
             Start-Sleep -Seconds 3
-            Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp64 -TimeoutSec 900 -DisplayName "Build icon PPL (64-bit retry)"
+            Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp64 -TimeoutSec 180 -DisplayName "Build icon PPL (64-bit retry)"
         }
 
         Write-Verbose "Renaming .lvlibp file to lv_icon_x64.lvlibp..."
@@ -856,7 +856,7 @@ try {
                 SupportedBitness          = '32'
                 RepositoryPath            = $RepositoryPath
                 VIPCPath                  = $vipcPath
-            } -TimeoutSec 600 -DisplayName "Apply VIPC (32-bit)"
+            } -TimeoutSec 60 -DisplayName "Apply VIPC (32-bit)"
 
             # Rebind dev mode for this repo so downstream checks (missing-in-project/tests) have tokens set
             Invoke-ScriptSafe -ScriptPath $BindDevMode -ArgumentMap @{
@@ -880,7 +880,7 @@ try {
             LVVersion   = $lvVersion
             Arch        = '32'
             ProjectFile = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
-        } -TimeoutSec 300 -DisplayName "Missing in project (32-bit)"
+        } -TimeoutSec 60 -DisplayName "Missing in project (32-bit)"
 
         # 2.2) Run unit tests for 32-bit immediately after missing-in-project
         Write-Step -Step "3.2" -Message "Unit tests (32-bit)" -Color "Cyan"
@@ -889,7 +889,7 @@ try {
             Package_LabVIEW_Version = $lvVersion
             SupportedBitness        = '32'
             AbsoluteProjectPath     = (Join-Path $RepositoryPath 'lv_icon_editor.lvproj')
-        } -TimeoutSec 1200 -DisplayName "Unit tests (32-bit)"
+        } -TimeoutSec 180 -DisplayName "Unit tests (32-bit)"
 
         # Build 32-bit PPL immediately after tests
         Write-Host ('-' * 80)
@@ -906,7 +906,7 @@ try {
             Build                     = $Build
             Commit                    = $Commit
         }
-        Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp32 -TimeoutSec 900 -DisplayName "Build icon PPL (32-bit)"
+        Invoke-ScriptSafe -ScriptPath $BuildLvlibp -ArgumentMap $argsLvlibp32 -TimeoutSec 180 -DisplayName "Build icon PPL (32-bit)"
 
         Write-Verbose "Renaming .lvlibp file to lv_icon_x86.lvlibp..."
         Invoke-ScriptSafe -ScriptPath $RenameFile -ArgumentMap @{
@@ -1063,7 +1063,7 @@ try {
             ReleaseNotesFile         = $ReleaseNotesFile
             DisplayInformationJSON   = $DisplayInformationJSON
             Verbose                  = $true
-        }
+        } -TimeoutSec 180 -DisplayName "Build VI Package (64-bit)"
     }
     else {
         Write-Warning "Skipping VI Package build because prerequisites are missing (vipm available: $vipmAvailable; built 64-bit: $do64; built 32-bit: $do32)."
@@ -1089,14 +1089,14 @@ try {
         Invoke-ScriptSafe -ScriptPath $RevertDevMode -ArgumentMap @{
             RepositoryPath    = $RepositoryPath
             SupportedBitness  = '64'
-        } -TimeoutSec 300 -DisplayName "Revert development mode (64-bit)"
+        } -TimeoutSec 60 -DisplayName "Revert development mode (64-bit)"
     }
     if ($do32 -and (Test-Path -LiteralPath $RevertDevMode)) {
         Write-Step -Step "8.1" -Message "Revert development mode (32-bit)" -Color "Cyan"
         Invoke-ScriptSafe -ScriptPath $RevertDevMode -ArgumentMap @{
             RepositoryPath    = $RepositoryPath
             SupportedBitness  = '32'
-        } -TimeoutSec 300 -DisplayName "Revert development mode (32-bit)"
+        } -TimeoutSec 60 -DisplayName "Revert development mode (32-bit)"
     }
 
     # Final safety: ensure no LabVIEW instances remain running
