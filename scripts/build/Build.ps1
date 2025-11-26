@@ -355,40 +355,47 @@ function Ensure-LibraryPathsAbsent {
         [Parameter(Mandatory)][string]$BindScript
     )
 
-    $readPaths = Join-Path $RepoPath 'scripts/read-library-paths.ps1'
     if (-not (Test-Path -LiteralPath $BindScript)) {
-        Write-Verbose "BindDevelopmentMode.ps1 not found at $BindScript; cannot clear LocalHost.LibraryPaths before dependency apply." -Verbose
-        return
-    }
-    if (-not (Test-Path -LiteralPath $readPaths)) {
-        Write-Verbose "read-library-paths.ps1 not found at $readPaths; cannot verify LocalHost.LibraryPaths absence." -Verbose
+        Write-Verbose "BindDevelopmentMode.ps1 not found at $BindScript; cannot manage LocalHost.LibraryPaths before dependency apply." -Verbose
         return
     }
 
-    # Check current state: read-library-paths with FailOnMissing exits 2 when none are present; 0 means entries exist.
-    $origErr = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    try {
-        & $readPaths -RepositoryPath $RepoPath -SupportedBitness $Bitness -FailOnMissing
-        $code = $LASTEXITCODE
-    }
-    catch {
-        $code = $LASTEXITCODE
-        if (-not $code) { $code = 1 }
-    }
-    finally {
-        $ErrorActionPreference = $origErr
+    $iniPath = if ($Bitness -eq '64') {
+        "C:\Program Files\National Instruments\LabVIEW $lvVersion\LabVIEW.ini"
+    } else {
+        "C:\Program Files (x86)\National Instruments\LabVIEW $lvVersion\LabVIEW.ini"
     }
 
-    if ($code -eq 2) {
-        # No entries; nothing to clear
+    if (-not (Test-Path -LiteralPath $iniPath)) {
+        Write-Verbose "LabVIEW ini not found for {0}-bit at {1}; skipping token check." -f $Bitness, $iniPath -Verbose
         return
     }
-    elseif ($code -ne 0) {
-        throw ("LocalHost.LibraryPaths verification failed for {0}-bit (exit {1})." -f $Bitness, $code)
+
+    $repoNorm = ([System.IO.Path]::GetFullPath($RepoPath)).TrimEnd('\','/').ToLowerInvariant()
+    $lines = Get-Content -LiteralPath $iniPath -ErrorAction SilentlyContinue
+    if (-not $lines) { $lines = @() }
+    $entries = @($lines | Where-Object { $_ -match '^LocalHost\.LibraryPaths\d*=' })
+    if ($entries.Count -eq 0) {
+        # None present; fine to proceed
+        return
     }
 
-    # Entries exist; unbind this bitness, then confirm absence
+    $allMatch = $true
+    foreach ($entry in $entries) {
+        $parts = $entry -split '=',2
+        $val = if ($parts.Count -gt 1) { $parts[1].Trim('"') } else { '' }
+        if ([string]::IsNullOrWhiteSpace($val)) { continue }
+        $norm = ([System.IO.Path]::GetFullPath($val)).TrimEnd('\','/').ToLowerInvariant()
+        if ($norm -ne $repoNorm) { $allMatch = $false; break }
+    }
+
+    if ($allMatch) {
+        # Token already points to this repo; avoid unbind to save time
+        Write-Verbose ("LocalHost.LibraryPaths for {0}-bit already points to repo; skipping unbind before dependencies." -f $Bitness) -Verbose
+        return
+    }
+
+    # Foreign tokens present; unbind this bitness, then ensure cleared
     Invoke-ScriptSafe -ScriptPath $BindScript -ArgumentMap @{
         RepositoryPath = $RepoPath
         Mode           = 'unbind'
@@ -396,24 +403,11 @@ function Ensure-LibraryPathsAbsent {
         Force          = $true
     } -DisplayName ("Dev mode unbind ({0}-bit)" -f $Bitness)
 
-    $ErrorActionPreference = 'Continue'
-    try {
-        & $readPaths -RepositoryPath $RepoPath -SupportedBitness $Bitness -FailOnMissing
-        $code = $LASTEXITCODE
+    $lines = Get-Content -LiteralPath $iniPath -ErrorAction SilentlyContinue
+    $entries = @($lines | Where-Object { $_ -match '^LocalHost\.LibraryPaths\d*=' })
+    if ($entries.Count -gt 0) {
+        throw ("LocalHost.LibraryPaths still present for {0}-bit after unbind; cannot apply dependencies while token exists." -f $Bitness)
     }
-    catch {
-        $code = $LASTEXITCODE
-        if (-not $code) { $code = 1 }
-    }
-    finally {
-        $ErrorActionPreference = $origErr
-    }
-
-    if ($code -eq 2) {
-        return
-    }
-
-    throw ("LocalHost.LibraryPaths still present for {0}-bit after unbind; cannot apply dependencies while token exists. (exit {1})" -f $Bitness, $code)
 }
 
 function Write-ReleaseNotesFromGit {
