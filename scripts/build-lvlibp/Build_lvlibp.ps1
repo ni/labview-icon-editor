@@ -137,7 +137,19 @@ $output = & g-cli @buildArgs 2>&1
 if ($LASTEXITCODE -ne 0) {
     $joined = ($output -join '; ')
     Write-Error "Build failed with exit code $LASTEXITCODE. Output: $joined"
-g-cli --lv-ver $Package_LabVIEW_Version --arch $SupportedBitness QuitLabVIEW
+    $closeScript = Join-Path (Split-Path $PSScriptRoot -Parent) 'close-labview\Close_LabVIEW.ps1'
+    try {
+        if (Test-Path -LiteralPath $closeScript) {
+            & $closeScript -Package_LabVIEW_Version $Package_LabVIEW_Version -SupportedBitness $SupportedBitness | Out-Null
+        }
+        else {
+            Write-Warning ("Close_LabVIEW.ps1 not found at {0}; falling back to g-cli QuitLabVIEW." -f $closeScript)
+            g-cli --lv-ver $Package_LabVIEW_Version --arch $SupportedBitness QuitLabVIEW
+        }
+    }
+    catch {
+        Write-Warning ("Failed to close LabVIEW after build failure: {0}" -f $_.Exception.Message)
+    }
     exit 1
 }
 

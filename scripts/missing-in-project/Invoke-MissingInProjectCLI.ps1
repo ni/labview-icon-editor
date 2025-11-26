@@ -148,8 +148,15 @@ function Cleanup {
 
 # Close LabVIEW but do not fail the job if it is already closed/missing
 function SafeQuitLabVIEW {
+    $closeScript = Join-Path (Split-Path $PSScriptRoot -Parent) 'close-labview\Close_LabVIEW.ps1'
     try {
-        & g-cli --lv-ver $LVVersion --arch $Arch QuitLabVIEW | Out-Null
+        if (Test-Path -LiteralPath $closeScript) {
+            & $closeScript -Package_LabVIEW_Version $LVVersion -SupportedBitness $Arch | Out-Null
+        }
+        else {
+            Write-Warning ("Close_LabVIEW.ps1 not found at {0}; falling back to g-cli QuitLabVIEW." -f $closeScript)
+            & g-cli --lv-ver $LVVersion --arch $Arch QuitLabVIEW | Out-Null
+        }
     }
     catch {
         Write-Warning ("Failed to close LabVIEW: {0}" -f $_.Exception.Message)

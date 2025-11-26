@@ -69,6 +69,21 @@ function Wait-LabVIEWExit {
     }
 }
 
+function Invoke-CloseLabVIEW {
+    param(
+        [string]$Bitness,
+        [string]$LvVersion
+    )
+    $closeScript = Join-Path $PSScriptRoot '..\close-labview\Close_LabVIEW.ps1'
+    if (Test-Path -LiteralPath $closeScript) {
+        & $closeScript -Package_LabVIEW_Version $LvVersion -SupportedBitness $Bitness
+    }
+    else {
+        Write-Warning ("Close_LabVIEW.ps1 not found at {0}; falling back to g-cli QuitLabVIEW." -f $closeScript)
+        g-cli --lv-ver $LvVersion --arch $Bitness QuitLabVIEW
+    }
+}
+
 # --------------------------------------------------------------------
 # 1) Locate exactly one .lvproj file (use provided path when available, else search upward)
 # --------------------------------------------------------------------
@@ -299,7 +314,7 @@ function Invoke-Cleanup {
     # Close LabVIEW for the bitness used in this test run
     Write-Information ("Closing LabVIEW {0}-bit after unit tests..." -f $SupportedBitness) -InformationAction Continue
     try {
-        g-cli --lv-ver $Package_LabVIEW_Version --arch $SupportedBitness QuitLabVIEW
+        Invoke-CloseLabVIEW -Bitness $SupportedBitness -LvVersion $Package_LabVIEW_Version
     }
     catch {
         Write-Warning ("Failed to close LabVIEW {0}-bit after unit tests: {1}" -f $SupportedBitness, $_.Exception.Message)
