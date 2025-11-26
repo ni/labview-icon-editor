@@ -77,6 +77,11 @@ $bitnessPalette = @{
     '32' = if ($hasStyle) { $PSStyle.Foreground.BrightCyan } else { '' }
     '64' = if ($hasStyle) { $PSStyle.Foreground.BrightMagenta } else { '' }
 }
+$stagePalette = @{
+    'devmode' = if ($hasStyle) { $PSStyle.Foreground.BrightCyan } else { '' }
+    'close'   = if ($hasStyle) { $PSStyle.Foreground.BrightMagenta } else { '' }
+    'build'   = if ($hasStyle) { $PSStyle.Foreground.BrightGreen } else { '' }
+}
 $resetColor = if ($hasStyle) { $PSStyle.Reset } else { '' }
 function Show-BitnessBanner {
     param([string]$Arch)
@@ -88,6 +93,29 @@ function Show-BitnessDone {
     param([string]$Arch)
     $color = $bitnessPalette[$Arch]
     Write-Host ("{0}---- {1}-bit phase complete ----{2}" -f $color, $Arch, $resetColor)
+}
+
+function Write-Stage {
+    param(
+        [string]$Label,
+        [ValidateSet('devmode','close','build')]
+        [string]$StageKey = 'build'
+    )
+    $color = $stagePalette[$StageKey]
+    $line = "=" * 78
+    $now = Get-Date
+    $elapsed = if ($script:BuildStart) { ($now - $script:BuildStart).TotalSeconds } else { 0 }
+    $banner = "[STAGE] $Label (t +{0:n1}s)" -f $elapsed
+    if ($hasStyle -and $color) {
+        Write-Host ($color + $line + $resetColor)
+        Write-Host ($color + $banner + $resetColor)
+        Write-Host ($color + $line + $resetColor)
+    }
+    else {
+        Write-Host $line
+        Write-Host $banner
+        Write-Host $line
+    }
 }
 
 # Structured step logger with timestamp/elapsed and optional color
@@ -422,6 +450,27 @@ function Ensure-LibraryPathsAbsent {
         return
     }
 
+    # If existing entries already point at this repo, keep them (stage 1 handles binding)
+    $repoFull = [System.IO.Path]::GetFullPath($RepoPath)
+    $entryTargets = @()
+    foreach ($e in $entries) {
+        $split = $e -split '=', 2
+        if ($split.Count -lt 2) { continue }
+        try {
+            $entryTargets += [System.IO.Path]::GetFullPath($split[1].Trim())
+        }
+        catch {
+            $entryTargets += $split[1].Trim()
+        }
+    }
+    $allMatchRepo = $entryTargets.Count -gt 0 -and ($entryTargets | Where-Object {
+        -not [string]::Equals($_, $repoFull, [System.StringComparison]::OrdinalIgnoreCase)
+    }).Count -eq 0
+    if ($allMatchRepo) {
+        Write-Verbose "LocalHost.LibraryPaths already targets $repoFull for $Bitness-bit; skipping unbind before dependency apply."
+        return
+    }
+
     # Entries present (any path) -> unbind this bitness to enforce NONE before dependency apply
     Invoke-ScriptSafe -ScriptPath $BindScript -ArgumentMap @{
         RepositoryPath = $RepoPath
@@ -646,24 +695,43 @@ try {
     $RevertDevMode = Join-Path $RepositoryPath "scripts/revert-development-mode/RevertDevelopmentMode.ps1"
     $RenameFile = Join-Path $ActionsPath "rename-file/Rename-file.ps1"
 
-    # Guard: start from a clean slate so no bitness overlap can happen
-    $existingLv = @()
-    try { $existingLv = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'LabVIEW*' } } catch { $existingLv = @() }
-    if ($existingLv) {
-        Write-Step -Step "0.0" -Message ("LabVIEW detected before build (PIDs: {0}); issuing pre-flight closes" -f ($existingLv.Id -join ', ')) -Color "Yellow"
+    $do32 = ($LvlibpBitness -eq 'both' -or $LvlibpBitness -eq '32')
+    $do64 = ($LvlibpBitness -eq 'both' -or $LvlibpBitness -eq '64')
+
+    Write-Stage -Label "Stage 1: Bind development mode" -StageKey 'devmode'
+    if ($do64) {
+        Write-Step -Step "0.0" -Message "Bind development mode (64-bit)" -Color "Cyan"
+        Invoke-ScriptSafe -ScriptPath $BindDevMode -ArgumentMap @{
+            RepositoryPath = $RepositoryPath
+            Mode           = 'bind'
+            Bitness        = '64'
+            Force          = $true
+        } -DisplayName "Dev mode bind (64-bit)"
+    }
+    if ($do32) {
+        Write-Step -Step "0.1" -Message "Bind development mode (32-bit)" -Color "Cyan"
+        Invoke-ScriptSafe -ScriptPath $BindDevMode -ArgumentMap @{
+            RepositoryPath = $RepositoryPath
+            Mode           = 'bind'
+            Bitness        = '32'
+            Force          = $true
+        } -DisplayName "Dev mode bind (32-bit)"
+    }
+
+    Write-Stage -Label "Stage 2: Close LabVIEW (clean slate)" -StageKey 'close'
+    if ($do64) {
+        Write-Step -Step "0.2" -Message "Close LabVIEW (64-bit)" -Color "Magenta"
         Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
             Package_LabVIEW_Version = $lvVersion
             SupportedBitness        = '64'
-        } -TimeoutSec 2 -DisplayName "Close LabVIEW (pre-flight 64-bit)"
-        Write-Step -Step "0.1" -Message "Pre-flight close requested for 64-bit LabVIEW" -Color "Cyan"
+        } -TimeoutSec 2 -DisplayName "Close LabVIEW (stage 2 - 64-bit)"
+    }
+    if ($do32) {
+        Write-Step -Step "0.3" -Message "Close LabVIEW (32-bit)" -Color "Magenta"
         Invoke-ScriptSafe -ScriptPath $CloseLabVIEW -ArgumentMap @{
             Package_LabVIEW_Version = $lvVersion
             SupportedBitness        = '32'
-        } -TimeoutSec 2 -DisplayName "Close LabVIEW (pre-flight 32-bit)"
-        Write-Step -Step "0.2" -Message "Pre-flight close requested for 32-bit LabVIEW" -Color "Cyan"
-    }
-    else {
-        Write-Step -Step "0.0" -Message "No LabVIEW processes detected pre-flight; skipping close commands" -Color "Green"
+        } -TimeoutSec 2 -DisplayName "Close LabVIEW (stage 2 - 32-bit)"
     }
 
     # Verify no LabVIEW instances are running before proceeding; force-kill if needed
@@ -674,7 +742,7 @@ try {
         $preProcs = @()
     }
     if ($preProcs) {
-        Write-Step -Step "0.3" -Message ("LabVIEW running before build start; waiting for exit (PIDs: {0})" -f ($preProcs.Id -join ', ')) -Color "Yellow"
+        Write-Step -Step "0.4" -Message ("LabVIEW still running after close stage; waiting for exit (PIDs: {0})" -f ($preProcs.Id -join ', ')) -Color "Yellow"
         $deadline = (Get-Date).AddSeconds(2)
         do {
             Start-Sleep -Seconds 2
@@ -683,9 +751,14 @@ try {
             } catch { $preProcs = @() }
         } while ($preProcs -and (Get-Date) -lt $deadline)
         if ($preProcs) {
-            throw ("LabVIEW process(es) remain before build start: {0}. Please close LabVIEW and retry." -f ($preProcs.Id -join ', '))
+            throw ("LabVIEW process(es) remain after close stage: {0}. Please close LabVIEW and retry." -f ($preProcs.Id -join ', '))
         }
     }
+    else {
+        Write-Step -Step "0.4" -Message "LabVIEW not running after close stage" -Color "Green"
+    }
+
+    Write-Stage -Label "Stage 3: Build & package" -StageKey 'build'
 
     # 1) Clean up old .lvlibp in the plugins folder
     Write-Step -Step "1.0" -Message "Clean plugins folder" -Color "Cyan"
@@ -707,9 +780,6 @@ try {
         Write-Error "Error occurred while retrieving .lvlibp files: $($_.Exception.Message)"
         Write-Verbose "Stack Trace: $($_.Exception.StackTrace)"
     }
-
-    $do32 = ($LvlibpBitness -eq 'both' -or $LvlibpBitness -eq '32')
-    $do64 = ($LvlibpBitness -eq 'both' -or $LvlibpBitness -eq '64')
 
     if ($do64) {
         # Ensure 32-bit LabVIEW is down before running 64-bit build phase
