@@ -1,0 +1,11 @@
+<Project>
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+  <!-- Ensure deterministic outputs; coverage collected via DataCollector -->
+  <PropertyGroup>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+</Project>

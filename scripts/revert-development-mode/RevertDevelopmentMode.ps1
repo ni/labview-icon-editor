@@ -83,17 +83,53 @@ try {
     $targetBitness = $SupportedBitness
     Write-Information ("Targeting bitness: {0}-bit" -f $targetBitness) -InformationAction Continue
     # Build the script paths
-    $RestoreScript = Join-Path -Path $ScriptDirectory -ChildPath '..\restore-setup-lv-source\RestoreSetupLVSource.ps1'
     $CloseScript   = Join-Path -Path $RepositoryPath -ChildPath 'scripts/close-labview/Close_LabVIEW.ps1'
 
     $arch = $targetBitness
 
-    Invoke-ScriptSafe -ScriptPath $RestoreScript -ArgumentMap @{
-        MinimumSupportedLVVersion = $Package_LabVIEW_Version
-        SupportedBitness          = $arch
-        RepositoryPath            = $RepositoryPath
-        LabVIEW_Project           = $LabVIEW_Project
-        Build_Spec                = 'Editor Packed Library'
+    # Skip restore when no dev-mode token exists for this repo (avoids g-cli deadtime on stale bindings)
+    function Should-RunRestore {
+        param(
+            [Parameter(Mandatory)][string]$RepoPath,
+            [Parameter(Mandatory)][string]$LvVersion,
+            [Parameter(Mandatory)][string]$Bitness
+        )
+        try {
+            $vendorTools = Join-Path $RepoPath 'src/tools/VendorTools.psm1'
+            if (-not (Test-Path -LiteralPath $vendorTools -PathType Leaf)) { return $true }
+            Import-Module $vendorTools -Force -ErrorAction Stop
+            $lvExe = Resolve-LabVIEWExePath -Version ([int]$LvVersion) -Bitness ([int]$Bitness) -ErrorAction Stop
+            $ini  = Get-LabVIEWIniPath -LabVIEWExePath $lvExe
+            if (-not (Test-Path -LiteralPath $ini -PathType Leaf)) { return $true }
+            $content = Get-Content -LiteralPath $ini -Raw -ErrorAction Stop
+            if ($content -match [regex]::Escape($RepoPath)) { return $true }
+            Write-Information ("Dev-mode token for {0} not found in {1}; skipping restore." -f $RepoPath, $ini) -InformationAction Continue
+            return $false
+        } catch {
+            Write-Information ("Unable to verify LabVIEW.ini token: {0}. Proceeding with restore." -f $_.Exception.Message) -InformationAction Continue
+            return $true
+        }
+    }
+
+    if (Should-RunRestore -RepoPath $RepositoryPath -LvVersion $Package_LabVIEW_Version -Bitness $arch) {
+        $resolver = Join-Path $ScriptDirectory '..\common\resolve-repo-cli.ps1'
+        if (-not (Test-Path -LiteralPath $resolver -PathType Leaf)) {
+            throw "CLI resolver not found at $resolver"
+        }
+        $prov = & $resolver -CliName 'OrchestrationCli' -RepoPath $RepositoryPath -SourceRepoPath $RepositoryPath -PrintProvenance:$false
+        $orchestrationArgs = @(
+            'restore-sources',
+            '--repo', $RepositoryPath,
+            '--bitness', $arch,
+            '--lv-version', $Package_LabVIEW_Version
+        )
+        Write-Information ("Restore via OrchestrationCli: {0}" -f (($prov.Command + $orchestrationArgs) -join ' ')) -InformationAction Continue
+        & $prov.Command[0] @($prov.Command[1..($prov.Command.Count-1)]) @orchestrationArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw ("restore-sources failed with exit {0} for {1}-bit LabVIEW {2}" -f $LASTEXITCODE, $arch, $Package_LabVIEW_Version)
+        }
+    } else {
+        Write-Information "Restore skipped because this repo is not currently bound in LabVIEW.ini." -InformationAction Continue
     }
 
     Invoke-ScriptSafe -ScriptPath $CloseScript -ArgumentMap @{

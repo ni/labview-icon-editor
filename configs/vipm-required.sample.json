@@ -1,0 +1,21 @@
+{
+  "packages": [
+    { "name": "LUnit", "packageId": "astemes_lib_lunit", "minVersion": "1.10.7.3" },
+    { "name": "Git API", "packageId": "hse_lib_git_api", "minVersion": "2.3.4.176" },
+    { "name": "JKI Serialization", "packageId": "jki_lib_serialization", "minVersion": "1.0.1.14" },
+    { "name": "JKI State Machine", "packageId": "jki_lib_state_machine", "minVersion": "2024.0.3.23" },
+    { "name": "JKI Unicode", "packageId": "jki_lib_unicode", "minVersion": "1.0.0.7" },
+    { "name": "VIPM API", "packageId": "jki_lib_vipm_api", "minVersion": "2020.0.3.80" },
+    { "name": "JKI Toolkits Palette", "packageId": "jki_rsc_toolkits_palette", "minVersion": "1.1.0" },
+    { "name": "OpenG Array", "packageId": "oglib_array", "minVersion": "6.0.1.20" },
+    { "name": "OpenG Error", "packageId": "oglib_error", "minVersion": "6.0.0.26" },
+    { "name": "OpenG File", "packageId": "oglib_file", "minVersion": "6.0.2.28" },
+    { "name": "OpenG Variant", "packageId": "oglib_lvdata", "minVersion": "6.0.0.45" },
+    { "name": "OpenG ZIP", "packageId": "oglib_lvzip", "minVersion": "5.0.9.1" },
+    { "name": "LUnit For G-CLI", "packageId": "sas_workshops_lib_lunit_for_g_cli", "minVersion": "1.1.1.54" },
+    { "name": "LVBuildSpec For G CLI", "packageId": "sas_workshops_lib_lvbuildspec_for_g_cli", "minVersion": "1.2.1.104" },
+    { "name": "VIPB Builder For G CLI", "packageId": "sas_workshops_lib_vipb_builder_for_g_cli", "minVersion": "1.1.6.46" },
+    { "name": "VIPC Applier For G CLI", "packageId": "sas_workshops_lib_vipc_applier_for_g_cli", "minVersion": "1.0.5.38" },
+    { "name": "G CLI", "packageId": "wiresmith_technology_lib_g_cli", "minVersion": "3.0.1.98" }
+  ]
+}

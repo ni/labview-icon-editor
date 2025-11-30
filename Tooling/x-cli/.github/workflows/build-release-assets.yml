@@ -1,0 +1,94 @@
+name: build-release-assets
+
+on:
+  push:
+    branches:
+      - 'release/*'
+      - 'hotfix/*'
+  workflow_dispatch:
+
+jobs:
+  build_cli:
+    uses: ./.github/workflows/build-cli.yml
+    with:
+      cli_version: 0.0.0-dev.${{ github.sha }}
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: build_cli
+    env:
+      CLI_VERSION: ${{ needs.build_cli.outputs.cli_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish binaries
+        shell: pwsh
+        run: ./scripts/build.ps1
+
+      - name: Smoke test linux binary
+        shell: bash
+        run: |
+          chmod +x dist/x-cli-linux-x64
+          ./dist/x-cli-linux-x64 --help >/tmp/linux-help.txt
+          head -n 1 /tmp/linux-help.txt
+
+      - name: Download CLI package
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-package
+          path: package
+
+      - name: Build container image (package)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: docker build --target package-image --build-arg XCLI_VERSION="$CLI_VERSION" -t x-cli-action:ci .
+
+      - name: Container smoke test (--help)
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm x-cli-action:ci --help > /tmp/help.txt
+          grep -q "Usage:" /tmp/help.txt
+          grep -q "Global options:" /tmp/help.txt
+
+      - name: Container smoke test (--version)
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm x-cli-action:ci --version > /tmp/version.txt
+          if [[ ! -s /tmp/version.txt ]]; then
+            echo "Empty version output" >&2
+            exit 1
+          fi
+
+      - name: Save container image
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          mkdir -p artifacts/action
+          docker save x-cli-action:ci -o artifacts/action/x-cli-action.tar
+
+      - name: Upload linux-x64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: x-cli-linux-x64
+          path: artifacts/release/linux-x64/*
+
+      - name: Upload win-x64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: x-cli-win-x64
+          path: artifacts/release/win-x64/*
+
+      - name: Upload Docker image artifact
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: x-cli-action-image
+          path: artifacts/action/x-cli-action.tar

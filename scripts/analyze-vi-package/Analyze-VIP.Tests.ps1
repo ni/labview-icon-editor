@@ -33,7 +33,7 @@ function Resolve-VipPath {
 
     if (-not $repoRoot) { return $null }
 
-    $vipDir = Join-Path $repoRoot 'builds\VI Package'
+    $vipDir = Join-Path $repoRoot 'builds\vip-stash'
     $tagVersion = '0.1.0'
     try {
         $tag = git -C $repoRoot describe --tags --abbrev=0 2>$null
@@ -68,7 +68,7 @@ if (-not (Test-Path -LiteralPath $vipReaderPath)) {
 
 $script:ResolvedVipPath = Resolve-VipPath -ExplicitPath $VipPath
 if (-not $script:ResolvedVipPath -or -not (Test-Path -LiteralPath $script:ResolvedVipPath -PathType Leaf)) {
-    Write-Warning "VIP_PATH not set and no .vip under builds\VI Package. Set VIP_PATH or run via run-local.ps1. Skipping Analyze-VIP tests."
+    Write-Warning "VIP_PATH not set and no .vip under builds\vip-stash. Set VIP_PATH or run via run-local.ps1. Skipping Analyze-VIP tests."
     Describe "Analyze VIP" -Skip:$true { It "skipped" { } }
     return
 }
@@ -115,7 +115,7 @@ BeforeAll {
 
         if (-not $repoRoot) { return $null }
 
-        $vipDir = Join-Path $repoRoot 'builds\VI Package'
+        $vipDir = Join-Path $repoRoot 'builds\vip-stash'
         $tagVersion = '0.1.0'
         try {
             $tag = git -C $repoRoot describe --tags --abbrev=0 2>$null
@@ -173,7 +173,7 @@ BeforeAll {
                 }
             }
             if ($repoRoot) {
-                $vipDir = Join-Path $repoRoot 'builds\VI Package'
+        $vipDir = Join-Path $repoRoot 'builds\vip-stash'
                 $tagVersion = '0.1.0'
                 try {
                     $tag = git -C $repoRoot describe --tags --abbrev=0 2>$null
@@ -202,7 +202,7 @@ BeforeAll {
         }
     }
     if (-not $localVip -or -not (Test-Path -LiteralPath $localVip -PathType Leaf)) {
-        throw "Unable to resolve VIP for analysis. Set VIP_PATH or ensure builds\\VI Package contains a .vip."
+        throw "Unable to resolve VIP for analysis. Set VIP_PATH or ensure builds\\vip-stash contains a .vip."
     }
     $script:ResolvedVipPath = $localVip
     $script:vip = Read-VipSpec -Path $script:ResolvedVipPath

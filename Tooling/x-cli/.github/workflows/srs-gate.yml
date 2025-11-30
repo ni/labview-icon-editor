@@ -1,0 +1,353 @@
+name: SRS Gate
+
+on:
+  pull_request:
+    paths:
+      - "docs/srs/**"
+      - "docs/compliance/**"
+      - "scripts/**"
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  compliance_smoke:
+    name: SRS Compliance + Smoke
+    runs-on: ubuntu-latest
+    env:
+      SRS_LINT_VERBOSE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install deps (ruamel.yaml)
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruamel.yaml
+      - name: Compute 29148 compliance
+        run: |
+          if [ -f scripts/compute_29148_compliance.py ]; then
+            python scripts/compute_29148_compliance.py
+          else
+            echo "Compliance script missing: scripts/compute_29148_compliance.py"; exit 1
+          fi
+      - name: SRS 29148 Lint (verbose)
+        run: |
+          if [ -f scripts/lint_srs_29148.py ]; then
+            python scripts/lint_srs_29148.py
+          else
+            echo "Lint script missing: scripts/lint_srs_29148.py"; exit 1
+          fi
+      - name: SRS Hints (Job Summary)
+        shell: bash
+        run: |
+          INCLUDE_PREFIXES="${{ vars.SRS_HINTS_PREFIX }}"; INCLUDE_PREFIXES="${INCLUDE_PREFIXES:-}"
+          EXCLUDE_PREFIXES="${{ vars.SRS_HINTS_EXCLUDE_PREFIX }}"; EXCLUDE_PREFIXES="${EXCLUDE_PREFIXES:-}"
+          ARGS=( )
+          [ -n "$INCLUDE_PREFIXES" ] && ARGS+=( --include-prefixes "$INCLUDE_PREFIXES" )
+          [ -n "$EXCLUDE_PREFIXES" ] && ARGS+=( --exclude-prefixes "$EXCLUDE_PREFIXES" )
+          SORT_MODE="${{ vars.SRS_HINTS_SORT }}"; SORT_MODE="${SORT_MODE:-}"
+          [ -n "$SORT_MODE" ] && ARGS+=( --sort "$SORT_MODE" )
+          COUNT=$(python scripts/srs_deprecated_count.py --print-count "${ARGS[@]}" || echo 0)
+          echo "### SRS Hints" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Deprecated SRS pages detected: $COUNT" >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$INCLUDE_PREFIXES" ] && echo "- Include prefixes: $INCLUDE_PREFIXES" >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$EXCLUDE_PREFIXES" ] && echo "- Exclude prefixes: $EXCLUDE_PREFIXES" >> "$GITHUB_STEP_SUMMARY"
+          HINTS_TOPN="${{ vars.SRS_HINTS_LIST_TOPN }}"; HINTS_TOPN="${HINTS_TOPN:-0}"
+          SHOW_TITLES="${{ vars.SRS_HINTS_SHOW_TITLES }}"; SHOW_TITLES="${SHOW_TITLES:-0}"
+          PER_PREFIX="${{ vars.SRS_HINTS_TOPN_PER_PREFIX }}"; PER_PREFIX="${PER_PREFIX:-0}"
+          if [ "${HINTS_TOPN}" != "0" ] && [ "$COUNT" -gt 0 ]; then
+            if [ "${PER_PREFIX}" != "0" ]; then
+              if [ -n "$INCLUDE_PREFIXES" ]; then
+                IFS=',' read -r -a PFX_ARR <<< "$INCLUDE_PREFIXES"
+              else
+                mapfile -t PFX_ARR < <(python scripts/srs_deprecated_count.py --discover-domains "${ARGS[@]}")
+              fi
+              if [ ${#PFX_ARR[@]} -gt 0 ]; then
+                echo "- Top deprecated by domain (N=${HINTS_TOPN}):" >> "$GITHUB_STEP_SUMMARY"
+                for P in "${PFX_ARR[@]}"; do
+                  P_TRIM="$(echo "$P" | xargs)"; [ -z "$P_TRIM" ] && continue
+                  echo "  - $P_TRIM:" >> "$GITHUB_STEP_SUMMARY"
+                  ARGS_ONE=( --include-prefixes "$P_TRIM" )
+                  [ -n "$EXCLUDE_PREFIXES" ] && ARGS_ONE+=( --exclude-prefixes "$EXCLUDE_PREFIXES" )
+                  [ -n "$SORT_MODE" ] && ARGS_ONE+=( --sort "$SORT_MODE" )
+                  if [ "${SHOW_TITLES}" != "0" ]; then
+                    python scripts/srs_deprecated_count.py --list --titles --limit "${HINTS_TOPN}" "${ARGS_ONE[@]}" \
+                      | awk '{print "    - " $0}' >> "$GITHUB_STEP_SUMMARY"
+                  else
+                    python scripts/srs_deprecated_count.py --list --ids --limit "${HINTS_TOPN}" "${ARGS_ONE[@]}" \
+                      | awk '{print "    - " $0}' >> "$GITHUB_STEP_SUMMARY"
+                  fi
+                done
+                echo "  (truncated at ${HINTS_TOPN} items per domain)" >> "$GITHUB_STEP_SUMMARY"
+              fi
+            else
+              if [ "${SHOW_TITLES}" != "0" ]; then
+                echo "- Top deprecated requirements (ID - Title):" >> "$GITHUB_STEP_SUMMARY"
+                python scripts/srs_deprecated_count.py --list --titles --limit "${HINTS_TOPN}" "${ARGS[@]}" \
+                  | awk '{print "  - " $0}' >> "$GITHUB_STEP_SUMMARY"
+                echo "  (truncated at ${HINTS_TOPN} items)" >> "$GITHUB_STEP_SUMMARY"
+              else
+                echo "- Top deprecated requirements (IDs):" >> "$GITHUB_STEP_SUMMARY"
+                python scripts/srs_deprecated_count.py --list --ids --limit "${HINTS_TOPN}" "${ARGS[@]}" \
+                  | awk '{print "  - " $0}' >> "$GITHUB_STEP_SUMMARY"
+                echo "  (truncated at ${HINTS_TOPN} items)" >> "$GITHUB_STEP_SUMMARY"
+              fi
+            fi
+          fi
+
+      - name: SRS Hints (JSON Artifact)
+        id: srs_hints_json
+        shell: bash
+        run: |
+          HINTS_TOPN="${{ vars.SRS_HINTS_LIST_TOPN }}"; HINTS_TOPN="${HINTS_TOPN:-0}"
+          if [ "${HINTS_TOPN}" = "0" ]; then
+            echo "should_upload=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          INCLUDE_PREFIXES="${{ vars.SRS_HINTS_PREFIX }}"; INCLUDE_PREFIXES="${INCLUDE_PREFIXES:-}"
+          EXCLUDE_PREFIXES="${{ vars.SRS_HINTS_EXCLUDE_PREFIX }}"; EXCLUDE_PREFIXES="${EXCLUDE_PREFIXES:-}"
+          SORT_MODE="${{ vars.SRS_HINTS_SORT }}"; SORT_MODE="${SORT_MODE:-}"
+          ARGS=( )
+          [ -n "$INCLUDE_PREFIXES" ] && ARGS+=( --include-prefixes "$INCLUDE_PREFIXES" )
+          [ -n "$EXCLUDE_PREFIXES" ] && ARGS+=( --exclude-prefixes "$EXCLUDE_PREFIXES" )
+          [ -n "$SORT_MODE" ] && ARGS+=( --sort "$SORT_MODE" )
+          python scripts/srs_deprecated_count.py --json "${ARGS[@]}" > srs-hints.json || echo "{}" > srs-hints.json
+          echo "should_upload=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload SRS Hints JSON
+        if: steps.srs_hints_json.outputs.should_upload == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: srs-hints
+          path: srs-hints.json
+
+      - name: Post SRS Hints link (PR)
+        if: >-
+          github.event_name == 'pull_request' &&
+          contains(github.event.pull_request.labels.*.name, 'ci:srs-hints-comment') &&
+          steps.srs_hints_json.outputs.should_upload == 'true'
+        uses: actions/github-script@v7
+        env:
+          SRS_HINTS_LIST_TOPN: ${{ vars.SRS_HINTS_LIST_TOPN }}
+          SRS_HINTS_SHOW_TITLES: ${{ vars.SRS_HINTS_SHOW_TITLES }}
+          SRS_HINTS_PREFIX: ${{ vars.SRS_HINTS_PREFIX }}
+          SRS_HINTS_EXCLUDE_PREFIX: ${{ vars.SRS_HINTS_EXCLUDE_PREFIX }}
+          SRS_HINTS_SORT: ${{ vars.SRS_HINTS_SORT }}
+          SRS_HINTS_TOPN_PER_PREFIX: ${{ vars.SRS_HINTS_TOPN_PER_PREFIX }}
+          SRS_HINTS_INLINE_MAX_DOMAINS: ${{ vars.SRS_HINTS_INLINE_MAX_DOMAINS }}
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request.number;
+            const labels = (context.payload.pull_request.labels || []).map(l => l.name || l);
+            const inlineWanted = labels.includes('ci:srs-hints-inline');
+            const inlinePerPrefixWanted = labels.includes('ci:srs-hints-inline-per-prefix');
+            const runId = context.runId;
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${runId}`;
+            const topn = process.env.SRS_HINTS_LIST_TOPN || '0';
+            const titles = process.env.SRS_HINTS_SHOW_TITLES || '0';
+            const include = process.env.SRS_HINTS_PREFIX || '';
+            const exclude = process.env.SRS_HINTS_EXCLUDE_PREFIX || '';
+            const sort = process.env.SRS_HINTS_SORT || '';
+            const perPrefix = process.env.SRS_HINTS_TOPN_PER_PREFIX || '0';
+            const maxDomains = parseInt(process.env.SRS_HINTS_INLINE_MAX_DOMAINS || '0', 10) || 0;
+            const lines = [
+              'SRS Hints JSON artifact available:',
+              `- Run: ${runUrl}`,
+              `- Artifact: srs-hints`,
+              `- topN: ${topn}, titles: ${titles}, sort: ${sort}`,
+              include ? `- include: ${include}` : null,
+              exclude ? `- exclude: ${exclude}` : null,
+              perPrefix !== '0' ? `- per-prefix: on` : null,
+            ].filter(Boolean);
+            // Inline top-N (optional)
+            const n = parseInt(topn, 10) || 0;
+            if (inlineWanted && n > 0) {
+              try {
+                const cmd = ['python','scripts/srs_deprecated_count.py','--list', (titles !== '0' ? '--titles' : '--ids'), '--limit', String(n)];
+                if (include) { cmd.push('--include-prefixes', include); }
+                if (exclude) { cmd.push('--exclude-prefixes', exclude); }
+                if (sort) { cmd.push('--sort', sort); }
+                const out = execSync(cmd.join(' '), { encoding: 'utf8' }).trim().split(/\r?\n/).filter(Boolean).slice(0, n);
+                if (out.length) {
+                  lines.push('- Inline Top N:');
+                  for (const l of out) lines.push(`  - ${l}`);
+                  lines.push(`  (truncated at ${n} items)`);
+                }
+              } catch (e) {
+                lines.push('- Inline Top N: (error generating list)');
+              }
+            }
+            // Inline per-domain top-N (optional)
+            if (inlinePerPrefixWanted && n > 0) {
+              try {
+                let domains = [];
+                if (include) {
+                  domains = include.split(',').map(s => s.trim()).filter(Boolean);
+                } else {
+                  const dcmd = ['python','scripts/srs_deprecated_count.py','--discover-domains'];
+                  if (exclude) dcmd.push('--exclude-prefixes', exclude);
+                  if (sort) dcmd.push('--sort', sort);
+                  const dOut = execSync(dcmd.join(' '), { encoding: 'utf8' }).trim();
+                  domains = dOut ? dOut.split(/\r?\n/).filter(Boolean) : [];
+                }
+                if (domains.length) {
+                  const totalDomains = domains.length;
+                  let truncatedDomains = false;
+                  if (maxDomains > 0 && totalDomains > maxDomains) {
+                    domains = domains.slice(0, maxDomains);
+                    truncatedDomains = true;
+                  }
+                  lines.push('- Inline Top N (per-domain):');
+                  for (const d of domains) {
+                    const dtrim = (d || '').trim();
+                    if (!dtrim) continue;
+                    lines.push(`  - ${dtrim}:`);
+                    const lcmd = ['python','scripts/srs_deprecated_count.py','--list', (titles !== '0' ? '--titles' : '--ids'), '--include-prefixes', dtrim, '--limit', String(n)];
+                    if (exclude) lcmd.push('--exclude-prefixes', exclude);
+                    if (sort) lcmd.push('--sort', sort);
+                    try {
+                      const lOut = execSync(lcmd.join(' '), { encoding: 'utf8' }).trim().split(/\r?\n/).filter(Boolean).slice(0, n);
+                      for (const item of lOut) lines.push(`    - ${item}`);
+                    } catch (_) {
+                      lines.push('    - (error)');
+                    }
+                  }
+                  if (truncatedDomains) {
+                    lines.push(`  (truncated at ${maxDomains} domains)`);
+                  }
+                  if (n > 0) {
+                    lines.push(`  (truncated at ${n} items per domain)`);
+                  }
+                }
+              } catch (e) {
+                lines.push('- Inline Top N (per-domain): (error generating lists)');
+              }
+            }
+            const body = lines.join('\n');
+            await github.rest.issues.createComment({ owner, repo, issue_number: pr, body });
+      - name: Smoke test (objective checks)
+        run: |
+          if [ -f scripts/srs_maintenance_smoke.py ]; then
+            python scripts/srs_maintenance_smoke.py
+          else
+            echo "Smoke script missing: scripts/srs_maintenance_smoke.py"; exit 1
+          fi
+      - name: Enforce 100% compliance when report exists (strict mode only)
+        if: contains(github.event.pull_request.labels.*.name, 'srs-strict') || github.event_name == 'push'
+        run: |
+          if [ -f docs/compliance/report.json ]; then
+            python - <<'PY'
+            import json,sys
+            pct=float(json.load(open("docs/compliance/report.json"))["compliance_percent"])
+            assert 0.0<=pct<=100.0
+            if pct<100.0: print(f"Compliance gate failed: {pct}% < 100%"); sys.exit(1)
+            print(f"Compliance OK: {pct}%")
+            PY
+          else
+            echo "Compliance report missing: docs/compliance/report.json; numeric gate skipped."
+          fi
+
+  srs_unit_tests:
+    name: SRS Scripts - Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruamel.yaml pytest pytest-timeout
+      - run: pytest -q scripts/tests
+
+  rtm_verify:
+    name: Traceability (RTM) Verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: tools/rtm-verify-ts/package-lock.json
+      - name: Install RTM tool dependencies
+        run: |
+          npm ci --prefix tools/rtm-verify-ts
+      - name: Build RTM tool
+        run: |
+          npm run build --prefix tools/rtm-verify-ts
+      - name: Verify RTM (changed reqs & touched src/**)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p telemetry/rtm
+          node tools/rtm-verify-ts/dist/index.js --comment --only-on-failure --json-out telemetry/rtm/rtm-summary.json
+      - name: Validate RTM JSON against schema (PowerShell)
+        shell: pwsh
+        run: |
+          $schema = "docs/schemas/v1/rtm.verify.v1.schema.json"
+          $jsonPath = "telemetry/rtm/rtm-summary.json"
+          if (-not (Test-Path $jsonPath)) { Write-Error "RTM JSON missing: $jsonPath"; exit 1 }
+          if (-not (Test-Path $schema)) { Write-Error "Schema missing: $schema"; exit 1 }
+          $ok = Test-Json -Json (Get-Content $jsonPath -Raw) -SchemaFile $schema
+          if (-not $ok) { Write-Error "Schema validation failed for $jsonPath"; exit 1 }
+          Write-Host "RTM JSON schema validation passed"
+      # Ajv validation step removed - PowerShell Test-Json above is authoritative
+      - name: Upload RTM summary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rtm-summary
+          path: telemetry/rtm/rtm-summary.json
+      - name: RTM Job Summary (from JSON)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const p = 'telemetry/rtm/rtm-summary.json';
+            if (!fs.existsSync(p)) { core.setFailed('rtm-summary.json missing'); return }
+            const j = JSON.parse(fs.readFileSync(p,'utf8'));
+            const lines = [];
+            lines.push('### RTM Verify');
+            lines.push(`- in_scope: ${j.summary.in_scope}`);
+            lines.push(`- passed: ${j.summary.passed}`);
+            lines.push(`- failed: ${j.summary.failed}`);
+            lines.push(`- out_of_scope: ${j.summary.out_of_scope}`);
+            if (Array.isArray(j.failures) && j.failures.length) {
+              const n = Math.min(10, j.failures.length);
+              lines.push(`- failing IDs (top ${n}):`);
+              for (const f of j.failures.slice(0,n)) lines.push(`  - ${f.id}`);
+              if (j.failures.length > n) lines.push(`  (and ${j.failures.length - n} more)`);
+            }
+            await core.summary.addRaw(lines.join('\n')).write();
+
+      - name: RTM failure notifier (PR comment)
+        if: ${{ github.event_name == 'pull_request' && failure() }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request.number;
+            const marker = '<!-- rtm-verify-failed -->';
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
+            const body = `${marker}\nRTM verify failed. See run: ${runUrl}\n\n` +
+              'Retry failed jobs:\n```bash\n' +
+              `gh run rerun ${context.runId} --failed\n` +
+              '```\n';
+            try {
+              const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number: pr, per_page: 100 });
+              const existing = comments.find(c => c.user.type === 'Bot' && c.body && c.body.includes(marker));
+              if (existing) {
+                await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+              } else {
+                await github.rest.issues.createComment({ owner, repo, issue_number: pr, body });
+              }
+            } catch (e) {
+              core.warning('failed to post RTM failure tip: ' + String(e));
+            }

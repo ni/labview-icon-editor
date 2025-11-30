@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://labview-community-ci-cd.github.io/x-cli/schemas/v1/rtm.verify.v1.schema.json",
+  "title": "rtm verify v1",
+  "type": "object",
+  "properties": {
+    "schema": { "const": "rtm.verify/v1" },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "mapping": { "type": "string" },
+        "changed_files": { "type": "array", "items": { "type": "string" } },
+        "ts": { "type": "string", "format": "date-time" },
+        "pr": { "type": ["integer", "null"] },
+        "base_ref": { "type": ["string", "null"] }
+      },
+      "required": ["mapping", "changed_files", "ts"],
+      "additionalProperties": true
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "in_scope": { "type": "integer", "minimum": 0 },
+        "passed": { "type": "integer", "minimum": 0 },
+        "failed": { "type": "integer", "minimum": 0 },
+        "out_of_scope": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["in_scope", "passed", "failed", "out_of_scope"],
+      "additionalProperties": false
+    },
+    "failures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "id_ok": { "type": "boolean" },
+          "source_ok": { "type": "boolean" },
+          "code_ok": { "type": "boolean" },
+          "tests_ok": { "type": "boolean" },
+          "reasons": { "type": "array", "items": { "type": "string" } },
+          "code_expanded": { "type": "array", "items": { "type": "string" } },
+          "tests_expanded": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["id", "id_ok", "source_ok", "code_ok", "tests_ok", "reasons"],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": ["schema", "meta", "summary", "failures"],
+  "additionalProperties": true
+}

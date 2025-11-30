@@ -10,12 +10,14 @@ Use this when the bind task fails because LabVIEW is already pointed at another 
 ## Typical symptoms
 - Target INI tokens show `[OTHER-REPO]` (or `[OTHER]`) for the VIPB version/bitness.
 - Bind attempt fails with “LocalHost.LibraryPaths points to another path … use -Force to overwrite.”
+- Worktree builds: tokens remain pointed at the main repo path after a worktree bind, causing verification failures and aborted builds.
 - Anomalies may include:
   - Target version bound to another repo/path.
   - Suspicious double-rooted token paths (e.g., `C:\...C:\...`).
 
 ## Diagnosis
 - The canonical LabVIEW.ini for the VIPB version/bitness contains a LocalHost.LibraryPaths entry that points to a different checkout or malformed path. The bind helper refuses to overwrite without Force to avoid clobbering another repo.
+- Worktree isolation requires clearing main-repo tokens first so the worktree can bind to its own path; otherwise verification sees “[OTHER-REPO]” and fails.
 
 ## Action required (choose one path)
 1) Manual (CLI)
@@ -28,6 +30,9 @@ Use this when the bind task fails because LabVIEW is already pointed at another 
 
 - If other repos rely on the existing binding, confirm before forcing.
 - Clean suspicious/double-rooted tokens by running unbind with **Force** for the affected version/bitness if not needed.
+- Worktree isolation:
+  - Main repo: `pwsh scripts/task-devmode-bind.ps1 -RepositoryPath . -Mode unbind -Bitness both` to clear tokens.
+  - Worktree: run bind inside the worktree for the VIPB’s year/bitness (`-Mode bind -Bitness both`); set `XCLI_LABVIEW_INI_PATH` if x-cli enforces LocalHost.LibraryPaths.
 
 ## Artifacts
 - JSON summary: `reports/dev-mode-bind.json` (contains per-bitness status, paths, messages).

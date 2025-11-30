@@ -1,0 +1,24 @@
+
+{
+  "overall": "FAIL",
+  "root": "C:/repos/x-cli",
+  "manifest": "\u2014",
+  "roles": {
+    "crosswalks": null,
+    "glossary": null,
+    "appendix": null,
+    "policies": null
+  },
+  "crosswalks": {
+    "present": false,
+    "files": [],
+    "parsed_ok": 0,
+    "rows_ok": 0,
+    "errors": []
+  },
+  "glossary_DoD": false,
+  "appendix_found": false,
+  "appendix_path": null,
+  "policies_pdf_note": "WARN: policies dir missing"
+}
+

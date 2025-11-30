@@ -65,6 +65,24 @@ param([string]`$RepositoryPath)
         $data[0].status      | Should -Be 'success'
     }
 
+    It "ignores accidental positional booleans after -Force and keeps the default JSON path" {
+        Set-Content -LiteralPath $IniPath -Value @("LocalHost.LibraryPaths1=$repoRoot")
+        $defaultJson = Join-Path $repoRoot 'reports\dev-mode-bind.json'
+        $truePath = Join-Path $repoRoot 'True'
+        if (Test-Path -LiteralPath $defaultJson) { Remove-Item -LiteralPath $defaultJson -Force }
+        if (Test-Path -LiteralPath $truePath) { Remove-Item -LiteralPath $truePath -Force }
+
+        Set-Item -Path Function:Resolve-LVIniPath -Value ([scriptblock]::Create("param([string]`$LvVersion,[string]`$Arch) return '$IniPath'"))
+
+        $warnings = @()
+        & $scriptPath -RepositoryPath $repoRoot -Mode status -Bitness 64 -Force True -WarningVariable warnings
+        $LASTEXITCODE | Should -Be 0
+
+        Test-Path -LiteralPath $defaultJson | Should -BeTrue
+        Test-Path -LiteralPath $truePath    | Should -BeFalse
+        ($warnings -join "`n") | Should -Match "Detected '-Force True'"
+    }
+
     It "binds when packed libraries exist even if the token matches (dry run)" {
         $repoPacked = Join-Path $TestDrive 'repo-packed'
         New-Item -ItemType Directory -Path (Join-Path $repoPacked 'scripts') -Force | Out-Null

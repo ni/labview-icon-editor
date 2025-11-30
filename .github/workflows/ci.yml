@@ -72,9 +72,46 @@ jobs:
             - HTML: [requirements.html (download artifact)](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
             - JSON: [requirements.json (download artifact)](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
+  requirements-language-lint:
+    name: Lint requirements language (ISO 29148)
+    needs: [verify-checklist-sync]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 1
+      - name: Lint requirements language
+        run: python3 .github/scripts/lint_requirements_29148.py
+
+  requirements-attributes:
+    name: Requirements attributes completeness
+    needs: [verify-checklist-sync]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 1
+      - name: Check requirement attributes and traceability readiness
+        run: python3 .github/scripts/check_requirements_attributes.py
+      - name: Check set quality (no TBD/TBR placeholders)
+        run: python3 .github/scripts/check_requirements_set_quality.py
+      - name: Verify glossary and checklist present
+        run: |
+          test -f docs/requirements/glossary.md
+          test -f docs/requirements/set-quality-checklist.md
+          test -f docs/requirements/README.md
+
   test-compute-version-bump:
     name: Test compute-version bump selection (matrix)
-    needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -196,7 +233,7 @@ jobs:
 
   test-tag-existence-check:
     name: Test tag existence check logic
-    needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     steps:
       - name: "Guard: Linux runner"
@@ -295,7 +332,7 @@ jobs:
 
   rtm-gates:
     name: RTM validation and coverage gate
-    needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     steps:
       - name: "Guard: Linux runner"
@@ -337,7 +374,7 @@ jobs:
 
   docs-quality:
     name: Docs link check and ADR lint
-    needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     steps:
       - name: "Guard: Linux runner"
@@ -386,9 +423,35 @@ jobs:
           path: lychee/report.json
           if-no-files-found: error
 
+  dev-mode-binder-tests:
+    name: Dev-mode binder tests
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, enforce-verify-checklist-needs]
+    runs-on: self-hosted-windows-lv
+    steps:
+      - name: "Guard: Windows runner"
+        if: ${{ runner.os != 'Windows' }}
+        run: exit 1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 1
+      - name: Ensure Pester 5 is available
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $hasPester = Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version.Major -ge 5 }
+          if (-not $hasPester) {
+            Install-Module -Name Pester -MinimumVersion 5.3.3 -Scope CurrentUser -Force -SkipPublisherCheck
+          }
+      - name: Run dev-mode binder Pester suite
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-Pester -Path 'Test/BindDevelopmentMode.Tests.ps1' -Output Detailed -EnableExit
+
   seed-containerized:
     name: Seed + Analyze (containerized)
-    needs: [verify-checklist-sync, enforce-verify-checklist-needs]
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     steps:
       - name: "Guard: Linux runner"
@@ -415,7 +478,7 @@ jobs:
 
   resolve-labview-version:
     name: Resolve LabVIEW version from VIPB
-    needs: [verify-checklist-sync]
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes]
     runs-on: ubuntu-latest
     outputs:
       minimum_supported_lv_version: ${{ steps.read.outputs.lv_version }}
@@ -457,7 +520,7 @@ jobs:
 
   version:
     name: Compute Version
-    needs: [verify-checklist-sync]
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes]
     runs-on: self-hosted-windows-lv
     defaults:
       run:
@@ -484,7 +547,7 @@ jobs:
 
   list-collaborators:
     name: List Repo Collaborators
-    needs: [verify-checklist-sync]
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes]
     runs-on: ubuntu-latest
     steps:
       - name: "Guard: Linux runner"
@@ -509,7 +572,7 @@ jobs:
           pwsh -NoProfile -File $script -Repo $env:GH_REPO -Token $env:GH_TOKEN
   build-worktree:
     name: Build (worktree)
-    needs: [verify-checklist-sync, version, resolve-labview-version, test-compute-version-bump, test-tag-existence-check, rtm-gates, docs-quality, list-collaborators]
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, version, resolve-labview-version, test-compute-version-bump, test-tag-existence-check, rtm-gates, docs-quality, dev-mode-binder-tests, list-collaborators]
     runs-on: self-hosted-windows-lv
     defaults:
       run:
@@ -594,6 +657,48 @@ jobs:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-build-reports
           path: builds-isolated/reports
           if-no-files-found: warn
+      - name: Upload log-stash bundles
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-log-stash
+          path: |
+            builds/log-stash
+            builds-isolated/builds/log-stash
+          if-no-files-found: ignore
+      - name: Validate compare bundles (if request present)
+        if: always()
+        shell: pwsh
+        run: |
+          $req = "${{ github.event.inputs.vi_compare_request || '' }}"
+          if ([string]::IsNullOrWhiteSpace($req)) {
+            Write-Host "No compare request provided; skipping compare bundle validation."
+            exit 0
+          }
+          $roots = @(
+            Join-Path $env:GITHUB_WORKSPACE 'builds/log-stash'
+            Join-Path $env:GITHUB_WORKSPACE 'builds-isolated/builds/log-stash'
+          )
+          $bundles = @()
+          foreach ($r in $roots) {
+            if (Test-Path -LiteralPath $r) {
+              $bundles += Get-ChildItem -LiteralPath $r -Recurse -Filter manifest.json | Where-Object { $_.FullName -like '*\\compare\\*' }
+            }
+          }
+          if (-not $bundles -or $bundles.Count -eq 0) {
+            Write-Error "Compare request provided but no compare bundles were found under builds/log-stash."
+            exit 1
+          }
+          Write-Host ("Found {0} compare bundle(s):" -f $bundles.Count)
+          $bundles | ForEach-Object { Write-Host (" - {0}" -f $_.FullName) }
+      - name: Cleanup log-stash (workspace)
+        if: always()
+        shell: pwsh
+        run: |
+          $script = Join-Path $env:GITHUB_WORKSPACE 'scripts/log-stash/Cleanup-LogStash.ps1'
+          if (Test-Path -LiteralPath $script) {
+            pwsh -NoProfile -File $script -RepositoryPath "$env:GITHUB_WORKSPACE" -MaxPerCategory 5 -MaxAgeDays 7
+          }
 
   unify-artifacts:
     name: Unify artifacts

@@ -1,0 +1,109 @@
+# Maps module paths to SRS requirement IDs
+.github/workflows/:
+  - FGC-REQ-CI-001
+  - FGC-REQ-CI-002
+  - FGC-REQ-CI-003
+  - FGC-REQ-CI-004
+  - FGC-REQ-CI-005
+  - FGC-REQ-CI-006
+  - FGC-REQ-CI-007
+  - FGC-REQ-CI-008
+  - FGC-REQ-CI-009
+  - FGC-REQ-CI-010
+  - FGC-REQ-CI-011
+  - FGC-REQ-CI-012
+  - FGC-REQ-CI-013
+  - FGC-REQ-CI-014
+  - FGC-REQ-CI-015
+  - FGC-REQ-CI-016
+  - FGC-REQ-CI-017
+  - FGC-REQ-CI-018
+  - FGC-REQ-CI-019
+  - FGC-REQ-CI-021
+codex_rules/:
+  - FGC-REQ-TEL-001
+  - FGC-REQ-QA-003
+notifications/:
+  - FGC-REQ-NOT-001
+  - FGC-REQ-NOT-002
+  - FGC-REQ-NOT-003
+  - FGC-REQ-NOT-004
+scripts/:
+  - FGC-REQ-DIST-001
+  - FGC-REQ-NOT-001
+  - FGC-REQ-DEV-001
+  - FGC-REQ-DEV-002
+  - FGC-REQ-DEV-003
+  - FGC-REQ-DEV-004
+  - FGC-REQ-DEV-005
+  - FGC-REQ-DEV-006
+  - FGC-REQ-TEL-001
+  - FGC-REQ-SPEC-001
+docs/integration/x-sdk/:
+  - FGC-REQ-SDK-001
+  - FGC-REQ-SDK-002
+docs/model-version-control.md:
+  - FGC-REQ-DEV-007
+src/XCli/:
+  - FGC-REQ-CLI-001
+  - FGC-REQ-CLI-002
+  - FGC-REQ-CLI-003
+src/XCli/Logging/:
+  - FGC-REQ-LOG-001
+  - FGC-REQ-LOG-002
+src/XCli/Replay/:
+  - FGC-REQ-LOG-003
+  - FGC-REQ-LOG-004
+src/XCli/Program.cs:
+  - FGC-REQ-PERF-001
+  - FGC-REQ-DIST-001
+src/XCli/Security/:
+  - FGC-REQ-ROB-001
+  - FGC-REQ-ROB-002
+  - FGC-REQ-ROB-003
+src/XCli/Simulation/:
+  - FGC-REQ-SIM-001
+  - FGC-REQ-SIM-002
+  - FGC-REQ-SIM-003
+  - FGC-REQ-SIM-004
+src/XCli/Util/:
+  - FGC-REQ-ENV-001
+src/SrsApi/:
+  - FGC-REQ-SPEC-001
+tests/:
+  - FGC-REQ-CLI-001
+  - FGC-REQ-CLI-002
+  - FGC-REQ-CLI-003
+  - FGC-REQ-SIM-001
+  - FGC-REQ-SIM-002
+  - FGC-REQ-SIM-003
+  - FGC-REQ-SIM-004
+  - FGC-REQ-LOG-001
+  - FGC-REQ-LOG-002
+  - FGC-REQ-LOG-003
+  - FGC-REQ-LOG-004
+  - FGC-REQ-ENV-001
+  - FGC-REQ-PERF-001
+  - FGC-REQ-DIST-001
+  - FGC-REQ-ROB-001
+  - FGC-REQ-ROB-002
+  - FGC-REQ-ROB-003
+  - FGC-REQ-NOT-001
+  - FGC-REQ-NOT-002
+  - FGC-REQ-NOT-003
+  - FGC-REQ-NOT-004
+  - FGC-REQ-DEV-001
+  - FGC-REQ-DEV-002
+  - FGC-REQ-DEV-003
+  - FGC-REQ-DEV-004
+  - FGC-REQ-DEV-005
+  - FGC-REQ-DEV-006
+  - FGC-REQ-DEV-007
+  - FGC-REQ-QA-001
+  - FGC-REQ-QA-003
+  - FGC-REQ-TEL-001
+  - FGC-REQ-CI-011
+  - FGC-REQ-CI-020
+tests/conftest.py:
+  - FGC-REQ-QA-002
+  - FGC-REQ-QA-003

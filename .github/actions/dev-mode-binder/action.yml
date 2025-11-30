@@ -1,0 +1,73 @@
+name: Dev Mode Binder
+description: Bind/unbind/status LabVIEW dev-mode tokens with JSON summary output per bitness.
+inputs:
+  repository_path:
+    description: Repository root path containing LabVIEW project and dev-mode assets.
+    required: false
+    default: ${{ github.workspace }}
+  bitness:
+    description: Bitness to operate on (32, 64, or both).
+    required: false
+    default: both
+  mode:
+    description: bind | unbind | status | cleanup
+    required: false
+    default: bind
+  force:
+    description: Overwrite tokens for other repos (false/true).
+    required: false
+    default: "false"
+  dry_run:
+    description: Perform detection/report only (no INI/file changes).
+    required: false
+    default: "false"
+  json_output:
+    description: Output path for JSON summary.
+    required: false
+    default: reports/dev-mode-bind.json
+outputs:
+  summary_json_path:
+    description: Resolved JSON summary path.
+  exit_code:
+    description: Exit code from bind/unbind/status command.
+runs:
+  using: composite
+  steps:
+    - name: Run dev-mode binder
+      shell: pwsh
+      working-directory: ${{ github.workspace }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+
+        $repo = "${{ inputs.repository_path }}"
+        $bitness = "${{ inputs.bitness }}"
+        $mode = "${{ inputs.mode }}"
+        $force = "${{ inputs.force }}"
+        $dry = "${{ inputs.dry_run }}"
+        $jsonPath = "${{ inputs.json_output }}"
+
+        if (-not (Test-Path -LiteralPath $repo)) {
+          throw "Repository path not found: $repo"
+        }
+        $jsonFull = if ([System.IO.Path]::IsPathRooted($jsonPath)) { $jsonPath } else { Join-Path -Path $repo -ChildPath $jsonPath }
+        $null = New-Item -ItemType Directory -Force -Path (Split-Path -Parent $jsonFull)
+
+        $args = @(
+          '-RepositoryPath', $repo,
+          '-Mode', $mode,
+          '-Bitness', $bitness,
+          '-JsonOutputPath', $jsonFull
+        )
+        if ($force -eq 'true') { $args += '-Force' }
+        if ($dry -eq 'true') { $args += '-DryRun' }
+
+        & "$repo/scripts/bind-development-mode/BindDevelopmentMode.ps1" @args
+        $code = if ($LASTEXITCODE -ne $null) { $LASTEXITCODE } else { 0 }
+
+        "summary_json_path=$jsonFull" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "exit_code=$code" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+        if ($code -ne 0) {
+          Write-Error ("Dev-mode binder exited with code {0}" -f $code)
+          exit $code
+        }

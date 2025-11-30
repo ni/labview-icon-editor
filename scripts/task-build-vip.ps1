@@ -15,7 +15,7 @@ $getVer = Join-Path $repo 'scripts/get-package-lv-version.ps1'
 $ciGate = Join-Path $repo 'scripts/check-ci-gate.ps1'
 $build  = Join-Path $repo 'scripts/run-build-or-package.ps1'
 $analyze = Join-Path $repo 'scripts/analyze-vi-package/run-local.ps1'
-$vipDir = Join-Path $repo 'builds/VI Package'
+$vipDir = Join-Path $repo 'builds/vip-stash'
 
 if (-not (Test-Path -LiteralPath $getVer))  { throw "Missing get-package-lv-version.ps1 at $getVer" }
 if (-not (Test-Path -LiteralPath $build))   { throw "Missing run-build-or-package.ps1 at $build" }

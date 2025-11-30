@@ -1,0 +1,23 @@
+name: "Codex: Bring-up (Issues channel)"
+description: Start the two-way Codex↔LLM chat in this issue.
+title: "Codex channel bring-up"
+labels:
+  - codex
+body:
+  - type: markdown
+    attributes:
+      value: |
+        After creating this issue, add comments in this thread:
+        ```
+        /codex init
+        /codex ping
+        /codex say Acknowledge bring-up; list two safe next steps toward mirrored AI CI.
+        ```
+  - type: input
+    id: context
+    attributes:
+      label: Context (optional)
+      placeholder: e.g., target area or reason for bring-up
+    validations:
+      required: false
+

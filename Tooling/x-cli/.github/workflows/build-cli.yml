@@ -1,0 +1,68 @@
+name: build-cli
+
+on:
+  workflow_call:
+    inputs:
+      cli_version:
+        description: "Semantic version (no leading v). Defaults to tag version or 0.0.0."
+        required: false
+        type: string
+    outputs:
+      cli_version:
+        description: "Version used for packaging"
+        value: ${{ jobs.build.outputs.cli_version }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      cli_version: ${{ steps.set-version.outputs.cli_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Determine CLI version
+        id: set-version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ inputs.cli_version }}"
+          if [[ -z "$VERSION" ]]; then
+            if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" == v* ]]; then
+              VERSION="${GITHUB_REF_NAME#v}"
+            else
+              VERSION="0.0.0"
+            fi
+          fi
+          echo "cli_version=$VERSION" >> "$GITHUB_OUTPUT"
+          cat <<EOF > version.props
+          <Project>
+            <PropertyGroup>
+              <Version>$VERSION</Version>
+            </PropertyGroup>
+          </Project>
+          EOF
+
+      - name: Restore
+        run: dotnet restore XCli.sln --locked-mode
+
+      - name: Build
+        run: dotnet build XCli.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test XCli.sln -c Release --no-build
+
+      - name: Pack CLI
+        run: dotnet pack src/XCli/XCli.csproj -c Release -o package --no-build -p:PackageVersion=${{ steps.set-version.outputs.cli_version }}
+
+      - name: Upload CLI package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-package
+          path: package/*.nupkg
+

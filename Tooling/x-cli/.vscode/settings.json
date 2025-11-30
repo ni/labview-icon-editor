@@ -1,0 +1,21 @@
+{
+  "python.defaultInterpreterPath": "python",
+  "python.analysis.autoImportCompletions": true,
+  "yaml.schemaStore.enable": true,
+  "files.trimTrailingWhitespace": true,
+  "editor.rulers": [100],
+  "editor.renderWhitespace": "selection",
+  "editor.insertSpaces": true,
+  "editor.tabSize": 2,
+  "git.enableSmartCommit": true,
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.env.windows": {
+    "PAGER": "cat"
+  },
+  "powershell.powerShellAdditionalExePaths": [
+    {
+      "versionName": "PowerShell 7",
+      "exePath": "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "requests": [
+    {
+      "pairId": "fixtures/ui/control.vi",
+      "baseline": "vendor/icon-editor/.github/actions/missing-in-project/MissingInProject.vi",
+      "candidate": "vendor/icon-editor/.github/actions/missing-in-project/MissingInProjectCLI.vi"
+    }
+  ]
+}
+

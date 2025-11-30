@@ -23,7 +23,7 @@
 
 ## `/mnt/c/repos/labview-icon-editor-community-ci-cd/scripts/analyze-vi-package/run-workflow-local.ps1`
 - Inputs:
-  - VipArtifactPath [String] default="builds/VI Package"
+  - VipArtifactPath [String] default="builds/vip-stash"
   - MinLabVIEW [String] default="21.0"
 - Outputs: *(not explicitly declared)*
 

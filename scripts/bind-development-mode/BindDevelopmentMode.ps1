@@ -9,15 +9,53 @@ param(
     [ValidateSet('both','32','64')]
     [string]$Bitness = 'both',
 
-    [switch]$Force,
-    [switch]$AutoFixOtherRepo = $true,
-    [switch]$DryRun,
-    [switch]$SummaryOnly,
-    [string]$JsonOutputPath
+[switch]$Force,
+[switch]$AutoFixOtherRepo = $true,
+[switch]$DryRun,
+[switch]$SummaryOnly,
+[string]$JsonOutputPath,
+[string]$LabVIEWVersion
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+
+# Immediate console heartbeat so callers see progress even before transcript/logs.
+Write-Host ("[devmode] Starting dev-mode helper: mode={0} bitness={1} repo={2}" -f $Mode, $Bitness, $RepositoryPath)
+
+# Warn on the common misuse "-Force True"/"-Force False" which PowerShell treats as an extra positional arg.
+$invocationLine = $MyInvocation.Line
+if ($invocationLine -and $invocationLine -match '-Force\s+(?<boolVal>True|False)\b') {
+    $val = $Matches.boolVal
+    Write-Warning ("Detected '-Force {0}'. Treating as '-Force'." -f $val)
+    $Force = $true
+}
+
+# Guard against mistakenly passing a boolean after -Force (e.g. "-Force True") which
+# PowerShell binds to JsonOutputPath when positional binding is allowed.
+if ($PSBoundParameters.ContainsKey('JsonOutputPath') -and $JsonOutputPath -match '^(?i:true|false)$') {
+    Write-Warning ("Ignoring unexpected value '{0}' bound to JsonOutputPath. Use '-Force' or '-Force:`$true' without a trailing value." -f $JsonOutputPath)
+    $JsonOutputPath = $null
+    $PSBoundParameters.Remove('JsonOutputPath') | Out-Null
+    $Force = $true
+}
+
+$script:DevBindStart = Get-Date
+$transcriptStarted = $false
+$logFile = $null
+try {
+    $logDir = Join-Path $RepositoryPath 'builds/logs'
+    if (-not (Test-Path -LiteralPath $logDir)) {
+        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+    }
+    $logFile = Join-Path $logDir ("devmode-bind-{0:yyyyMMdd-HHmmss}.log" -f $script:DevBindStart)
+    Start-Transcript -Path $logFile -Append -ErrorAction Stop | Out-Null
+    $transcriptStarted = $true
+    Write-Host ("[devmode] Transcript logging enabled at {0}" -f $logFile)
+}
+catch {
+    Write-Warning ("[devmode] Failed to start transcript logging: {0}" -f $_.Exception.Message)
+}
 
 function Normalize-PathLower {
     param([string]$Path)
@@ -151,11 +189,6 @@ try {
         throw "RepositoryPath does not exist: $RepositoryPath"
     }
 
-    $iniTokenVi = Join-Path -Path $RepositoryPath -ChildPath 'Tooling/deployment/Create_LV_INI_Token.vi'
-    if ($Mode -in @('bind','unbind') -and -not (Test-Path -LiteralPath $iniTokenVi)) {
-        throw "Missing Create_LV_INI_Token.vi at $iniTokenVi"
-    }
-
     foreach ($path in @($setDevScript, $revertDevScript)) {
         if (($Mode -ne 'status') -and -not (Test-Path -LiteralPath $path)) {
             throw "Missing required script: $path"
@@ -175,7 +208,12 @@ catch {
 
 $lvVersion = $null
 try {
-    $lvVersion = & $versionScript -RepositoryPath $RepositoryPath
+    if ($LabVIEWVersion) {
+        $lvVersion = $LabVIEWVersion
+    }
+    else {
+        $lvVersion = & $versionScript -RepositoryPath $RepositoryPath
+    }
 }
 catch {
     if (-not $precheckError) { $precheckError = $_ }
@@ -467,6 +505,16 @@ else {
                 continue
             }
 
+            # When overwriting another repo or stale worktree, aggressively clear mismatched tokens first.
+            if ($forceApplied -or $autoForce) {
+                try {
+                    Clear-StaleLibraryPaths -LvVersion $lvVersion -Arch $arch -RepositoryRoot $RepositoryPath -Force -TargetPath $expectedToken
+                }
+                catch {
+                    Write-Warning ("Pre-bind token cleanup failed for {0}-bit: {1}" -f $arch, $_.Exception.Message)
+                }
+            }
+
             if ($DryRun) {
                 $res.status = 'dry-run'
                 $res.message = 'Dry run: would bind development mode'
@@ -475,17 +523,41 @@ else {
                 continue
             }
 
+            # Enforce single-token per version/bitness: clear all entries before binding.
+            try {
+                if (-not (Remove-LibraryPathsEntries -LvVersion $lvVersion -Arch $arch)) {
+                    throw "Failed to clear existing LocalHost.LibraryPaths entries for $arch-bit LabVIEW $lvVersion."
+                }
+            }
+            catch {
+                $res.status = 'fail'
+                $res.message = "Pre-bind cleanup failed: $($_.Exception.Message)"
+                $hadFailure = $true
+                $results.Add($res)
+                continue
+            }
+
             $bindAttempted = $false
             try {
                 $bindAttempted = $true
-                & $setDevScript -RepositoryPath $RepositoryPath -SupportedBitness $arch | Out-Null
+                $setArgs = @{
+                    RepositoryPath         = $RepositoryPath
+                    SupportedBitness       = $arch
+                }
+                if ($lvVersion) { $setArgs['Package_LabVIEW_Version'] = $lvVersion }
+                & $setDevScript @setArgs | Out-Null
             }
             catch {
                 $res.status = 'fail'
                 $res.message = "Bind failed: $($_.Exception.Message)"
                 if ($bindAttempted) {
                     try {
-                        & $revertDevScript -RepositoryPath $RepositoryPath -SupportedBitness $arch | Out-Null
+                        $revertArgs = @{
+                            RepositoryPath   = $RepositoryPath
+                            SupportedBitness = $arch
+                        }
+                        if ($lvVersion) { $revertArgs['Package_LabVIEW_Version'] = $lvVersion }
+                        & $revertDevScript @revertArgs | Out-Null
                         $res.message += '; attempted revert after failure'
                     }
                     catch {
@@ -508,7 +580,7 @@ else {
             # Fallback: if token still points elsewhere and auto-fix is enabled, attempt to force-write the token and re-read.
             if (-not $postMatch -and $AutoFixOtherRepo) {
                 try {
-                    Add-LibraryPathToken -LvVersion $lvVersion -Arch $arch -TokenPath $expectedToken -RepositoryRoot $RepositoryPath -Force
+                    Add-LibraryPathToken -LvVersion $lvVersion -Arch $arch -TokenPath $expectedToken -RepositoryRoot $RepositoryPath
                     $statePost = Get-LibraryPathState -LvVersion $lvVersion -Arch $arch
                     $res.post_path = if ($statePost.Paths) { $statePost.Paths[0] } else { '' }
                     $postMatch = ($statePost.Paths | ForEach-Object { Normalize-PathLower $_ }) -contains $expectedNorm
@@ -565,7 +637,8 @@ else {
             try {
                 # Force removal of stale tokens when requested
                 if ($Force) {
-                    Clear-StaleLibraryPaths -LvVersion $lvVersion -Arch $arch -RepositoryRoot $RepositoryPath -Force -TargetPath $expectedToken
+                    # Remove all LocalHost.LibraryPaths entries for this version/bitness when forcing unbind
+                    Remove-LibraryPathsEntries -LvVersion $lvVersion -Arch $arch | Out-Null
                 } else {
                     Clear-StaleLibraryPaths -LvVersion $lvVersion -Arch $arch -RepositoryRoot $RepositoryPath
                 }
@@ -612,7 +685,8 @@ if (-not (Test-Path -LiteralPath $parent)) {
     New-Item -ItemType Directory -Path $parent -Force | Out-Null
 }
 
-$results | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $JsonOutputPath -Encoding utf8
+$json = ConvertTo-Json -InputObject $results -Depth 5
+Set-Content -LiteralPath $JsonOutputPath -Value $json -Encoding utf8
 
 $hasStyle = $PSStyle -ne $null
 $palette = @{
@@ -816,6 +890,41 @@ What you should do:
 }
 
 $exitFail = @($results | Where-Object { $_.status -in @('fail','blocked') })
+$overallStatus = if ($exitFail.Count -gt 0) { 'failed' } else { 'success' }
+
+if ($transcriptStarted) {
+    try { Stop-Transcript | Out-Null } catch { Write-Warning ("[devmode] Failed to stop transcript: {0}" -f $_.Exception.Message) }
+}
+
+$logStashScript = Join-Path $RepositoryPath 'scripts/log-stash/Write-LogStashEntry.ps1'
+if (Test-Path -LiteralPath $logStashScript) {
+    try {
+        $logs = @()
+        if ($logFile -and (Test-Path -LiteralPath $logFile)) { $logs += $logFile }
+        $attachments = @()
+        if ($JsonOutputPath -and (Test-Path -LiteralPath $JsonOutputPath)) { $attachments += $JsonOutputPath }
+        $durationMs = [int][Math]::Round(((Get-Date) - $script:DevBindStart).TotalMilliseconds,0)
+        $label = if ($env:GITHUB_JOB) { $env:GITHUB_JOB } elseif ($env:CI -or $env:GITHUB_ACTIONS) { 'ci-devmode' } else { 'local-devmode' }
+
+        & $logStashScript `
+            -RepositoryPath $RepositoryPath `
+            -Category 'devmode' `
+            -Label $label `
+            -LogPaths $logs `
+            -AttachmentPaths $attachments `
+            -Status $overallStatus `
+            -LabVIEWVersion $lvVersion `
+            -ProducerScript $PSCommandPath `
+            -ProducerTask 'BindDevelopmentMode.ps1' `
+            -ProducerArgs @{ Mode = $Mode; Bitness = $Bitness; Force = $Force.IsPresent; DryRun = $DryRun.IsPresent } `
+            -StartedAtUtc $script:DevBindStart.ToUniversalTime() `
+            -DurationMs $durationMs
+    }
+    catch {
+        Write-Warning ("[devmode] Failed to write log-stash bundle: {0}" -f $_.Exception.Message)
+    }
+}
+
 if ($exitFail.Count -gt 0) {
     exit 1
 }

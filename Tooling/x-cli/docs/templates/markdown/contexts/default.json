@@ -1,0 +1,16 @@
+{
+  "QA_CMD_POSIX": "./scripts/qa.sh",
+  "QA_CMD_WIN": "pwsh ./scripts/qa.ps1",
+  "DOTNET_VERSION": "8",
+  "COV_LINE": "75%",
+  "COV_BRANCH": "60%",
+  "FEEDBACK_NOTE": "Automated CI render preview. Provide feedback inline on the PR if adjustments are needed.",
+  "CLI_NAME": "x-cli",
+  "REPO_SLUG": "LabVIEW-Community-CI-CD/x-cli",
+  "STAGE1_NAME": "Stage 1 Telemetry",
+  "STAGE2_NAME": "Stage 2 CI",
+  "STAGE3_NAME": "Stage 3 CI",
+  "CODE_STYLE": "PascalCase types; camelCase locals; _camelCase private readonly",
+  "TEST_FRAMEWORK": "xUnit",
+  "OS_TARGETS": "linux-x64, win-x64"
+}

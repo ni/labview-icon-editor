@@ -3,8 +3,8 @@ param(
     [string]$SourceRepoPath = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path,
     [string]$Ref = 'HEAD',
     [string]$WorktreePath,
-    [ValidateSet('32','64')]
-    [string]$SupportedBitness = '64',
+    [ValidateSet('both','64','32')]
+    [string]$SupportedBitness = 'both',
     [ValidateSet('both','64','32')]
     [string]$LvlibpBitness = 'both',
     [int]$Major = 0,
@@ -24,7 +24,7 @@ param(
     [int]$GcliLockTimeoutSeconds = 300,
     [string]$GcliMutexName = 'Global\LabVIEW-IconEditor-gcli',
     [string]$GcliLockFilePath,
-    [switch]$PrepDevMode  # optional: prepare dev mode before build; defaults to off to avoid repeated token cycles
+    [switch]$PrepDevMode  # optional: prepare dev mode before build; defaults to on for worktree runs
 )
 
 $ErrorActionPreference = 'Stop'
@@ -127,6 +127,7 @@ function Release-GCliMutex {
 }
 
 Ensure-Command -Name git
+if (-not $PSBoundParameters.ContainsKey('PrepDevMode')) { $PrepDevMode = $true }
 
 function Normalize-ScriptPath {
     param([string]$Path)
@@ -263,7 +264,6 @@ Write-Host "Output dir:      $OutputDirectory"
 Write-Separator "Initialize worktree"
 
 $worktreeAdded = $false
-    $devModeConfigured = @()
 $gcliMutex = $null
 $gcliLockPath = Resolve-GCliLockPath -OverridePath $GcliLockFilePath
 
@@ -281,49 +281,73 @@ try {
     $worktreeAdded = $true
 
     $setDevScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath 'scripts/set-development-mode/Set_Development_Mode.ps1')
-    $revertDevScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath 'scripts/revert-development-mode/RevertDevelopmentMode.ps1')
     $bindDevScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath 'scripts/bind-development-mode/BindDevelopmentMode.ps1')
     $analyzeVipScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath 'scripts/analyze-vi-package/run-local.ps1')
     $buildScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath 'scripts/build/Build.ps1')
+    $sourceDistScript = Normalize-ScriptPath (Join-Path -Path $WorktreePath -ChildPath 'scripts/build-source-distribution/Build_Source_Distribution.ps1')
 
     # Ensure the worktree uses the latest local binder (pick up uncommitted fixes)
     $sourceBinder = Join-Path -Path $SourceRepoPath -ChildPath 'scripts/bind-development-mode/BindDevelopmentMode.ps1'
     if (Test-Path -LiteralPath $sourceBinder) {
         Copy-Item -LiteralPath $sourceBinder -Destination $bindDevScript -Force
     }
+    # Ensure the worktree uses the latest restore script (guarded)
+    $sourceRestoreDir = Join-Path -Path $SourceRepoPath -ChildPath 'scripts/restore-setup-lv-source'
+    $worktreeRestoreDir = Join-Path -Path $WorktreePath -ChildPath 'scripts/restore-setup-lv-source'
+    if (Test-Path -LiteralPath $sourceRestoreDir -PathType Container) {
+        Copy-Item -LiteralPath $sourceRestoreDir -Destination $worktreeRestoreDir -Recurse -Force
+    }
+    # Ensure the worktree uses the latest revert script (with token guard)
+    $sourceRevertDir = Join-Path -Path $SourceRepoPath -ChildPath 'scripts/revert-development-mode'
+    $worktreeRevertDir = Join-Path -Path $WorktreePath -ChildPath 'scripts/revert-development-mode'
+    if (Test-Path -LiteralPath $sourceRevertDir -PathType Container) {
+        Copy-Item -LiteralPath $sourceRevertDir -Destination $worktreeRevertDir -Recurse -Force
+    }
     # Ensure the worktree uses the local Build.ps1 (pick up uncommitted fixes)
     $sourceBuild = Join-Path -Path $SourceRepoPath -ChildPath 'scripts/build/Build.ps1'
     if (Test-Path -LiteralPath $sourceBuild) {
         Copy-Item -LiteralPath $sourceBuild -Destination $buildScript -Force
     }
+    $sourceLvsdDir = Join-Path -Path $SourceRepoPath -ChildPath 'scripts/build-source-distribution'
+    $worktreeLvsdDir = Join-Path -Path $WorktreePath -ChildPath 'scripts/build-source-distribution'
+    if (Test-Path -LiteralPath $sourceLvsdDir -PathType Container) {
+        Copy-Item -LiteralPath $sourceLvsdDir -Destination $worktreeLvsdDir -Recurse -Force
+    }
 
-    foreach ($path in @($setDevScript, $revertDevScript, $bindDevScript, $buildScript, $analyzeVipScript)) {
+    foreach ($path in @($setDevScript, $bindDevScript, $buildScript, $analyzeVipScript, $sourceDistScript)) {
         if (-not (Test-Path -LiteralPath $path)) {
             throw "Expected script not found: $path"
         }
     }
 
-    # Make runner_dependencies.vipc available at the worktree root (preferred path for downstream tools).
-    $vipcSource = Join-Path -Path $WorktreePath -ChildPath 'scripts/apply-vipc/runner_dependencies.vipc'
-    $vipcTarget = Join-Path -Path $WorktreePath -ChildPath 'runner_dependencies.vipc'
-    if ((Test-Path -LiteralPath $vipcSource) -and (-not (Test-Path -LiteralPath $vipcTarget))) {
-        Copy-Item -LiteralPath $vipcSource -Destination $vipcTarget -Force
-        Write-Host "Copied runner_dependencies.vipc to worktree root: $vipcTarget"
-    }
+    $lvVersion = & (Join-Path $WorktreePath 'scripts/get-package-lv-version.ps1') -RepositoryPath $WorktreePath
 
     if ($PrepDevMode) {
         $bitnessList = if ($LvlibpBitness -eq 'both') { @('32','64') } else { @($SupportedBitness) }
         Write-Host ("Dev-mode preparation for bitness(es): {0}" -f ($bitnessList -join ', '))
+
         foreach ($arch in ($bitnessList | Select-Object -Unique)) {
             Write-Separator ("Dev-mode bind {0}-bit" -f $arch)
             Write-BitnessBanner -Arch $arch
             Write-Host "Setting development mode ($arch-bit)..."
             & $setDevScript -RepositoryPath $WorktreePath -SupportedBitness $arch
-            $devModeConfigured += $arch
 
             Write-Host "Binding dev mode (Force) to worktree ($arch-bit)..."
             & $bindDevScript -RepositoryPath $WorktreePath -Mode bind -Bitness $arch -Force
+
             Assert-DevModeBindOk -RepoPath $WorktreePath -Arch $arch
+        }
+    }
+
+    # Dev mode tooling can touch the .lvproj; reset it to the repo version before building.
+    $lvprojPath = Join-Path $WorktreePath 'lv_icon_editor.lvproj'
+    if (Test-Path -LiteralPath $lvprojPath) {
+        try {
+            Write-Host "Restoring lv_icon_editor.lvproj to clean state before build..."
+            git -C $WorktreePath checkout -- lv_icon_editor.lvproj | Out-Null
+        }
+        catch {
+            Write-Warning ("Unable to restore lv_icon_editor.lvproj before build: {0}" -f $_.Exception.Message)
         }
     }
 
@@ -343,21 +367,65 @@ try {
         AuthorName           = $AuthorName
     }
 
-    if ($RunBothBitnessSeparately -and $LvlibpBitness -eq 'both') {
-        foreach ($lane in @('64','32')) {
-            $laneArgs = $baseBuildArgs.Clone()
-            $laneArgs.LvlibpBitness = $lane
-            Write-Host "Running isolated build lane for bitness: $lane"
-            Write-Separator ("Build start ({0}-bit lane)" -f $lane)
-            & $buildScript @laneArgs
+    $buildSucceeded = $false
+    try {
+        if ($RunBothBitnessSeparately -and $LvlibpBitness -eq 'both') {
+            foreach ($lane in @('64','32')) {
+                $laneArgs = $baseBuildArgs.Clone()
+                $laneArgs.LvlibpBitness = $lane
+                Write-Host "Running isolated build lane for bitness: $lane"
+                Write-Separator ("Build start ({0}-bit lane)" -f $lane)
+                & $buildScript @laneArgs
+            }
         }
+        else {
+            $buildArgs = $baseBuildArgs.Clone()
+            $buildArgs.LvlibpBitness = $LvlibpBitness
+            Write-Host "Running full build (bitness: $LvlibpBitness)..."
+            Write-Separator "Build start"
+            & $buildScript @buildArgs
+        }
+        $buildSucceeded = $true
     }
-    else {
-        $buildArgs = $baseBuildArgs.Clone()
-        $buildArgs.LvlibpBitness = $LvlibpBitness
-        Write-Host "Running full build (bitness: $LvlibpBitness)..."
-        Write-Separator "Build start"
-        & $buildScript @buildArgs
+    catch {
+        Write-Warning ("Native Build.ps1 failed inside worktree; falling back to Orchestration CLI. Error: {0}" -f $_.Exception.Message)
+        $resolver = Join-Path $PSScriptRoot 'common/resolve-repo-cli.ps1'
+        if (-not (Test-Path -LiteralPath $resolver -PathType Leaf)) {
+            throw "CLI resolver not found at $resolver; cannot run fallback orchestrator build. Original error: $($_.Exception.Message)"
+        }
+        $prov = & $resolver -CliName 'OrchestrationCli' -RepoPath $WorktreePath -SourceRepoPath $SourceRepoPath -PrintProvenance:$false
+        $fallbackArgs = @(
+            "package-build",
+            "--repo", $WorktreePath,
+            "--ref", $Ref,
+            "--bitness", $SupportedBitness,
+            "--lvlibp-bitness", $LvlibpBitness,
+            "--major", $Major,
+            "--minor", $Minor,
+            "--patch", $Patch,
+            "--build", $Build,
+            "--company", $CompanyName,
+            "--author", $AuthorName,
+            "--labview-minor", $LabVIEWMinorRevision
+        )
+        if ($IsWindows) { $fallbackArgs += "--managed" }
+
+        Write-Separator "Build fallback (Orchestration CLI)"
+        Write-Host ("{0} {1}" -f $prov.Command[0], ($prov.Command[1..($prov.Command.Count-1)] + $fallbackArgs -join ' '))
+        $proc = & $prov.Command[0] @($prov.Command[1..($prov.Command.Count-1)]) @fallbackArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw ("Fallback orchestrator build failed with exit code {0}. Original error: {1}" -f $LASTEXITCODE, $_.Exception.Message)
+        }
+        $buildSucceeded = $true
+    }
+
+    if ($buildSucceeded) {
+        Write-Separator "Source Distribution build"
+        Write-Host "Running Source Distribution build..."
+        & $sourceDistScript -RepositoryPath $WorktreePath
+        if ($LASTEXITCODE -ne 0) {
+            throw ("Source Distribution build failed with exit code {0}" -f $LASTEXITCODE)
+        }
     }
 
     if (Test-Path -LiteralPath $OutputDirectory) {
@@ -377,37 +445,36 @@ try {
 
     $shouldAnalyze = $AnalyzeVIP.IsPresent -or -not $PSBoundParameters.ContainsKey('AnalyzeVIP')
     if ($shouldAnalyze) {
-        Write-Host "Analyzing built VIP package..."
-        $vipDir = Join-Path $WorktreePath 'builds\VI Package'
-        & $analyzeVipScript -VipArtifactPath $vipDir -MinLabVIEW '21.0'
+        $vipDir = Join-Path $WorktreePath 'builds\vip-stash'
+        $vipCandidates = Get-ChildItem -Path $vipDir -Filter *.vip -File -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending
+        if (-not $vipCandidates -or $vipCandidates.Count -eq 0) {
+            $vipmLog = Join-Path $WorktreePath 'builds\logs\vipm-build-attempt-1.log'
+            Write-Error ("VIP not produced; analyzer skipped. Expected a .vip under {0}. Review VIPM log at {1} for details." -f $vipDir, $vipmLog)
+            exit 1
+        }
+
+        $vipTarget = $vipCandidates | Select-Object -First 1
+        Write-Host ("Analyzing built VIP package: {0}" -f $vipTarget.FullName)
+        & $analyzeVipScript -VipArtifactPath $vipTarget.FullName -MinLabVIEW '21.0'
     }
     else {
         Write-Host "Skipping VIP analyze (AnalyzeVIP not requested)."
     }
 }
 finally {
-    if ($devModeConfigured.Count -gt 0) {
-        foreach ($arch in ($devModeConfigured | Select-Object -Unique)) {
-            try {
-                Write-Host "Reverting development mode ($arch-bit)..."
-                & $revertDevScript -RepositoryPath $WorktreePath -SupportedBitness $arch
-            }
-            catch {
-                Write-Warning "Failed to revert development mode ($arch-bit): $($_.Exception.Message)"
-            }
-        }
-    }
-
     if ($worktreeAdded -and -not $KeepWorktree) {
         try {
             Write-Host "Removing worktree..."
-            git -C $SourceRepoPath worktree remove --force "$WorktreePath" | Out-Null
-            if ($LASTEXITCODE -ne 0 -or (Test-Path -LiteralPath $WorktreePath)) {
-                Write-Warning ("git worktree remove returned exit {0} or path still exists; attempting filesystem cleanup." -f $LASTEXITCODE)
-                if (Test-Path -LiteralPath $WorktreePath) {
-                    Remove-Item -LiteralPath $WorktreePath -Recurse -Force -ErrorAction SilentlyContinue
-                    Start-Sleep -Milliseconds 500
-                }
+            $prevAsk = $env:GIT_ASK_YESNO
+            $prevPrompt = $env:GIT_TERMINAL_PROMPT
+            $env:GIT_ASK_YESNO = 'false'
+            $env:GIT_TERMINAL_PROMPT = '0'
+            try {
+                git -C $SourceRepoPath worktree remove --force "$WorktreePath" | Out-Null
+            }
+            finally {
+                $env:GIT_ASK_YESNO = $prevAsk
+                $env:GIT_TERMINAL_PROMPT = $prevPrompt
             }
         }
         catch {

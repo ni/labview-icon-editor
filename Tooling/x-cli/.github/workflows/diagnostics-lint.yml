@@ -1,0 +1,107 @@
+name: Diagnostics Lint
+
+on:
+  workflow_run:
+    workflows: ["Stage 3 CI"]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  validate:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (schema only)
+        uses: actions/checkout@v4
+
+      - name: Download stage3-diagnostics artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: stage3-diagnostics
+          path: telemetry
+          run-id: ${{ github.event.workflow_run.id }}
+          repository: ${{ github.repository }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate diagnostics (strict)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install jsonschema
+          python scripts/validate_stage3_diagnostics.py --strict
+
+  comment-on-failure:
+    needs: [validate]
+    if: failure()
+    runs-on: ubuntu-latest
+    env:
+      LABEL_NAME: ${{ vars.DIAGNOSTICS_COMMENT_LABEL || 'ci:diagnostics-comment' }}
+    steps:
+      - name: Prepare context
+        id: ctx
+        shell: bash
+        run: |
+          echo "run_url=${{ github.event.workflow_run.html_url }}" >> "$GITHUB_OUTPUT"
+          echo "run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+
+      - name: Find associated PR for commit
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.payload.workflow_run.head_sha;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const { data: prs } = await github.request('GET /repos/{owner}/{repo}/commits/{ref}/pulls', {
+              owner, repo, ref: sha,
+              mediaType: { previews: ['groot'] }
+            });
+            let pr = prs.find(p => p.state === 'open') || prs[0];
+            core.setOutput('number', pr ? pr.number : '');
+            core.setOutput('title', pr ? pr.title : '');
+
+      - name: Check gating label on PR
+        id: label
+        if: steps.pr.outputs.number != ''
+        uses: actions/github-script@v7
+        env:
+          LABEL_NAME: ${{ env.LABEL_NAME }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const number = Number('${{ steps.pr.outputs.number }}');
+            const { data: labels } = await github.issues.listLabelsOnIssue({ owner, repo, issue_number: number });
+            const has = labels.some(l => l.name.toLowerCase() === process.env.LABEL_NAME.toLowerCase());
+            core.setOutput('has', has ? 'true' : 'false');
+
+      - name: Compose comment
+        id: compose
+        if: steps.pr.outputs.number != '' && steps.label.outputs.has == 'true'
+        shell: bash
+        run: |
+          mkdir -p telemetry
+          cat > telemetry/diagnostics-comment.md <<MD
+          ⚠️ Diagnostics validation failed in workflow run [${{ steps.ctx.outputs.run_id }}](${{ steps.ctx.outputs.run_url }}).
+
+          - Label gate: "${{ env.LABEL_NAME }}" present ✅
+          - Artifact name: stage3-diagnostics (download from the run page)
+          - Schema: docs/schemas/stage3-diagnostics.schema.json
+
+          Tip: Re-run Stage 3 with validate_schema: true for in-job parity.
+          MD
+
+      - name: Post PR comment (label-gated)
+        if: steps.pr.outputs.number != '' && steps.label.outputs.has == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const number = Number('${{ steps.pr.outputs.number }}');
+            let body = '';
+            try { body = fs.readFileSync('telemetry/diagnostics-comment.md','utf8'); } catch(e) { body = 'Diagnostics failed (no details available).'; }
+            await github.rest.issues.createComment({ owner, repo, issue_number: number, body });

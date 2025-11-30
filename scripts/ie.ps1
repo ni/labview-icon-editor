@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Single entry point for common Icon Editor workflows without passing nested script paths.
+    Single entry point for Integration Engine workflows that build and package the LabVIEW Icon Editor without passing nested script paths.
 
 .DESCRIPTION
     Wraps existing build/dev/packaging scripts so callers can run a single command such as:
@@ -14,6 +14,7 @@ param(
         'build-pipeline',
         'build-lvlibp',
         'build-vip',
+        'build-source-distribution',
         'apply-vipc',
         'dev-set',
         'dev-bind',
@@ -166,6 +167,14 @@ switch ($Command) {
             Bitness        = $Bitness
         }
         if ($SkipCIGate) { $args.SkipCIGate = $true }
+        Invoke-Script -Path $scriptPath -ArgumentMap $args
+    }
+
+    'build-source-distribution' {
+        $scriptPath = Resolve-Script -RepoRoot $repoRoot -RelativePath "scripts/build-source-distribution/Build_Source_Distribution.ps1"
+        $args = @{
+            RepositoryPath = $repoRoot
+        }
         Invoke-Script -Path $scriptPath -ArgumentMap $args
     }
 

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://labview-community-ci-cd.github.io/x-cli/schemas/v1/ghops.summary.v1.schema.json",
+  "title": "ghops summary v1",
+  "type": "object",
+  "additionalProperties": { "$ref": "#/$defs/entry" },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "properties": {
+        "commands": { "type": "number" },
+        "dryRun": { "type": "boolean" },
+        "repo": { "type": "string" },
+        "branch": { "type": "string" },
+        "base": { "type": "string" },
+        "labels": { "type": "array", "items": { "type": "string" } },
+        "target": { "type": "string" },
+        "workflow": { "type": "string" },
+        "run": { "type": "string" },
+        "runId": { "type": "string" },
+        "out": { "type": "string" },
+        "tag": { "type": "string" },
+        "failed": { "oneOf": [ { "type": "boolean" }, { "type": "string", "enum": ["true", "false"] } ] }
+      },
+      "required": ["commands", "dryRun", "repo"],
+      "additionalProperties": true
+    }
+  }
+}
+

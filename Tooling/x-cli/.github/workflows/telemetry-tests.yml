@@ -1,0 +1,41 @@
+name: Telemetry Tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  telemetry-tests:
+    name: Telemetry xUnit (matrix)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore XCli.sln
+
+      - name: Build (Release)
+        run: dotnet build XCli.sln -c Release --no-restore
+
+      - name: Run telemetry tests only
+        run: dotnet test XCli.sln -c Release --no-build --settings tests/Telemetry.runsettings --logger:"trx;LogFileName=telemetry.trx"
+
+      - name: Upload telemetry test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telemetry-tests-${{ matrix.os }}
+          path: |
+            **/TestResults/*/telemetry.trx
+          if-no-files-found: warn
+

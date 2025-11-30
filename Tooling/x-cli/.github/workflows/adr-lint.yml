@@ -1,0 +1,29 @@
+name: ADR Lint
+on:
+  pull_request:
+    paths:
+      - "docs/adr/**"
+      - "docs/architecture/README.md"
+  push:
+    branches: ["main"]
+    paths:
+      - "docs/adr/**"
+      - "docs/architecture/README.md"
+jobs:
+  adr-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - name: Lint ADRs & update INDEX.md
+        run: |
+          python scripts/adr_lint.py
+      - name: Upload ADR index
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: adr-index
+          path: docs/adr/INDEX.md
+          retention-days: 7

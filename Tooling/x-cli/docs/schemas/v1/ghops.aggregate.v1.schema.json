@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://labview-community-ci-cd.github.io/x-cli/schemas/v1/ghops.aggregate.v1.schema.json",
+  "title": "ghops aggregate v1",
+  "type": "object",
+  "properties": {
+    "files": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/entry" }
+    }
+  },
+  "required": ["files"],
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "properties": {
+        "dryRun": { "type": "boolean" },
+        "repo": { "type": "string" },
+        "commands": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["dryRun", "repo", "commands"],
+      "additionalProperties": true
+    }
+  }
+}
+

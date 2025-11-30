@@ -1,0 +1,243 @@
+{
+  "operations": [
+    {
+      "name": "CloseLabVIEW",
+      "parameters": [
+        {
+          "id": "labviewPath",
+          "type": "path",
+          "required": false,
+          "env": [
+            "LABVIEW_EXE",
+            "LABVIEW_PATH",
+            "LV_LABVIEW_PATH",
+            "LV_LABVIEW_EXE"
+          ],
+          "description": "Full path to LabVIEW.exe to close."
+        },
+        {
+          "id": "labviewVersion",
+          "type": "string",
+          "required": false,
+          "env": [
+            "LOOP_LABVIEW_VERSION",
+            "LABVIEW_VERSION",
+            "MINIMUM_SUPPORTED_LV_VERSION"
+          ],
+          "default": "2025",
+          "description": "LabVIEW version used when deriving the executable path if none supplied."
+        },
+        {
+          "id": "labviewBitness",
+          "type": "enum",
+          "values": [
+            "32",
+            "64"
+          ],
+          "required": false,
+          "env": [
+            "LOOP_LABVIEW_BITNESS",
+            "LABVIEW_BITNESS",
+            "MINIMUM_SUPPORTED_LV_BITNESS"
+          ],
+          "default": "64",
+          "description": "Bitness used when deriving LabVIEW.exe path."
+        }
+      ]
+    },
+    {
+      "name": "CreateComparisonReport",
+      "parameters": [
+        {
+          "id": "vi1",
+          "type": "path",
+          "required": true,
+          "env": [
+            "LV_BASE_VI"
+          ],
+          "description": "Path to the base VI."
+        },
+        {
+          "id": "vi2",
+          "type": "path",
+          "required": true,
+          "env": [
+            "LV_HEAD_VI"
+          ],
+          "description": "Path to the head VI."
+        },
+        {
+          "id": "reportType",
+          "type": "enum",
+          "values": [
+            "HTMLSingleFile",
+            "HTML",
+            "XML",
+            "Text",
+            "Word"
+          ],
+          "required": false,
+          "default": "HTMLSingleFile",
+          "description": "Report output format."
+        },
+        {
+          "id": "reportPath",
+          "type": "path",
+          "required": false,
+          "description": "Destination path for the comparison report."
+        },
+        {
+          "id": "flags",
+          "type": "array",
+          "required": false,
+          "description": "Additional LVCompare flags appended to the operation."
+        }
+      ]
+    },
+    {
+      "name": "RunVI",
+      "parameters": [
+        {
+          "id": "viPath",
+          "type": "path",
+          "required": true,
+          "description": "Path to the VI to execute."
+        },
+        {
+          "id": "arguments",
+          "type": "array",
+          "required": false,
+          "description": "Array of arguments passed positionally to the VI connector pane."
+        },
+        {
+          "id": "showFP",
+          "type": "bool",
+          "required": false,
+          "description": "When true, shows the VI front panel."
+        },
+        {
+          "id": "abortOnError",
+          "type": "bool",
+          "required": false,
+          "description": "Abort execution on error."
+        }
+      ]
+    },
+    {
+      "name": "RunVIAnalyzer",
+      "parameters": [
+        {
+          "id": "configPath",
+          "type": "path",
+          "required": true,
+          "description": "Path to the VI Analyzer configuration file."
+        },
+        {
+          "id": "reportPath",
+          "type": "path",
+          "required": true,
+          "description": "Location where the analyzer report is written."
+        },
+        {
+          "id": "reportSaveType",
+          "type": "enum",
+          "values": [
+            "HTML",
+            "XML",
+            "Text"
+          ],
+          "required": false,
+          "default": "HTML",
+          "description": "Output format for the analyzer report."
+        },
+        {
+          "id": "configPassword",
+          "type": "string",
+          "required": false,
+          "description": "Password for the configuration (if protected)."
+        }
+      ]
+    },
+    {
+      "name": "RunUnitTests",
+      "parameters": [
+        {
+          "id": "projectPath",
+          "type": "path",
+          "required": true,
+          "description": "Path to LabVIEW project containing tests."
+        },
+        {
+          "id": "junitReportPath",
+          "type": "path",
+          "required": true,
+          "description": "Destination path for the JUnit report."
+        }
+      ]
+    },
+    {
+      "name": "MassCompile",
+      "parameters": [
+        {
+          "id": "directoryToCompile",
+          "type": "path",
+          "required": true,
+          "description": "Directory or file to mass compile."
+        },
+        {
+          "id": "massCompileLogFile",
+          "type": "path",
+          "required": false,
+          "description": "Mass compile log file path."
+        },
+        {
+          "id": "appendToMassCompileLog",
+          "type": "bool",
+          "required": false,
+          "description": "Append to an existing mass compile log file."
+        },
+        {
+          "id": "numOfVIsToCache",
+          "type": "int",
+          "required": false,
+          "description": "Number of VIs to cache during the compile (0 disables caching)."
+        },
+        {
+          "id": "reloadLVSBs",
+          "type": "bool",
+          "required": false,
+          "description": "Reload LabVIEW shared libraries (LVSBs) during compile."
+        }
+      ]
+    },
+    {
+      "name": "ExecuteBuildSpec",
+      "parameters": [
+        {
+          "id": "projectPath",
+          "type": "path",
+          "required": true,
+          "description": "Path to LabVIEW project."
+        },
+        {
+          "id": "targetName",
+          "type": "string",
+          "required": false,
+          "description": "Target to build within the project."
+        },
+        {
+          "id": "buildSpec",
+          "type": "string",
+          "required": false,
+          "description": "Alias retained for backward compatibility."
+        },
+        {
+          "id": "buildSpecName",
+          "type": "string",
+          "required": true,
+          "description": "Name of the build specification."
+        }
+      ]
+    }
+  ]
+}

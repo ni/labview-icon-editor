@@ -57,10 +57,15 @@ if (-not (Test-Path -LiteralPath $projectPath)) {
     throw "LabVIEW project not found at $projectPath"
 }
 
+$prepareViPath = Join-Path -Path $RepositoryPath -ChildPath 'Tooling\PrepareIESource.vi'
+if (-not (Test-Path -LiteralPath $prepareViPath)) {
+    throw "PrepareIESource VI not found under Tooling (expected PrepareIESource.vi)"
+}
+
 $gcliArgs = @(
 '--lv-ver', $Package_LabVIEW_Version,
     '--arch', $SupportedBitness,
-    '-v', "$RepositoryPath\Tooling\PrepareIESource.vi",
+    '-v', $prepareViPath,
     '--',
     'LabVIEW',
     'Localhost.LibraryPaths',

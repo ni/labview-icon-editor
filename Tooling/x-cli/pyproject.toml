@@ -1,0 +1,18 @@
+[project]
+name = "codex-rules"
+version = "0.2.0"
+description = "Self‑contained rules engine for codex agents"
+authors = [{ name = "Codex Rules", email = "codex-bot@example.com" }]
+license = { text = "MIT" }
+requires-python = ">=3.12"
+dependencies = ["ruamel.yaml~=0.18.0"]
+
+[project.scripts]
+codex-rules = "codex_rules.cli:main"
+
+[tool.setuptools]
+packages = ["codex_rules", "codex_rules.ingest", "codex_rules.providers"]
+
+[tool.setuptools.package-dir]
+codex_rules = "codex_rules"
+

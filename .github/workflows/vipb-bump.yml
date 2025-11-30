@@ -1,0 +1,40 @@
+name: VIPB Bump (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_lv:
+        description: "Target LabVIEW version (e.g., 2025)"
+        required: true
+        default: "2021"
+
+jobs:
+  bump-vipb:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build seed image
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/seed:latest .
+
+      - name: Bump VIPB and create worktree
+        run: |
+          pwsh -NoProfile -File scripts/labview/vipb-bump-worktree.ps1 `
+            -RepositoryPath ${{ github.workspace }} `
+            -TargetLabVIEWVersion "${{ github.event.inputs.target_lv }}" `
+            -WorktreeName lvsd-${{ github.run_id }} `
+            -RunSourceDistribution `
+            -RunPackageBuild
+
+      - name: Upload bump artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vipb-bump-${{ github.run_id }}
+          path: |
+            builds/vipb-stash/**/vipb-bump-manifest.json
+            builds/vipb-stash/**/*.vipb

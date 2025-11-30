@@ -1,0 +1,10 @@
+{
+  "actionlint": "https://github.com/rhysd/actionlint",
+  "trailing-whitespace": "https://github.com/pre-commit/pre-commit-hooks#trailing-whitespace",
+  "end-of-file-fixer": "https://github.com/pre-commit/pre-commit-hooks#end-of-file-fixer",
+  "yaml-parse-ruamel": "scripts/check_yaml_ruamel.py",
+  "agent-feedback": "scripts/check_agent_feedback.py",
+  "srs-title-ascii": "scripts/check_srs_title_ascii.py",
+  "commit-message": "scripts/check-commit-msg.py"
+}
+

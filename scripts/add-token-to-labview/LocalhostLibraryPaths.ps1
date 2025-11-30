@@ -14,8 +14,22 @@ if (-not (Test-Path Function:\Resolve-LVIniPath)) {
             "C:\Program Files (x86)\National Instruments\LabVIEW $LvVersion\LabVIEW.ini"
         }
 
-        if (Test-Path $canonical) {
+        if (Test-Path -LiteralPath $canonical) {
             return $canonical
+        }
+
+        # When running from WSL/Linux PowerShell, also check the /mnt/<drive> translation.
+        if (-not $IsWindows) {
+            $mntPath = $canonical
+            if ($mntPath -match '^[A-Za-z]:') {
+                $drive = ($mntPath.Substring(0,1)).ToLower()
+                $rest  = $mntPath.Substring(2)
+                $mntPath = "/mnt/$drive/$rest"
+            }
+            $mntPath = $mntPath -replace '\\', '/'
+            if (Test-Path -LiteralPath $mntPath) {
+                return $mntPath
+            }
         }
 
         throw "LabVIEW.ini not found at canonical path: $canonical"

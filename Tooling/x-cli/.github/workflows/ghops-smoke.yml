@@ -1,0 +1,406 @@
+name: ghops-smoke
+
+on:
+  push:
+    branches: [ develop, main, 'feature/**', 'release/**', 'hotfix/**' ]
+  pull_request:
+    branches: [ develop, main ]
+
+jobs:
+  windows-smoke:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run ghops smoke tests (Pester)
+        shell: pwsh
+        run: |
+          powershell -File scripts/ghops/tests/RunGhopsTests.ps1
+
+  windows-ps-json:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Collect PowerShell ghops JSON logs (dry-run)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path ghops-logs-ps -Force | Out-Null
+          powershell -File scripts/ghops/pr-create.ps1 test-ps "test title" -Labels "ci,bootstrap" -DryRun -Json > ghops-logs-ps/pr-create.json
+          powershell -File scripts/ghops/run-watch.ps1 build.yml -DryRun -Json > ghops-logs-ps/run-watch.json
+          powershell -File scripts/ghops/run-rerun.ps1 --workflow build.yml -DryRun -Json > ghops-logs-ps/run-rerun.json
+          powershell -File scripts/ghops/artifacts-download.ps1 --workflow build.yml -o artifacts/out -DryRun -Json > ghops-logs-ps/artifacts-download.json
+          powershell -File scripts/ghops/release-tag.ps1 v0.0.0-smoke -DryRun -Json > ghops-logs-ps/release-tag.json
+
+      - name: Generate combined summary (PowerShell)
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const read = p => JSON.parse(fs.readFileSync(p,'utf8'));
+            const exists = p => fs.existsSync(p);
+            const dir = 'ghops-logs-ps';
+            const files = ['pr-create.json','run-watch.json','run-rerun.json','artifacts-download.json','release-tag.json']
+              .filter(f => exists(`${dir}/${f}`));
+            const summary = {};
+            const aggregate = { files: {} };
+            for (const f of files) {
+              try {
+                const obj = read(`${dir}/${f}`);
+                aggregate.files[f] = obj;
+                summary[f] = {
+                  commands: obj.commands ? obj.commands.length : 0,
+                  dryRun: !!obj.dryRun,
+                  repo: obj.repo || '',
+                  branch: obj.branch,
+                  base: obj.base,
+                  labels: Array.isArray(obj.labels) ? obj.labels : undefined,
+                  target: obj.target,
+                  workflow: obj.workflow,
+                  run: obj.run,
+                  runId: obj.runId,
+                  out: obj.out,
+                  tag: obj.tag,
+                  failed: obj.failed,
+                };
+              } catch (e) {
+                summary[f] = { error: String(e) };
+              }
+            }
+            fs.writeFileSync(`${dir}/summary-ps.json`, JSON.stringify(summary, null, 2));
+            fs.writeFileSync(`${dir}/aggregate-ps.json`, JSON.stringify(aggregate, null, 2));
+
+      - name: Upload ghops PS logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: ghops-logs-ps
+          path: ghops-logs-ps/*.json
+
+  ubuntu-bash-json:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure ghops scripts executable
+        shell: bash
+        run: chmod +x scripts/ghops/*.sh
+
+      - name: Collect bash ghops JSON logs (dry-run)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ghops-logs
+          scripts/ghops/pr-create.sh feat/json "test title" --dry-run --json > ghops-logs/pr-create.json
+          scripts/ghops/run-watch.sh build.yml --dry-run --json > ghops-logs/run-watch.json || true
+          scripts/ghops/run-rerun.sh --workflow build.yml --dry-run --json > ghops-logs/run-rerun.json || true
+          scripts/ghops/artifacts-download.sh --workflow build.yml -o artifacts/out --dry-run --json > ghops-logs/artifacts-download.json || true
+          scripts/ghops/release-tag.sh v0.0.0-smoke --dry-run --json > ghops-logs/release-tag.json
+
+      - name: Generate combined summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const read = p => JSON.parse(fs.readFileSync(p,'utf8'));
+            const exists = p => fs.existsSync(p);
+            const dir = 'ghops-logs';
+            const files = ['pr-create.json','run-watch.json','run-rerun.json','artifacts-download.json','release-tag.json']
+              .filter(f => exists(`${dir}/${f}`));
+            const summary = {};
+            const aggregate = { files: {} };
+            for (const f of files) {
+              try {
+                const obj = read(`${dir}/${f}`);
+                aggregate.files[f] = obj;
+                summary[f] = {
+                  commands: obj.commands ? obj.commands.length : 0,
+                  dryRun: !!obj.dryRun,
+                  repo: obj.repo || '',
+                  // selected context fields when present
+                  branch: obj.branch,
+                  base: obj.base,
+                  labels: Array.isArray(obj.labels) ? obj.labels : undefined,
+                  target: obj.target,
+                  workflow: obj.workflow,
+                  run: obj.run,
+                  runId: obj.runId,
+                  out: obj.out,
+                  tag: obj.tag,
+                  failed: obj.failed,
+                };
+              } catch (e) {
+                summary[f] = { error: String(e) };
+              }
+            }
+            fs.writeFileSync(`${dir}/summary.json`, JSON.stringify(summary, null, 2));
+            fs.writeFileSync(`${dir}/aggregate.json`, JSON.stringify(aggregate, null, 2));
+
+      - name: Upload ghops logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: ghops-logs
+          path: ghops-logs/*.json
+
+  summarize-all:
+    runs-on: ubuntu-latest
+    needs: [ubuntu-bash-json, windows-ps-json]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download bash logs
+        uses: actions/download-artifact@v4
+        with:
+          name: ghops-logs
+          path: ghops-logs
+
+      - name: Download PowerShell logs
+        uses: actions/download-artifact@v4
+        with:
+          name: ghops-logs-ps
+          path: ghops-logs-ps
+
+      - name: Generate summary-all.json
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const readJSON = p => JSON.parse(fs.readFileSync(p,'utf8'));
+            const outDir = 'ghops-logs-all';
+            fs.mkdirSync(outDir, { recursive: true });
+            const all = {
+              meta: {
+                runId: context.runId,
+                sha: context.sha,
+                repo: `${context.repo.owner}/${context.repo.repo}`,
+              },
+              bash: fs.existsSync('ghops-logs/summary.json') ? readJSON('ghops-logs/summary.json') : {},
+              ps: fs.existsSync('ghops-logs-ps/summary-ps.json') ? readJSON('ghops-logs-ps/summary-ps.json') : {},
+            };
+            fs.writeFileSync(`${outDir}/summary-all.json`, JSON.stringify(all, null, 2));
+            const agg = {
+              meta: all.meta,
+              bash: fs.existsSync('ghops-logs/aggregate.json') ? readJSON('ghops-logs/aggregate.json') : {},
+              ps: fs.existsSync('ghops-logs-ps/aggregate-ps.json') ? readJSON('ghops-logs-ps/aggregate-ps.json') : {},
+            };
+            fs.writeFileSync(`${outDir}/aggregate-all.json`, JSON.stringify(agg, null, 2));
+
+            // Unified all-logs JSON with a common schema
+            const toEntries = (origin, filesObj) => {
+              const mapName = (fname) => fname.replace(/\.json$/,'');
+              const entries = [];
+              if (!filesObj || !filesObj.files) return entries;
+              for (const [fname, obj] of Object.entries(filesObj.files)) {
+                entries.push({
+                  origin,
+                  name: mapName(fname),
+                  dryRun: !!obj.dryRun,
+                  repo: obj.repo || '',
+                  context: {
+                    branch: obj.branch,
+                    base: obj.base,
+                    labels: Array.isArray(obj.labels) ? obj.labels : undefined,
+                    target: obj.target,
+                    workflow: obj.workflow,
+                    run: obj.run,
+                    runId: obj.runId,
+                    out: obj.out,
+                    tag: obj.tag,
+                    failed: obj.failed,
+                  },
+                  commands: Array.isArray(obj.commands) ? obj.commands : [],
+                });
+              }
+              return entries;
+            };
+
+            const allLogs = {
+              schema: 'ghops.logs/v1',
+              meta: all.meta,
+              entries: [
+                ...toEntries('bash', agg.bash),
+                ...toEntries('ps', agg.ps),
+              ],
+            };
+            fs.writeFileSync(`${outDir}/all-logs.json`, JSON.stringify(allLogs, null, 2));
+
+      - name: Validate all-logs.json against schema (PowerShell)
+        shell: pwsh
+        run: |
+          $schema = "docs/schemas/v1/ghops.logs.v1.schema.json"
+          $jsonPath = "ghops-logs-all/all-logs.json"
+          if (-not (Test-Path $schema)) { Write-Error "Schema not found: $schema"; exit 1 }
+          if (-not (Test-Path $jsonPath)) { Write-Error "JSON not found: $jsonPath"; exit 1 }
+          $json = Get-Content $jsonPath -Raw
+          $ok = Test-Json -Json $json -SchemaFile $schema
+          if (-not $ok) { Write-Error "Schema validation failed for $jsonPath"; exit 1 }
+          Write-Host "Schema validation passed for all-logs.json"
+
+      # Ajv validation step removed - PowerShell Test-Json validation above is authoritative
+
+      - name: Generate comment.md from all-logs.json
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'ghops-logs-all')) { New-Item -ItemType Directory -Path ghops-logs-all -Force | Out-Null }
+          pwsh -File scripts/ghops/tools/all-logs-summary.ps1 -Input ghops-logs-all/all-logs.json > ghops-logs-all/comment.md
+
+      - name: Generate quick-glance.json
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const p = 'ghops-logs-all/all-logs.json';
+            if (!fs.existsSync(p)) { core.setFailed('Missing all-logs.json'); return }
+            const all = JSON.parse(fs.readFileSync(p,'utf8'));
+            const entries = Array.isArray(all.entries) ? all.entries : [];
+            const totals = {
+              entries: entries.length,
+              commands: entries.reduce((a,e)=> a + (Array.isArray(e.commands)?e.commands.length:0), 0)
+            };
+            const map = new Map();
+            for (const e of entries) {
+              const key = `${e.origin}/${e.name}`;
+              const cur = map.get(key) || { origin: e.origin, name: e.name, entries: 0, commands: 0 };
+              cur.entries += 1;
+              cur.commands += (Array.isArray(e.commands)?e.commands.length:0);
+              map.set(key, cur);
+            }
+            const arr = Array.from(map.values());
+            const byCommands = arr.slice().sort((a,b)=> b.commands - a.commands).slice(0,10);
+            const byEntries  = arr.slice().sort((a,b)=> b.entries  - a.entries ).slice(0,10);
+            const glance = {
+              schema: 'ghops.quick/v1',
+              meta: all.meta,
+              totals,
+              top: { byCommands, byEntries },
+              changes: { sincePrevious: null }
+            };
+            fs.writeFileSync('ghops-logs-all/quick-glance.json', JSON.stringify(glance, null, 2));
+
+      - name: Validate per-runner aggregates shape
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const checkAgg = (p) => {
+              if (!fs.existsSync(p)) return { path: p, exists: false, ok: true, note: 'missing (ok if runner skipped)'};
+              let obj;
+              try { obj = JSON.parse(fs.readFileSync(p,'utf8')); } catch (e) { return { path: p, exists: true, ok: false, error: 'json-parse-failed' }; }
+              if (typeof obj !== 'object' || !obj.files || typeof obj.files !== 'object') return { path: p, exists: true, ok: false, error: 'missing-files-map' };
+              for (const [k,v] of Object.entries(obj.files)) {
+                if (!v || typeof v !== 'object') return { path: p, exists: true, ok: false, error: `entry-not-object:${k}` };
+                if (!Array.isArray(v.commands)) return { path: p, exists: true, ok: false, error: `missing-commands:${k}` };
+                if (typeof v.repo !== 'string') return { path: p, exists: true, ok: false, error: `missing-repo:${k}` };
+              }
+              return { path: p, exists: true, ok: true };
+            };
+            const results = [
+              checkAgg('ghops-logs/aggregate.json'),
+              checkAgg('ghops-logs-ps/aggregate-ps.json')
+            ];
+            const bad = results.find(r => !r.ok);
+            if (bad) {
+              core.setFailed(`Aggregate validation failed: ${bad.path} (${bad.error || bad.note || 'unknown'})`);
+            } else {
+              core.info('Aggregate validation passed');
+            }
+
+      - name: Validate per-runner against formal schemas (optional)
+        shell: pwsh
+        run: |
+          $aggSchema = "docs/schemas/v1/ghops.aggregate.v1.schema.json"
+          $sumSchema = "docs/schemas/v1/ghops.summary.v1.schema.json"
+          $files = @(
+            @{ Path = "ghops-logs/aggregate.json"; Schema = $aggSchema },
+            @{ Path = "ghops-logs/summary.json"; Schema = $sumSchema },
+            @{ Path = "ghops-logs-ps/aggregate-ps.json"; Schema = $aggSchema },
+            @{ Path = "ghops-logs-ps/summary-ps.json"; Schema = $sumSchema }
+          )
+          foreach ($f in $files) {
+            if (-not (Test-Path $f.Path)) { Write-Host "Skip missing $($f.Path)"; continue }
+            $json = Get-Content $f.Path -Raw
+            $ok = Test-Json -Json $json -SchemaFile $f.Schema
+            if (-not $ok) { Write-Error "Schema validation failed for $($f.Path)"; exit 1 }
+            Write-Host "Schema validation passed for $($f.Path)"
+          }
+
+      - name: Upload combined summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ghops-logs-all
+          path: ghops-logs-all/*
+
+      - name: PR comment (combined, optional)
+        if: ${{ github.event_name == 'pull_request' && contains(toJson(github.event.pull_request.labels), 'ghops-logs') && (github.event.pull_request.author_association == 'MEMBER' || github.event.pull_request.author_association == 'OWNER' || github.event.pull_request.author_association == 'COLLABORATOR') }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const bdir = 'ghops-logs';
+            const pdir = 'ghops-logs-ps';
+            const bpath = f => `${bdir}/${f}`;
+            const ppath = f => `${pdir}/${f}`;
+            const labels = (context.payload.pull_request.labels || []).map(l => l.name);
+            const deep = labels.includes('ghops-logs-details');
+            const list = (dir, pathFn, prefix) => ['pr-create.json','run-watch.json','run-rerun.json','artifacts-download.json','release-tag.json']
+              .filter(f => fs.existsSync(pathFn(f)))
+              .map(f => ({ f, obj: JSON.parse(fs.readFileSync(pathFn(f),'utf8')), prefix }));
+            const rows = [];
+            for (const {f, obj, prefix} of [...list(bdir, bpath, 'bash'), ...list(pdir, ppath, 'ps')]) {
+              const parts = [`${prefix}:${f}: ${obj.commands ? obj.commands.length : 0} cmds`];
+              if (f === 'pr-create.json') {
+                parts.push(`branch=${obj.branch}`, `base=${obj.base}`);
+                if (Array.isArray(obj.labels)) parts.push(`labels=[${obj.labels.join(',')}]`);
+              }
+              if (f === 'run-watch.json') parts.push(`target=${obj.target}`, `branch=${obj.branch}`, `runId=${obj.runId}`);
+              if (f === 'run-rerun.json') parts.push(`workflow=${obj.workflow}`, `branch=${obj.branch}`, `failed=${obj.failed}`, `runId=${obj.runId}`);
+              if (f === 'artifacts-download.json') parts.push(`workflow=${obj.workflow}`, `out=${obj.out}`, `runId=${obj.runId}`);
+              if (f === 'release-tag.json') parts.push(`tag=${obj.tag}`);
+              let line = `- ${parts.join(' | ')}`;
+              if (deep && Array.isArray(obj.commands)) {
+                const codeLang = prefix === 'bash' ? 'bash' : 'powershell';
+                const cmdBlock = ['```' + codeLang, ...obj.commands, '```'].join('\n');
+                line += `\n  <details><summary>Commands</summary>\n\n${cmdBlock}\n\n  </details>`;
+              }
+              rows.push(line);
+            }
+            const header = deep ? '**ghops JSON logs (dry-run)** - labels `ghops-logs` + `ghops-logs-details` detected' : '**ghops JSON logs (dry-run)** - label `ghops-logs` detected';
+            const runId = context.runId;
+            const showDirect = labels.includes('ghops-artifact-links') || labels.includes('ghops-artifact-signed');
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({ owner: context.repo.owner, repo: context.repo.repo, run_id: runId });
+            const wanted = ['ghops-logs','ghops-logs-ps','ghops-logs-all'];
+            let artifactsSection = [];
+            if (showDirect) {
+              const signedRequested = labels.includes('ghops-artifact-signed');
+              artifactsSection = artifacts.data.artifacts
+                .filter(a => wanted.includes(a.name))
+                .map(a => `- ${a.name}: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId} (download: ${a.archive_download_url}${signedRequested ? ' - signed requested' : ''})`);
+              if (signedRequested) {
+                artifactsSection.unshift('_Signed artifact links requested via label `ghops-artifact-signed`. Using standard archive URLs until signed links are supported._');
+              }
+            } else {
+              const names = artifacts.data.artifacts.map(a => a.name).filter(n => wanted.includes(n));
+              artifactsSection = [
+                `Artifacts available on run page: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${runId}`,
+                `- ${names.join(', ')}`
+              ];
+            }
+            let body = [header, ...rows, '', '**Artifacts**', ...artifactsSection].join('\n');
+            if (labels.includes('ghops-comment-md')) {
+              try {
+                const md = fs.readFileSync('ghops-logs-all/comment.md','utf8');
+                body = [header, '', md, '', '**Artifacts**', ...artifactsSection].join('\n');
+              } catch {
+                // ignore, fallback to generated content
+              }
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });

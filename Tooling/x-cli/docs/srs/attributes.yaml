@@ -1,0 +1,16 @@
+# ISO/IEC/IEEE 29148:2018 §5.2.8 — controlled attributes + required sections
+priority:
+  enum: [High, Medium, Low]
+owner:
+  enum: [DevOps, QA, DevEx, Tooling, Security, Architecture, CI, Release, DevRel]
+status:
+  enum: [Proposed, Approved, Implemented, Verified, Accepted, Deprecated]
+verification_methods:
+  enum: [Test, Analysis, Inspection, Demonstration]
+risk:
+  enum: [Critical, Major, Minor]
+required_sections:
+  - Statement(s)
+  - Rationale
+  - Verification
+  - Attributes

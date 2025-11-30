@@ -1,0 +1,10 @@
+# Tests exercising telemetry
+LoggingTests
+test_telemetry
+test_analyze_telemetry
+test_telemetry_dashboard
+test_analyze_qa_telemetry
+test_qa_telemetry_dashboard
+
+test_ruamel_yaml_version
+test_dependency_versions

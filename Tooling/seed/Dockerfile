@@ -3,12 +3,12 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy and restore dependencies for VipbJsonTool
-COPY src/VipbJsonTool/VipbJsonTool.csproj src/VipbJsonTool/
-RUN dotnet restore src/VipbJsonTool/VipbJsonTool.csproj
+COPY Tooling/dotnet/VipbJsonTool/VipbJsonTool.csproj Tooling/dotnet/VipbJsonTool/
+RUN dotnet restore Tooling/dotnet/VipbJsonTool/VipbJsonTool.csproj
 
 # Copy source code and build/publish a self-contained Linux binary
-COPY src/VipbJsonTool/ src/VipbJsonTool/
-RUN dotnet publish src/VipbJsonTool -c Release -r linux-x64 --self-contained \
+COPY Tooling/dotnet/VipbJsonTool/ Tooling/dotnet/VipbJsonTool/
+RUN dotnet publish Tooling/dotnet/VipbJsonTool -c Release -r linux-x64 --self-contained \
     -p:PublishSingleFile=true -o /app/publish
 
 # Use a minimal Ubuntu base for the final image
@@ -34,11 +34,11 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
 WORKDIR /github/workspace
 
 # Copy entrypoint script and GitHub Action metadata
-COPY scripts/entrypoint.sh /entrypoint.sh
-COPY action.yml /action.yml
+COPY Tooling/seed/scripts/entrypoint.sh /entrypoint.sh
+COPY Tooling/seed/action.yml /action.yml
 
 # Copy golden sample template files for seeding (included in the image for reference)
-COPY tests/Samples/seed.lvproj /github/workspace/tests/Samples/
+COPY Tooling/seed/tests/Samples/seed.lvproj /github/workspace/tests/Samples/
 
 # Copy the published VipbJsonTool binary from the build stage
 COPY --from=build /app/publish/VipbJsonTool /usr/local/bin/VipbJsonTool

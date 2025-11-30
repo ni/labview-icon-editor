@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://labview-community-ci-cd.github.io/x-cli/schemas/stage3-diagnostics.schema.json",
+  "title": "Stage 3 Diagnostics",
+  "type": "object",
+  "required": [
+    "published",
+    "dry_run_forced",
+    "webhook_present",
+    "summary_path",
+    "comment_path",
+    "summary_bytes",
+    "comment_bytes",
+    "chunks"
+  ],
+  "properties": {
+    "published": { "type": "string", "enum": ["true", "false"] },
+    "dry_run_forced": { "type": "string", "enum": ["true", "false"] },
+    "webhook_present": { "type": "string", "enum": ["true", "false"] },
+    "summary_path": { "type": "string", "minLength": 1 },
+    "comment_path": { "type": "string", "minLength": 0 },
+    "summary_bytes": { "type": "integer", "minimum": 0 },
+    "comment_bytes": { "type": "integer", "minimum": 0 },
+    "chunks": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string" },
+        "strategy": { "type": "string" },
+        "count": { "type": "integer", "minimum": 0 },
+        "message_length": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
+

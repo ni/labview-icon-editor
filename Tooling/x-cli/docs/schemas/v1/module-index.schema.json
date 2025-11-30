@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.example.com/x-cli/module-index.schema.json",
+  "title": "Module Index",
+  "type": "object",
+  "required": ["$schema", "version", "generatedAt", "entries"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "type": "string" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "desc"],
+        "properties": {
+          "path": { "type": "string", "pattern": "^([A-Za-z0-9_.-]+/)+[A-Za-z0-9_.-]+$" },
+          "desc": { "type": "string" },
+          "lang": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
+

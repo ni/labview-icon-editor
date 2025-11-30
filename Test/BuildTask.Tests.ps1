@@ -24,15 +24,26 @@ Import-Module "$testDir/Support/BuildTaskMocks.psm1"
 
 Describe "VSCode Build Task wiring" {
     BeforeAll {
+        if (-not (Get-Variable -Name RepoRoot -Scope Script -ErrorAction SilentlyContinue)) {
+            Set-Variable -Name RepoRoot -Scope Script -Value $null
+        }
         if (-not $script:RepoRoot) {
             $script:RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).ProviderPath
+        }
+
+        if (-not (Get-Variable -Name mocks -Scope Script -ErrorAction SilentlyContinue)) {
+            Set-Variable -Name mocks -Scope Script -Value $null
         }
         $script:mocks = Initialize-BuildTaskMocks -RepoPath $script:RepoRoot
     }
 
     AfterAll {
-        if ($script:mocks.TempBin -and (Test-Path $script:mocks.TempBin)) {
-            Remove-Item -LiteralPath $script:mocks.TempBin -Recurse -Force -ErrorAction SilentlyContinue
+        $mocksVar = Get-Variable -Name mocks -Scope Script -ErrorAction SilentlyContinue
+        if ($mocksVar) {
+            $mocks = $mocksVar.Value
+            if ($mocks -and $mocks.TempBin -and (Test-Path $mocks.TempBin)) {
+                Remove-Item -LiteralPath $mocks.TempBin -Recurse -Force -ErrorAction SilentlyContinue
+            }
         }
     }
 
@@ -88,16 +99,24 @@ Describe "VSCode Build Task wiring" {
 
         It "exposes only the Build LVAddon task with expected defaults" {
             Write-Host ("DEBUG repoRoot={0}" -f $script:RepoRoot)
-            Write-Host ("DEBUG in-it PSCommandPath={0} MyPath={1} PSScriptRoot={2} pwd={3}" -f $PSCommandPath, $MyInvocation.MyCommand.Path, $PSScriptRoot, (Get-Location).ProviderPath)
+            $myPath = $MyInvocation.MyCommand | Select-Object -ExpandProperty Path -ErrorAction SilentlyContinue
+            Write-Host ("DEBUG in-it PSCommandPath={0} MyPath={1} PSScriptRoot={2} pwd={3}" -f $PSCommandPath, $myPath, $PSScriptRoot, (Get-Location).ProviderPath)
             $script:RepoRoot | Should -Not -BeNullOrEmpty
 
             $tasksPath = Join-Path $script:RepoRoot '.vscode/tasks.json'
             Test-Path -LiteralPath $tasksPath | Should -BeTrue
 
             $json = Get-Content -LiteralPath $tasksPath -Raw | ConvertFrom-Json
-            $json.tasks.Count | Should -Be 1
+            $json.tasks.Count | Should -BeGreaterThan 1
 
-            $buildTask = $json.tasks | Where-Object { $_.label -eq "Build LVAddon (VI Package)" } | Select-Object -First 1
+            $depsTask = $json.tasks | Where-Object { $_.label -eq "01 Verify / Apply dependencies" } | Select-Object -First 1
+            $depsTask | Should -Not -BeNullOrEmpty
+            $depsCommand = ($depsTask.args -join ' ')
+            $depsCommand | Should -Match "task-verify-apply-dependencies"
+            $depsCommand | Should -BeLike "*-SupportedBitness both*"
+            $depsCommand | Should -BeLike "*-VipcPath runner_dependencies.vipc*"
+
+            $buildTask = $json.tasks | Where-Object { $_.label -eq "02 Build LVAddon (VI Package)" } | Select-Object -First 1
             $buildTask | Should -Not -BeNullOrEmpty
 
             $command = ($buildTask.args -join ' ')

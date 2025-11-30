@@ -1,9 +1,154 @@
 {
   "tasks": [
     {
-      "name": "Build LVAddon (VI Package)",
-      "description": "VS Code task wrapper for `scripts/ie.ps1 -Command build-worktree` (64-bit VIP + both-bitness PPLs)",
+      "name": "01 Verify / Apply dependencies",
+      "description": "VS Code task wrapper for `scripts/task-verify-apply-dependencies.ps1` (VIPC apply for 32- and 64-bit)",
       "coverage": {}
+    },
+    {
+      "name": "02 Build LVAddon (VI Package)",
+      "description": "VS Code task using IntegrationEngineCli (wrapper by default, managed on Windows) for 64-bit VIP + both-bitness PPLs",
+      "coverage": {}
+    },
+    {
+      "name": "05b Requirements summary (bundled SD)",
+      "description": "VS Code task running run-requirements-summary-task.ps1 (prefers bundled RequirementsSummarizer.exe) for SD consumers",
+      "coverage": {
+        "script": "scripts/run-requirements-summary-task.ps1",
+        "scenarios": [
+          "regenerate markdown/html/high summaries from bundled CSV",
+          "fallback to dotnet run if the bundled exe is missing"
+        ]
+      }
+    },
+    {
+      "name": "08 x-cli: VI Analyzer",
+      "description": "VS Code task running x-cli vi-analyzer-run with configs/vi-analyzer-request.sample.json",
+      "coverage": {}
+    },
+    {
+      "name": "09 x-cli: VI History (vi-compare-run)",
+      "description": "VS Code task running x-cli vi-compare-run with configs/vi-compare-run-request.sample.json",
+      "coverage": {
+        "script": "scripts/vi-compare/run-vi-history-suite.ps1",
+        "scenarios": [
+          "failure run (missing LabVIEW CLI)",
+          "disabled dry-run"
+        ]
+      }
+    },
+    {
+      "name": "09b x-cli: VI History from SD (read-only)",
+      "description": "VS Code task running vi-history replay against an extracted Source Distribution (read-only analysis, no bind/build)",
+      "coverage": {
+        "script": "scripts/vi-compare/run-vi-history-suite-sd.ps1",
+        "scenarios": [
+          "sample replay using extracted SD root",
+          "failure + disabled scenarios reused from configs"
+        ]
+      }
+    },
+    {
+      "name": "SD: VI History (bundled)",
+      "description": "VS Code task for SD consumers to run vi-history replay via run-vi-history-suite-sd.ps1 (bundled, read-only)",
+      "coverage": {
+        "script": "scripts/vi-compare/run-vi-history-suite-sd.ps1",
+        "scenarios": [
+          "sample replay using extracted SD root",
+          "disabled/failure scenarios"
+        ]
+      }
+    },
+    {
+      "name": "SD: Build x-cli (bundled)",
+      "description": "VS Code task to build x-cli inside the extracted SD (Release/win-x64)",
+      "coverage": {
+        "script": "Tooling/x-cli/src/XCli/XCli.csproj",
+        "scenarios": [
+          "dotnet build -c Release win-x64 publishable binaries"
+        ]
+      }
+    },
+    {
+      "name": "SD: VI History (execute)",
+      "description": "VS Code task to run vi-history replay from SD with execution enabled (depends on SD: Build x-cli)",
+      "coverage": {
+        "script": "scripts/vi-compare/run-vi-history-suite-sd.ps1",
+        "scenarios": [
+          "sample replay execute (requires LabVIEW 2025)",
+          "disabled/failure scenarios"
+        ]
+      }
+    },
+    {
+      "name": "20 Build: Source Distribution",
+      "description": "VS Code task running scripts/build-source-distribution/Build_Source_Distribution.ps1 to emit Source Distribution manifests and zip",
+      "coverage": {
+        "script": "scripts/build-source-distribution/Build_Source_Distribution.ps1",
+        "scenarios": [
+          "g-cli lvbuildspec Source Distribution build",
+          "manifest JSON/CSV under builds/Source Distribution",
+          "log-stash bundle + zip at builds/artifacts/source-distribution.zip"
+        ]
+      }
+    },
+    {
+      "name": "21 Verify: Source Distribution",
+      "description": "VS Code task running OrchestrationCli source-dist-verify to validate source-distribution.zip commits and emit a verification report",
+      "coverage": {
+        "script": "Tooling/dotnet/OrchestrationCli/Program.cs (source-dist-verify)",
+        "scenarios": [
+          "strict commit validation against git history",
+          "report under builds/reports/source-distribution-verify",
+          "optional log-stash bundle and [artifact] lines"
+        ]
+      }
+    },
+    {
+      "name": "21 VIPB: Bump LabVIEW version",
+      "description": "VS Code task running scripts/labview/vipb-bump-worktree.ps1 to build the seed docker image, bump seed.vipb version, and create a one-commit-ahead worktree",
+      "coverage": {
+        "script": "scripts/labview/vipb-bump-worktree.ps1",
+        "scenarios": [
+          "seed image built from repo (fork owner tag)",
+          "seed.vipb version bumped to target",
+          "worktree created and commit applied with bumped VIPB"
+        ]
+      }
+    },
+    {
+      "name": "06 DevMode: Bind (auto)",
+      "description": "VS Code task wrapping task-devmode-bind.ps1 (Mode=bind, auto-resolves LabVIEW version/bitness from VIPB) to bind LocalHost.LibraryPaths via DevModeAgentCli",
+      "coverage": {}
+    },
+    {
+      "name": "06b DevMode: Unbind (auto)",
+      "description": "VS Code task wrapping task-devmode-bind.ps1 (Mode=unbind, auto-resolves LabVIEW version/bitness from VIPB) to unbind LocalHost.LibraryPaths via DevModeAgentCli",
+      "coverage": {}
+    },
+    {
+      "name": "06c DevMode: Clear/Unbind all LabVIEW versions",
+      "description": "VS Code task running clear-labview-librarypaths-all.ps1 to remove LocalHost.LibraryPaths entries for all detected LabVIEW versions (32/64) and run restore per version/bitness.",
+      "coverage": {}
+    },
+    {
+      "name": "17 Build (isolated worktree)",
+      "description": "Runs scripts/run-worktree-task.ps1 to build in a temporary git worktree (dedicated console/notifications).",
+      "coverage": {}
+    },
+    {
+      "name": "18 Probe helper smoke",
+      "description": "Runs scripts/test/probe-helper-smoke.ps1 to validate worktree, source, and cache tiers for the repo CLI resolver.",
+      "coverage": {
+        "script": "scripts/test/probe-helper-smoke.ps1",
+        "scenarios": [
+          "worktree tier",
+          "source fallback",
+          "cache hit",
+          "publish on miss",
+          "clear-tooling-cache"
+        ]
+      }
     }
   ]
 }

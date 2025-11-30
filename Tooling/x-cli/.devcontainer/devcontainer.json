@@ -1,0 +1,23 @@
+{
+  "name": "x-cli Dev",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "postCreateCommand": "python -m pip install -U pip ruamel.yaml pre-commit || true && pre-commit install -t pre-commit || true",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "GitHub.vscode-pull-request-github",
+        "GitHub.vscode-github-actions",
+        "ms-vscode.powershell",
+        "redhat.vscode-yaml"
+      ],
+      "tasks": {
+        "default": "x-cli: Build container (package)"
+      }
+    }
+  }
+}

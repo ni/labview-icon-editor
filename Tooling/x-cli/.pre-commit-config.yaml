@@ -1,0 +1,117 @@
+repos:
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.7
+    hooks:
+      - id: actionlint
+        files: ^\.github/workflows/.*\.ya?ml$
+        args: ["-shellcheck=never"]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: end-of-file-fixer
+        name: Ensure single EOF newline (YAML)
+        files: '\\.(yml|yaml)$'
+        exclude: '(\\.venv/|vendor/|^docs/srs/index.yaml$|^\\.github/ISSUE_TEMPLATE/|^docs/templates/|^docs/knowledge/|^knowledge/)'
+      - id: trailing-whitespace
+        name: Trim trailing whitespace (YAML)
+        files: '\\.(yml|yaml)$'
+        exclude: '(\\.venv/|vendor/|^docs/srs/index.yaml$|^\\.github/ISSUE_TEMPLATE/|^docs/templates/|^docs/knowledge/|^knowledge/)'
+  - repo: local
+# NOTE: When adding/editing hooks here, also update
+# scripts/precommit_hook_links.json so PR comments can
+# hyperlink failing hooks to the right documentation.
+    hooks:
+      # NOTE: When adding/editing hooks here, also update
+      # scripts/precommit_hook_links.json so PR comments can
+      # hyperlink failing hooks to the right documentation.
+      - id: agent-feedback
+        name: telemetry agent feedback
+        entry: scripts/check_agent_feedback.py
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: yaml-parse-ruamel
+        name: YAML parse (ruamel)
+        entry: python scripts/check_yaml_ruamel.py
+        language: python
+        additional_dependencies: [ruamel.yaml]
+        files: '\\.(yml|yaml)$'
+        exclude: '\\.venv/|vendor/'
+        stages: [pre-commit]
+      - id: run-pre-commit
+        name: pre-commit wrapper
+        entry: scripts/run_pre_commit.py
+        language: system
+        pass_filenames: false
+        stages: [manual]
+      - id: commit-message
+        name: commit message style
+        entry: scripts/check-commit-msg.py
+        language: system
+        stages: [commit-msg]
+      - id: precommit-hook-links
+        name: pre-commit hook docs links
+        entry: python scripts/check_precommit_hook_links.py
+        language: python
+        additional_dependencies: [ruamel.yaml]
+        files: '^(.pre-commit-config.yaml|scripts/precommit_hook_links.json)$'
+        stages: [pre-commit]
+      - id: precommit-hook-links-manual
+        name: pre-commit hook docs links (manual)
+        entry: python scripts/check_precommit_hook_links.py
+        language: python
+        additional_dependencies: [ruamel.yaml]
+        pass_filenames: false
+        stages: [manual]
+      - id: precommit-template-sync
+        name: pre-commit templates sync (manual)
+        entry: python scripts/sync_precommit_templates.py
+        language: python
+        pass_filenames: false
+        stages: [manual]
+      - id: lint-pwsh-shell
+        name: Lint pwsh usage in workflows
+        entry: python scripts/lint_powershell_shell.py
+        language: python
+        additional_dependencies: [ruamel.yaml]
+        files: '^\.github/workflows/.*\.ya?ml$'
+        stages: [pre-commit]
+      - id: srs-title-ascii
+        name: SRS H1 ASCII lint
+        entry: python scripts/check_srs_title_ascii.py
+        language: python
+        files: ^docs/srs/.*\.md$
+        exclude: ^docs/srs/_template\.md$
+        stages: [pre-commit]
+      - id: srs-title-ascii-fix
+        name: SRS H1 ASCII fix (manual)
+        entry: python scripts/check_srs_title_ascii.py --fix
+        language: python
+        pass_filenames: true
+        files: ^docs/srs/.*\.md$
+        exclude: ^docs/srs/_template\.md$
+        stages: [manual]
+      - id: validate-stage3-diag
+        name: Validate Stage 3 diagnostics (if present)
+        entry: python scripts/validate_stage3_diagnostics.py --allow-missing
+        language: python
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: lint-codex-rules-usage
+        name: Lint codex_rules usage in scripts
+        entry: python scripts/lint_codex_rules_usage.py
+        language: python
+        pass_filenames: false
+        stages: [pre-commit]
+      - id: ghops-shim-guard
+        name: ghops shim guard
+        entry: python scripts/check_ghops_shim_guard.py
+        language: python
+        files: ^scripts/ghops/tests/Ghops.Tests\.ps1$
+        stages: [pre-commit]
+      - id: docs-link-check
+        name: Docs link check (lychee)
+        entry: python scripts/docs_link_check.py
+        language: python
+        pass_filenames: false
+        stages: [pre-commit]

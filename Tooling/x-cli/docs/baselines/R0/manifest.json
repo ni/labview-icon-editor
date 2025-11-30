@@ -1,0 +1,185 @@
+{
+  "schema": "urn:x-cli:srs-baseline:v1",
+  "baseline_id": "R0",
+  "generated_utc": "2025-09-05T00:56:22Z",
+  "source": "docs/srs",
+  "files_total": 35,
+  "total_size_bytes": 19496,
+  "files": [
+    {
+      "path": "srs/FGC-REQ-CI-001.md",
+      "size_bytes": 680,
+      "sha256": "97016d7e6c477fc76b785176da4ada82cc6ee7641e5ccc251bf458b1467777fe"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-002.md",
+      "size_bytes": 541,
+      "sha256": "ced864d06e642088578570cdaebf9611fc572b7ab5066c4f0bbbe1c984628afe"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-003.md",
+      "size_bytes": 482,
+      "sha256": "4e4c5d249a4e7f66ccbedaab7c8e8c6d6ba198aedaee8fbfc77cead0bcfada72"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-004.md",
+      "size_bytes": 531,
+      "sha256": "fd773cf65f84f95d07576a202fcc707298867e7de5aa1a7256dcaee6fd884a4e"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-005.md",
+      "size_bytes": 569,
+      "sha256": "7c28babbc2e8ac2a82bd3d8c57c6eea05978d026cb251339481131914722fc92"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-006.md",
+      "size_bytes": 582,
+      "sha256": "ae59a20f8270adcafabad94b6192ede0ecbc54d9c206c882ff364a6eab8a8397"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-007.md",
+      "size_bytes": 524,
+      "sha256": "2ed62c8b3b8b69808ac1bbcf44a4aa339a04b64bfe53c701d5dd3350554ae07c"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-008.md",
+      "size_bytes": 578,
+      "sha256": "3ae091e4089d57f9b0daf2f4cd4ad3d9c330c515ca8906ef8af3eafddf356cb8"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-009.md",
+      "size_bytes": 522,
+      "sha256": "09e32a7c395ae0c3b4d32d7dc2fdd75b21acfc26017c29470ff1a34f5c22159e"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-010.md",
+      "size_bytes": 513,
+      "sha256": "9ca3080316ac6b87a45e94a5cc9748cd094651ad0b7e60f79d502ad6c87098c2"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-011.md",
+      "size_bytes": 492,
+      "sha256": "16e5be472068dc0ee1713526528b844525d56208b063d5148e95ce7fd7182f71"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-012.md",
+      "size_bytes": 556,
+      "sha256": "fd23d9fe2e736e0341271b4c49795c678931c8d0857161fcdaed9fe3dbec96c6"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-013.md",
+      "size_bytes": 523,
+      "sha256": "b03dada049ab6d2b824e643ff9e0fe894e44faf554d876038eee53e77ed82cd1"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-014.md",
+      "size_bytes": 548,
+      "sha256": "e191b70b72ba3d2084aef75bd5ebea424b42b5bf06828e1c6db45c8a46e47815"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-015.md",
+      "size_bytes": 523,
+      "sha256": "8afbbdedf2a7a9b7660e11e9a53c1f8ed09bbaa4270a93c93f6e05ca35aaa59c"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-016.md",
+      "size_bytes": 491,
+      "sha256": "f66af30659b12377442d26adbbb4f2f472c267473c1aa6e7b1d4e24db2cda93e"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-017.md",
+      "size_bytes": 562,
+      "sha256": "a21df670245eb6d365dca291112b3cb8abfb98c2593a0ff48ae4545d429982bf"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-018.md",
+      "size_bytes": 504,
+      "sha256": "c2045982c967046c163389bfce00500e2a3075cf0acc9b627c65f402eba4a94f"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-019.md",
+      "size_bytes": 523,
+      "sha256": "ab382162abf7161723aeaa00b2da002705f84b9b3042dec12a500ba97f480f6d"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-020.md",
+      "size_bytes": 956,
+      "sha256": "5a8a73dcf4032be98260729e03db95d60f98298fcab82e598e354c72a1b032f6"
+    },
+    {
+      "path": "srs/FGC-REQ-DEV-001.md",
+      "size_bytes": 522,
+      "sha256": "920cfb9ed9a1f7fb989ef7d8283093e29807221ac0c699c5f9076864e2bba941"
+    },
+    {
+      "path": "srs/FGC-REQ-DEV-002.md",
+      "size_bytes": 506,
+      "sha256": "7e74d5382df2871a65dbe9692c33b518e71559eeed385bfd1ab05ef60b7ce06c"
+    },
+    {
+      "path": "srs/FGC-REQ-DEV-003.md",
+      "size_bytes": 496,
+      "sha256": "30c081ef91463658612c82968ff5536dded5e8ded30db0b02d7e5a2cdca12836"
+    },
+    {
+      "path": "srs/FGC-REQ-DEV-004.md",
+      "size_bytes": 513,
+      "sha256": "67266895910f1672f6c32e882772b0898d9b6746d4f6a49defe37096597049ee"
+    },
+    {
+      "path": "srs/FGC-REQ-DEV-005.md",
+      "size_bytes": 802,
+      "sha256": "c4f6d09fcb10e81c8b2de1b479e9adef9c093304d0203716fb04f88e9a09f50a"
+    },
+    {
+      "path": "srs/FGC-REQ-DEV-006.md",
+      "size_bytes": 587,
+      "sha256": "06e813e5eeb81675e4be34b3f3edbc419c4f47ab6d2f20661ec43015fe99cc6e"
+    },
+    {
+      "path": "srs/FGC-REQ-NOT-001.md",
+      "size_bytes": 435,
+      "sha256": "8f0b1997855099af0adc04e7a4f98e1cd99bd4af9e57a200f18868469245a0f9"
+    },
+    {
+      "path": "srs/FGC-REQ-NOT-002.md",
+      "size_bytes": 425,
+      "sha256": "f244a84c9ce59d1e8048638b95814fb7a6daee3c21ff4ca8ce139174998b6c6a"
+    },
+    {
+      "path": "srs/FGC-REQ-NOT-003.md",
+      "size_bytes": 427,
+      "sha256": "bfd75598f949e6415a4eb5b0d5e44ae8e9933837a0d513e148196c9333e70689"
+    },
+    {
+      "path": "srs/FGC-REQ-NOT-004.md",
+      "size_bytes": 418,
+      "sha256": "fdd9baf2a671b49e5cd15b4c5af6f7f47f872d54fad65661c77b9f5315e05a86"
+    },
+    {
+      "path": "srs/FGC-REQ-SPEC-001.md",
+      "size_bytes": 588,
+      "sha256": "32b4fc294d440a22130b437954f4e9a63e53ca139ca0879bbe48c53eac048c37"
+    },
+    {
+      "path": "srs/FGC-REQ-TEL-001.md",
+      "size_bytes": 648,
+      "sha256": "f309e55c6c9cf5892e789c4b9fb80247854bc9214b9db536ab6ad46acbf9e0c0"
+    },
+    {
+      "path": "srs/_template.md",
+      "size_bytes": 615,
+      "sha256": "e4efd9e66703c05b4284465d39d4c69dfc6d993ed3f91a7f7aaad27b6952aa66"
+    },
+    {
+      "path": "srs/attributes.yaml",
+      "size_bytes": 402,
+      "sha256": "e582a52f4f84420e91c8e3e1d25968d5dd7e7db971501b4da47bbab652246b10"
+    },
+    {
+      "path": "srs/core.md",
+      "size_bytes": 912,
+      "sha256": "4ca8944a1d3c101d077304a3a92a14d2b7865b6fd61a42764d73089447254b2a"
+    }
+  ]
+}

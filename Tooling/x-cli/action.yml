@@ -1,0 +1,20 @@
+name: "x-cli"
+description: "Run LabVIEW Community x-cli commands from GitHub Actions using the packaged single-file binary."
+author: "LabVIEW Community"
+branding:
+  icon: terminal
+  color: blue
+inputs:
+  args:
+    description: |
+      Newline-separated arguments forwarded to `x-cli`. If empty the action prints `--help`.
+    required: false
+  working-directory:
+    description: "Optional working directory (relative to the runner workspace) before invoking x-cli."
+    required: false
+  log-level:
+    description: "Optional log level exported as XCLI_LOG_LEVEL before running the CLI."
+    required: false
+runs:
+  using: "docker"
+  image: "Dockerfile"

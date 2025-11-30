@@ -1,0 +1,431 @@
+name: Action PR Target CI (safe dry-run)
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled]
+    paths:
+      - 'scripts/ghops/tools/post-comment-or-artifact.ps1'
+      - 'scripts/ghops/tools/post-comment-or-artifact.sh'
+  workflow_dispatch:
+    inputs:
+      lint-topn:
+        description: 'Top N rule links to include in lint summary'
+        required: false
+        default: '10'
+      lint-topn-summary-max:
+        description: 'Max unique rules to list inline in Job Summary'
+        required: false
+        default: '5'
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: write
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout base (trusted)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout PR head into ./pr (untrusted)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          path: pr
+          fetch-depth: 1
+
+      - name: Prepare comment (Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p telemetry
+          printf "# X-CLI CI Summary\n\n\`\`\`text\nhello from PR target\n\`\`\`\n" > telemetry/comment.md
+
+      - name: Prepare comment (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path telemetry | Out-Null
+          @('# X-CLI CI Summary','','```text','hello from PR target','```') -join "`n" | Out-File -Encoding utf8NoBOM -FilePath telemetry/comment.md
+
+      - name: Run composite from PR code (dry-run only)
+        id: post
+        uses: ./pr/.github/actions/post-comment-or-artifact
+        with:
+          label: ci-smoke
+          comment_path: ../telemetry/comment.md
+          pr_number: ${{ github.event.pull_request.number }}
+          dry-run: true
+
+      - name: Validate outputs
+        shell: bash
+        run: |
+          echo "posted=${{ steps.post.outputs.posted }} reason=${{ steps.post.outputs.reason }}"
+          test "${{ steps.post.outputs.posted }}" = "false"
+
+  lint-shell:
+    name: ShellCheck (PR diff)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    steps:
+      - name: Checkout base (trusted)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout PR head into ./pr (untrusted)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          path: pr
+          fetch-depth: 1
+
+      - name: Cache artifacts metadata
+        id: cache_artifacts_meta_shell
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/artifacts.json
+            ${{ runner.temp }}/artifacts_meta.json
+          key: artifacts-meta-${{ github.run_id }}
+
+      - name: Fetch artifacts metadata
+        if: steps.cache_artifacts_meta_shell.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sSf -H "authorization: token $GH_TOKEN" -H 'accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
+            -o "$RUNNER_TEMP/artifacts.json"
+          # Normalize to minimal fields for downstream use/caching
+          jq '{artifacts: (.artifacts | map({name, archive_download_url, size_in_bytes, expired, expires_at}))}' \
+            "$RUNNER_TEMP/artifacts.json" > "$RUNNER_TEMP/artifacts_meta.json"
+
+      - name: Collect changed shell files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files?per_page=100"
+          curl -sSf -H "authorization: token $GH_TOKEN" -H 'accept: application/vnd.github+json' "$url" > "$RUNNER_TEMP/files.json"
+          jq -r '.[] | .filename | select(test("\\.(sh|bash)$"))' "$RUNNER_TEMP/files.json" > "$RUNNER_TEMP/sh-files.txt" || true
+          echo "Changed shell files:"; cat "$RUNNER_TEMP/sh-files.txt" || true
+
+      - name: Install ShellCheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck jq
+
+      - name: Run ShellCheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p telemetry/lint
+          if [[ ! -s "$RUNNER_TEMP/sh-files.txt" ]]; then
+            echo "No changed shell files to lint."
+            echo '{"total":0,"by_level":{},"files":[]}' > telemetry/lint/shellcheck-summary.json
+            exit 0
+          fi
+          excludes=$(grep -E '^[A-Z]{2}[0-9]{4}$' .config/shellcheck-excludes.txt | paste -sd, - || true)
+          echo "Excluding: ${excludes:-<none>}"
+          tmpjson="$RUNNER_TEMP/shellcheck.json"
+          : > "$tmpjson"
+          while IFS= read -r f; do
+            echo "Linting: pr/$f"
+            shellcheck -S style -o all ${excludes:+-e "$excludes"} -f json "pr/$f" >> "$tmpjson" || true
+          done < "$RUNNER_TEMP/sh-files.txt"
+          jq -s '{ total: (add|length), by_level: (add|group_by(.level)|map({(.[0].level): length})|add), files: (add|group_by(.file)|map({file: .[0].file, count: length})) }' "$tmpjson" > telemetry/lint/shellcheck-summary.json
+          # Persist full findings array for rule-level docs
+          jq -s '.' "$tmpjson" > telemetry/lint/shellcheck-findings.json
+
+      - name: Upload shellcheck summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-shellcheck
+          path: |
+            telemetry/lint/shellcheck-summary.json
+            telemetry/lint/shellcheck-findings.json
+
+  lint-ps:
+    name: PSScriptAnalyzer (PR diff)
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout base (trusted)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout PR head into ./pr (untrusted)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          path: pr
+          fetch-depth: 1
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser -AllowClobber
+
+      - name: Collect changed PowerShell files
+        id: files
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $headers = @{ Authorization = "token $env:GH_TOKEN"; Accept = 'application/vnd.github+json' }
+          $url = "https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files?per_page=100"
+          $resp = Invoke-RestMethod -Uri $url -Headers $headers -ErrorAction Stop
+          $ps = @($resp | Where-Object { $_.filename -like '*.ps1' } | Select-Object -ExpandProperty filename)
+          if ($ps.Count -eq 0) { Write-Host '::notice::No changed ps1 files'; "files=" >> $env:GITHUB_OUTPUT; exit 0 }
+          $list = ($ps -join "`n")
+          $list | Out-File -Encoding utf8NoBOM -FilePath "$env:RUNNER_TEMP\ps-files.txt"
+          "files=$list" >> $env:GITHUB_OUTPUT
+
+      - name: Run PSScriptAnalyzer
+        if: steps.files.outputs.files != ''
+        shell: pwsh
+        run: |
+          $files = Get-Content -LiteralPath "$env:RUNNER_TEMP\ps-files.txt"
+          $all = @()
+          foreach ($f in $files) {
+            Write-Host "Analyzing: pr/$f"
+            $res = Invoke-ScriptAnalyzer -Path (Join-Path 'pr' $f) -Settings '.\.config\PSScriptAnalyzerSettings.psd1' -Recurse -Severity Information,Warning,Error -ErrorAction Continue
+            $all += $res
+          }
+          New-Item -ItemType Directory -Force -Path 'telemetry\lint' | Out-Null
+          $bySeverity = @{ }
+          foreach ($g in ($all | Group-Object Severity)) { $bySeverity[$g.Name] = $g.Count }
+          $byFile = @()
+          foreach ($g in ($all | Group-Object ScriptPath)) { $byFile += @{ file = $g.Name; count = $g.Count } }
+          $sum = [ordered]@{ total = $all.Count; by_severity = $bySeverity; files = $byFile }
+          ($sum | ConvertTo-Json -Depth 5) | Out-File -Encoding utf8NoBOM -FilePath 'telemetry\lint\pssa-summary.json'
+          # Persist full findings for rule-level docs
+          ($all | ConvertTo-Json -Depth 6) | Out-File -Encoding utf8NoBOM -FilePath 'telemetry\lint\pssa-findings.json'
+
+      - name: Upload PSScriptAnalyzer summary
+        if: steps.files.outputs.files != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-pssa
+          path: telemetry/lint/pssa-summary.json
+
+  lint-summary:
+    name: Lint summary comment (label gated)
+    runs-on: ubuntu-latest
+    needs: [lint-shell, lint-ps]
+    env:
+      LINT_TOPN: ${{ inputs.lint-topn || vars.LINT_TOPN || '10' }}
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore artifacts metadata
+        id: cache_artifacts_meta_summary
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/artifacts.json
+            ${{ runner.temp }}/artifacts_meta.json
+          key: artifacts-meta-${{ github.run_id }}
+      - name: Download lint summaries
+        uses: actions/download-artifact@v4
+        with:
+          path: telemetry/lint
+      - name: Load artifacts metadata (composite)
+        id: meta
+        uses: LabVIEW-Community-CI-CD/gha-artifacts-metadata@v1
+        with:
+          prefer_cache: true
+          output_path: telemetry/lint/artifacts_meta.json
+      - name: Build comment
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LINT_TOPN: ${{ inputs.lint-topn || vars.LINT_TOPN || '10' }}
+          LINT_TOPN_SUMMARY_MAX: ${{ inputs.lint-topn-summary-max || vars.LINT_TOPN_SUMMARY_MAX || '5' }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update && sudo apt-get install -y jq
+          # Prefer normalized metadata if present; fallback to raw API
+          meta_file="telemetry/lint/artifacts_meta.json"
+          if [[ ! -f "$meta_file" ]]; then
+            meta_file="$RUNNER_TEMP/artifacts_meta.json"
+          fi
+          if [[ ! -f "$meta_file" ]]; then
+            curl -sSf -H "authorization: token $GH_TOKEN" -H 'accept: application/vnd.github+json' \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts" \
+              -o "$RUNNER_TEMP/artifacts.json"
+            jq '{artifacts: (.artifacts | map({name, archive_download_url, size_in_bytes, expired, expires_at}))}' \
+              "$RUNNER_TEMP/artifacts.json" > "$RUNNER_TEMP/artifacts_meta.json"
+            meta_file="$RUNNER_TEMP/artifacts_meta.json"
+          fi
+          shsum="telemetry/lint/lint-shellcheck/shellcheck-summary.json"
+          pssum="telemetry/lint/lint-pssa/pssa-summary.json"
+          shfind="telemetry/lint/lint-shellcheck/shellcheck-findings.json"
+          psfind="telemetry/lint/lint-pssa/pssa-findings.json"
+          total_sh=0; total_ps=0
+          [[ -f "$shsum" ]] && total_sh=$(jq -r '.total' "$shsum")
+          [[ -f "$pssum" ]] && total_ps=$(jq -r '.total' "$pssum")
+          artifacts_url="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          TOPN="${LINT_TOPN:-10}"
+          SUMMARY_MAX="${LINT_TOPN_SUMMARY_MAX:-5}"
+          # Try to resolve direct artifact download URLs (requires auth)
+          sh_zip=""; ps_zip=""
+          sh_size=""; ps_size=""
+          human_size() {
+            python3 - <<'PY'
+import sys
+try:
+    n=int(sys.argv[1])
+except Exception:
+    print('')
+    sys.exit(0)
+units=['B','KB','MB','GB','TB']
+idx=0
+val=float(n)
+while val>=1024 and idx<len(units)-1:
+    val/=1024
+    idx+=1
+print(f"{val:.1f}{units[idx]}")
+PY
+          }
+          if [[ -f "$meta_file" ]]; then
+            sh_zip=$(jq -r '.artifacts[] | select(.name=="lint-shellcheck") | .archive_download_url' "$meta_file" | sed -e 's/null//')
+            ps_zip=$(jq -r '.artifacts[] | select(.name=="lint-pssa") | .archive_download_url' "$meta_file" | sed -e 's/null//')
+            sh_size_raw=$(jq -r '.artifacts[] | select(.name=="lint-shellcheck") | .size_in_bytes' "$meta_file" | sed -e 's/null//')
+            ps_size_raw=$(jq -r '.artifacts[] | select(.name=="lint-pssa") | .size_in_bytes' "$meta_file" | sed -e 's/null//')
+            [[ -n "$sh_size_raw" ]] && sh_size=$(human_size "$sh_size_raw")
+            [[ -n "$ps_size_raw" ]] && ps_size=$(human_size "$ps_size_raw")
+          fi
+          mkdir -p telemetry/lint
+          {
+            echo "# Lint Summary"
+            echo
+            echo "Top $TOPN rules shown; see artifacts (lint-shellcheck, lint-pssa) for all findings."
+            echo
+            echo "- ShellCheck findings: $total_sh"
+            if [[ -f "$shsum" ]]; then echo; echo '```json'; cat "$shsum"; echo '```'; fi
+            if [[ -f "$shfind" && $total_sh -gt 0 ]]; then
+              echo
+              echo "ShellCheck rule docs:"
+              # Extract unique codes with counts (top-N)
+              uniq_total=$(jq -r '.[].code' "$shfind" | sort -u | wc -l | tr -d ' ')
+              jq -r '.[].code' "$shfind" | sort | uniq -c | sort -rn | head -n "$TOPN" | \
+              while read -r cnt code; do
+                printf -- "- SC%s (count %s): https://www.shellcheck.net/wiki/SC%s\n" "$code" "$cnt" "$code"
+              done
+              if [[ "$uniq_total" -gt "$TOPN" ]]; then
+                more=$((uniq_total - TOPN))
+                echo
+                echo "... and $more more ShellCheck rule(s)."
+                if [[ -n "$sh_zip" ]]; then
+                  size_note=""
+                  [[ -n "$sh_size" ]] && size_note=" ($sh_size)"
+                  echo "Show more: [artifact zip$size_note]($sh_zip) (requires auth) - [run page]($artifacts_url)"
+                else
+                  echo "Show more: $artifacts_url (Artifacts: lint-shellcheck)"
+                fi
+              fi
+            fi
+            echo
+            echo "- PSScriptAnalyzer findings: $total_ps"
+            if [[ -f "$pssum" ]]; then echo; echo '```json'; cat "$pssum"; echo '```'; fi
+            if [[ -f "$psfind" && $total_ps -gt 0 ]]; then
+              echo
+              echo "PSScriptAnalyzer rule docs:"
+              uniq_total=$(jq -r '.[].RuleName' "$psfind" | sort -u | wc -l | tr -d ' ')
+              jq -r '.[].RuleName' "$psfind" | sort | uniq -c | sort -rn | head -n "$TOPN" | \
+              while read -r cnt rule; do
+                lower=$(printf '%s' "$rule" | tr '[:upper:]' '[:lower:]')
+                printf -- "- %s (count %s): https://learn.microsoft.com/powershell/utility-modules/psscriptanalyzer/rules/%s\n" "$rule" "$cnt" "$lower"
+              done
+              if [[ "$uniq_total" -gt "$TOPN" ]]; then
+                more=$((uniq_total - TOPN))
+                echo
+                echo "... and $more more PSScriptAnalyzer rule(s)."
+                if [[ -n "$ps_zip" ]]; then
+                  size_note=""
+                  [[ -n "$ps_size" ]] && size_note=" ($ps_size)"
+                  echo "Show more: [artifact zip$size_note]($ps_zip) (requires auth) - [run page]($artifacts_url)"
+                else
+                  echo "Show more: $artifacts_url (Artifacts: lint-pssa)"
+                fi
+              fi
+            fi
+          } > telemetry/lint/comment.md
+          # Also append a concise summary to the GitHub job summary
+          if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+            sh_size_note=""; [[ -n "$sh_size" ]] && sh_size_note=" ($sh_size)"
+            ps_size_note=""; [[ -n "$ps_size" ]] && ps_size_note=" ($ps_size)"
+            {
+              echo '### Lint Summary'
+              echo
+              echo "- ShellCheck findings: $total_sh"
+              if [[ -n "$sh_zip" ]]; then
+                echo "  Artifact: $sh_zip$sh_size_note (requires auth)"
+              else
+                echo "  Run page: $artifacts_url (artifact: lint-shellcheck)"
+              fi
+              # When the unique rule count is small, list the top-N codes inline
+              if [[ -f "$shfind" && $total_sh -gt 0 ]]; then
+                sh_uniq=$(jq -r '.[].code' "$shfind" | sort -u | wc -l | tr -d ' ')
+                if [[ "${sh_uniq:-0}" -le "${SUMMARY_MAX}" ]]; then
+                  echo "  Top rules:"
+                  while read -r cnt code; do
+                    printf '  - SC%s (count %s)\n' "$code" "$cnt"
+                  done < <(jq -r '.[].code' "$shfind" | sort | uniq -c | sort -rn | head -n "$TOPN")
+                fi
+              fi
+              echo
+              echo "- PSScriptAnalyzer findings: $total_ps"
+              if [[ -n "$ps_zip" ]]; then
+                echo "  Artifact: $ps_zip$ps_size_note (requires auth)"
+              else
+                echo "  Run page: $artifacts_url (artifact: lint-pssa)"
+              fi
+              if [[ -f "$psfind" && $total_ps -gt 0 ]]; then
+                ps_uniq=$(jq -r '.[].RuleName' "$psfind" | sort -u | wc -l | tr -d ' ')
+                if [[ "${ps_uniq:-0}" -le "${SUMMARY_MAX}" ]]; then
+                  echo "  Top rules:"
+                  while read -r cnt rule; do
+                    printf '  - %s (count %s)\n' "$rule" "$cnt"
+                  done < <(jq -r '.[].RuleName' "$psfind" | sort | uniq -c | sort -rn | head -n "$TOPN")
+                fi
+              fi
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Post lint summary (label-gated)
+        id: post
+        if: contains(github.event.pull_request.labels.*.name, 'lint-summary')
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const number = context.payload.pull_request.number;
+            let body = '';
+            try { body = fs.readFileSync('telemetry/lint/comment.md','utf8'); } catch(e) { body = '# Lint Summary\n(no content)'; }
+            await github.rest.issues.createComment({ owner, repo, issue_number: number, body });
+            core.setOutput('posted','true');
+            core.setOutput('reason','label-gated');

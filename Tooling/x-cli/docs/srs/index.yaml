@@ -1,0 +1,706 @@
+count: 55
+requirements:
+- id: FGC-REQ-AIC-001
+  title: "FGC-REQ-AIC-001 \xE2\u20AC\u201D Two-way Codex\xE2\u2020\u201DLLM handshake\
+    \ via ChatOps"
+  domain: AIC
+  number: 1
+  version: '1.1'
+  priority: High
+  owner: DevOps
+  status: Proposed
+  verification_methods:
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-AIC-001.md
+- id: FGC-REQ-AIC-002
+  title: "FGC-REQ-AIC-002 \xE2\u20AC\u201D Session persistence & audit trail"
+  domain: AIC
+  number: 2
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-AIC-002.md
+- id: FGC-REQ-AIC-003
+  title: "FGC-REQ-AIC-003 \xE2\u20AC\u201D Codex proposes changes as unified diffs"
+  domain: AIC
+  number: 3
+  version: '1.0'
+  priority: Medium
+  owner: DevEx
+  status: Proposed
+  verification_methods:
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-AIC-003.md
+- id: FGC-REQ-AIC-004
+  title: "FGC-REQ-AIC-004 \xE2\u20AC\u201D Safe application of Codex proposals"
+  domain: AIC
+  number: 4
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-AIC-004.md
+- id: FGC-REQ-AIC-005
+  title: "FGC-REQ-AIC-005 \xE2\u20AC\u201D Automated reviewer critique for Codex PRs"
+  domain: AIC
+  number: 5
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-AIC-005.md
+- id: FGC-REQ-AIC-006
+  title: "FGC-REQ-AIC-006 \xE2\u20AC\u201D Persist reviewer artifacts & label PRs"
+  domain: AIC
+  number: 6
+  version: '1.0'
+  priority: Low
+  owner: DevEx
+  status: Proposed
+  verification_methods:
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-AIC-006.md
+- id: FGC-REQ-CI-001
+  title: "FGC-REQ-CI-001 \xE2\u20AC\u201D Build pipelines"
+  domain: CI
+  number: 1
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-001.md
+- id: FGC-REQ-CI-002
+  title: "FGC-REQ-CI-002 \xE2\u20AC\u201D Auto-advance on green"
+  domain: CI
+  number: 2
+  version: '1.0'
+  priority: High
+  owner: DevEx
+  status: Proposed
+  verification_methods:
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-002.md
+- id: FGC-REQ-CI-003
+  title: "FGC-REQ-CI-003 \xE2\u20AC\u201D Codex execute"
+  domain: CI
+  number: 3
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-003.md
+- id: FGC-REQ-CI-004
+  title: "FGC-REQ-CI-004 \xE2\u20AC\u201D Codex orchestrator"
+  domain: CI
+  number: 4
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-004.md
+- id: FGC-REQ-CI-005
+  title: "FGC-REQ-CI-005 \xE2\u20AC\u201D Configure branch protection"
+  domain: CI
+  number: 5
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-005.md
+- id: FGC-REQ-CI-006
+  title: "FGC-REQ-CI-006 \xE2\u20AC\u201D Design lock"
+  domain: CI
+  number: 6
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-006.md
+- id: FGC-REQ-CI-007
+  title: "FGC-REQ-CI-007 \xE2\u20AC\u201D Dispatch codex"
+  domain: CI
+  number: 7
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-007.md
+- id: FGC-REQ-CI-008
+  title: "FGC-REQ-CI-008 \xE2\u20AC\u201D Enforce codex authorship"
+  domain: CI
+  number: 8
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-008.md
+- id: FGC-REQ-CI-009
+  title: "FGC-REQ-CI-009 \xE2\u20AC\u201D Setup waterfall labels"
+  domain: CI
+  number: 9
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-009.md
+- id: FGC-REQ-CI-010
+  title: "FGC-REQ-CI-010 \xE2\u20AC\u201D Telemetry aggregate"
+  domain: CI
+  number: 10
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-010.md
+- id: FGC-REQ-CI-011
+  title: "FGC-REQ-CI-011 \xE2\u20AC\u201D Test workflow"
+  domain: CI
+  number: 11
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-011.md
+- id: FGC-REQ-CI-012
+  title: "FGC-REQ-CI-012 \xE2\u20AC\u201D Trigger codex orchestration"
+  domain: CI
+  number: 12
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-012.md
+- id: FGC-REQ-CI-013
+  title: "FGC-REQ-CI-013 \xE2\u20AC\u201D Validate codex metadata"
+  domain: CI
+  number: 13
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-013.md
+- id: FGC-REQ-CI-014
+  title: "FGC-REQ-CI-014 \xE2\u20AC\u201D Stage locks & traceability on advance"
+  domain: CI
+  number: 14
+  version: '1.0'
+  priority: High
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-014.md
+- id: FGC-REQ-CI-015
+  title: "FGC-REQ-CI-015 \xE2\u20AC\u201D Orchestrate codex agents & artifact hand-off"
+  domain: CI
+  number: 15
+  version: '1.0'
+  priority: Medium
+  owner: DevEx
+  status: Proposed
+  verification_methods:
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-015.md
+- id: FGC-REQ-CI-016
+  title: "FGC-REQ-CI-016 \xE2\u20AC\u201D Discord canary"
+  domain: CI
+  number: 16
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-016.md
+- id: FGC-REQ-CI-017
+  title: "FGC-REQ-CI-017 \xE2\u20AC\u201D Agents contract check"
+  domain: CI
+  number: 17
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-017.md
+- id: FGC-REQ-CI-018
+  title: "FGC-REQ-CI-018 \xE2\u20AC\u201D Codex mirror sign"
+  domain: CI
+  number: 18
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-018.md
+- id: FGC-REQ-CI-019
+  title: "FGC-REQ-CI-019 \xE2\u20AC\u201D Commit message policy"
+  domain: CI
+  number: 19
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-019.md
+- id: FGC-REQ-CI-020
+  title: "FGC-REQ-CI-020 \xE2\u20AC\u201D Stage 3 validation"
+  domain: CI
+  number: 20
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-020.md
+- id: FGC-REQ-CI-021
+  title: "FGC-REQ-CI-021 \xE2\u20AC\u201D Reusable workflow contracts (Stage 1 and 3)"
+  domain: CI
+  number: 21
+  version: '1.0'
+  priority: Medium
+  owner: CI
+  status: Accepted
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-CI-021.md
+- id: FGC-REQ-DEV-001
+  title: "FGC-REQ-DEV-001 \xE2\u20AC\u201D Traceability updater records commit evidence"
+  domain: DEV
+  number: 1
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-DEV-001.md
+- id: FGC-REQ-DEV-002
+  title: "FGC-REQ-DEV-002 \xE2\u20AC\u201D Traceability verification ensures sources\
+    \ and IDs"
+  domain: DEV
+  number: 2
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-DEV-002.md
+- id: FGC-REQ-DEV-003
+  title: "FGC-REQ-DEV-003 \xE2\u20AC\u201D Telemetry modules expose agent feedback"
+  domain: DEV
+  number: 3
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-DEV-003.md
+- id: FGC-REQ-DEV-004
+  title: "FGC-REQ-DEV-004 \xE2\u20AC\u201D Telemetry entries include agent feedback\
+    \ block"
+  domain: DEV
+  number: 4
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-DEV-004.md
+- id: FGC-REQ-DEV-005
+  title: "FGC-REQ-DEV-005 \xE2\u20AC\u201D Commit messages include SRS metadata"
+  domain: DEV
+  number: 5
+  version: '1.1'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-DEV-005.md
+- id: FGC-REQ-DEV-006
+  title: "FGC-REQ-DEV-006 \xE2\u20AC\u201D Workflows declare valid SRS IDs"
+  domain: DEV
+  number: 6
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-DEV-006.md
+- id: FGC-REQ-TEL-002
+  title: "FGC-REQ-TEL-002 \xE2\u20AC\u201D Telemetry publish robustness"
+  domain: TEL
+  number: 2
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Accepted
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-TEL-002.md
+- id: FGC-REQ-TEL-003
+  title: "FGC-REQ-TEL-003 \xE2\u20AC\u201D Telemetry diagnostics and summaries"
+  domain: TEL
+  number: 3
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Accepted
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-TEL-003.md
+- id: FGC-REQ-SDK-001
+  title: "FGC-REQ-SDK-001 \xE2\u20AC\u201D External SDK orchestration (x-sdk)"
+  domain: SDK
+  number: 1
+  version: '1.0'
+  priority: Low
+  owner: DevRel
+  status: Accepted
+  verification_methods:
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-SDK-001.md
+- id: FGC-REQ-SDK-002
+  title: "FGC-REQ-SDK-002 \xE2\u20AC\u201D x-sdk leverages GitKraken GK-CLI"
+  domain: SDK
+  number: 2
+  version: '1.0'
+  priority: Low
+  owner: DevRel
+  status: Accepted
+  verification_methods:
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-SDK-002.md
+- id: FGC-REQ-DEV-007
+  title: "FGC-REQ-DEV-007 \xE2\u20AC\u201D Model and dataset version control"
+  domain: DEV
+  number: 7
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-DEV-007.md
+- id: FGC-REQ-DOC-001
+  title: "FGC-REQ-DOC-001 \xE2\u20AC\u201D Single source of truth for process docs"
+  domain: DOC
+  number: 1
+  version: '1.0'
+  priority: High
+  owner: DevEx
+  status: Proposed
+  verification_methods:
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-DOC-001.md
+- id: FGC-REQ-DOC-008
+  title: "FGC-REQ-DOC-008 \xE2\u20AC\u201D Publish SRS as HTML site and PDF"
+  domain: DOC
+  number: 8
+  version: '1.0'
+  priority: Low
+  owner: DevEx
+  status: Proposed
+  verification_methods:
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-DOC-008.md
+- id: FGC-REQ-DOC-009
+  title: "FGC-REQ-DOC-009 \xE2\u20AC\u201D Cross-Agent Session Reflection"
+  domain: DOC
+  number: 9
+  version: '1.0'
+  priority: Medium
+  owner: DevEx
+  status: Accepted
+  verification_methods:
+  - Inspection
+  file: docs/srs/FGC-REQ-DOC-009.md
+- id: FGC-REQ-GOV-010
+  title: "FGC-REQ-GOV-010 \xE2\u20AC\u201D Automated SRS maintenance on default branch"
+  domain: GOV
+  number: 10
+  version: '1.0'
+  priority: Medium
+  owner: DevEx
+  status: Proposed
+  verification_methods:
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-GOV-010.md
+- id: FGC-REQ-NOT-001
+  title: "FGC-REQ-NOT-001 \xE2\u20AC\u201D GitHub Comment Alerts"
+  domain: NOT
+  number: 1
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-NOT-001.md
+- id: FGC-REQ-NOT-002
+  title: "FGC-REQ-NOT-002 \xE2\u20AC\u201D Slack Alerts"
+  domain: NOT
+  number: 2
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-NOT-002.md
+- id: FGC-REQ-NOT-003
+  title: "FGC-REQ-NOT-003 \xE2\u20AC\u201D Email Alerts"
+  domain: NOT
+  number: 3
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-NOT-003.md
+- id: FGC-REQ-NOT-004
+  title: "FGC-REQ-NOT-004 \xE2\u20AC\u201D Discord Alerts"
+  domain: NOT
+  number: 4
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-NOT-004.md
+- id: FGC-REQ-QA-002
+  title: "FGC-REQ-QA-002 \xE2\u20AC\u201D Isolated test environment"
+  domain: QA
+  number: 2
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-QA-002.md
+- id: FGC-REQ-QA-003
+  title: "FGC-REQ-QA-003 \xE2\u20AC\u201D Reset stateful modules between tests"
+  domain: QA
+  number: 3
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-QA-003.md
+- id: FGC-REQ-QA-COV-001
+  title: "FGC-REQ-QA-COV-001 \xE2\u20AC\u201D Coverage Gate"
+  domain: QA-COV
+  number: 1
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Inspection
+  - Demonstration
+  file: docs/srs/FGC-REQ-QA-COV-001.md
+- id: FGC-REQ-QA-ISO-002
+  title: "FGC-REQ-QA-ISO-002 \xE2\u20AC\u201D ISO/IEC 29148 Compliance Report"
+  domain: QA-ISO
+  number: 2
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Inspection
+  - Demonstration
+  file: docs/srs/FGC-REQ-QA-ISO-002.md
+- id: FGC-REQ-QA-PAR-001
+  title: "FGC-REQ-QA-PAR-001 \xE2\u20AC\u201D Parameterized CI Artifacts"
+  domain: QA-PAR
+  number: 1
+  version: '1.0'
+  priority: Medium
+  owner: Release
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-QA-PAR-001.md
+- id: FGC-REQ-SPEC-001
+  title: FGC-REQ-SPEC-001 - SRS Document Registry
+  domain: SPEC
+  number: 1
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-SPEC-001.md
+- id: FGC-REQ-TEL-001
+  title: "FGC-REQ-TEL-001 \xE2\u20AC\u201D Telemetry analyses track SRS omissions\
+    \ and QA regressions"
+  domain: TEL
+  number: 1
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-TEL-001.md
+- id: FGC-REQ-LOG-003
+  title: "FGC-REQ-LOG-003 - Log replay reproduces captured workflow output"
+  domain: LOG
+  number: 3
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-LOG-003.md
+- id: FGC-REQ-LOG-004
+  title: "FGC-REQ-LOG-004 - Log diff reports timing deltas"
+  domain: LOG
+  number: 4
+  version: '1.0'
+  priority: Medium
+  owner: QA
+  status: Proposed
+  verification_methods:
+  - Test
+  - Demonstration
+  - Inspection
+  file: docs/srs/FGC-REQ-LOG-004.md
+

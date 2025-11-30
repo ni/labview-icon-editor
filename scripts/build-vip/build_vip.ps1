@@ -330,9 +330,25 @@ foreach ($ca in $expectedCustomActions) {
         $missingActions += $candidate
     }
 }
+Write-Information ("Custom-action folder: {0}" -f $customActionsDir) -InformationAction Continue
+Write-Information ("Custom-action files present: {0}/{1}" -f ($expectedCustomActions.Count - $missingActions.Count), $expectedCustomActions.Count) -InformationAction Continue
 if ($missingActions.Count -gt 0) {
     Write-Error ("VIPM custom-action VI(s) missing: {0}. Ensure they exist relative to the VIPB at {1}" -f ($missingActions -join '; '), $customActionsDir)
     exit 1
+}
+
+# Pre-compute commit/output paths so we can clear stale artifacts before the build
+$commitKey = if ([string]::IsNullOrWhiteSpace($Commit)) { "manual" } else { $Commit }
+$outputDir = Join-Path -Path $ResolvedRepositoryPath -ChildPath ("builds/vip-stash/{0}" -f $commitKey)
+New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
+$staleVips = Get-ChildItem -Path $outputDir -Filter *.vip -File -ErrorAction SilentlyContinue
+if ($staleVips) {
+    $staleList = ($staleVips | ForEach-Object { $_.Name }) -join ', '
+    Write-Information ("Cleaning stale VIP(s) before build from {0}: {1}" -f $outputDir, $staleList) -InformationAction Continue
+    $staleVips | Remove-Item -Force -ErrorAction SilentlyContinue
+}
+else {
+    Write-Information ("VIP output dir ready (no existing .vip): {0}" -f $outputDir) -InformationAction Continue
 }
 
 # 3) Resolve LabVIEW version from VIPB to ensure determinism, overriding any inbound value
@@ -397,21 +413,36 @@ else {
     $jsonObj.'Package Version'.build = $Build
 }
 
-# 5) Execute vipm build with retries and log capture
-$vipmCli = Get-Command vipm -ErrorAction SilentlyContinue
-if (-not $vipmCli) {
-    Write-Error "vipm CLI is not available on PATH; cannot build the VI package."
+# 5) Resolve vipm executable and execute the build with retries and log capture
+$vipmExecutable = $null
+$envVipmPath = [Environment]::GetEnvironmentVariable('VIPM_PATH')
+if ($envVipmPath -and (Test-Path -LiteralPath $envVipmPath -PathType Leaf)) {
+    $vipmExecutable = (Resolve-Path -LiteralPath $envVipmPath).Path
+} elseif ($envVipmPath) {
+    Write-Verbose ("VIPM_PATH is set but did not resolve to a file: {0}" -f $envVipmPath)
+}
+
+if (-not $vipmExecutable) {
+    $vipmCli = Get-Command vipm -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($vipmCli) {
+        $vipmExecutable = $vipmCli.Path
+    }
+}
+
+if (-not $vipmExecutable) {
+    Write-Error "vipm CLI is not available (PATH and VIPM_PATH were checked); cannot build the VI package."
     exit 1
 }
 
 $vipmArgs = @(
     "build",
-    $ResolvedVIPBPath,
     "--labview-version", $Package_LabVIEW_Version.ToString(),
-    "--labview-bitness", $SupportedBitness
+    "--labview-bitness", $SupportedBitness,
+    $ResolvedVIPBPath
 )
 
-$prettyCommand = "vipm " + ($vipmArgs -join ' ')
+$prettyCommand = ('"{0}" {1}' -f $vipmExecutable, ($vipmArgs -join ' '))
+Write-Output "Using vipm executable: $vipmExecutable"
 Write-Output "Base build command:"
 Write-Output $prettyCommand
 
@@ -424,7 +455,7 @@ $logFile = Join-Path -Path $LogDirectory -ChildPath "vipm-build-attempt-1.log"
 Write-Information "Starting vipm build. Log: $logFile" -InformationAction Continue
 
 try {
-    & vipm @vipmArgs 2>&1 | Tee-Object -FilePath $logFile
+    & $vipmExecutable @vipmArgs 2>&1 | Tee-Object -FilePath $logFile
 }
 catch {
     $_ | Out-String | Tee-Object -FilePath $logFile -Append | Out-Null
@@ -438,9 +469,9 @@ if (-not (Test-Path -LiteralPath $logFile)) {
 
 if ($LASTEXITCODE -ne 0) {
     if (Test-Path $logFile) {
-        Write-Information ("---- vipm build log ({0}) ----" -f $logFile) -InformationAction Continue
-        Get-Content -Path $logFile | ForEach-Object { Write-Information $_ -InformationAction Continue }
-        Write-Information ("---- end vipm build log ({0}) ----" -f $logFile) -InformationAction Continue
+        Write-Information ("---- vipm build log tail ({0}) ----" -f $logFile) -InformationAction Continue
+        Get-Content -Path $logFile -Tail 20 | ForEach-Object { Write-Information $_ -InformationAction Continue }
+        Write-Information ("---- end vipm build log tail ({0}) ----" -f $logFile) -InformationAction Continue
     }
     else {
         Write-Warning ("vipm build log not found at {0}" -f $logFile)
@@ -454,39 +485,74 @@ if ($LASTEXITCODE -ne 0) {
     $errorObject | ConvertTo-Json -Depth 10
     exit 1
 }
+Write-Information ("VIPM log saved at {0}" -f $logFile) -InformationAction Continue
 
-# Move or confirm the produced VIP is under builds/VI Package for downstream steps
-$outputDir = Join-Path -Path $ResolvedRepositoryPath -ChildPath "builds/VI Package"
-New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
-$vipbDir = Split-Path -Parent $ResolvedVIPBPath
+# Move or confirm the produced VIP is under builds/vip-stash for downstream steps
+function Find-ProducedVip {
+    $vip = Get-ChildItem -Path $outputDir -Filter *.vip -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if (-not $vip) {
+        $vip = Get-ChildItem -Path $vipbDir -Filter *.vip -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    }
+    if (-not $vip) {
+        $fallbackRoot = Join-Path $ResolvedRepositoryPath 'builds'
+        $vip = Get-ChildItem -Path $fallbackRoot -Filter *.vip -File -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if ($vip) {
+            Write-Information ("Found VIP outside expected path (possible path mismatch): {0}" -f $vip.FullName) -InformationAction Continue
+        }
+    }
+    return $vip
+}
+
 $vipPath = $null
-$destPath = $null
-
-$vipProduced = Get-ChildItem -Path $outputDir -Filter *.vip -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-if (-not $vipProduced) {
-    $vipProduced = Get-ChildItem -Path $vipbDir -Filter *.vip -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    if ($vipProduced) {
+$vipProduced = Find-ProducedVip
+if ($vipProduced) {
+    if ($vipProduced.DirectoryName -ne $outputDir.TrimEnd('\','/')) {
         $destPath = Join-Path -Path $outputDir -ChildPath $vipProduced.Name
         Move-Item -LiteralPath $vipProduced.FullName -Destination $destPath -Force
-        Write-Information ("Moved built VIP to {0}" -f $destPath) -InformationAction Continue
+        Write-Information ("Relocated built VIP to {0}" -f $destPath) -InformationAction Continue
         $vipPath = $destPath
     }
+    else {
+        $vipPath = $vipProduced.FullName
+        Write-Information ("Built VIP located at {0}" -f $vipPath) -InformationAction Continue
+    }
 }
-elseif ($vipProduced) {
-    Write-Information ("Built VIP already present at {0}" -f $vipProduced.FullName) -InformationAction Continue
-    $vipPath = $vipProduced.FullName
-}
-
-if (-not $vipProduced) {
-    Write-Warning "vipm build succeeded but no .vip was found; downstream locate step may fail."
-}
-elseif ($vipPath -and (Test-Path -LiteralPath $vipPath)) {
-    $expectedEntries = @(
-        'resource/plugins/lv_icon.lvlibp',
-        'resource/plugins/lv_icon.lvlibp.windows_x64',
-        'resource/plugins/lv_icon.lvlibp.windows_x86'
-    )
-    Ensure-VipHasEntries -VipPath $vipPath -RequiredEntries $expectedEntries -RepoRoot $ResolvedRepositoryPath
+elseif (-not (Test-Path -LiteralPath $outputDir -PathType Container)) {
+    Write-Error ("vipm reported success but the output dir was not created: {0}. Check vipm log: {1}" -f $outputDir, $logFile)
+    if (Test-Path $logFile) {
+        Write-Information ("---- vipm build log tail ({0}) ----" -f $logFile) -InformationAction Continue
+        Get-Content -Path $logFile -Tail 20 | ForEach-Object { Write-Information $_ -InformationAction Continue }
+        Write-Information ("---- end vipm build log tail ({0}) ----" -f $logFile) -InformationAction Continue
+    }
+    exit 1
 }
 
-Write-Information "Successfully built VI package: $ResolvedVIPBPath" -InformationAction Continue
+if (-not $vipProduced -or -not $vipPath -or -not (Test-Path -LiteralPath $vipPath)) {
+    $fallbackRoot = Join-Path $ResolvedRepositoryPath 'builds'
+    $otherVips = Get-ChildItem -Path $fallbackRoot -Filter *.vip -File -Recurse -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 3
+    $otherList = if ($otherVips) { ($otherVips | ForEach-Object { $_.FullName }) -join '; ' } else { '(none found)' }
+    Write-Error ("vipm reported success but no .vip was found in expected locations (path mismatch). Searched: {0} and {1}. Sample VIPs under builds/: {2}. Check vipm log: {3}" -f $outputDir, $vipbDir, $otherList, $logFile)
+    if (Test-Path $logFile) {
+        Write-Information ("---- vipm build log tail ({0}) ----" -f $logFile) -InformationAction Continue
+        Get-Content -Path $logFile -Tail 20 | ForEach-Object { Write-Information $_ -InformationAction Continue }
+        Write-Information ("---- end vipm build log tail ({0}) ----" -f $logFile) -InformationAction Continue
+    }
+    exit 1
+}
+
+$expectedEntries = @(
+    'resource/plugins/lv_icon.lvlibp',
+    'resource/plugins/lv_icon.lvlibp.windows_x64',
+    'resource/plugins/lv_icon.lvlibp.windows_x86'
+)
+Ensure-VipHasEntries -VipPath $vipPath -RequiredEntries $expectedEntries -RepoRoot $ResolvedRepositoryPath
+try {
+    $vipHash = Get-FileHash -LiteralPath $vipPath -Algorithm SHA256
+    $vipSize = (Get-Item -LiteralPath $vipPath).Length
+    Write-Information ("VIP ready: {0} (size={1} bytes, sha256={2})" -f $vipPath, $vipSize, $vipHash.Hash) -InformationAction Continue
+}
+catch {
+    Write-Verbose ("Unable to hash built VIP at {0}: {1}" -f $vipPath, $_.Exception.Message)
+}
+
+Write-Information "Successfully built VI package." -InformationAction Continue

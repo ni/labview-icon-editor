@@ -1,0 +1,387 @@
+# SRS: FGC-REQ-CI-020
+# Requirements: AGENT-REQ-DEP-001, AGENT-REQ-ART-002, AGENT-REQ-TEL-003, AGENT-REQ-NOT-004
+name: Stage 3 CI
+
+on:
+  workflow_run:
+    workflows: ["Stage 2 CI"]
+    types: [completed]
+  workflow_call:
+    inputs:
+      stage2_repo:
+        required: false
+        type: string
+      stage2_run_id:
+        required: false
+        type: string
+      force_dry_run:
+        required: false
+        type: boolean
+      validate_schema:
+        required: false
+        type: boolean
+      diff_os_summaries:
+        required: false
+        type: boolean
+      lenient:
+        required: false
+        type: boolean
+        description: "Whether a publish occurred (string true/false)"
+        value: ${{ jobs.stage3_windows_ci.outputs.published }}
+      summary_path:
+        description: "Path to telemetry/summary.json produced by Stage 3"
+        value: ${{ jobs.stage3_windows_ci.outputs.summary_path }}
+      diagnostics_path:
+        description: "Path to telemetry/stage3-diagnostics.json produced by Stage 3"
+        value: ${{ jobs.stage3_windows_ci.outputs.diagnostics_path }}
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  stage3_windows_ci:
+    name: Stage 3 - Windows CI
+    runs-on: [self-hosted, Windows]
+    if: ${{ (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || github.event_name == 'workflow_call' }}
+    env:
+      # Soft toggle: leave unset or set to '0' to keep dry-run (default).
+      # Set to '1' AND provide DISCORD_WEBHOOK_URL secret to enable live publish.
+      DISCORD_PUBLISH: ${{ vars.DISCORD_PUBLISH }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      DEBUG_TOKEN_INFO: ${{ vars.DEBUG_TOKEN_INFO }}
+      STAGE2_REPO: ${{ inputs.stage2_repo || github.repository }}
+      STAGE2_RUN_ID: ${{ inputs.stage2_run_id || github.event.workflow_run.id }}
+    outputs:
+      published: ${{ steps.emit.outputs.published }}
+      summary_path: ${{ steps.emit.outputs.summary_path }}
+      diagnostics_path: ${{ steps.emit.outputs.diagnostics_path }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Ensure PowerShell 7 (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $need = $PSVersionTable.PSVersion.Major -lt 7
+          if ($need) {
+            $ver = '7.4.11'
+            $msi = Join-Path $env:TEMP "PowerShell-$ver-win-x64.msi"
+            Invoke-WebRequest -Uri "https://github.com/PowerShell/PowerShell/releases/download/v$ver/PowerShell-$ver-win-x64.msi" -OutFile $msi
+            Start-Process msiexec.exe -Wait -ArgumentList "/i `"$msi`" /qn /norestart"
+            $pwsh = "$env:ProgramFiles\PowerShell\7\pwsh.exe"
+            if (-not (Test-Path $pwsh)) { throw "pwsh not found after install" }
+            "$env:ProgramFiles\PowerShell\7" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+          run-id: ${{ env.STAGE2_RUN_ID }}
+          repository: ${{ env.STAGE2_REPO }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download telemetry
+        uses: actions/download-artifact@v4
+        with:
+          name: telemetry
+          path: telemetry
+          run-id: ${{ env.STAGE2_RUN_ID }}
+          repository: ${{ env.STAGE2_REPO }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate manifest & checksums
+        shell: pwsh
+        run: |
+          $manifestPath = 'telemetry/manifest.json'
+          $required = @($manifestPath,'telemetry/summary.json','dist/x-cli-win-x64')
+          foreach ($p in $required) {
+            if (-not (Test-Path $p)) {
+              Write-Error "Missing required file: $p`nRemediation: re-run Stage 2 to publish this artifact."
+              exit 1
+            }
+          }
+
+          $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+          $entries = @()
+          if ($manifest.artifacts) {
+            foreach ($prop in $manifest.artifacts.PSObject.Properties) {
+              $entries += @{ name="artifacts.$($prop.Name)"; path=$prop.Value.path; sha=$prop.Value.sha256 }
+            }
+          }
+          if ($manifest.telemetry) {
+            foreach ($prop in $manifest.telemetry.PSObject.Properties) {
+              $entries += @{ name="telemetry.$($prop.Name)"; path=$prop.Value.path; sha=$prop.Value.sha256 }
+            }
+          }
+          foreach ($e in $entries) {
+            if (-not (Test-Path $e.path)) {
+              Write-Error "Manifest entry '$($e.name)' references missing file '$($e.path)'.`nRemediation: ensure Stage 2 uploaded this file."
+              exit 1
+            }
+            $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $e.path).Hash.ToLower()
+            $expected = ($e.sha | Out-String).Trim().ToLower()
+            if ($actual -ne $expected) {
+              Write-Error "SHA256 mismatch for '$($e.name)'. expected=$expected actual=$actual file=$($e.path).`nRemediation: regenerate artifacts or update telemetry/manifest.json."
+              exit 1
+            }
+            Write-Host "OK: $($e.name) -> $($e.path)"
+          }
+
+          try {
+            ./scripts/validate-manifest.ps1 -Manifest $manifestPath -Strict
+          } catch {
+            Write-Error "Manifest validation failed: $($_.Exception.Message)`nRemediation: regenerate artifacts or manifest in Stage 2."
+            exit 1
+          }
+
+      - name: Test (Release)
+        shell: pwsh
+        run: dotnet test XCli.sln -c Release
+
+      - name: Smoke test win-x64 artifact (--help)
+        shell: pwsh
+        run: |
+          $output = & dist/x-cli-win-x64 --help 2>&1
+          $code = $LASTEXITCODE
+          if (-not (Test-Path 'telemetry')) { New-Item -ItemType Directory -Path 'telemetry' | Out-Null }
+          $output | Out-File -FilePath telemetry/win-x64-help.log -Encoding utf8
+          $summaryPath = 'telemetry/summary.json'
+          $summary = Get-Content $summaryPath -Raw | ConvertFrom-Json
+          $helpText = $output -join "`n"
+          # Ensure we can add the property regardless of the underlying type
+          $summary | Add-Member -NotePropertyName win_x64_help -NotePropertyValue $helpText -Force
+          $summary | ConvertTo-Json -Depth 5 | Out-File -FilePath $summaryPath -Encoding utf8
+          exit $code
+
+      - name: Check win-x64 smoke result
+        id: smoke
+        shell: pwsh
+        run: |
+          $summary = Get-Content telemetry/summary.json | ConvertFrom-Json
+          if ($summary.win_x64_smoke -ne 'success') {
+            Write-Warning 'Stage 2 win-x64 smoke test failed; native rebuild will run.'
+            "rebuild=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8NoBOM
+          } else {
+            "rebuild=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8NoBOM
+          }
+
+      - name: Rebuild win-x64 natively
+        if: steps.smoke.outputs.rebuild == 'true'
+        shell: pwsh
+        run: dotnet publish src/XCli/XCli.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=true -o dist/win-x64-native/
+
+      - name: Download telemetry history from Pages
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Copy telemetry history
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'telemetry/history')) { New-Item -ItemType Directory -Force -Path 'telemetry/history' | Out-Null }
+          if (Test-Path 'gh-pages/history') {
+            Copy-Item -Recurse -Force -Path (Join-Path 'gh-pages/history' '*') -Destination 'telemetry/history'
+          }
+
+      - name: Telemetry diff & soft publish (gated)
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'telemetry/history')) { New-Item -ItemType Directory -Force -Path 'telemetry/history' | Out-Null }
+          $shouldPublish = ($env:DISCORD_PUBLISH -eq '1') -and (-not [string]::IsNullOrWhiteSpace($env:DISCORD_WEBHOOK_URL))
+          # Use the hardened publisher; force dry-run unless explicitly enabled and secret present
+          $args = @(
+            '-Current','telemetry/summary.json',
+            '-HistoryDir','telemetry/history',
+            '-Manifest','telemetry/manifest.json',
+            '-Discord', $env:DISCORD_WEBHOOK_URL,
+            '-EmitChunkDiagnostics',
+            '-CommentPath','telemetry/comment.md'
+          )
+          if (-not $shouldPublish) { $args += '-ForceDryRun' }
+          & ./scripts/telemetry-publish.ps1 @args
+
+      - name: Write stage3 diagnostics
+        shell: pwsh
+        run: |
+          $summaryPath = 'telemetry/summary.json'
+          $commentPath = 'telemetry/comment.md'
+          $summaryBytes = (Test-Path $summaryPath) ? (Get-Item $summaryPath).Length : 0
+          $commentBytes = (Test-Path $commentPath) ? (Get-Item $commentPath).Length : 0
+          $cdPath = 'telemetry/history/chunk-diagnostics-latest.json'
+          $chunkDiag = if (Test-Path $cdPath) { Get-Content $cdPath -Raw | ConvertFrom-Json } else { $null }
+          $shouldPublish = ($env:DISCORD_PUBLISH -eq '1') -and (-not [string]::IsNullOrWhiteSpace($env:DISCORD_WEBHOOK_URL))
+          $diag = [ordered]@{
+            published = if ($shouldPublish) { 'true' } else { 'false' }
+            dry_run_forced = if ($shouldPublish) { 'false' } else { 'true' }
+            webhook_present = if (-not [string]::IsNullOrWhiteSpace($env:DISCORD_WEBHOOK_URL)) { 'true' } else { 'false' }
+            summary_path = $summaryPath
+            comment_path = $commentPath
+            summary_bytes = $summaryBytes
+            comment_bytes = $commentBytes
+            chunks = if ($chunkDiag) { [ordered]@{ mode=$chunkDiag.mode; strategy=$chunkDiag.strategy; count=$chunkDiag.chunks; message_length=$chunkDiag.message_length } } else { [ordered]@{ mode='unknown'; strategy='unknown'; count=0; message_length=0 } }
+          }
+          $diag | ConvertTo-Json -Depth 4 | Out-File -FilePath 'telemetry/stage3-diagnostics.json' -Encoding utf8NoBOM
+          if (-not (Test-Path 'telemetry/history')) { New-Item -ItemType Directory -Force -Path 'telemetry/history' | Out-Null }
+          Copy-Item -Force -LiteralPath 'telemetry/stage3-diagnostics.json' -Destination 'telemetry/history/stage3-diagnostics-latest.json'
+
+      - name: Copy manifest to history (latest)
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'telemetry/history')) { New-Item -ItemType Directory -Force -Path 'telemetry/history' | Out-Null }
+          if (Test-Path 'telemetry/manifest.json') {
+            Copy-Item -Force -LiteralPath 'telemetry/manifest.json' -Destination 'telemetry/history/manifest-latest.json'
+          } else {
+            Write-Warning 'telemetry/manifest.json not found; skipping manifest-latest.json copy.'
+          }
+
+      - name: Upload stage3 diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage3-diagnostics
+          path: telemetry/stage3-diagnostics.json
+
+      - name: Job Summary (Telemetry)
+        if: always()
+        shell: pwsh
+        run: |
+          $summaryFile = $env:GITHUB_STEP_SUMMARY
+          $lines = @()
+          $lines += "### Telemetry Summary"
+          if (Test-Path 'telemetry/stage3-diagnostics.json') {
+            $diag = Get-Content 'telemetry/stage3-diagnostics.json' -Raw | ConvertFrom-Json
+            $publishStatus = if ($diag.published -eq 'true') { 'on' } else { 'off' }
+            $webhookStatus = if ($diag.webhook_present -eq 'true') { 'present' } else { 'absent' }
+            $lines += "- publish: $publishStatus"
+            $lines += "- webhook: $webhookStatus"
+          }
+          if (Test-Path 'telemetry/history/summary-latest.json') {
+            $sum = Get-Content 'telemetry/history/summary-latest.json' -Raw | ConvertFrom-Json
+            $pass = $sum.pass; $fail = $sum.fail; $skip = $sum.skipped; $dur = $sum.duration_seconds
+            $lines += "- pass: $pass"
+            $lines += "- fail: $fail"
+            $lines += "- skipped: $skip"
+            $durFmt = $null
+            if ($null -ne $dur -and ($dur -as [double]) -ne $null) { $durFmt = ('{0:0.0#}' -f [double]$dur) }
+            $durSuffix = if ($durFmt) { " (${durFmt}s)" } else { "" }
+            $lines += "- duration_seconds: $dur$durSuffix"
+            # Add quick link to gh-pages summary (may update after upload step)
+            $repoUrl = "$($env:GITHUB_SERVER_URL)/$($env:GITHUB_REPOSITORY)"
+            $summaryUrl = "$repoUrl/blob/gh-pages/history/summary-latest.json"
+            $rawUrl = "$repoUrl/raw/gh-pages/history/summary-latest.json"
+            $lines += "- latest summary: [history/summary-latest.json]($summaryUrl) | [raw]($rawUrl)"
+          }
+          if (Test-Path 'telemetry/history/diff-latest.json') {
+            $diff = Get-Content 'telemetry/history/diff-latest.json' -Raw | ConvertFrom-Json
+            $changesCount = 0
+            if (-not $diff.baseline) {
+              $lines += ""
+              $lines += "Deltas"
+              $d = $diff.metrics
+              $vals = @($d.delta_pass, $d.delta_fail, $d.delta_skipped, $d.delta_duration_seconds)
+              foreach ($dv in $vals) { if ($null -ne $dv -and $dv -ne 0) { $changesCount++ } }
+              # Build list of changed metric name->delta pairs
+              $changedPairs = @()
+              if ($null -ne $d.delta_pass -and $d.delta_pass -ne 0) { $changedPairs += @{ name='pass'; delta=$d.delta_pass } }
+              if ($null -ne $d.delta_fail -and $d.delta_fail -ne 0) { $changedPairs += @{ name='fail'; delta=$d.delta_fail } }
+              if ($null -ne $d.delta_skipped -and $d.delta_skipped -ne 0) { $changedPairs += @{ name='skipped'; delta=$d.delta_skipped } }
+              if ($null -ne $d.delta_duration_seconds -and $d.delta_duration_seconds -ne 0) { $changedPairs += @{ name='duration_seconds'; delta=$d.delta_duration_seconds } }
+              $changedCount = $changedPairs.Count
+              $lines += "- delta_pass: $($d.delta_pass)"
+              $lines += "- delta_fail: $($d.delta_fail)"
+              $lines += "- delta_skipped: $($d.delta_skipped)"
+              $durDeltaFmt = $null
+              if ($null -ne $d.delta_duration_seconds -and ($d.delta_duration_seconds -as [double]) -ne $null) {
+                $durDeltaFmt = ('{0:0.0#}' -f [double]$d.delta_duration_seconds)
+              }
+              $durSuffix = if ($durDeltaFmt) { " (${durDeltaFmt}s)" } else { "" }
+              $lines += "- delta_duration_seconds: $($d.delta_duration_seconds)$durSuffix"
+              if ($changedCount -gt 0) {
+                if ($changedCount -le 2) {
+                  $labels = @()
+                  foreach ($p in $changedPairs) {
+                    $raw = $p.delta
+                    $val = [string]$raw
+                    $sign = ''
+                    $num = $raw -as [double]
+                    if ($null -ne $num -and $num -gt 0) { $sign = '+' }
+                    if ($p.name -eq 'duration_seconds' -and $null -ne $num) {
+                      $fmt = ('{0:0.0#}' -f [double]$num)
+                      $val = "$sign$fmt" + 's'
+                    } else {
+                      if ($sign -ne '') { $val = "$sign$val" }
+                    }
+                    $labels += "$($p.name)($val)"
+                  }
+                  $lines += "- changed: $($labels -join ', ')"
+                } else {
+                  $cap = 3
+                  $names = $changedPairs | ForEach-Object { $_.name }
+                  $shown = $names | Select-Object -First $cap
+                  $more = $names.Count - $shown.Count
+                  $suffix = if ($more -gt 0) { " (+$more more)" } else { "" }
+                  $lines += "- changed: $($shown -join ', ')$suffix"
+                }
+              }
+            }
+            # Quick links to latest diff (blob and raw)
+            $repoUrl = "$($env:GITHUB_SERVER_URL)/$($env:GITHUB_REPOSITORY)"
+            $diffBlob = "$repoUrl/blob/gh-pages/history/diff-latest.json"
+            $diffRaw  = "$repoUrl/raw/gh-pages/history/diff-latest.json"
+            $lines += "- latest diff: [history/diff-latest.json]($diffBlob) | [raw]($diffRaw) | changes: $changesCount"
+          }
+          if (Test-Path 'telemetry/history/chunk-diagnostics-latest.json') {
+            $cd = Get-Content 'telemetry/history/chunk-diagnostics-latest.json' -Raw | ConvertFrom-Json
+            $lines += ""
+            $lines += "Chunks: mode=$($cd.mode) strategy=$($cd.strategy) chunks=$($cd.chunks) len=$($cd.message_length)"
+          }
+          $linesText = $lines -join "`n"
+          $linesText | Out-File -Append -Encoding utf8NoBOM -FilePath $summaryFile
+          "" | Out-File -Append -Encoding utf8NoBOM -FilePath $summaryFile
+          "Note: Discord publish handled downstream by x-sdk-gk-desktop-win (Stage 3 runs in dry-run mode here)." | Out-File -Append -Encoding utf8NoBOM -FilePath $summaryFile
+
+      - name: Upload telemetry history to Pages
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/upload-telemetry-history.sh telemetry/history gh-pages
+
+      - name: Emit outputs (reusable workflow)
+        if: ${{ always() }}
+        id: emit
+        shell: pwsh
+        run: |
+          $diagPath = 'telemetry/stage3-diagnostics.json'
+          $published = 'false'
+          if (Test-Path $diagPath) {
+            try {
+              $diag = Get-Content $diagPath -Raw | ConvertFrom-Json
+              if ($diag -and $diag.published) { $published = [string]$diag.published }
+            } catch { }
+          }
+          "published=$published" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8NoBOM
+          "summary_path=telemetry/summary.json" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8NoBOM -Append
+          "diagnostics_path=telemetry/stage3-diagnostics.json" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8NoBOM -Append
+
+
+      - name: Token diagnostics (debug)
+        if: ${{ env.DEBUG_TOKEN_INFO == 'true' || env.DEBUG_TOKEN_INFO == '1' }}
+        id: token_diag
+        uses: ./.github/actions/token-diagnostics
+        with:
+          artifact-name: token-info-stage3
+          upload-artifact: true
+
+      - name: Token diagnostics summary (debug)
+        if: ${{ env.DEBUG_TOKEN_INFO == 'true' || env.DEBUG_TOKEN_INFO == '1' }}
+        shell: pwsh
+        run: |
+          "### Token Diagnostics (Stage 3)" | Out-File -Append -Encoding utf8NoBOM -FilePath $env:GITHUB_STEP_SUMMARY
+          "- found: ${{ steps.token_diag.outputs.found }}" | Out-File -Append -Encoding utf8NoBOM -FilePath $env:GITHUB_STEP_SUMMARY
+          "- kind: ${{ steps.token_diag.outputs.kind }}" | Out-File -Append -Encoding utf8NoBOM -FilePath $env:GITHUB_STEP_SUMMARY
+          "- source: ${{ steps.token_diag.outputs.source }}" | Out-File -Append -Encoding utf8NoBOM -FilePath $env:GITHUB_STEP_SUMMARY
+          "- length: ${{ steps.token_diag.outputs.length }}" | Out-File -Append -Encoding utf8NoBOM -FilePath $env:GITHUB_STEP_SUMMARY
+          "- preview: ${{ steps.token_diag.outputs.token_preview }}" | Out-File -Append -Encoding utf8NoBOM -FilePath $env:GITHUB_STEP_SUMMARY

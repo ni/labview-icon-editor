@@ -6,7 +6,23 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $RepositoryPath = (Resolve-Path -LiteralPath $RepositoryPath).Path
-$vipb = Get-ChildItem -Path $RepositoryPath -Filter *.vipb -File -Recurse | Select-Object -First 1
+
+# Prefer the canonical VIPB under Tooling/deployment to avoid picking up temp/worktree copies.
+$preferredVipb = Join-Path $RepositoryPath 'Tooling/deployment/seed.vipb'
+if (Test-Path -LiteralPath $preferredVipb) {
+    $vipb = Get-Item -LiteralPath $preferredVipb
+}
+else {
+    $vipb = Get-ChildItem -Path $RepositoryPath -Filter *.vipb -File -Recurse -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.FullName -notmatch '\\\.tmp-tests\\' -and
+            $_.FullName -notmatch '\\builds(-isolated(-tests)?)?\\' -and
+            $_.FullName -notmatch '\\temp_telemetry\\' -and
+            $_.FullName -notmatch '\\artifacts\\'
+        } |
+        Sort-Object { $_.FullName.Length } |
+        Select-Object -First 1
+}
 if (-not $vipb) { throw "No .vipb file found under $RepositoryPath" }
 
 try {

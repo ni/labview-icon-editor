@@ -1,0 +1,64 @@
+name: Onboarding Check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  first-run-dry:
+    name: First-run (dry-run)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare (Linux)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          bash scripts/first-run.sh || true
+          bash scripts/ghops/tools/bootstrap-path.sh --echo-once || true
+      
+      - name: Prepare (Windows)
+        if: startsWith(matrix.os, 'windows')
+        shell: pwsh
+        run: |
+          pwsh -NoLogo -NoProfile -File scripts/first-run.ps1
+          pwsh -NoLogo -NoProfile -File scripts/ghops/tools/bootstrap-path.ps1 -AllHosts -WindowsPowerShell -EchoOnce
+
+      - name: Summarize
+        id: sum
+        shell: pwsh
+        run: |
+          $root = (Get-Location).Path
+          $tools = Join-Path $root '.tools/bin'
+          $secrets = Join-Path $root '.secrets/github_token.txt'
+          $gh = (Get-Command gh -ErrorAction SilentlyContinue)
+          $haveGh = if ($gh) { 'yes' } else { 'no' }
+          $onPath = if ((($env:PATH -split [IO.Path]::PathSeparator) -contains $tools)) { 'yes' } else { 'no' }
+          $tokenExists = if (Test-Path $secrets) { 'yes' } else { 'no' }
+          """### Onboarding Check ($env:RUNNER_OS)
+
+          - tools path: `$tools`
+          - in PATH: `$onPath`
+          - gh present: `$haveGh`
+          - token placeholder present: `$tokenExists`
+          """ | Out-File -Encoding utf8NoBOM -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "tools_path=$tools`npath_has_tools=$onPath`ngh_present=$haveGh`ntoken_placeholder=$tokenExists" | Out-File -Encoding utf8NoBOM -FilePath onboarding_${{ matrix.os }}.env
+
+      - name: Upload env summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: onboarding-${{ matrix.os }}
+          path: onboarding_${{ matrix.os }}.env
+
+      - name: Token diagnostics
+        uses: ./.github/actions/token-diagnostics
+        with:
+          artifact-name: token-info-${{ matrix.os }}
+          upload-artifact: true

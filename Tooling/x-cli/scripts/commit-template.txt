@@ -1,0 +1,21 @@
+# do not edit: generated from commit-template.snippet.md; run `python scripts/update-agents.py` only when the commit template or AGENTS snippets change
+<summary (<=50 chars)>
+
+codex: <change_type> | SRS: <comma-separated-srs-ids>@<spec-version> | issue: #<issue-number>
+# SRS IDs are validated against the repository's registry.
+# If an ID exists in multiple specs or versions, append '@<spec-version>' to disambiguate.
+# Unknown or ambiguous IDs (missing or mismatched version) will cause the commit to be rejected.
+# Tip: The commit-msg hook may enrich the first line with a short bracketed suffix
+# (e.g., [r3] for CI run attempt 3 or [n2] for a local retry).
+# You can add your own tags via XCLI_SUMMARY_TAGS="tag1 tag2".
+# Enrichment is best-effort and always respects the 50-char summary limit.
+# If tags are dropped to fit, they are preserved in the commit body as
+# a trailer line (X-Tags: ...) and recorded in .codex/telemetry.json.
+# To include an issue reference in the meta line, create an issue and append its number:
+#   python scripts/create_issue.py --title "<brief summary>" [--body "..."]
+# Then add:  | issue: #<ISSUE-NUMBER>  at the end of the third line.
+
+# Example:
+# Update docs and rules engine
+#
+# codex: impl | SRS: FGC-REQ-DEV-005@1.1, FGC-REQ-SPEC-001@1.0 | issue: #123

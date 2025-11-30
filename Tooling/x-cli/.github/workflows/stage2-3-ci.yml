@@ -1,0 +1,378 @@
+# SRS: FGC-REQ-CI-001
+# See ci/stage2/AGENTS.md and ci/stage3/AGENTS.md for stage contracts.
+# Runs after Stage 1 Telemetry. If troubleshooting missing artifacts,
+# re-run Stage 1 or manually dispatch with `stage1_run_id` to override.
+name: Stage 2->3 CI
+
+on:
+  workflow_run:
+    workflows: ["Stage 1 Telemetry"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      stage1_run_id:
+        description: "Override Stage 1 run ID when diagnosing missing telemetry"
+        required: false
+      debug_token_info:
+        description: "Upload effective token info artifacts (debug)"
+        required: false
+        type: boolean
+
+jobs:
+  stage2_ubuntu_ci:
+    name: Stage 2 - Ubuntu CI
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    env:
+      DEBUG_TOKEN_INFO: ${{ github.event.inputs.debug_token_info || inputs.debug_token_info || vars.DEBUG_TOKEN_INFO }}
+    outputs:
+      token_found: ${{ steps.token_diag.outputs.found }}
+      token_kind: ${{ steps.token_diag.outputs.kind }}
+      token_source: ${{ steps.token_diag.outputs.source }}
+      token_length: ${{ steps.token_diag.outputs.length }}
+      token_preview: ${{ steps.token_diag.outputs.token_preview }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+        shell: bash
+
+      - name: Download Stage 1 summary
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: telemetry-summary
+          path: telemetry
+          run-id: ${{ inputs.stage1_run_id || github.event.workflow_run.id }}
+          repository: ${{ github.repository }}
+
+      - name: Ensure Stage 1 summary exists
+        run: |
+          if [ ! -f telemetry/summary.json ]; then
+            echo "Run Stage 1 or provide a valid run ID" >&2
+            exit 1
+          fi
+        shell: bash
+
+      - name: Fail if Stage 1 failed
+        run: |
+          status=$(jq -r '.result // .status // .passed // "PASS"' telemetry/summary.json | tr '[:upper:]' '[:lower:]')
+          if [[ "$status" == "fail" || "$status" == "failed" || "$status" == "false" ]]; then
+            echo "Stage 1 summary indicates failure: $status" >&2
+            exit 1
+          fi
+        shell: bash
+
+      # Prefer global.json if present; otherwise use a default .NET
+      - name: Setup .NET via global.json
+        if: ${{ hashFiles('global.json') != '' }}
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Setup .NET 8 (fallback)
+        if: ${{ hashFiles('global.json') == '' }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Ensure PowerShell 7 (Ubuntu)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          if ! command -v pwsh >/dev/null 2>&1; then
+            set -euo pipefail
+            sudo apt-get update -y
+            sudo apt-get install -y wget apt-transport-https software-properties-common
+            wget -q https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb
+            sudo dpkg -i packages-microsoft-prod.deb
+            sudo apt-get update -y
+            sudo apt-get install -y powershell
+          fi
+          pwsh -v
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (Release)
+        run: dotnet build -c Release --no-restore
+
+      - name: Test (Release)
+        run: dotnet test -c Release --no-build
+
+      - name: Publish linux-x64 single-file (app only)
+        run: |
+          set -euo pipefail
+          # Publish the executable app project only (NOT the solution)
+          dotnet publish src/XCli/XCli.csproj \
+            -c Release -r linux-x64 \
+            -p:PublishSingleFile=true \
+            -p:SelfContained=true \
+            -o dist/linux-x64/
+
+          # Normalize to contract filename expected by AGENTS.md
+          mkdir -p dist
+          if [ -f dist/linux-x64/XCli ]; then
+            cp dist/linux-x64/XCli dist/x-cli-linux-x64
+          elif [ -f dist/linux-x64/XCli.dll ]; then
+            # safety fallback if single-file was disabled by SDK policy
+            cp dist/linux-x64/XCli.dll dist/x-cli-linux-x64
+          fi
+
+          if [ ! -f dist/x-cli-linux-x64 ]; then
+            echo "ERROR: linux artifact not normalized to dist/x-cli-linux-x64"
+            ls -la dist dist/linux-x64 || true
+            exit 1
+          fi
+
+      - name: Publish win-x64 single-file (app only)
+        run: |
+          set -euo pipefail
+          # Self-contained single-file cross-publish from Linux
+          dotnet publish src/XCli/XCli.csproj \
+            -c Release -r win-x64 \
+            -p:PublishSingleFile=true \
+            -p:SelfContained=true \
+            -o dist/win-x64/
+
+          # Normalize to contract filename (extensionless) expected by Stage 3
+          mkdir -p dist
+          shopt -s nullglob
+          exes=(dist/win-x64/*.exe)
+          if [ ${#exes[@]} -gt 0 ]; then
+            cp "${exes[0]}" dist/x-cli-win-x64
+          fi
+          if [ ! -f dist/x-cli-win-x64 ]; then
+            echo "ERROR: win-x64 artifact not normalized to dist/x-cli-win-x64"
+            ls -la dist dist/win-x64 || true
+            exit 1
+          fi
+
+      - name: Install Wine for win-x64 smoke test
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y wine64
+
+      - name: Smoke test win-x64 artifact
+        id: win_smoke
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          wine64 dist/x-cli-win-x64 --version >/tmp/win-smoke.log 2>&1
+
+      - name: Record win-x64 smoke result
+        if: always()
+        env:
+          SMOKE_RESULT: ${{ steps.win_smoke.outcome }}
+        run: |
+          python - <<'PY'
+          import json, os
+          path = 'telemetry/summary.json'
+          data = {}
+          if os.path.exists(path):
+              try:
+                  data = json.load(open(path))
+              except Exception:
+                  data = {}
+          else:
+              os.makedirs('telemetry', exist_ok=True)
+          result = os.environ.get('SMOKE_RESULT', 'failure')
+          data['win_x64_smoke'] = result
+          with open(path, 'w') as f:
+              json.dump(data, f, indent=2)
+          PY
+
+      - name: Warn on win-x64 smoke failure
+        if: steps.win_smoke.outcome != 'success'
+        run: echo "::warning::win-x64 smoke test failed; native Windows rebuild may be required."
+
+      - name: Augment summary with human duration (optional)
+        if: always()
+        run: |
+          python scripts/augment_summary_duration.py || true
+
+      - name: Generate manifest
+        run: ./scripts/generate-manifest.sh
+        shell: bash
+      - name: Verify SRS traceability
+        run: |
+          git fetch origin main --depth=1
+          python3 - <<'PYCODE'
+          import os, re, sys
+          # Determine files changed in this PR compared to main
+          changed_files = os.popen('git diff --name-only origin/main...HEAD').read().split()
+          # Load module-to-SRS mapping
+          mapping = {}
+          prefix = None
+          map_file = os.path.join('docs', 'module-srs-map.yaml')
+          if os.path.isfile(map_file):
+              for line in open(map_file, 'r', encoding='utf-8'):
+                  if not line.strip() or line.lstrip().startswith('#'):
+                      continue
+                  if not line.startswith(' ') and line.strip().endswith(':'):
+                      prefix = line.strip().rstrip(':')
+                      if not prefix.endswith('/'):
+                          prefix += '/'
+                      mapping[prefix] = []
+                  elif line.startswith('  - ') and prefix:
+                      rid = line.strip()[2:]
+                      mapping[prefix].append(rid)
+          # Parse SRS IDs listed in the commit message (third line "SRS: ...")
+          commit_msg = os.popen('git show -s --format=%B HEAD').read()
+          srs_ids = set()
+          for line in commit_msg.splitlines():
+              match = re.search(r'SRS:\s*(.+)', line)
+              if match:
+                  for rid in match.group(1).split(','):
+                      srs_ids.add(rid.strip())
+          errors = []
+          for path in changed_files:
+              if path.startswith('src/') or path.startswith('notifications/'):
+                  # For each changed source file, find mapped requirement IDs (if any)
+                  reqs = []
+                  for prefix, ids in mapping.items():
+                      if path.startswith(prefix):
+                          reqs += ids
+                  if not reqs:
+                      errors.append(f"No requirement mapping for {path} (update docs/module-srs-map.yaml)")
+                  elif srs_ids and not any(req in srs_ids for req in reqs):
+                      errors.append(f"{path} changed but none of its requirements {reqs} are in the PR's SRS list")
+              elif path.startswith('docs/srs/'):
+                  m = re.search(r'FGC-REQ-[A-Z]+-\d{3}', path)
+                  if m:
+                      req_id = m.group(0)
+                      if req_id not in srs_ids:
+                          errors.append(f"{path} changed but {req_id} is not listed in PR SRS metadata")
+          if errors:
+              for err in errors:
+                  print(f"::error::{err}")
+              sys.exit(1)
+          print("Traceability OK: all changes map to SRS IDs")
+          PYCODE
+        shell: bash
+
+      - name: Validate manifest completeness (gate)
+        run: ./scripts/validate-manifest.sh telemetry/manifest.json
+        shell: bash
+
+      - name: Generate Preventative Measures section
+        run: python scripts/generate_preventative_measures.py >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+
+      - name: Upload telemetry bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: telemetry
+          path: telemetry/*
+
+      - name: Token diagnostics (debug)
+        if: ${{ env.DEBUG_TOKEN_INFO == 'true' || env.DEBUG_TOKEN_INFO == '1' }}
+        id: token_diag
+        uses: ./.github/actions/token-diagnostics
+        with:
+          artifact-name: token-info-stage2
+          upload-artifact: true
+
+      - name: Token diagnostics summary (debug)
+        if: ${{ env.DEBUG_TOKEN_INFO == 'true' || env.DEBUG_TOKEN_INFO == '1' }}
+        shell: bash
+        run: |
+          echo "### Token Diagnostics (Stage 2)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- found: ${{ steps.token_diag.outputs.found }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- kind: ${{ steps.token_diag.outputs.kind }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- source: ${{ steps.token_diag.outputs.source }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- length: ${{ steps.token_diag.outputs.length }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- preview: ${{ steps.token_diag.outputs.token_preview }}" >> "$GITHUB_STEP_SUMMARY"
+
+  stage3_windows_ci:
+    name: Stage 3 - Windows CI
+    runs-on: [self-hosted, Windows]
+    needs: stage2_ubuntu_ci
+    env:
+      DEBUG_TOKEN_INFO: ${{ github.event.inputs.debug_token_info || inputs.debug_token_info || vars.DEBUG_TOKEN_INFO }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Download telemetry
+        uses: actions/download-artifact@v4
+        with:
+          name: telemetry
+          path: telemetry
+
+      - name: Gate required artifacts
+        shell: pwsh
+        run: |
+          $required = @('telemetry/manifest.json','telemetry/summary.json','dist/x-cli-win-x64')
+          foreach ($p in $required) {
+            if (-not (Test-Path $p)) {
+              Write-Error "Missing required file: $p"
+              exit 1
+            }
+          }
+
+      - name: Validate manifest & checksums (gate)
+        shell: pwsh
+        run: |
+          powershell ./scripts/validate-manifest.ps1 -Manifest telemetry/manifest.json -Strict
+
+      - name: Windows smoke test (win-x64)
+        shell: pwsh
+        run: |
+          $exe = Join-Path $PWD 'dist/x-cli-win-x64'
+          if (-not (Test-Path $exe) -and (Test-Path "$exe.exe")) { $exe = "$exe.exe" }
+          & $exe --help
+
+      - name: Require Discord webhook
+        shell: pwsh
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:DISCORD_WEBHOOK_URL)) {
+            Write-Error 'DISCORD_WEBHOOK_URL secret is required for Stage 3 notification.'
+            exit 1
+          }
+
+      - name: Telemetry diff + Discord
+        shell: pwsh
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          ./scripts/telemetry-publish.ps1 -Current telemetry/summary.json -Discord $env:DISCORD_WEBHOOK_URL
+
+      - name: Upload telemetry history
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: telemetry-history
+          path: telemetry/history/*
+          retention-days: 30
+
+      - name: Token diagnostics (debug)
+        if: ${{ env.DEBUG_TOKEN_INFO == 'true' || env.DEBUG_TOKEN_INFO == '1' }}
+        uses: ./.github/actions/token-diagnostics
+        with:
+          artifact-name: token-info-stage3
+          upload-artifact: true
+
+      - name: Token diagnostics summary (debug)
+        if: ${{ env.DEBUG_TOKEN_INFO == 'true' || env.DEBUG_TOKEN_INFO == '1' }}
+        shell: pwsh
+        run: |
+          "### Token Diagnostics (from Stage 2)" | Out-File -Append -Encoding utf8NoBOM -FilePath $env:GITHUB_STEP_SUMMARY
+          "- found: ${{ needs.stage2_ubuntu_ci.outputs.token_found }}" | Out-File -Append -Encoding utf8NoBOM -FilePath $env:GITHUB_STEP_SUMMARY
+          "- kind: ${{ needs.stage2_ubuntu_ci.outputs.token_kind }}" | Out-File -Append -Encoding utf8NoBOM -FilePath $env:GITHUB_STEP_SUMMARY
+          "- source: ${{ needs.stage2_ubuntu_ci.outputs.token_source }}" | Out-File -Append -Encoding utf8NoBOM -FilePath $env:GITHUB_STEP_SUMMARY
+          "- length: ${{ needs.stage2_ubuntu_ci.outputs.token_length }}" | Out-File -Append -Encoding utf8NoBOM -FilePath $env:GITHUB_STEP_SUMMARY
+          "- preview: ${{ needs.stage2_ubuntu_ci.outputs.token_preview }}" | Out-File -Append -Encoding utf8NoBOM -FilePath $env:GITHUB_STEP_SUMMARY
+

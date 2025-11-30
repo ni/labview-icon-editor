@@ -1,0 +1,65 @@
+name: Pre-Commit
+
+on:
+  pull_request:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    # Only run automatically on PRs when explicitly labeled; always run for manual dispatch
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'ci:pre-commit') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        # fetch-depth: 0 ensures full history so the template-sync commenter
+        # can run `git log -1 --pretty=%s` to fetch the commit subject if the
+        # GitHub API lookup is unavailable.
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install pre-commit and deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pre-commit ruamel.yaml
+      - name: Lint pre-commit templates (dry-run)
+        run: |
+          python scripts/sync_precommit_templates.py --dry-run
+      - name: Suggest template sync in PR comment (on dry-run failure)
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/post_precommit_template_sync_comment.py --repo "${{ github.repository }}" --pr "${{ github.event.pull_request.number }}"
+      - name: Run pre-commit (all files) and capture log
+        env:
+          SKIP: actionlint
+        run: |
+          mkdir -p artifacts
+          set -o pipefail
+          pre-commit run --all-files --verbose --color never 2>&1 | tee artifacts/pre-commit.log
+          echo $?
+          exit ${PIPESTATUS[0]}
+      - name: Parse pre-commit log to JSON
+        if: always()
+        run: |
+          python scripts/parse_precommit_output.py --log artifacts/pre-commit.log --out artifacts/pre-commit.json || true
+      - name: Upload pre-commit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-commit
+          path: |
+            artifacts/pre-commit.log
+            artifacts/pre-commit.json
+      - name: Aggregate pre-commit suggestions (comment on PR)
+        if: failure() && github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruamel.yaml
+          python scripts/post_precommit_suggestions.py --repo "${{ github.repository }}" --pr "${{ github.event.pull_request.number }}"

@@ -27,6 +27,13 @@ internal static class Program
         "Upstream Trace",
         "Downstream Trace",
         "Notes",
+        "Rationale",
+        "Risk",
+        "Assumptions",
+        "Constraints",
+        "Version & Change Notes",
+        "Verification Detail",
+        "Verification Level",
     };
 
     public static int Main(string[] args)

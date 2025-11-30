@@ -39,8 +39,8 @@ Describe "Seed metadata (vipb json)" {
     It "has a package file name" {
         $general['Package_File_Name'] | Should -Not -BeNullOrEmpty
     }
-    It "has a four-part library version" {
-        $general['Library_Version'] | Should -Match '^\d+\.\d+\.\d+\.\d+$'
+    It "has the canonical library version" {
+        $general['Library_Version'] | Should -Be '21.0.0.12'
     }
     It "declares a LabVIEW version" {
         $general['Package_LabVIEW_Version'] | Should -Not -BeNullOrEmpty
@@ -53,6 +53,10 @@ Describe "Seed metadata (vipb json)" {
     It "has descriptive metadata" {
         $description['Packager']  | Should -Not -BeNullOrEmpty
         # Copyright/URL may be empty in dev snapshots; optional
+    }
+    It "omits any embedded VIPC file" {
+        $advanced | Should -Not -BeNullOrEmpty
+        $advanced['VI_Package_Configuration_File'] | Should -BeNullOrEmpty
     }
     It "has LabVIEW install flags set" {
         $labview['close_labview_before_install']     | Should -Be 'true'

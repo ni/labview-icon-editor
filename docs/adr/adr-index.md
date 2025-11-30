@@ -30,3 +30,15 @@ See `adr-template.md` for the full template and `adr-template-lite.md` for a 1â€
 - ADR-2025-002 - [CLA gate enforcement and manifest handling](ADR-2025-002-cla-gate-enforcement.md).
 - ADR-2025-003 - [Bind/Unbind LabVIEW Development Mode via Composite Helper](ADR-2025-003-dev-mode-composite-helper.md).
 - ADR-2025-004 - [Agent-Only Dev-Mode Intent Shim](ADR-2025-004-dev-mode-intent-shim.md).
+- ADR-2025-005 - [Integration Engine CLI entrypoint and managed mode](ADR-2025-005-integration-engine-cli.md).
+- ADR-2025-006 - [VIPB JSON tool](ADR-2025-006-vipb-json-tool.md).
+- ADR-2025-007 - [LVPROJ JSON tool](ADR-2025-007-lvproj-json-tool.md).
+- ADR-2025-008 - [Requirements Summarizer](ADR-2025-008-requirements-summarizer.md).
+- ADR-2025-009 - [DevMode Agent CLI](ADR-2025-009-dev-mode-agent-cli.md).
+- ADR-2025-010 - [Centralized log stash for build/test workflows](ADR-2025-010-log-stash.md).
+- ADR-2025-011 - [Repository layout and tooling placement](ADR-2025-011-repo-structure.md).
+- ADR-2025-012 - [x-cli staged publish, RunnerProfile gating, and VI compare artifacts](ADR-2025-012-xcli-staged-publish-and-vi-compare.md).
+- ADR-2025-013 - [Common probe/build/cache strategy for repo CLIs](ADR-2025-013-cli-probe-and-cache.md).
+- ADR-2025-014 - [LabVIEW Source Distributions manifests and verification](ADR-2025-014-labview-source-distributions.md).
+- ADR-2025-015 - [Source Distribution â†’ PPL orchestration via OrchestrationCLI](ADR-2025-015-sd-ppl-labviewcli-orchestration.md).
+- ADR-2025-016 - [Bundle minimal tooling in Source Distribution for VS Code use](ADR-2025-016-tooling-included-in-source-distribution.md).

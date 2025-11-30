@@ -1,0 +1,150 @@
+name: Orchestrate x-cli (self)
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage3_force_dry_run:
+        description: "Stage 3: Force dry-run (skip Discord post)"
+        required: false
+        type: boolean
+        default: true
+      stage3_validate_schema:
+        description: "Stage 3: Validate diagnostics JSON schema"
+        required: false
+        type: boolean
+        default: false
+      validate_summary_schema:
+        description: "Validate orchestration-summary.json against schema (installs Python)"
+        required: false
+        type: boolean
+        default: false
+      diff_os_summaries:
+        description: "Compare orchestration-summary.json across OS matrix and fail on differences"
+        required: false
+        type: boolean
+        default: false
+      diff_os_summaries_lenient:
+        description: "Lenient diff (ignore whitespace/newline differences in strings)"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  stage1:
+    name: Call Stage 1 (Container Telemetry)
+    uses: ./.github/workflows/stage1-telemetry.yml
+    secrets: inherit
+
+  stage2:
+    name: Call Stage 2 (Ubuntu Artifacts)
+    needs: [stage1]
+    uses: ./.github/workflows/stage2.yml
+    secrets: inherit
+
+  stage3:
+    name: Call Stage 3 (Windows Validate & Publish)
+    needs: [stage2]
+    uses: ./.github/workflows/stage3.yml
+    with:
+      stage2_repo: ${{ github.repository }}
+      stage2_run_id: ${{ needs.stage2.outputs.run_id }}
+      force_dry_run: ${{ inputs.stage3_force_dry_run }}
+      validate_schema: ${{ inputs.stage3_validate_schema }}
+    secrets: inherit
+
+  summarize:
+    name: Orchestration Summary
+    needs: [stage1, stage2, stage3]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Emit job summary
+        shell: bash
+        run: |
+          echo "### x-cli Orchestration Outputs" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage1.run_id: ${{ needs.stage1.outputs.run_id }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage1.summary_path: ${{ needs.stage1.outputs.summary_path }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage2.run_id: ${{ needs.stage2.outputs.run_id }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage2.manifest_path: ${{ needs.stage2.outputs.manifest_path }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage2.summary_path: ${{ needs.stage2.outputs.summary_path }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage3.published: ${{ needs.stage3.outputs.published }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage3.summary_path: ${{ needs.stage3.outputs.summary_path }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage3.diagnostics_path: ${{ needs.stage3.outputs.diagnostics_path }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Compose orchestration-summary.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          cat > artifacts/orchestration-summary.json <<JSON
+          {
+            "inputs": {
+              "stage3_force_dry_run": "${{ inputs.stage3_force_dry_run }}",
+              "stage3_validate_schema": "${{ inputs.stage3_validate_schema }}"
+            },
+            "stage1": {
+              "run_id": "${{ needs.stage1.outputs.run_id }}",
+              "summary_path": "${{ needs.stage1.outputs.summary_path }}"
+            },
+            "stage2": {
+              "run_id": "${{ needs.stage2.outputs.run_id }}",
+              "manifest_path": "${{ needs.stage2.outputs.manifest_path }}",
+              "summary_path": "${{ needs.stage2.outputs.summary_path }}",
+              "diagnostics_path": "${{ needs.stage2.outputs.diagnostics_path }}"
+            },
+            "stage3": {
+              "published": "${{ needs.stage3.outputs.published }}",
+              "summary_path": "${{ needs.stage3.outputs.summary_path }}",
+              "diagnostics_path": "${{ needs.stage3.outputs.diagnostics_path }}"
+            },
+            "meta": {
+              "repo": "${{ github.repository }}",
+              "run_id": "${{ github.run_id }}",
+              "run_attempt": "${{ github.run_attempt }}"
+            }
+          }
+          JSON
+
+      - name: Setup Python (for validator)
+        if: inputs.validate_summary_schema == true
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate orchestration-summary.json (pure Python)
+        if: inputs.validate_summary_schema == true
+        shell: bash
+        run: |
+          python scripts/validate_orchestration_summary.py artifacts/orchestration-summary.json
+
+      - name: Compose orchestration.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          cat > artifacts/orchestration.json <<JSON
+          {
+            "stage1": {
+              "run_id": "${{ needs.stage1.outputs.run_id }}",
+              "summary_path": "${{ needs.stage1.outputs.summary_path }}"
+            },
+            "stage2": {
+              "run_id": "${{ needs.stage2.outputs.run_id }}",
+              "manifest_path": "${{ needs.stage2.outputs.manifest_path }}",
+              "summary_path": "${{ needs.stage2.outputs.summary_path }}"
+            },
+            "stage3": {
+              "published": "${{ needs.stage3.outputs.published }}",
+              "summary_path": "${{ needs.stage3.outputs.summary_path }}",
+              "diagnostics_path": "${{ needs.stage3.outputs.diagnostics_path }}"
+            }
+          }
+          JSON
+
+      - name: Upload orchestration summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: orchestration-summary
+          path: |
+            artifacts/orchestration.json
+            artifacts/orchestration-summary.json
+

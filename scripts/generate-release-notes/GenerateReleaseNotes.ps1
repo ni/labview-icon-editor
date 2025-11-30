@@ -3,7 +3,18 @@ param(
 )
 
 # Ensure git history is available
-git fetch --tags --unshallow 2>$null | Out-Null
+if (Get-Command git -ErrorAction SilentlyContinue) {
+    try {
+        $isShallow = git rev-parse --is-shallow-repository 2>$null
+        if ($LASTEXITCODE -eq 0 -and $isShallow -and $isShallow.Trim().ToLower() -eq 'true') {
+            git fetch --tags --unshallow --no-progress 2>$null | Out-Null
+        }
+        else {
+            git fetch --tags --no-progress 2>$null | Out-Null
+        }
+    }
+    catch { $global:LASTEXITCODE = 0 }
+}
 
 $latestTag = git describe --tags --abbrev=0 2>$null
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($latestTag)) {

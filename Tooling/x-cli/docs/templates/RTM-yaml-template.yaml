@@ -1,0 +1,27 @@
+# RTM (machine‑readable) — keep under docs/traceability.yaml in the repo
+# Cite: iso29148.Requirements_Process & RTM/Traceability; iso29119_2.Test_Monitoring_Control
+
+requirements:
+    - id: FGC-REQ-CLI-001
+      source: docs/srs/core.md#cli-basics
+      verification: Test
+      tests:
+          - tests/XCli.Tests/**/* # C#
+      code:
+          - src/XCli/**/*
+
+    - id: FGC-REQ-GUID-002
+      source: docs/srs/core.md#guidance
+      verification: Test
+      tests:
+          - tests/py_*/**/* # Python
+      code:
+          - codex_rules/**/*
+
+    - id: FGC-REQ-LOG-003
+      source: docs/srs/core.md#json-logging
+      verification: Test/Inspection
+      tests:
+          - tests/**/*Logging*
+      code:
+          - src/**/*Logging*

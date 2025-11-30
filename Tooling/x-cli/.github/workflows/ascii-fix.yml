@@ -1,0 +1,64 @@
+name: ASCII Fix
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: Base branch to fix on
+        required: false
+        default: chore/conveyor-pr-clean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.base_branch }}
+          persist-credentials: false
+      - name: Setup Git
+        run: |
+          git config user.name "x-cli bot"
+          git config user.email "actions@users.noreply.github.com"
+      - name: Run ASCII Guard (fix)
+        uses: ./.github/actions/ascii-guard
+        with:
+          path_glob: ".github/workflows/*.yml,.github/workflows/*.yaml"
+          mode: fix
+      - name: Commit changes if any
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "changed=no" >> "$GITHUB_OUTPUT"
+          else
+            branch="chore/ascii-fix-${GITHUB_SHA::8}"
+            git checkout -b "$branch"
+            git add .github/workflows
+            git commit -m "ci(yaml): sanitize non-ASCII in workflows (ASCII Guard)"
+            echo "branch=$branch" >> "$GITHUB_OUTPUT"
+            echo "changed=yes" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Push branch
+        if: steps.commit.outputs.changed == 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.XCLI_PAT }}
+        run: |
+          set -euo pipefail
+          git push https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }} HEAD:${{ steps.commit.outputs.branch }}
+      - name: Open PR
+        if: steps.commit.outputs.changed == 'yes'
+        env:
+          GH_TOKEN: ${{ secrets.XCLI_PAT }}
+        run: |
+          gh pr create --repo "${{ github.repository }}" \
+            --head "${{ steps.commit.outputs.branch }}" \
+            --base "${{ inputs.base_branch }}" \
+            --title "ci(yaml): sanitize non-ASCII in workflows" \
+            --body "Apply ASCII Guard sanitization for workflow YAML."

@@ -3,9 +3,9 @@
     Adds a custom library path token to the LabVIEW INI file.
 
 .DESCRIPTION
-    Uses g-cli to call Create_LV_INI_Token.vi, inserting the provided path into
-    the LabVIEW INI file under the Localhost.LibraryPaths token. This enables
-    LabVIEW to locate local project libraries during development or builds.
+    Inserts the provided path into LabVIEW INI LocalHost.LibraryPaths using
+    direct ini edits (no Create_LV_INI_Token.vi). This enables LabVIEW to
+    locate local project libraries during development or builds.
 
 .PARAMETER Package_LabVIEW_Version
     LabVIEW version used by g-cli (e.g., "2021").
@@ -23,15 +23,11 @@
 param(
     [Parameter(Mandatory)][Alias('MinimumSupportedLVVersion')][string]$Package_LabVIEW_Version,
     [Parameter(Mandatory)][ValidateSet('32','64')][string]$SupportedBitness,
-    [Parameter(Mandatory)][string]$RepositoryPath
+[Parameter(Mandatory)][string]$RepositoryPath
 )
 
 $ErrorActionPreference = 'Stop'
 $RepositoryPath = (Resolve-Path -LiteralPath $RepositoryPath).Path
-$iniTokenVi = Join-Path -Path $RepositoryPath -ChildPath 'Tooling\deployment\Create_LV_INI_Token.vi'
-if (-not (Test-Path -LiteralPath $iniTokenVi)) {
-    throw "Missing VI required to add INI token: $iniTokenVi"
-}
 
 # Determine target folder for Localhost.LibraryPaths (folder that contains the project)
 $project = Get-ChildItem -Path $RepositoryPath -Filter *.lvproj -File -Recurse | Select-Object -First 1
@@ -41,46 +37,33 @@ $tokenTarget = if ($project) {
     $RepositoryPath
 }
 
+# Guard: refuse to write tokens for temp/ephemeral worktrees
+$normTarget = ([System.IO.Path]::GetFullPath($tokenTarget)).ToLowerInvariant()
+$disallowed = @(
+    '\appdata\local\temp\lv-ie-worktree',
+    '\appdata\local\temp\lv-ie-test-worktree',
+    '\.tmp-devmode-worktrees'
+)
+foreach ($pattern in $disallowed) {
+    if ($normTarget -like "*$pattern*") {
+        throw ("Refusing to write LocalHost.LibraryPaths for temporary worktree path: {0}. Bind against the canonical repo instead." -f $tokenTarget)
+    }
+}
+
 # Remove stale runner paths (e.g., double-rooted workspaces) before adding the current one.
 $helperPath = Join-Path $PSScriptRoot 'LocalhostLibraryPaths.ps1'
 if (-not (Test-Path $helperPath)) {
     throw "Missing helper script for cleaning LocalHost.LibraryPaths: $helperPath"
 }
 . $helperPath
-Clear-StaleLibraryPaths -LvVersion $Package_LabVIEW_Version -Arch $SupportedBitness -RepositoryRoot $RepositoryPath
+Clear-StaleLibraryPaths -LvVersion $Package_LabVIEW_Version -Arch $SupportedBitness -RepositoryRoot $RepositoryPath -Force -TargetPath $tokenTarget
 
-$_gcliArgs = @(
-    '--lv-ver', $Package_LabVIEW_Version,
-    '--arch', $SupportedBitness,
-    '--',
-    $iniTokenVi,
-    '--',
-    'LabVIEW',
-    'Localhost.LibraryPaths',
-    $SupportedBitness,
-    $tokenTarget
-)
-
-Write-Information ("Invoking g-cli: {0}" -f ($_gcliArgs -join ' ')) -InformationAction Continue
-Write-Information ("Localhost.LibraryPaths target: {0}" -f $tokenTarget) -InformationAction Continue
-
-$gcli = Get-Command g-cli -ErrorAction SilentlyContinue
-if (-not $gcli) {
-    throw "g-cli is not available on PATH; cannot add INI token."
-}
-
-$output = & g-cli @_gcliArgs 2>&1
-if ($LASTEXITCODE -ne 0) {
-    $joined = ($output -join '; ')
-    throw ("g-cli failed with exit code {0}: {1} | cmd: {2}" -f $LASTEXITCODE, $joined, ($_gcliArgs -join ' '))
-}
-
-Write-Information "Created localhost.library path in ini file." -InformationAction Continue
-
-# Ensure canonical INI also carries the token (g-cli may write to ProgramData/user INI)
+Write-Information ("Setting Localhost.LibraryPaths to: {0}" -f $tokenTarget) -InformationAction Continue
 try {
+    # Directly write LocalHost.LibraryPaths via helper (no Create_LV_INI_Token.vi)
     Add-LibraryPathToken -LvVersion $Package_LabVIEW_Version -Arch $SupportedBitness -TokenPath $tokenTarget -RepositoryRoot $RepositoryPath
+    Write-Information "Updated LocalHost.LibraryPaths via INI helper." -InformationAction Continue
 }
 catch {
-    Write-Warning ("Failed to mirror LocalHost.LibraryPaths into canonical INI: {0}" -f $_.Exception.Message)
+    throw ("Failed to set LocalHost.LibraryPaths: {0}" -f $_.Exception.Message)
 }

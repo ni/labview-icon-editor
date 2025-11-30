@@ -3,6 +3,7 @@ Describe "Conversion failure cases" {
     BeforeAll {
         # Define file paths for tests
         $repoRoot          = Resolve-Path (Join-Path $PSScriptRoot "..")
+        $projectPath       = Join-Path $repoRoot "..\\dotnet\\VipbJsonTool\\VipbJsonTool.csproj"
         $script:vipbFile   = Join-Path $repoRoot "deployment/seed.vipb"
         $script:lvprojFile = Join-Path $PSScriptRoot "Samples/seed.lvproj"
         $script:tempDir    = Join-Path $PSScriptRoot "Temp"
@@ -21,7 +22,7 @@ Describe "Conversion failure cases" {
         $fakeOutput = Join-Path $script:tempDir "dummy.json"
         if (Test-Path $fakeInput) { Remove-Item $fakeInput -Force }
 
-        $output = & dotnet run --project src/VipbJsonTool/VipbJsonTool.csproj `
+        $output = & dotnet run --project $projectPath `
                                -c Release -- lvproj2json `
                                $fakeInput $fakeOutput 2>&1 | Out-String
         $LASTEXITCODE | Should -Not -Be 0
@@ -31,7 +32,7 @@ Describe "Conversion failure cases" {
     It "should error on invalid .lvproj XML (wrong root element)" {
         # Using a VIPB file as input to lvproj2json to trigger root element mismatch
         $outputJson = Join-Path $script:tempDir "vipb_as_lvproj.json"
-        $output = & dotnet run --project src/VipbJsonTool/VipbJsonTool.csproj `
+        $output = & dotnet run --project $projectPath `
                                -c Release -- lvproj2json `
                                $script:vipbFile $outputJson 2>&1 | Out-String
         $LASTEXITCODE | Should -Not -Be 0
@@ -40,7 +41,7 @@ Describe "Conversion failure cases" {
 
     It "should error on invalid JSON input for json2lvproj" {
         $badOutputLvproj = Join-Path $script:tempDir "bad_output.lvproj"
-        $output = & dotnet run --project src/VipbJsonTool/VipbJsonTool.csproj `
+        $output = & dotnet run --project $projectPath `
                                -c Release -- json2lvproj `
                                $script:badJsonPath $badOutputLvproj 2>&1 | Out-String
         $LASTEXITCODE | Should -Not -Be 0
@@ -54,7 +55,7 @@ Describe "Conversion failure cases" {
         & chmod a-w $lockedDir    # revoke write permission for all users
 
         $lockedOutput = Join-Path $lockedDir "out.json"
-        $output = & dotnet run --project src/VipbJsonTool/VipbJsonTool.csproj `
+        $output = & dotnet run --project $projectPath `
                                -c Release -- lvproj2json `
                                $script:lvprojFile $lockedOutput 2>&1 | Out-String
         $LASTEXITCODE | Should -Not -Be 0

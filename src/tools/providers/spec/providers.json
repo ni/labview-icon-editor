@@ -1,0 +1,25 @@
+{
+  "providers": [
+    {
+      "id": "labviewcli",
+      "displayName": "LabVIEW CLI",
+      "description": "Executes LabVIEW command-line operations via the LabVIEWCLI.exe companion.",
+      "binary": {
+        "env": [
+          "LABVIEWCLI_PATH",
+          "LABVIEW_CLI_PATH",
+          "LABVIEW_CLI"
+        ]
+      },
+      "operations": [
+        "CloseLabVIEW",
+        "CreateComparisonReport",
+        "ExecuteBuildSpec",
+        "MassCompile",
+        "RunUnitTests",
+        "RunVI",
+        "RunVIAnalyzer"
+      ]
+    }
+  ]
+}

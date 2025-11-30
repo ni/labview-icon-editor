@@ -14,7 +14,7 @@ Versioning & metadata
 
 Key jobs
 - `issue-status` — branch/issue gate
-- `changes` / `apply-deps` — detect/apply VIPC when needed
+- `changes` / `apply-deps` — detect/apply VIPC when needed (via Orchestration CLI)
 - `version` — compute version components
 - `missing-in-project-check` — validate project membership
 - `test` — run unit tests (LabVIEW 2021 32/64)

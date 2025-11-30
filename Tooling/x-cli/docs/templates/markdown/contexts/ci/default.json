@@ -1,0 +1,10 @@
+{
+  "QA_CMD_POSIX": "./scripts/qa.sh",
+  "QA_CMD_WIN": "pwsh ./scripts/qa.ps1",
+  "BRANCHES": "develop, feature/*, release/*, hotfix/*",
+  "CHECKS_PRIMARY": "SRS Gate, Docs Gate, YAML Lint, CodeQL, Tests",
+  "PRECOMMIT_TIP": "Use label ci:pre-commit to run CI-side pre-commit.",
+  "MERGE_POLICY": "squash-only with auto-merge",
+  "FEEDBACK_NOTE": "CI-focused render. Call out missing gates or labels."
+}
+

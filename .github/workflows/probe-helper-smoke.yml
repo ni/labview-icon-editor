@@ -1,0 +1,22 @@
+name: Probe Helper Smoke
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+
+jobs:
+  probe-smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Run probe-helper smoke tests
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File scripts/test/probe-helper-smoke.ps1

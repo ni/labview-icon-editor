@@ -1,0 +1,21 @@
+{
+  "name": "labview-icon-editor-final-fork (dotnet tooling)",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "remoteUser": "root",
+  "workspaceFolder": "/workspaces/labview-icon-editor-final-fork",
+  "postCreateCommand": "dotnet restore && dotnet build Tooling/dotnet/RequirementsSummarizer/RequirementsSummarizer.csproj",
+  "mounts": [
+    "source=nuget-cache,target=/root/.nuget/packages,type=volume"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-vscode.powershell"
+      ]
+    }
+  }
+}

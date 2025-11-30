@@ -1,0 +1,175 @@
+name: SRS Maintenance
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [ main ]
+permissions:
+  contents: write
+env:
+  PYTHONUNBUFFERED: "1"
+  SRS_LINT_VERBOSE: "1"
+jobs:
+  srs:
+    runs-on: ubuntu-latest
+    steps:
+      # Governing SRS: FGC-REQ-GOV-010 - Automated SRS maintenance on default branch
+      - name: Checkout
+        uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+
+      - name: Install ruamel.yaml for preflight
+        run: |
+          python -m pip install --upgrade pip
+          pip install --disable-pip-version-check --no-input ruamel.yaml
+
+      # Purpose: ensure runtime and inputs are present before doing any work (explicit failure if not).
+      - name: Preflight checks (inputs & deps)
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d docs/srs || { echo "docs/srs missing"; exit 1; }
+          for f in scripts/build_srs_index.py scripts/generate_vcrm.py scripts/compute_29148_compliance.py; do
+            test -f "$f" || { echo "Required script missing: $f"; exit 1; }
+          done
+          python - <<'PY'
+          try:
+              import ruamel.yaml, json
+          except Exception as e:
+              raise SystemExit(f"Preflight import failed: {e}")
+          PY
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruamel.yaml
+
+      # Purpose: regenerate artifacts deterministically
+      - name: Build SRS index (docs/srs/index.yaml)
+        run: python scripts/build_srs_index.py
+      - name: Generate VCRM (docs/VCRM.csv)
+        run: python scripts/generate_vcrm.py
+      - name: Compute 29148 compliance (docs/compliance/report.json)
+        run: python scripts/compute_29148_compliance.py
+
+      - name: SRS 29148 Lint (verbose)
+        run: |
+          if [ -f scripts/lint_srs_29148.py ]; then
+            python scripts/lint_srs_29148.py
+          else
+            echo "Lint script missing: scripts/lint_srs_29148.py"; exit 1
+          fi
+      - name: SRS Hints (Job Summary)
+        shell: bash
+        run: |
+          INCLUDE_PREFIXES="${{ vars.SRS_HINTS_PREFIX }}"; INCLUDE_PREFIXES="${INCLUDE_PREFIXES:-}"
+          EXCLUDE_PREFIXES="${{ vars.SRS_HINTS_EXCLUDE_PREFIX }}"; EXCLUDE_PREFIXES="${EXCLUDE_PREFIXES:-}"
+          ARGS=( )
+          [ -n "$INCLUDE_PREFIXES" ] && ARGS+=( --include-prefixes "$INCLUDE_PREFIXES" )
+          [ -n "$EXCLUDE_PREFIXES" ] && ARGS+=( --exclude-prefixes "$EXCLUDE_PREFIXES" )
+          SORT_MODE="${{ vars.SRS_HINTS_SORT }}"; SORT_MODE="${SORT_MODE:-}"
+          [ -n "$SORT_MODE" ] && ARGS+=( --sort "$SORT_MODE" )
+          COUNT=$(python scripts/srs_deprecated_count.py --print-count "${ARGS[@]}" || echo 0)
+          echo "### SRS Hints" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Deprecated SRS pages detected: $COUNT" >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$INCLUDE_PREFIXES" ] && echo "- Include prefixes: $INCLUDE_PREFIXES" >> "$GITHUB_STEP_SUMMARY"
+          [ -n "$EXCLUDE_PREFIXES" ] && echo "- Exclude prefixes: $EXCLUDE_PREFIXES" >> "$GITHUB_STEP_SUMMARY"
+          HINTS_TOPN="${{ vars.SRS_HINTS_LIST_TOPN }}"; HINTS_TOPN="${HINTS_TOPN:-0}"
+          SHOW_TITLES="${{ vars.SRS_HINTS_SHOW_TITLES }}"; SHOW_TITLES="${SHOW_TITLES:-0}"
+          PER_PREFIX="${{ vars.SRS_HINTS_TOPN_PER_PREFIX }}"; PER_PREFIX="${PER_PREFIX:-0}"
+          if [ "${HINTS_TOPN}" != "0" ] && [ "$COUNT" -gt 0 ]; then
+            if [ "${PER_PREFIX}" != "0" ]; then
+              if [ -n "$INCLUDE_PREFIXES" ]; then
+                IFS=',' read -r -a PFX_ARR <<< "$INCLUDE_PREFIXES"
+              else
+                mapfile -t PFX_ARR < <(python scripts/srs_deprecated_count.py --discover-domains "${ARGS[@]}")
+              fi
+              if [ ${#PFX_ARR[@]} -gt 0 ]; then
+                echo "- Top deprecated by domain (N=${HINTS_TOPN}):" >> "$GITHUB_STEP_SUMMARY"
+                for P in "${PFX_ARR[@]}"; do
+                  P_TRIM="$(echo "$P" | xargs)"; [ -z "$P_TRIM" ] && continue
+                  echo "  - $P_TRIM:" >> "$GITHUB_STEP_SUMMARY"
+                  ARGS_ONE=( --include-prefixes "$P_TRIM" )
+                  [ -n "$EXCLUDE_PREFIXES" ] && ARGS_ONE+=( --exclude-prefixes "$EXCLUDE_PREFIXES" )
+                  [ -n "$SORT_MODE" ] && ARGS_ONE+=( --sort "$SORT_MODE" )
+                  if [ "${SHOW_TITLES}" != "0" ]; then
+                    python scripts/srs_deprecated_count.py --list --titles --limit "${HINTS_TOPN}" "${ARGS_ONE[@]}" \
+                      | awk '{print "    - " $0}' >> "$GITHUB_STEP_SUMMARY"
+                  else
+                    python scripts/srs_deprecated_count.py --list --ids --limit "${HINTS_TOPN}" "${ARGS_ONE[@]}" \
+                      | awk '{print "    - " $0}' >> "$GITHUB_STEP_SUMMARY"
+                  fi
+                done
+                echo "  (truncated at ${HINTS_TOPN} items per domain)" >> "$GITHUB_STEP_SUMMARY"
+              fi
+            else
+              if [ "${SHOW_TITLES}" != "0" ]; then
+                echo "- Top deprecated requirements (ID - Title):" >> "$GITHUB_STEP_SUMMARY"
+                python scripts/srs_deprecated_count.py --list --titles --limit "${HINTS_TOPN}" "${ARGS[@]}" \
+                  | awk '{print "  - " $0}' >> "$GITHUB_STEP_SUMMARY"
+                echo "  (truncated at ${HINTS_TOPN} items)" >> "$GITHUB_STEP_SUMMARY"
+              else
+                echo "- Top deprecated requirements (IDs):" >> "$GITHUB_STEP_SUMMARY"
+                python scripts/srs_deprecated_count.py --list --ids --limit "${HINTS_TOPN}" "${ARGS[@]}" \
+                  | awk '{print "  - " $0}' >> "$GITHUB_STEP_SUMMARY"
+                echo "  (truncated at ${HINTS_TOPN} items)" >> "$GITHUB_STEP_SUMMARY"
+              fi
+            fi
+          fi
+
+      - name: SRS Hints (JSON Artifact)
+        id: srs_hints_json
+        shell: bash
+        run: |
+          HINTS_TOPN="${{ vars.SRS_HINTS_LIST_TOPN }}"; HINTS_TOPN="${HINTS_TOPN:-0}"
+          if [ "${HINTS_TOPN}" = "0" ]; then
+            echo "should_upload=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          INCLUDE_PREFIXES="${{ vars.SRS_HINTS_PREFIX }}"; INCLUDE_PREFIXES="${INCLUDE_PREFIXES:-}"
+          EXCLUDE_PREFIXES="${{ vars.SRS_HINTS_EXCLUDE_PREFIX }}"; EXCLUDE_PREFIXES="${EXCLUDE_PREFIXES:-}"
+          SORT_MODE="${{ vars.SRS_HINTS_SORT }}"; SORT_MODE="${SORT_MODE:-}"
+          ARGS=( )
+          [ -n "$INCLUDE_PREFIXES" ] && ARGS+=( --include-prefixes "$INCLUDE_PREFIXES" )
+          [ -n "$EXCLUDE_PREFIXES" ] && ARGS+=( --exclude-prefixes "$EXCLUDE_PREFIXES" )
+          [ -n "$SORT_MODE" ] && ARGS+=( --sort "$SORT_MODE" )
+          python scripts/srs_deprecated_count.py --json "${ARGS[@]}" > srs-hints.json || echo "{}" > srs-hints.json
+          echo "should_upload=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload SRS Hints JSON
+        if: steps.srs_hints_json.outputs.should_upload == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: srs-hints
+          path: srs-hints.json
+
+      # Purpose: objective validation with actionable messages if anything is off
+      - name: Smoke test (objective checks)
+        run: python scripts/srs_maintenance_smoke.py
+
+      # Purpose: publish evidence for inspection
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: srs-maintenance
+          path: |
+            docs/srs/index.yaml
+            docs/VCRM.csv
+            docs/compliance/report.json
+
+      # Purpose: commit only when files changed; skip CI to avoid loops
+      - name: Commit updated artifacts (if changed)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet -- docs/srs/index.yaml docs/VCRM.csv docs/compliance/report.json; then
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git config user.name  "github-actions[bot]"
+            git add docs/srs/index.yaml docs/VCRM.csv docs/compliance/report.json
+            git commit -m "ci: update SRS index/VCRM/compliance [skip ci]"
+            git push
+          else
+            echo "No changes to commit."
+          fi

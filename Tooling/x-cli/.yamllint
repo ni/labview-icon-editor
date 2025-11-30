@@ -1,0 +1,35 @@
+extends: default
+rules:
+  comments-indentation: disable
+  line-length: disable
+  document-start: disable
+  braces: disable
+  brackets: disable
+  indentation:
+    spaces: 2
+    indent-sequences: consistent
+    check-multi-line-strings: false
+  comments:
+    min-spaces-from-content: 1
+    require-starting-space: true
+  trailing-spaces: disable
+  empty-lines:
+    max: 2
+    max-start: 0
+    max-end: 1
+  truthy:
+    allowed-values: ['true', 'false', 'on', 'off', 'yes', 'no']
+    check-keys: true
+  colons:
+    max-spaces-before: 0
+    max-spaces-after: 1
+  hyphens:
+    max-spaces-after: 1
+ignore: |
+  .github/ISSUE_TEMPLATE/**
+  docs/knowledge/**
+  docs/templates/**
+  knowledge/**
+  docs/srs/index.yaml
+  .github/workflows/action-pr-target-ci.yml
+

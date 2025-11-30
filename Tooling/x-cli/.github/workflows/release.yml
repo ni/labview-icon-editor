@@ -1,0 +1,182 @@
+name: Semver Release (Coverage Gate + Binaries)
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Semver (no v prefix), e.g., 1.2.3'
+        required: false
+      skip_coverage:
+        description: 'Skip coverage merge/enforcement steps (true/false)'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_PATH: src/XCli/XCli.csproj
+    steps:
+      - name: Checkout (full history for tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+
+      - name: Compute version (input or tag)
+        shell: bash
+        run: |
+          ver="${{ github.event.inputs.version }}"
+          if [ -z "$ver" ]; then ver="${GITHUB_REF_NAME#v}"; fi
+          echo "VERSION=$ver" >> $GITHUB_ENV
+
+      # ---- Re-run coverage exactly as PR gate ----
+      - name: .NET tests (with coverage)
+        run: |
+          dotnet restore XCli.sln
+          dotnet test XCli.sln \
+            --configuration Release \
+            --collect:"XPlat Code Coverage" \
+            --logger "trx;LogFileName=dotnet-tests.trx"
+      - name: Setup Python for coverage
+        if: ${{ github.event.inputs.skip_coverage != 'true' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Python tests (with coverage)
+        if: ${{ github.event.inputs.skip_coverage != 'true' }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest coverage pytest-cov
+          mkdir -p artifacts/python-coverage
+          # Target repository python sources under scripts/ and tests/__ci__ as applicable
+          pytest -q tests --cov=scripts --cov=tests/__ci__ --cov-report=xml:artifacts/python-coverage/coverage.xml || true
+      - name: Merge coverage reports (ReportGenerator)
+        if: ${{ github.event.inputs.skip_coverage != 'true' }}
+        uses: danielpalme/ReportGenerator-GitHub-Action@v5
+        with:
+          reports: '**/coverage.cobertura.xml;artifacts/python-coverage/coverage.xml'
+          targetdir: 'artifacts/coverage'
+          reporttypes: 'Cobertura;HtmlInline_AzurePipelines'
+          assemblyfilters: '+*'
+      - name: Assert merged outputs
+        if: ${{ github.event.inputs.skip_coverage != 'true' }}
+        shell: bash
+        run: |
+          test -f artifacts/coverage/Cobertura.xml || (echo "ERROR: merged Cobertura.xml missing"; exit 1)
+          test -f artifacts/coverage/index.html || (echo "ERROR: coverage HTML index missing"; exit 1)
+      - name: Copy Cobertura.xml to project root (coverage.xml)
+        if: ${{ github.event.inputs.skip_coverage != 'true' }}
+        run: cp artifacts/coverage/Cobertura.xml coverage.xml
+
+      - name: Download coverage enforcer (ci-utils)
+        if: ${{ github.event.inputs.skip_coverage != 'true' }}
+        run: curl -sSfL "https://raw.githubusercontent.com/LabVIEW-Community-CI-CD/ci-utils/master/scripts/enforce_coverage_thresholds.py" -o enforce_cov.py
+      - name: Enforce coverage thresholds (abort on breach)
+        if: ${{ github.event.inputs.skip_coverage != 'true' }}
+        run: python enforce_cov.py --config docs/compliance/coverage-thresholds.json --summary artifacts/coverage-summary.md --totals-json artifacts/coverage_totals.json
+
+      - name: Upload coverage artifacts (debug)
+        if: ${{ always() && github.event.inputs.skip_coverage != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-artifacts
+          path: |
+            artifacts/coverage/Cobertura.xml
+            artifacts/coverage/index.html
+            artifacts/coverage-summary.md
+            artifacts/coverage_totals.json
+            coverage.xml
+
+      - name: Coverage summary
+        if: ${{ always() && github.event.inputs.skip_coverage != 'true' }}
+        continue-on-error: true
+        uses: LabVIEW-Community-CI-CD/coverage-summary-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          pr_comment: 'false'
+
+      - name: Append coverage step summary (fallback)
+        if: ${{ always() && env.COVERAGE_SUMMARY_FALLBACK == '1' && github.event.inputs.skip_coverage != 'true' }}
+        shell: bash
+        run: |
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          {
+            echo "### Coverage Artifacts"
+            if [ -f artifacts/coverage_totals.json ]; then
+              python -c "import json; d=json.load(open('artifacts/coverage_totals.json')); print('Totals: line=%s%% branch=%s%%' % (d.get('total_line','?'), d.get('total_branch','?')))" || true
+            fi
+            echo "- HTML report: artifacts/coverage/index.html"
+            echo "- Cobertura: artifacts/coverage/Cobertura.xml"
+            echo "- Run: ${RUN_URL}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ---- Build self-contained single-file binaries (.NET 8) ----
+      - name: Publish binaries
+        shell: pwsh
+        run: ./scripts/build.ps1 -Version "${{ env.VERSION }}"
+      - name: Rename release assets (canonical names)
+        run: |
+          mv artifacts/release/linux-x64/XCli artifacts/release/linux-x64/x-cli-linux-x64-${{ env.VERSION }}
+          mv artifacts/release/win-x64/XCli.exe artifacts/release/win-x64/x-cli-win-x64-${{ env.VERSION }}.exe
+
+
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Build container image
+        env:
+          IMAGE_TAG: ${{ env.VERSION }}
+        run: |
+          set -euo pipefail
+          docker build --build-arg XCLI_VERSION="$IMAGE_TAG" -t ghcr.io/labview-community-ci-cd/x-cli:$IMAGE_TAG .
+          docker tag ghcr.io/labview-community-ci-cd/x-cli:$IMAGE_TAG ghcr.io/labview-community-ci-cd/x-cli:latest
+      - name: Push container image
+        env:
+          IMAGE_TAG: ${{ env.VERSION }}
+        run: |
+          set -euo pipefail
+          docker push ghcr.io/labview-community-ci-cd/x-cli:$IMAGE_TAG
+          docker push ghcr.io/labview-community-ci-cd/x-cli:latest
+      - name: Save container image tar
+        env:
+          IMAGE_TAG: ${{ env.VERSION }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/action
+          docker save ghcr.io/labview-community-ci-cd/x-cli:$IMAGE_TAG -o artifacts/action/x-cli-action-$IMAGE_TAG.tar
+      - name: Generate Release-Record.md
+        env:
+          SKIP_COVERAGE: ${{ github.event.inputs.skip_coverage }}
+        id: release_record
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/generate_release_record.py
+      - name: Create GitHub Release
+        if: success() && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/action/x-cli-action-${{ env.VERSION }}.tar
+            artifacts/release/linux-x64/x-cli-linux-x64-${{ env.VERSION }}
+            artifacts/release/win-x64/x-cli-win-x64-${{ env.VERSION }}.exe
+            artifacts/coverage/Cobertura.xml
+            artifacts/coverage/index.html
+            docs/compliance/Release-Record.md

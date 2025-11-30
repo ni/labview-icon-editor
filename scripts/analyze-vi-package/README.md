@@ -15,14 +15,14 @@ pwsh -NoProfile -File ./Analyze-VIP.Tests.ps1 -VipArtifactPath "/mnt/data/work/n
 ## Local workflow-style run (mirrors CI job)
 ```powershell
 # Using a directory, .vip file, or downloaded artifact .zip:
-pwsh -NoProfile -File scripts/analyze-vi-package/run-workflow-local.ps1 -VipArtifactPath "builds/VI Package" -MinLabVIEW "21.0"
+pwsh -NoProfile -File scripts/analyze-vi-package/run-workflow-local.ps1 -VipArtifactPath "builds/vip-stash" -MinLabVIEW "21.0"
 # Directly target a specific package or artifact directory (recommended for local validation):
 pwsh -NoProfile -File scripts/analyze-vi-package/run-workflow-local.ps1 -VipArtifactPath "path/to/package.vip" -MinLabVIEW "21.0"
 ```
 
 ## Troubleshooting
 - **VIPReader module not found:** Confirm `scripts/analyze-vi-package/VIPReader.psm1` exists (for example, it may be missing if the repo checkout is incomplete).
-- **No `.vip` found:** Ensure the package is available under `builds/VI Package` or explicitly set `VIP_PATH` to the `.vip` file you want analyzed.
+- **No `.vip` found:** Ensure the package is available under `builds/vip-stash` or explicitly set `VIP_PATH` to the `.vip` file you want analyzed.
 
 ## GitHub Actions usage
 ```yaml

@@ -1,0 +1,181 @@
+name: Docs Gate
+
+on:
+  pull_request:
+    paths:
+      - "**/*.md"
+      - "AGENTS.md"
+      - "docs/**"
+      - "scripts/**"
+
+permissions:
+  contents: read
+
+jobs:
+  canonical:
+    name: Canonical Sources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: python -m pip install --upgrade pip pytest
+      - run: python scripts/check_docs_canonical.py
+      - run: pytest -q tests/test_docs_canonical.py
+
+  lychee:
+    name: lychee
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Run lychee (local links & anchors only)
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: >
+            --config .lychee.toml
+            --no-progress
+            --offline
+            --include-fragments
+            .
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  agents_contract:
+    if: contains(github.event.pull_request.labels.*.name, 'codex')
+    name: Agents Contract Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compute AGENTS digest
+        id: digest
+        run: |
+          chmod +x scripts/gen-agent-digest.sh || true
+          DIGEST=$(./scripts/gen-agent-digest.sh AGENTS.md | awk '{print $4}')
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+      - name: Check Agent Checklist and AGENTS digest
+        run: python scripts/check_pr_agent_metadata.py --digest ${{ steps.digest.outputs.digest }}
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+
+  codex_metadata:
+    if: contains(github.event.pull_request.labels.*.name, 'codex')
+    name: Codex Metadata Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Autofill PR body
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+            const pr = context.payload.pull_request;
+            let body = fs.readFileSync('.github/pull_request_template.md', 'utf8');
+            let meta = {};
+            try { meta = JSON.parse(fs.readFileSync('.codex/metadata.json', 'utf8')); } catch {}
+            const codex = {
+              author: context.actor,
+              mode: 'codex',
+              change_type: meta.change_type || '',
+              srs_ids: meta.srs_ids || []
+            };
+            const metaBlock = '```json\n' + JSON.stringify(codex, null, 2) + '\n```';
+            body = body.replace(/<!-- codex-metadata:start -->[\s\S]*?<!-- codex-metadata:end -->/, `<!-- codex-metadata:start -->\n${metaBlock}\n<!-- codex-metadata:end -->`);
+            let checklist = '';
+            try {
+              const text = fs.readFileSync('AGENTS.md', 'utf8');
+              const m = text.match(/<!-- agent:pr_checklist:start -->([\s\S]*?)<!-- agent:pr_checklist:end -->/);
+              if (m) {
+                checklist = m[1]
+                  .split(/\r?\n/)
+                  .slice(1)
+                  .filter(Boolean)
+                  .map(l => `- [ ] ${l.trim()}`)
+                  .join('\n');
+              }
+            } catch {}
+            body = body.replace(/<!-- agent-checklist:start -->[\s\S]*?<!-- agent-checklist:end -->/, `<!-- agent-checklist:start -->\n${checklist}\n<!-- agent-checklist:end -->`);
+            let digestLines = '';
+            try {
+              const changed = execSync(`git diff --name-only ${pr.base.sha} HEAD`, { encoding: 'utf8' })
+                .split('\n')
+                .filter(f => f.endsWith('AGENTS.md'))
+                .filter(Boolean);
+              digestLines = changed
+                .map(f => execSync(`./scripts/gen-agent-digest.sh ${f}`, { encoding: 'utf8' }).trim())
+                .join('\n');
+            } catch {}
+            body = body.replace(/<!-- agents-digest:start -->[\s\S]*?<!-- agents-digest:end -->/, `<!-- agents-digest:start -->\n${digestLines}\n<!-- agents-digest:end -->`);
+            await github.rest.pulls.update({ owner: context.repo.owner, repo: context.repo.repo, pull_number: pr.number, body });
+      - name: Validate commit messages
+        shell: bash
+        run: |
+          range="${{ github.event.pull_request.base.sha }}..HEAD"
+          for commit in $(git rev-list "$range"); do
+            msg=$(mktemp)
+            git log --format=%B -n 1 "$commit" > "$msg"
+            scripts/commit-msg.sh "$msg"
+          done
+      - name: Validate JSON metadata in PR body
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const body = pr.body || '';
+            function* jsonBlocks(text) {
+              const re = /```json\s*([\s\S]*?)```/gi; let m; while ((m = re.exec(text)) !== null) yield m[1];
+            }
+            let meta = null;
+            for (const b of jsonBlocks(body)) { try { const o = JSON.parse(b); if (o && (o.mode || o.author || o.srs_ids || o.change_type)) { meta = o; break; } } catch {} }
+            const errors = [];
+            if (!meta) errors.push('Missing required JSON codex metadata block in PR body (see PR template).');
+            else {
+              if (meta.mode !== 'codex') errors.push('Invalid or missing `"mode"`; expected `"codex"`.');
+              if (!Array.isArray(meta.srs_ids) || meta.srs_ids.length === 0) errors.push('Missing or empty `"srs_ids"` array.');
+              if (!['spec','impl','both'].includes(meta.change_type || '')) errors.push('Missing or invalid `"change_type"` (spec|impl|both).');
+              if (!meta.author) errors.push('Missing `"author"` field (should identify the codex agent).');
+            }
+            if (errors.length) { const msg = "Codex metadata validation failed:\n" + errors.map(e => `- ${e}`).join("\n"); await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, body: msg }); core.setFailed(msg); }
+            else { await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, body: "Codex metadata validated." }); }
+      - name: Validate AGENTS.md digests
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const pr = context.payload.pull_request; const baseSha = pr.base.sha; const body = pr.body || '';
+            const changed = execSync(`git diff --name-only ${baseSha} HEAD`, { encoding: 'utf8' })
+              .split('\n').filter(f => f.endsWith('AGENTS.md')).filter(Boolean);
+            const errors = [];
+            for (const file of changed) { const digestLine = execSync(`./scripts/gen-agent-digest.sh ${file}`, { encoding: 'utf8' }).trim(); if (!body.includes(digestLine)) { errors.push(`Missing or incorrect digest line for ${file}. Expected: '${digestLine}'`); } }
+            if (errors.length) { const msg = "Codex AGENTS.md digest check failed:\n" + errors.map(e => `- ${e}`).join("\n"); await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, body: msg }); core.setFailed(msg); }
+            else if (changed.length > 0) { await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, body: "AGENTS.md digests verified." }); }
+      - name: Validate agent checklist in PR body
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs'); const pr = context.payload.pull_request; const body = pr.body || '';
+            const text = fs.readFileSync('AGENTS.md', 'utf8');
+            const match = text.match(/<!-- agent:pr_checklist:start -->([\s\S]*?)<!-- agent:pr_checklist:end -->/);
+            const errors = [];
+            if (!match) errors.push('AGENTS.md missing agent:pr_checklist block.');
+            else {
+              const lines = match[1].split(/\r?\n/).map(l => l.trim()).filter(Boolean).slice(1);
+              const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              for (const line of lines) { const key = line.split(':')[0].trim(); const re = new RegExp(`- \\[[xX ]\]\\s*${esc(key)}`, 'm'); if (!re.test(body)) errors.push(`Missing checklist item: ${key}`); }
+            }
+            if (errors.length) { const msg = 'Agent checklist validation failed:\n' + errors.map(e => `- ${e}`).join('\n'); await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, body: msg }); core.setFailed(msg); }
+            else { await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: pr.number, body: 'Agent checklist validated.' }); }
+      - name: Validate agent feedback block in PR body
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: python scripts/check_agent_feedback_block.py
+      - name: Verify traceability links (PowerShell)
+        shell: pwsh
+        run: ./scripts/verify-traceability.ps1
+      - name: Verify workflow SRS annotations
+        shell: bash
+        run: python scripts/verify-workflow-srs.py
+

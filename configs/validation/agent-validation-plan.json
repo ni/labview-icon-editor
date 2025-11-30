@@ -1,0 +1,50 @@
+[
+  {
+    "id": "VC-01",
+    "operation": "vi-compare",
+    "requestPath": "configs/vi-compare-run-request.sample.json",
+    "description": "VI compare replay (sample scenario dry-run)"
+  },
+  {
+    "id": "VA-01",
+    "operation": "vi-analyzer",
+    "requestPath": "configs/vi-analyzer-request.sample.json",
+    "description": "VI Analyzer run (sample config)",
+    "expectFailure": true,
+    "continueOnError": true
+  },
+  {
+    "id": "VIPA-01",
+    "operation": "vipm-apply",
+    "requestPath": "configs/vipm-apply-request.sample.json",
+    "description": "vipmcli dependency apply (prepare-only stub)",
+    "expectFailure": true,
+    "continueOnError": true
+  },
+  {
+    "id": "VIPB-01",
+    "operation": "vipm-build",
+    "requestPath": "configs/vipm-build-request.sample.json",
+    "description": "vipmcli package replay (prepare-only)",
+    "continueOnError": true
+  },
+  {
+    "id": "VIPCLI-01",
+    "operation": "vipmcli-build",
+    "requestPath": "configs/vipmcli-build-request.sample.json",
+    "description": "vipmcli build (prepare-only)",
+    "continueOnError": true
+  },
+  {
+    "id": "PPL-01",
+    "operation": "ppl-build",
+    "requestPath": "configs/ppl-build-request.sample.json",
+    "description": "PPL build test",
+    "continueOnError": true
+  },
+  {
+    "id": "SEED-01",
+    "operation": "seed-vipb",
+    "description": "Seed VipbJsonTool JSON/VIPB round-trip sanity"
+  }
+]

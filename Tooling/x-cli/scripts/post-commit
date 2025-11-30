@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Post-commit hook to finalize commit-summary memory and telemetry
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+
+if command -v python >/dev/null 2>&1; then
+  python "$repo_root/scripts/finalize_commit_memory.py" || true
+fi
+

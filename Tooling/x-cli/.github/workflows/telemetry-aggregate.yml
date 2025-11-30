@@ -1,0 +1,114 @@
+# SRS: FGC-REQ-CI-010
+# SRS: FGC-REQ-TEL-001
+name: telemetry aggregate
+
+on:
+  workflow_run:
+    workflows: ["test"]
+    types:
+      - completed
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      NOTIFICATIONS_DRY_RUN: 1
+      ENABLE_DISCORD_LIVE: ${{ vars.ENABLE_DISCORD_LIVE }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: tests/requirements.txt
+
+      - name: Download test telemetry
+        uses: actions/download-artifact@v4
+        with:
+          name: test-telemetry
+          run-id: ${{ github.event.workflow_run.id }}
+          path: artifacts
+
+      - name: Download telemetry summary
+        uses: actions/download-artifact@v4
+        with:
+          name: telemetry-summary
+          run-id: ${{ github.event.workflow_run.id }}
+          path: artifacts
+
+      - name: Download telemetry summary history
+        uses: actions/download-artifact@v4
+        with:
+          name: telemetry-summary-history
+          run-id: ${{ github.event.workflow_run.id }}
+          path: artifacts
+
+      - name: Analyze telemetry
+        run: python scripts/analyze_telemetry.py artifacts/test-telemetry.jsonl
+        env:
+          SLOW_TEST_FACTOR: 2
+          MAX_DEPENDENCY_FAILURES: 0
+          SRS_IDS: ${{ github.event.workflow_run.inputs.srs_ids }}
+
+      - name: Render telemetry dashboard
+        run: python scripts/render_telemetry_dashboard.py artifacts/telemetry-summary-history.jsonl
+        env:
+          SRS_IDS: ${{ github.event.workflow_run.inputs.srs_ids }}
+
+      - name: Post aggregated summary (dry-run)
+        if: always()
+        run: |
+          python - <<'PY'
+          import os
+          from notifications.manager import NotificationManager
+          run_no = os.environ.get('GITHUB_RUN_NUMBER') or os.environ.get('GITHUB_RUN_ID')
+          msg = f"Telemetry aggregated for run {run_no}."
+          mgr = NotificationManager.from_env()
+          res = mgr.notify_all(msg, {"dashboard_url": "artifacts/telemetry-dashboard.html"})
+          print("notify_all:", res)
+          PY
+
+      - name: Upload aggregated report
+        uses: actions/upload-artifact@v4
+        with:
+          name: telemetry-report-${{ github.event.workflow_run.run_number }}
+          path: |
+            artifacts/telemetry-summary.json
+            artifacts/telemetry-summary-history.jsonl
+            artifacts/telemetry-dashboard.html
+
+  deploy-dashboard:
+    needs: aggregate
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download aggregated report
+        uses: actions/download-artifact@v4
+        with:
+          name: telemetry-report-${{ github.event.workflow_run.run_number }}
+          path: dashboard
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

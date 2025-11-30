@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/v1/telemetry.events.v1.schema.json",
+  "title": "Telemetry Event (QA JSONL)",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["step", "status"],
+  "properties": {
+    "step": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["pass", "fail"] },
+    "duration_ms": { "type": "integer", "minimum": 0 },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "start": { "type": "integer", "minimum": 0 },
+    "end": { "type": "integer", "minimum": 0 },
+    "meta": {
+      "type": ["object","null"],
+      "additionalProperties": { "type": ["string","number","boolean","null"] }
+    }
+  }
+}

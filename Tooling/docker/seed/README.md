@@ -79,8 +79,8 @@ Prereqs: Bash + Docker/Compose available in your shell; PowerShell (`pwsh`) is o
 ## VS Code tasks (optional)
 The tasks live in `.vscode/tasks.json`. They are optional; skip if you don’t use Docker or Seed.
 
-### Build LVAddon (VI Package)
-- Label: `Build LVAddon (VI Package)`
+### 02 Build LVAddon (VI Package)
+- Label: `02 Build LVAddon (VI Package)`
 - Scope: root build task for the VI package
 - Runs: `scripts/ie.ps1 build-worktree` with the current repo
 

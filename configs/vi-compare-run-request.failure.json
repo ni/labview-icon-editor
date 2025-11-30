@@ -1,0 +1,16 @@
+{
+  "repoRoot": ".",
+  "scenarioPath": "scenarios/sample/vi-diff-requests.json",
+  "outputRoot": ".tmp-tests/vi-compare-replays/failure",
+  "bundleOutputDirectory": ".tmp-tests/vi-compare-bundles",
+  "label": "vi-history-failure",
+  "labVIEWExePath": "fake-labview/LabVIEW.exe",
+  "noiseProfile": "full",
+  "ignoreAttributes": false,
+  "ignoreFrontPanel": false,
+  "ignoreFrontPanelPosition": false,
+  "ignoreBlockDiagram": false,
+  "ignoreBlockDiagramCosmetics": false,
+  "dryRun": false,
+  "skipBundle": false
+}

@@ -53,3 +53,49 @@ function Resolve-AuthorName {
 
     return Get-RepoOwner -RepoPath $RepoPath
 }
+
+function Resolve-ProductHomepageUrl {
+    param(
+        [string]$ProductHomepageUrl,
+        [string]$RepoPath,
+        [string]$DefaultOwner = 'ni'
+    )
+
+    # Explicit override wins
+    if (-not [string]::IsNullOrWhiteSpace($ProductHomepageUrl)) {
+        return $ProductHomepageUrl
+    }
+
+    if ([string]::IsNullOrWhiteSpace($RepoPath)) {
+        return "https://github.com/$DefaultOwner"
+    }
+
+    $resolvedRepo = $null
+    try {
+        $resolvedRepo = (Resolve-Path -LiteralPath $RepoPath -ErrorAction Stop).Path
+    }
+    catch {
+        return "https://github.com/$DefaultOwner"
+    }
+
+    $owner = $DefaultOwner
+    $repoName = Split-Path -Leaf $resolvedRepo
+
+    try {
+        $remote = git -C $resolvedRepo remote get-url origin 2>$null
+        if ($remote) {
+            $pattern = [regex]::Escape("github.com") + "[:/](?<owner>[^/]+)/(?<repo>[^/]+?)(?:\\.git)?$"
+            $match = [regex]::Match($remote.Trim(), $pattern, 'IgnoreCase')
+            if ($match.Success) {
+                if ($match.Groups['owner'].Value) { $owner = $match.Groups['owner'].Value }
+                if ($match.Groups['repo'].Value)  { $repoName = $match.Groups['repo'].Value }
+            }
+        }
+    }
+    catch {
+        # Ignore git failures and fall back to defaults
+        $global:LASTEXITCODE = 0
+    }
+
+    return ("https://github.com/{0}/{1}" -f $owner, $repoName)
+}

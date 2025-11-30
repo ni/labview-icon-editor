@@ -28,6 +28,15 @@ Describe "VIPB LabVIEW version parsing" {
         # Current VIPB targets LabVIEW 2021 (21.x) for dev-mode prep.
         $derived | Should -Be '2021'
     }
+
+    It "derives the supported bitness from the VIPB" {
+        $scriptPath = (Resolve-Path (Join-Path $PSScriptRoot '..\scripts\get-package-lv-bitness.ps1')).Path
+        $repoRoot   = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+        $bitness    = & $scriptPath -RepositoryPath $repoRoot
+
+        $bitness | Should -Not -BeNullOrEmpty
+        $bitness | Should -BeIn @('32','64','both')
+    }
 }
 
 Describe "run-dev-mode.ps1" {

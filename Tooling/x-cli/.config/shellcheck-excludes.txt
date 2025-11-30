@@ -1,0 +1,10 @@
+# ShellCheck excludes curated for this repository.
+# Rationale:
+# - SC1090, SC1091: non-constant or external 'source' paths; CI often lacks those files. We review such changes manually.
+# - SC2148: files without shebang are intended to be sourced, not executed directly.
+# - SC2155: declare and assign in the same statement is acceptable in our short scripts.
+SC1090
+SC1091
+SC2148
+SC2155
+

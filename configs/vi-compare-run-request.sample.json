@@ -1,0 +1,16 @@
+{
+  "repoRoot": ".",
+  "scenarioPath": "scenarios/sample/vi-diff-requests.json",
+  "outputRoot": ".tmp-tests/vi-compare-replays/sample",
+  "bundleOutputDirectory": ".tmp-tests/vi-compare-bundles",
+  "label": "vi-compare-sample",
+  "labVIEWExePath": "C:/Program Files/National Instruments/LabVIEW 2025/LabVIEW.exe",
+  "noiseProfile": "full",
+  "ignoreAttributes": false,
+  "ignoreFrontPanel": false,
+  "ignoreFrontPanelPosition": false,
+  "ignoreBlockDiagram": false,
+  "ignoreBlockDiagramCosmetics": false,
+  "dryRun": false,
+  "skipBundle": true
+}

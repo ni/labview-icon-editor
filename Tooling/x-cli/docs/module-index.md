@@ -1,0 +1,23 @@
+# Module Index
+
+- `scripts/analyze_srs_telemetry.py` – builds SRS telemetry aggregates for dashboards.
+- `scripts/analyze_telemetry.py` – merges and summarizes telemetry inputs.
+- `src/SrsApi/FileSrsRegistry.cs` – file-backed registry scanning `docs/srs/*.md`, normalizes IDs, parses Version, detects duplicates/missing IDs.
+- `src/SrsApi/ISrsDocument.cs` – contract for SRS document metadata (ID, Version, Path).
+- `src/SrsApi/ISrsRegistry.cs` – registry contract for lookup and enumeration.
+- `src/SrsApi/ModuleRequirementMap.cs` – loads `docs/module-srs-map.yaml` and resolves requirement IDs for module path prefixes.
+- `src/SrsApi/SrsDocument.cs` – record implementation of ISrsDocument.
+- `src/SrsApi/SrsNormalization.cs` – normalizes requirement IDs (hyphen variants, case).
+- `src/SrsApi/SrsValidation.cs` – validates IDs and detects normalized ID collisions.
+- `src/Telemetry/Models/TelemetryEvent.cs` – model for telemetry event lines.
+- `src/Telemetry/Models/TelemetrySummary.cs` – model for telemetry summary output.
+- `src/Telemetry/Summary/SummaryBuilder.cs` – builds telemetry summaries from JSONL event streams.
+- `src/XCli/Cli/Cli.cs` – CLI parsing and help text.
+- `src/XCli/Logging/InvocationLogger.cs` – emits JSONL logs for each invocation.
+- `src/XCli/Program.cs` – CLI entry point coordinating parsing, logging, and simulation.
+- `src/XCli/Replay/LogDiffCommand.cs` – compares two JSONL logs and prints timing deltas (text/JSON).
+- `src/XCli/Replay/LogReplayCommand.cs` – replays recorded JSONL logs to stdout/stderr with timing.
+- `src/XCli/Security/IsolationGuard.cs` – guards against network assemblies and Process.Start invocations.
+- `src/XCli/Simulation/SimulationPlan.cs` – loads failure simulation configuration from environment and JSON.
+- `src/XCli/Telemetry/TelemetryCommand.cs` – telemetry subcommands (summarize, write, check, validate).
+- `src/XCli/Util/Env.cs` – centralized helpers for reading environment variables.

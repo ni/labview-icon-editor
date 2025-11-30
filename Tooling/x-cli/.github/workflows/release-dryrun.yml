@@ -1,0 +1,127 @@
+name: Release Dry-Run (Build + Coverage + Pack)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "SemVer to embed (e.g. 0.1.0)"
+        required: true
+        default: "0.1.0"
+
+permissions:
+  contents: read
+
+jobs:
+  dryrun:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_PATH: src/XCli/XCli.csproj
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with: { dotnet-version: '8.0.x' }
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+
+      # --- .NET tests (scoped) ---
+      - name: .NET tests (with coverage)
+        continue-on-error: true
+        run: |
+          dotnet restore tests/XCli.Tests/XCli.Tests.csproj
+          dotnet test tests/XCli.Tests/XCli.Tests.csproj \
+            --configuration Release \
+            --collect:"XPlat Code Coverage" \
+            --logger "trx;LogFileName=dotnet-tests.trx" \
+            --results-directory artifacts/dotnet-tests
+
+      - name: Merge coverage (Cobertura + HTML)
+        uses: danielpalme/ReportGenerator-GitHub-Action@v5
+        with:
+          reports: 'artifacts/dotnet-tests/**/coverage.cobertura.xml'
+          targetdir: 'artifacts/coverage'
+          reporttypes: 'Cobertura;HtmlInline_AzurePipelines'
+          assemblyfilters: '+*'
+
+      - name: Assert merged coverage exists
+        shell: bash
+        run: |
+          test -f artifacts/coverage/Cobertura.xml || (echo "ERROR: Cobertura.xml missing"; exit 1)
+          test -f artifacts/coverage/index.html || (echo "ERROR: HTML index missing"; exit 1)
+          cp artifacts/coverage/Cobertura.xml coverage.xml
+
+      - name: Download coverage enforcer (ci-utils)
+        run: curl -sSfL "https://raw.githubusercontent.com/LabVIEW-Community-CI-CD/ci-utils/master/scripts/enforce_coverage_thresholds.py" -o enforce_cov.py
+
+      - name: Enforce thresholds & summarize (non-blocking)
+        run: |
+          python enforce_cov.py \
+            --config docs/compliance/coverage-thresholds.json \
+            --summary artifacts/coverage-summary.md \
+            --totals-json artifacts/coverage_totals.json || true
+
+      - name: Coverage summary (reusable action)
+        if: always()
+        continue-on-error: true
+        uses: LabVIEW-Community-CI-CD/coverage-summary-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          pr_comment: 'false'
+
+      # --- Build single-file, self-contained binaries ---
+      - name: Publish (linux-x64)
+        run: |
+          dotnet publish $PROJECT_PATH -c Release -r linux-x64 \
+            -p:PublishSingleFile=true -p:SelfContained=true -p:PublishTrimmed=false \
+            -p:Version="${{ github.event.inputs.version }}" -o artifacts/release/linux-x64
+      - name: Publish (win-x64)
+        run: |
+          dotnet publish $PROJECT_PATH -c Release -r win-x64 \
+            -p:PublishSingleFile=true -p:SelfContained=true -p:PublishTrimmed=false \
+            -p:Version="${{ github.event.inputs.version }}" -o artifacts/release/win-x64
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-artifacts
+          path: |
+            artifacts/coverage/Cobertura.xml
+            artifacts/coverage/index.html
+            artifacts/coverage-summary.md
+            artifacts/coverage_totals.json
+            coverage.xml
+
+      - name: Upload publish artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish
+          path: artifacts/release/**
+
+      - name: Step summary
+        if: always()
+        shell: bash
+        run: |
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          echo "### Release Dry-Run" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f artifacts/coverage_totals.json ]; then
+            python - <<'PY' || true
+              import json
+              try:
+                d=json.load(open('artifacts/coverage_totals.json'))
+                print(f"Totals: line={d.get('total_line','?')}% - branch={d.get('total_branch','?')}%")
+              except Exception:
+                pass
+            PY
+          fi
+          echo "- HTML report: artifacts/coverage/index.html" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Cobertura: artifacts/coverage/Cobertura.xml" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Publish artifacts: 'publish'" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Run: ${RUN_URL}" >> "$GITHUB_STEP_SUMMARY"

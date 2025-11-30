@@ -4,7 +4,7 @@ This document provides a collection of common **troubleshooting** scenarios (wit
 
 For dev-mode binding/unbinding details and JSON outputs, see `docs/ci/dev-mode-bind.md`.
 For the current list of reusable composites and workflow entry points, see `docs/ci/actions/README.md` and `.github/workflows/ci.yml`.
-For quick artifact locations: VIPs under `builds/VI Package/`, bind status JSON under `reports/dev-mode-bind.json`, other reports under `reports/`.
+For quick artifact locations: VIPs under `builds/vip-stash/`, bind status JSON under `reports/dev-mode-bind.json`, other reports under `reports/`.
 
 ---
 
@@ -71,12 +71,12 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 
 **Possible Causes**:
 - The `build-vip` job (or `build-vip` composite) was skipped because vipm/dep gates failed.
-- The `.vip` file was produced under `builds/VI Package/` but the upload step pointed elsewhere.
+- The `.vip` file was produced under `builds/vip-stash/` but the upload step pointed elsewhere.
 - A prior step failed and never invoked `build-vip`.
 
 **Solution**:
 1. Check the `build-vip` job logs in `ci.yml` to confirm `build-vip` ran (vipm gate not skipped).
-2. Verify the `.vip` was created under `builds/VI Package/` and the upload step targets that path/artifact name.
+2. Verify the `.vip` was created under `builds/vip-stash/` and the upload step targets that path/artifact name.
 3. Ensure vipm is available on the runner (see vipm troubleshooting) and that prior dependencies/jobs passed.
 
 ---

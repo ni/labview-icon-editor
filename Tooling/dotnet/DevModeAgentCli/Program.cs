@@ -45,6 +45,17 @@ internal static class Program
 
     private static int Main(string[] args)
     {
+        if (args.Length > 0 && string.Equals(args[0], "requirements-summary", StringComparison.OrdinalIgnoreCase))
+        {
+            return RunRequirementsSummarySubcommand(args.Skip(1).ToArray());
+        }
+
+        if (args.Any(a => a.Equals("--print-provenance", StringComparison.OrdinalIgnoreCase)))
+        {
+            PrintProvenance();
+            return 0;
+        }
+
         var parse = ParseArgs(args);
         if (parse.Error != null)
         {
@@ -90,7 +101,11 @@ internal static class Program
 
         if (options.Execute)
         {
-            var binderPath = Path.Combine(options.RepoPath, ".github", "actions", "bind-development-mode", "BindDevelopmentMode.ps1");
+            var binderPath = Path.Combine(options.RepoPath, "scripts", "bind-development-mode", "BindDevelopmentMode.ps1");
+            if (!File.Exists(binderPath))
+            {
+                binderPath = Path.Combine(options.RepoPath, ".github", "actions", "bind-development-mode", "BindDevelopmentMode.ps1");
+            }
             if (!File.Exists(binderPath))
             {
                 Console.Error.WriteLine($"Binder script not found at {binderPath}");
@@ -214,6 +229,70 @@ internal static class Program
         Console.WriteLine("Usage:");
         Console.WriteLine("  DevModeAgentCli --phrase \"/devmode bind 2021 64-bit force\" [--repo <path>] [--summary <path>] [--execute]");
         Console.WriteLine("  Optional: --allow-stale-summary --max-intents 3 --expected-version 2021 --ack-version-mismatch --pwsh <path>");
+        Console.WriteLine();
+        Console.WriteLine("Advice:");
+        Console.WriteLine("  - Worktrees of the same repo can look like 'OTHER-REPO' tokens; use 'force' if you need to overwrite");
+        Console.WriteLine("    a token that points to a prior worktree.");
+        Console.WriteLine("  - If you need to change the target LabVIEW year/bitness, update the repo's VIPB accordingly, then run the");
+        Console.WriteLine("    VS Code tasks '06 DevMode: Bind (auto)' or '06b DevMode: Unbind (auto)' to refresh LocalHost.LibraryPaths.");
+    }
+
+    private static int RunRequirementsSummarySubcommand(string[] args)
+    {
+        var repoRoot = FindRepoRoot();
+        var script = Path.Combine(repoRoot, "scripts", "run-requirements-summary-task.ps1");
+        if (!File.Exists(script))
+        {
+            Console.Error.WriteLine($"Script not found: {script}");
+            return 1;
+        }
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = "pwsh",
+            ArgumentList = { "-NoProfile", "-File", script },
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        var process = Process.Start(psi);
+        if (process == null)
+        {
+            Console.Error.WriteLine("Failed to start pwsh process.");
+            return 1;
+        }
+
+        var stdout = process.StandardOutput.ReadToEnd();
+        var stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        if (!string.IsNullOrWhiteSpace(stdout))
+        {
+            Console.WriteLine(stdout);
+        }
+
+        if (!string.IsNullOrWhiteSpace(stderr))
+        {
+            Console.Error.WriteLine(stderr);
+        }
+
+        return process.ExitCode;
+    }
+
+    private static string FindRepoRoot()
+    {
+        var dir = new DirectoryInfo(Directory.GetCurrentDirectory());
+        while (dir != null)
+        {
+            if (Directory.Exists(Path.Combine(dir.FullName, ".git")))
+            {
+                return dir.FullName;
+            }
+            dir = dir.Parent;
+        }
+        throw new InvalidOperationException("Repository root not found.");
     }
 
     private static List<Intent> ParseIntents(string phrase, int maxIntents)
@@ -267,6 +346,11 @@ internal static class Program
         }
         catch (Exception ex)
         {
+            if (allowStale)
+            {
+                Console.Error.WriteLine($"Failed to read summary {path}: {ex.Message}; proceeding with empty summary (--allow-stale-summary).");
+                return new List<SummaryEntry>();
+            }
             error = $"Failed to read summary {path}: {ex.Message}";
             return new List<SummaryEntry>();
         }
@@ -452,4 +536,63 @@ internal static class Program
 
     private static bool PathEquals(string a, string b) =>
         string.Equals(NormalizePath(a), NormalizePath(b), StringComparison.OrdinalIgnoreCase);
+
+    private static void PrintProvenance()
+    {
+        var exePath = string.Empty;
+        try { exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? string.Empty; }
+        catch { exePath = Environment.GetCommandLineArgs().FirstOrDefault() ?? string.Empty; }
+        if (string.IsNullOrWhiteSpace(exePath))
+        {
+            exePath = "DevModeAgentCli";
+        }
+        var sha = GetGitSha();
+        var rid = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier;
+        var repoEnv = Environment.GetEnvironmentVariable("DEVMODE_REPO_PATH") ?? string.Empty;
+        var envTier = Environment.GetEnvironmentVariable("PROVENANCE_TIER");
+        var envCacheKey = Environment.GetEnvironmentVariable("PROVENANCE_CACHEKEY");
+        var tier = !string.IsNullOrWhiteSpace(envTier) ? envTier : InferTierFromPath(exePath);
+        var cacheKey = !string.IsNullOrWhiteSpace(envCacheKey) ? envCacheKey : $"DevModeAgentCli/{sha}/{rid}";
+
+        Console.WriteLine($"cli=DevModeAgentCli");
+        Console.WriteLine($"path={exePath}");
+        Console.WriteLine($"cacheKey={cacheKey}");
+        Console.WriteLine($"rid={rid}");
+        Console.WriteLine($"tier={tier}");
+        if (!string.IsNullOrWhiteSpace(repoEnv))
+        {
+            Console.WriteLine($"repo={repoEnv}");
+        }
+    }
+
+    private static string InferTierFromPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return "unknown";
+        var lowered = path.Replace('\\', '/').ToLowerInvariant();
+        if (lowered.Contains("/tooling-cache/")) return "cache";
+        if (lowered.Contains("/tooling/dotnet/")) return "worktree";
+        return "unknown";
+    }
+
+    private static string GetGitSha()
+    {
+        try
+        {
+            var psi = new ProcessStartInfo("git", "rev-parse HEAD")
+            {
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            using var p = Process.Start(psi);
+            if (p == null) return "unknown";
+            var stdout = p.StandardOutput.ReadToEnd().Trim();
+            p.WaitForExit(2000);
+            return string.IsNullOrWhiteSpace(stdout) ? "unknown" : stdout;
+        }
+        catch
+        {
+            return "unknown";
+        }
+    }
 }

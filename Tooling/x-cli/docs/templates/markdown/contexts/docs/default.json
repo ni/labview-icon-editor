@@ -1,0 +1,8 @@
+{
+  "DOCS_STYLE": "concise, instructional, repository-specific",
+  "H1_ASCII": "true",
+  "LINK_CHECK": "lychee",
+  "SRS_HINTS": "limited top-N in summaries",
+  "FEEDBACK_NOTE": "Docs-focused render. Note style or terminology inconsistencies."
+}
+

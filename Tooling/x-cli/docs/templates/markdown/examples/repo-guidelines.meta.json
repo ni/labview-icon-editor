@@ -1,0 +1,22 @@
+{
+  "template": "C:\\codex\\home\\runner\\work\\x-cli\\x-cli\\docs\\templates\\markdown\\examples\\repo-guidelines.tpl.md",
+  "out": "C:\\codex\\home\\runner\\work\\x-cli\\x-cli\\docs\\templates\\markdown\\examples\\repo-guidelines.example.md",
+  "placeholdersUsed": [
+    "COV_BRANCH",
+    "COV_LINE",
+    "DOTNET_VERSION",
+    "FEEDBACK_NOTE",
+    "QA_CMD_POSIX",
+    "QA_CMD_WIN"
+  ],
+  "placeholdersMissing": [],
+  "contextKeys": [
+    "COV_BRANCH",
+    "COV_LINE",
+    "DOTNET_VERSION",
+    "FEEDBACK_NOTE",
+    "QA_CMD_POSIX",
+    "QA_CMD_WIN"
+  ],
+  "changed": false
+}

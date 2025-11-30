@@ -1,0 +1,22 @@
+{
+  "scenarios": {
+    "lunit.success": {
+      "exitCode": 0,
+      "success": true,
+      "stderrLines": [
+        "[LUnit] 42 tests, 0 failures, 0 errors.",
+        "LUnit: all tests passed",
+        "Report written to: C:\\fake\\lunit\\lunit_results.xml"
+      ]
+    },
+    "lunit.fail": {
+      "exitCode": 1,
+      "success": false,
+      "stderrLines": [
+        "[LUnit] 42 tests, 1 failure, 0 errors.",
+        "LUnit: 1 test failed",
+        "Report written to: C:\\fake\\lunit\\lunit_results.xml"
+      ]
+    }
+  }
+}

@@ -20,6 +20,18 @@
 # .NET build output
 Tooling/dotnet/**/bin/
 Tooling/dotnet/**/obj/
+Tooling/x-cli/**/bin/
+Tooling/x-cli/**/obj/
+Tooling/x-cli/.pytest_tmp/
+Tooling/x-cli/artifacts/
+Tooling/x-cli/temp_hist/
+Tooling/x-cli/temp_telemetry/
+Tooling/x-cli/**/node_modules/
+.tmp-tests/
+tests/results/_agent/
+reports/dev-mode-bind.json
+Tooling/dotnet/DevModeAgentCli/bin/
+Tooling/dotnet/DevModeAgentCli/obj/
 
 # Generated requirement reports (artifact outputs)
 reports/req-summary.md
@@ -30,3 +42,6 @@ reports/*.json
 artifacts/dev-mode-bind/
 artifacts/seed/
 Tooling/docker/vipm/.env
+builds/log-stash/
+builds/vipb-stash/
+reports/logs/

@@ -1,0 +1,70 @@
+name: AI Reviewer
+
+on:
+  pull_request:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to review (for manual runs)
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  reviewer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Prepare event for workflow_dispatch (optional)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.pr_number != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .codex/tmp
+          cat > .codex/tmp/event.json <<'JSON'
+          {
+            "repository": {"full_name": "${{ github.repository }}"},
+            "inputs": {"pr_number": "${{ inputs.pr_number }}"},
+            "sender": {"login": "${{ github.actor }}"}
+          }
+          JSON
+          echo "EVENT=.codex/tmp/event.json" >> $GITHUB_ENV
+
+      - name: Set default event path
+        if: ${{ env.EVENT == '' }}
+        run: echo "EVENT=${GITHUB_EVENT_PATH}" >> $GITHUB_ENV
+
+      - name: Run Reviewer (Coordinator)
+        env:
+          GITHUB_TOKEN: ${{ secrets.XCLI_PAT }}
+          LLM_API_KEY: ${{ secrets.ORG_LLM_API_KEY }}
+          REVIEWER_HTTP_RETRIES: ${{ vars.REVIEWER_HTTP_RETRIES }}
+          REVIEWER_HTTP_BACKOFF_SEC: ${{ vars.REVIEWER_HTTP_BACKOFF_SEC }}
+          REVIEWER_HTTP_JITTER_SEC: ${{ vars.REVIEWER_HTTP_JITTER_SEC }}
+          REVIEWER_STRICT_PERMISSIONS: '1'
+        shell: bash
+        run: |
+          python scripts/reviewer_coordinator.py --event "$EVENT" --policy docs/config/reviewer.policy.yaml
+
+      - name: Upload artifacts (policy and capabilities)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-reviewer-artifacts
+          path: |
+            artifacts/reviewer/capabilities.json
+            artifacts/reviewer/effective-policy.json
+            artifacts/reviewer/*.md
+        continue-on-error: true

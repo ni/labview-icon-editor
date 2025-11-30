@@ -1,0 +1,16 @@
+Title: x-cli — Design Review & Sign‑off
+Duration: 30–45 min
+Docs: /docs/Design.md, /docs/Review/Design-Review-Checklist.md
+
+Agenda:
+  1) Goals & non‑goals (5m)
+  2) Public CLI contract (5m)
+  3) Config model & precedence (5m)
+  4) Logging schema & stability (5m)
+  5) Security & performance constraints (5m)
+  6) Open questions / risks (10m)
+
+Exit Criteria:
+  • Checklist completed
+  • Sign‑off captured in /docs/Review/Design-Signoff.md
+  • Design status set to “Approved” in /docs/Design.md

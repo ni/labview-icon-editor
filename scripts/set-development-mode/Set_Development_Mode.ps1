@@ -115,18 +115,16 @@ function Get-LabVIEWVersionFromVipb {
 }
 
 try {
-    # Always resolve from VIPB to ensure determinism; ignore inbound overrides
-    $Package_LabVIEW_Version = & (Join-Path $RepositoryPath 'scripts/get-package-lv-version.ps1') -RepositoryPath $RepositoryPath
-    Write-Information ("Detected LabVIEW version from VIPB: {0}" -f $Package_LabVIEW_Version) -InformationAction Continue
+    if (-not [string]::IsNullOrWhiteSpace($Package_LabVIEW_Version)) {
+        Write-Information ("Using provided LabVIEW version override: {0}" -f $Package_LabVIEW_Version) -InformationAction Continue
+    }
+    else {
+        $Package_LabVIEW_Version = & (Join-Path $RepositoryPath 'scripts/get-package-lv-version.ps1') -RepositoryPath $RepositoryPath
+        Write-Information ("Detected LabVIEW version from VIPB: {0}" -f $Package_LabVIEW_Version) -InformationAction Continue
+    }
 
     $targetBitness = $SupportedBitness
     Write-Information ("Targeting bitness: {0}-bit" -f $targetBitness) -InformationAction Continue
-
-    # Ensure the INI token VI exists before attempting g-cli
-    $iniTokenVi = Join-Path -Path $RepositoryPath -ChildPath 'Tooling\deployment\Create_LV_INI_Token.vi'
-    if (-not (Test-Path -LiteralPath $iniTokenVi)) {
-        throw "Missing Create_LV_INI_Token.vi at expected path: $iniTokenVi"
-    }
 
     # Quick g-cli sanity (helps diagnose missing or broken installs)
     $gcli = Get-Command g-cli -ErrorAction SilentlyContinue

@@ -1,0 +1,3935 @@
+{
+  "?xml": {
+    "@version": "1.0",
+    "@encoding": "UTF-8"
+  },
+  "#whitespace": [
+    "\r\n",
+    "\r\n"
+  ],
+  "Project": {
+    "@Type": "Project",
+    "@LVVersion": "21008000",
+    "#whitespace": [
+      "\r\n\t",
+      "\r\n\t",
+      "\r\n\t",
+      "\r\n\t",
+      "\r\n"
+    ],
+    "Property": [
+      {
+        "@Name": "NI.LV.All.SaveVersion",
+        "@Type": "Str",
+        "#text": "21.0"
+      },
+      {
+        "@Name": "NI.LV.All.SourceOnly",
+        "@Type": "Bool",
+        "#text": "true"
+      },
+      {
+        "@Name": "NI.Project.Description",
+        "@Type": "Str"
+      }
+    ],
+    "Item": {
+      "@Name": "My Computer",
+      "@Type": "My Computer",
+      "#whitespace": [
+        "\r\n\t\t",
+        "\r\n\t\t",
+        "\r\n\t\t",
+        "\r\n\t\t",
+        "\r\n\t\t",
+        "\r\n\t\t",
+        "\r\n\t\t",
+        "\r\n\t\t",
+        "\r\n\t\t",
+        "\r\n\t\t",
+        "\r\n\t\t",
+        "\r\n\t\t",
+        "\r\n\t\t",
+        "\r\n\t\t",
+        "\r\n\t\t",
+        "\r\n\t\t",
+        "\r\n\t"
+      ],
+      "Property": [
+        {
+          "@Name": "NI.SortType",
+          "@Type": "Int",
+          "#text": "3"
+        },
+        {
+          "@Name": "server.app.propertiesEnabled",
+          "@Type": "Bool",
+          "#text": "true"
+        },
+        {
+          "@Name": "server.control.propertiesEnabled",
+          "@Type": "Bool",
+          "#text": "true"
+        },
+        {
+          "@Name": "server.tcp.enabled",
+          "@Type": "Bool",
+          "#text": "false"
+        },
+        {
+          "@Name": "server.tcp.port",
+          "@Type": "Int",
+          "#text": "0"
+        },
+        {
+          "@Name": "server.tcp.serviceName",
+          "@Type": "Str",
+          "#text": "My Computer/VI Server"
+        },
+        {
+          "@Name": "server.tcp.serviceName.default",
+          "@Type": "Str",
+          "#text": "My Computer/VI Server"
+        },
+        {
+          "@Name": "server.vi.callsEnabled",
+          "@Type": "Bool",
+          "#text": "true"
+        },
+        {
+          "@Name": "server.vi.propertiesEnabled",
+          "@Type": "Bool",
+          "#text": "true"
+        },
+        {
+          "@Name": "specify.custom.address",
+          "@Type": "Bool",
+          "#text": "false"
+        }
+      ],
+      "Item": [
+        {
+          "@Name": "resource/plugins",
+          "@Type": "Folder",
+          "#whitespace": [
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t"
+          ],
+          "Item": [
+            {
+              "@Name": "NIIconEditor",
+              "@Type": "Folder",
+              "#whitespace": [
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t"
+              ],
+              "Item": [
+                {
+                  "@Name": "Class",
+                  "@Type": "Folder",
+                  "#whitespace": [
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t"
+                  ],
+                  "Item": [
+                    {
+                      "@Name": "Ants",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": {
+                        "@Name": "Ants.lvclass",
+                        "@Type": "LVClass",
+                        "@URL": "/<resource>/plugins/NIIconEditor/Class/Ants/Ants.lvclass"
+                      }
+                    },
+                    {
+                      "@Name": "FakedArray",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": [
+                        {
+                          "@Name": "Misc",
+                          "@Type": "Folder",
+                          "#whitespace": [
+                            "\r\n\t\t\t\t\t\t\t",
+                            "\r\n\t\t\t\t\t\t"
+                          ],
+                          "Item": {
+                            "@Name": "Set active Layer programmatically.vi",
+                            "@Type": "VI",
+                            "@URL": "/<resource>/plugins/NIIconEditor/Class/FakedArray/Misc/Set active Layer programmatically.vi"
+                          }
+                        },
+                        {
+                          "@Name": "FakedArray.lvclass",
+                          "@Type": "LVClass",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Class/FakedArray/FakedArray.lvclass"
+                        }
+                      ]
+                    },
+                    {
+                      "@Name": "Icon Library",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": {
+                        "@Name": "Glyph.lvclass",
+                        "@Type": "LVClass",
+                        "@URL": "/<resource>/plugins/NIIconEditor/Class/Icon Library/Glyph.lvclass"
+                      }
+                    },
+                    {
+                      "@Name": "Settings",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": {
+                        "@Name": "Settings.lvclass",
+                        "@Type": "LVClass",
+                        "@URL": "/<resource>/plugins/NIIconEditor/Class/Settings/Settings.lvclass"
+                      }
+                    },
+                    {
+                      "@Name": "Tools",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": {
+                        "@Name": "Tools Paint.lvclass",
+                        "@Type": "LVClass",
+                        "@URL": "/<resource>/plugins/NIIconEditor/Class/Tools/Tools Paint.lvclass"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "@Name": "Controls",
+                  "@Type": "Folder",
+                  "#whitespace": [
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t"
+                  ],
+                  "Item": [
+                    {
+                      "@Name": "Arrow Down.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Arrow Down.ctl"
+                    },
+                    {
+                      "@Name": "Arrow Up.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Arrow Up.ctl"
+                    },
+                    {
+                      "@Name": "Cancel.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Cancel.ctl"
+                    },
+                    {
+                      "@Name": "Circle.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Circle.ctl"
+                    },
+                    {
+                      "@Name": "Class Pool.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Class Pool.ctl"
+                    },
+                    {
+                      "@Name": "ColorChange.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/ColorChange.ctl"
+                    },
+                    {
+                      "@Name": "DeleteLayer.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/DeleteLayer.ctl"
+                    },
+                    {
+                      "@Name": "DownloadFileType.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/DownloadFileType.ctl"
+                    },
+                    {
+                      "@Name": "Draw.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Draw.ctl"
+                    },
+                    {
+                      "@Name": "DrawAction.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/DrawAction.ctl"
+                    },
+                    {
+                      "@Name": "Dropper.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Dropper.ctl"
+                    },
+                    {
+                      "@Name": "FCircle.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/FCircle.ctl"
+                    },
+                    {
+                      "@Name": "FGV Action.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/FGV Action.ctl"
+                    },
+                    {
+                      "@Name": "Fill.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Fill.ctl"
+                    },
+                    {
+                      "@Name": "Flip.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Flip.ctl"
+                    },
+                    {
+                      "@Name": "Font Size.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Font Size.ctl"
+                    },
+                    {
+                      "@Name": "Framework Templates.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Framework Templates.ctl"
+                    },
+                    {
+                      "@Name": "FRect.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/FRect.ctl"
+                    },
+                    {
+                      "@Name": "IconFilename.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/IconFilename.ctl"
+                    },
+                    {
+                      "@Name": "IconLibraryList.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/IconLibraryList.ctl"
+                    },
+                    {
+                      "@Name": "IE Classes.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/IE Classes.ctl"
+                    },
+                    {
+                      "@Name": "IE Symbols.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/IE Symbols.ctl"
+                    },
+                    {
+                      "@Name": "IERect.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/IERect.ctl"
+                    },
+                    {
+                      "@Name": "LayerList.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/LayerList.ctl"
+                    },
+                    {
+                      "@Name": "Line.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Line.ctl"
+                    },
+                    {
+                      "@Name": "Move.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Move.ctl"
+                    },
+                    {
+                      "@Name": "NewLayer.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/NewLayer.ctl"
+                    },
+                    {
+                      "@Name": "OK.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/OK.ctl"
+                    },
+                    {
+                      "@Name": "OpenLayer.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/OpenLayer.ctl"
+                    },
+                    {
+                      "@Name": "Path&Icon.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Path&Icon.ctl"
+                    },
+                    {
+                      "@Name": "Pen.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Pen.ctl"
+                    },
+                    {
+                      "@Name": "References.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/References.ctl"
+                    },
+                    {
+                      "@Name": "Refresh.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Refresh.ctl"
+                    },
+                    {
+                      "@Name": "Rotate.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Rotate.ctl"
+                    },
+                    {
+                      "@Name": "Rotate_Flip.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Rotate_Flip.ctl"
+                    },
+                    {
+                      "@Name": "Rubber.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Rubber.ctl"
+                    },
+                    {
+                      "@Name": "SaveLayer.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/SaveLayer.ctl"
+                    },
+                    {
+                      "@Name": "Selection.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Selection.ctl"
+                    },
+                    {
+                      "@Name": "Settings.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Settings.ctl"
+                    },
+                    {
+                      "@Name": "SupportClass.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/SupportClass.ctl"
+                    },
+                    {
+                      "@Name": "SupportClass_Action.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/SupportClass_Action.ctl"
+                    },
+                    {
+                      "@Name": "Text.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Text.ctl"
+                    },
+                    {
+                      "@Name": "Text_Specification.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Text_Specification.ctl"
+                    },
+                    {
+                      "@Name": "TextMarker.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/TextMarker.ctl"
+                    },
+                    {
+                      "@Name": "ToMoreSpecific_Faked2DArray.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/ToMoreSpecific_Faked2DArray.ctl"
+                    },
+                    {
+                      "@Name": "Tools.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Tools.ctl"
+                    },
+                    {
+                      "@Name": "Undo Redo Action.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Undo Redo Action.ctl"
+                    },
+                    {
+                      "@Name": "Undo Redo Type.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Undo Redo Type.ctl"
+                    },
+                    {
+                      "@Name": "Undo.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/Undo.ctl"
+                    },
+                    {
+                      "@Name": "User Event Communication Enum.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/User Event Communication Enum.ctl"
+                    },
+                    {
+                      "@Name": "User Event Communication.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/User Event Communication.ctl"
+                    },
+                    {
+                      "@Name": "XMLDataStructureIconLibrary.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Controls/XMLDataStructureIconLibrary.ctl"
+                    }
+                  ]
+                },
+                {
+                  "@Name": "Global Variables",
+                  "@Type": "Folder",
+                  "#whitespace": [
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t"
+                  ],
+                  "Item": {
+                    "@Name": "Data.vi",
+                    "@Type": "VI",
+                    "@URL": "/<resource>/plugins/NIIconEditor/Global Variables/Data.vi"
+                  }
+                },
+                {
+                  "@Name": "Miscellaneous",
+                  "@Type": "Folder",
+                  "#whitespace": [
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t"
+                  ],
+                  "Item": [
+                    {
+                      "@Name": "Clipboard",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": [
+                        {
+                          "@Name": "IE Read from Clipboard.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Clipboard/IE Read from Clipboard.vi"
+                        },
+                        {
+                          "@Name": "IE Write to Clipboard.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Clipboard/IE Write to Clipboard.vi"
+                        }
+                      ]
+                    },
+                    {
+                      "@Name": "Def FP Updates",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": {
+                        "@Name": "Defer_FP_Updates.vi",
+                        "@Type": "VI",
+                        "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Def FP Updates/Defer_FP_Updates.vi"
+                      }
+                    },
+                    {
+                      "@Name": "Draw",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": [
+                        {
+                          "@Name": "Const Temp Coordinate 2 points.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Draw/Const Temp Coordinate 2 points.vi"
+                        },
+                        {
+                          "@Name": "Const Temp Coordinate 4 points.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Draw/Const Temp Coordinate 4 points.vi"
+                        },
+                        {
+                          "@Name": "DrawIcon.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Draw/DrawIcon.vi"
+                        },
+                        {
+                          "@Name": "IsCoordinateConstant.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Draw/IsCoordinateConstant.vi"
+                        },
+                        {
+                          "@Name": "Origin_or_TempCoordinate.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Draw/Origin_or_TempCoordinate.vi"
+                        },
+                        {
+                          "@Name": "PixelValue.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Draw/PixelValue.vi"
+                        }
+                      ]
+                    },
+                    {
+                      "@Name": "Font",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": [
+                        {
+                          "@Name": "Linux.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Font/Linux.vi"
+                        },
+                        {
+                          "@Name": "Mac.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Font/Mac.vi"
+                        },
+                        {
+                          "@Name": "Windows.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Font/Windows.vi"
+                        },
+                        {
+                          "@Name": "Populate Font ComboBox.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Font/Populate Font ComboBox.vi"
+                        }
+                      ]
+                    },
+                    {
+                      "@Name": "Glyphs",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": [
+                        {
+                          "@Name": "Glyph_MouseDown.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Glyphs/Glyph_MouseDown.vi"
+                        },
+                        {
+                          "@Name": "Populate Graphics.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Glyphs/Populate Graphics.vi"
+                        },
+                        {
+                          "@Name": "Prepare Glyphs for Display.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Glyphs/Prepare Glyphs for Display.vi"
+                        },
+                        {
+                          "@Name": "SET_Glyph.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Glyphs/SET_Glyph.vi"
+                        },
+                        {
+                          "@Name": "SET_ToolGraphic.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Glyphs/SET_ToolGraphic.vi"
+                        },
+                        {
+                          "@Name": "TemporaryGlyphView.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Glyphs/TemporaryGlyphView.vi"
+                        }
+                      ]
+                    },
+                    {
+                      "@Name": "Graphics",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": [
+                        {
+                          "@Name": "BuildCategories.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Graphics/BuildCategories.vi"
+                        },
+                        {
+                          "@Name": "ChangeRefreshGraphicsState.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Graphics/ChangeRefreshGraphicsState.vi"
+                        },
+                        {
+                          "@Name": "CorruptIconErrorMessage.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Graphics/CorruptIconErrorMessage.vi"
+                        },
+                        {
+                          "@Name": "Filter Graphics by File Name.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Graphics/Filter Graphics by File Name.vi"
+                        },
+                        {
+                          "@Name": "Launch Dynamically Load Graphics.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Graphics/Launch Dynamically Load Graphics.vi"
+                        },
+                        {
+                          "@Name": "LoadGraphics.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Graphics/LoadGraphics.vi"
+                        },
+                        {
+                          "@Name": "LoadTemplates.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Graphics/LoadTemplates.vi"
+                        },
+                        {
+                          "@Name": "Populate Tree with Categories.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Graphics/Populate Tree with Categories.vi"
+                        },
+                        {
+                          "@Name": "Pull data from disc.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Graphics/Pull data from disc.vi"
+                        },
+                        {
+                          "@Name": "RefreshAnimation.mng",
+                          "@Type": "Document",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Graphics/RefreshAnimation.mng"
+                        },
+                        {
+                          "@Name": "RefreshAnimation.xcf",
+                          "@Type": "Document",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Graphics/RefreshAnimation.xcf"
+                        }
+                      ]
+                    },
+                    {
+                      "@Name": "Icon Editor",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": [
+                        {
+                          "@Name": "Add new Layer.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Add new Layer.vi"
+                        },
+                        {
+                          "@Name": "Alignment Value Change.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Alignment Value Change.vi"
+                        },
+                        {
+                          "@Name": "Call Keep IE in Memory.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Call Keep IE in Memory.vi"
+                        },
+                        {
+                          "@Name": "Change Behavior IE window.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Change Behavior IE window.vi"
+                        },
+                        {
+                          "@Name": "Change Mouse Cursor.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Change Mouse Cursor.vi"
+                        },
+                        {
+                          "@Name": "Clear User Layers.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Clear User Layers.vi"
+                        },
+                        {
+                          "@Name": "Delete Selected Layers.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Delete Selected Layers.vi"
+                        },
+                        {
+                          "@Name": "Escape.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Escape.vi"
+                        },
+                        {
+                          "@Name": "Fire Body Text Change event.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Fire Body Text Change event.vi"
+                        },
+                        {
+                          "@Name": "Icon Editor Help.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Icon Editor Help.vi"
+                        },
+                        {
+                          "@Name": "Icon Editor Init Refs.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Icon Editor Init Refs.vi"
+                        },
+                        {
+                          "@Name": "Icon Editor Properties Help.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Icon Editor Properties Help.vi"
+                        },
+                        {
+                          "@Name": "Icon Initialization.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Icon Initialization.vi"
+                        },
+                        {
+                          "@Name": "IE Save dialog build path.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/IE Save dialog build path.vi"
+                        },
+                        {
+                          "@Name": "Keep IE in Memory.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Keep IE in Memory.vi"
+                        },
+                        {
+                          "@Name": "LayerCluster_ValueChange.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/LayerCluster_ValueChange.vi"
+                        },
+                        {
+                          "@Name": "MenuSelection(User).vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/MenuSelection(User).vi"
+                        },
+                        {
+                          "@Name": "Mouse Down_Glyphs.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Mouse Down_Glyphs.vi"
+                        },
+                        {
+                          "@Name": "Mouse Down_Templates.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Mouse Down_Templates.vi"
+                        },
+                        {
+                          "@Name": "Mouse Down_Tree.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Mouse Down_Tree.vi"
+                        },
+                        {
+                          "@Name": "Mouse Down_User Layers.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Mouse Down_User Layers.vi"
+                        },
+                        {
+                          "@Name": "MouseDown.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/MouseDown.vi"
+                        },
+                        {
+                          "@Name": "MouseDown_Body Text.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/MouseDown_Body Text.vi"
+                        },
+                        {
+                          "@Name": "MouseMove.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/MouseMove.vi"
+                        },
+                        {
+                          "@Name": "PictureControl_MouseUp.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/PictureControl_MouseUp.vi"
+                        },
+                        {
+                          "@Name": "populate tree.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/populate tree.vi"
+                        },
+                        {
+                          "@Name": "Reset layer template selection.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Reset layer template selection.vi"
+                        },
+                        {
+                          "@Name": "RotateFlip.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/RotateFlip.vi"
+                        },
+                        {
+                          "@Name": "Save Graphic Overwrite.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Save Graphic Overwrite.vi"
+                        },
+                        {
+                          "@Name": "Save Graphic.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Save Graphic.vi"
+                        },
+                        {
+                          "@Name": "Template_MouseDown.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Template_MouseDown.vi"
+                        },
+                        {
+                          "@Name": "Update glyph path string.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Update glyph path string.vi"
+                        },
+                        {
+                          "@Name": "UpdateLayerView_ScrollbarChanged.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/UpdateLayerView_ScrollbarChanged.vi"
+                        },
+                        {
+                          "@Name": "Value Change_Body Text.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Value Change_Body Text.vi"
+                        },
+                        {
+                          "@Name": "Value Change_Top or Bottom Layer.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Value Change_Top or Bottom Layer.vi"
+                        }
+                      ]
+                    },
+                    {
+                      "@Name": "Key Down Up",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": [
+                        {
+                          "@Name": "Key Down Up Layers.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Key Down Up/Key Down Up Layers.vi"
+                        },
+                        {
+                          "@Name": "KeyDown.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Key Down Up/KeyDown.vi"
+                        },
+                        {
+                          "@Name": "KeyUp.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Key Down Up/KeyUp.vi"
+                        },
+                        {
+                          "@Name": "Move Selected Layers.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Key Down Up/Move Selected Layers.vi"
+                        },
+                        {
+                          "@Name": "Process Active Data Shift Key.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Key Down Up/Process Active Data Shift Key.vi"
+                        }
+                      ]
+                    },
+                    {
+                      "@Name": "Layer",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": [
+                        {
+                          "@Name": "DeleteLayer.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Layer/DeleteLayer.vi"
+                        },
+                        {
+                          "@Name": "DeselectLayer.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Layer/DeselectLayer.vi"
+                        },
+                        {
+                          "@Name": "Separate Selected Layers.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Layer/Separate Selected Layers.vi"
+                        },
+                        {
+                          "@Name": "Split_Layers.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Layer/Split_Layers.vi"
+                        },
+                        {
+                          "@Name": "ViewLayer.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Layer/ViewLayer.vi"
+                        }
+                      ]
+                    },
+                    {
+                      "@Name": "Load Unload",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": [
+                        {
+                          "@Name": "Export_Clipboard.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Unload/Export_Clipboard.vi"
+                        },
+                        {
+                          "@Name": "Flatten Icon.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Unload/Flatten Icon.vi"
+                        },
+                        {
+                          "@Name": "Flatten Layers.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Unload/Flatten Layers.vi"
+                        },
+                        {
+                          "@Name": "Get Color Icon from Caller.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Unload/Get Color Icon from Caller.vi"
+                        },
+                        {
+                          "@Name": "Import_Clipboard.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Unload/Import_Clipboard.vi"
+                        },
+                        {
+                          "@Name": "Load.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Unload/Load.vi"
+                        },
+                        {
+                          "@Name": "Read Data from Caller.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Unload/Read Data from Caller.vi"
+                        },
+                        {
+                          "@Name": "Read Glyphs from  File.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Unload/Read Glyphs from  File.vi"
+                        },
+                        {
+                          "@Name": "Reset Layer VI.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Unload/Reset Layer VI.vi"
+                        },
+                        {
+                          "@Name": "Return MutationCode Folder.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Unload/Return MutationCode Folder.vi"
+                        },
+                        {
+                          "@Name": "Unflatten Icon.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Unload/Unflatten Icon.vi"
+                        },
+                        {
+                          "@Name": "Unflatten Layers.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Unload/Unflatten Layers.vi"
+                        },
+                        {
+                          "@Name": "Write Data to Caller.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Unload/Write Data to Caller.vi"
+                        },
+                        {
+                          "@Name": "Write Glyphs to  File.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Unload/Write Glyphs to  File.vi"
+                        },
+                        {
+                          "@Name": "Write INI Tokens and VI Tags.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Unload/Write INI Tokens and VI Tags.vi"
+                        }
+                      ]
+                    },
+                    {
+                      "@Name": "Menubar",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": [
+                        {
+                          "@Name": "EnableDisable Combine Layers.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Menubar/EnableDisable Combine Layers.vi"
+                        },
+                        {
+                          "@Name": "ShowTerminals.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Menubar/ShowTerminals.vi"
+                        }
+                      ]
+                    },
+                    {
+                      "@Name": "ni.com_iconlibrary",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": [
+                        {
+                          "@Name": "Analyze XML stream.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/ni.com_iconlibrary/Analyze XML stream.vi"
+                        },
+                        {
+                          "@Name": "Check whether installed.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/ni.com_iconlibrary/Check whether installed.vi"
+                        },
+                        {
+                          "@Name": "ExtractDataFromXML.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/ni.com_iconlibrary/ExtractDataFromXML.vi"
+                        },
+                        {
+                          "@Name": "IconlibraryStuffInProgress.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/ni.com_iconlibrary/IconlibraryStuffInProgress.vi"
+                        },
+                        {
+                          "@Name": "Install Glyphs.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/ni.com_iconlibrary/Install Glyphs.vi"
+                        },
+                        {
+                          "@Name": "Manual User Input.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/ni.com_iconlibrary/Manual User Input.vi"
+                        },
+                        {
+                          "@Name": "ni.com_iconlibrary.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/ni.com_iconlibrary/ni.com_iconlibrary.vi"
+                        },
+                        {
+                          "@Name": "ResolveURLbyUsingInfoCode.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/ni.com_iconlibrary/ResolveURLbyUsingInfoCode.vi"
+                        }
+                      ]
+                    },
+                    {
+                      "@Name": "Tools",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": [
+                        {
+                          "@Name": "Get Color Not In Image.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Tools/Get Color Not In Image.vi"
+                        },
+                        {
+                          "@Name": "Mouse Down.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Tools/Mouse Down.vi"
+                        },
+                        {
+                          "@Name": "Selection_PrepareIcon.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Tools/Selection_PrepareIcon.vi"
+                        },
+                        {
+                          "@Name": "Selection_SetNewData.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Tools/Selection_SetNewData.vi"
+                        },
+                        {
+                          "@Name": "Value Change_Tools.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Tools/Value Change_Tools.vi"
+                        },
+                        {
+                          "@Name": "ValueSignalingTool.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Tools/ValueSignalingTool.vi"
+                        },
+                        {
+                          "@Name": "VisibleTextMarker.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Tools/VisibleTextMarker.vi"
+                        },
+                        {
+                          "@Name": "WriteText.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Tools/WriteText.vi"
+                        }
+                      ]
+                    },
+                    {
+                      "@Name": "Undo Redo",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": [
+                        {
+                          "@Name": "Add Data to History.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Undo Redo/Add Data to History.vi"
+                        },
+                        {
+                          "@Name": "FGV_Undo Redo.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Undo Redo/FGV_Undo Redo.vi"
+                        },
+                        {
+                          "@Name": "Replay Data from History.vi",
+                          "@Type": "VI",
+                          "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Undo Redo/Replay Data from History.vi"
+                        }
+                      ]
+                    },
+                    {
+                      "@Name": "User Events",
+                      "@Type": "Folder",
+                      "#whitespace": [
+                        "\r\n\t\t\t\t\t\t",
+                        "\r\n\t\t\t\t\t"
+                      ],
+                      "Item": {
+                        "@Name": "Initialization_UserEvents.vi",
+                        "@Type": "VI",
+                        "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/User Events/Initialization_UserEvents.vi"
+                      }
+                    },
+                    {
+                      "@Name": "AssessRectangle.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/AssessRectangle.vi"
+                    },
+                    {
+                      "@Name": "Buffer for lossless tracking.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Buffer for lossless tracking.vi"
+                    },
+                    {
+                      "@Name": "CalculateAntsRect.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/CalculateAntsRect.vi"
+                    },
+                    {
+                      "@Name": "Classes Initialization.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Classes Initialization.vi"
+                    },
+                    {
+                      "@Name": "Connector Pane Initialization.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Connector Pane Initialization.vi"
+                    },
+                    {
+                      "@Name": "CoordinatesCorrection.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/CoordinatesCorrection.vi"
+                    },
+                    {
+                      "@Name": "Create new class icon user layers.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Create new class icon user layers.vi"
+                    },
+                    {
+                      "@Name": "Create new layer_LayerName_Picture.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Create new layer_LayerName_Picture.vi"
+                    },
+                    {
+                      "@Name": "DealWithScrollbars.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/DealWithScrollbars.vi"
+                    },
+                    {
+                      "@Name": "Extract LV Icon Data.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Extract LV Icon Data.vi"
+                    },
+                    {
+                      "@Name": "Finalize Movement.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Finalize Movement.vi"
+                    },
+                    {
+                      "@Name": "Finalize Text.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Finalize Text.vi"
+                    },
+                    {
+                      "@Name": "Flip color refs.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Flip color refs.vi"
+                    },
+                    {
+                      "@Name": "Get Icon Editor Context.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Icon Editor/Get Icon Editor Context.vi"
+                    },
+                    {
+                      "@Name": "Get Monochrome Icon from Caller.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Get Monochrome Icon from Caller.vi"
+                    },
+                    {
+                      "@Name": "GetComparisonResult4Graphis.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/GetComparisonResult4Graphis.vi"
+                    },
+                    {
+                      "@Name": "IEGlyphFolderConstant.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/IEGlyphFolderConstant.vi"
+                    },
+                    {
+                      "@Name": "IETemplateLibraryFolderConstant.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/IETemplateLibraryFolderConstant.vi"
+                    },
+                    {
+                      "@Name": "IETemplateVIFolderConstant.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/IETemplateVIFolderConstant.vi"
+                    },
+                    {
+                      "@Name": "ImageDataToIconPreview.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/ImageDataToIconPreview.vi"
+                    },
+                    {
+                      "@Name": "IsAntsRectValid.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/IsAntsRectValid.vi"
+                    },
+                    {
+                      "@Name": "Launch_VI_Asynchronously.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Launch_VI_Asynchronously.vi"
+                    },
+                    {
+                      "@Name": "ListGlyphsAndTemplates.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/ListGlyphsAndTemplates.vi"
+                    },
+                    {
+                      "@Name": "Load Glyph from File.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Load Glyph from File.vi"
+                    },
+                    {
+                      "@Name": "Magic Active Layer Constant.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Magic Active Layer Constant.vi"
+                    },
+                    {
+                      "@Name": "MoveLayers.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/MoveLayers.vi"
+                    },
+                    {
+                      "@Name": "PrepareData4HTML.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/PrepareData4HTML.vi"
+                    },
+                    {
+                      "@Name": "PrepareTemporaryView.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/PrepareTemporaryView.vi"
+                    },
+                    {
+                      "@Name": "Process Temporary View Layers.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Process Temporary View Layers.vi"
+                    },
+                    {
+                      "@Name": "Remove invalid characters.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Remove invalid characters.vi"
+                    },
+                    {
+                      "@Name": "SetCursor.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/SetCursor.vi"
+                    },
+                    {
+                      "@Name": "Settings Init.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Settings Init.vi"
+                    },
+                    {
+                      "@Name": "Settings Requested Path.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Settings Requested Path.vi"
+                    },
+                    {
+                      "@Name": "Settings Shutdown.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Settings Shutdown.vi"
+                    },
+                    {
+                      "@Name": "Specify Path Enum.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Specify Path Enum.vi"
+                    },
+                    {
+                      "@Name": "Truncate string.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Truncate string.vi"
+                    },
+                    {
+                      "@Name": "Write Error to File.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Miscellaneous/Write Error to File.vi"
+                    }
+                  ]
+                },
+                {
+                  "@Name": "Support",
+                  "@Type": "Folder",
+                  "#whitespace": [
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t"
+                  ],
+                  "Item": [
+                    {
+                      "@Name": "ApplyLibIconOverlayToVIIcon.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Support/ApplyLibIconOverlayToVIIcon.vi"
+                    },
+                    {
+                      "@Name": "Call Keep ApplyLib in Memory.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Support/Call Keep ApplyLib in Memory.vi"
+                    },
+                    {
+                      "@Name": "Create or Substitute NI_Layer layer.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Support/Create or Substitute NI_Layer layer.vi"
+                    },
+                    {
+                      "@Name": "DefaultIconGlyphData.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Support/DefaultIconGlyphData.vi"
+                    },
+                    {
+                      "@Name": "Get 32x32 Image Data.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Support/Get 32x32 Image Data.vi"
+                    },
+                    {
+                      "@Name": "Get VI Library.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Support/Get VI Library.vi"
+                    },
+                    {
+                      "@Name": "GetLibIconForVIIconOverlay.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Support/GetLibIconForVIIconOverlay.vi"
+                    },
+                    {
+                      "@Name": "GetLibIconForVIIconOverlayFromVI.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Support/GetLibIconForVIIconOverlayFromVI.vi"
+                    },
+                    {
+                      "@Name": "GetOffsetRWIcon.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Support/GetOffsetRWIcon.vi"
+                    },
+                    {
+                      "@Name": "Icon Editor First Call.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Support/Icon Editor First Call.vi"
+                    },
+                    {
+                      "@Name": "IE_Open Help Link.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Support/IE_Open Help Link.vi"
+                    },
+                    {
+                      "@Name": "IE_Resolve Symbolic Paths.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Support/IE_Resolve Symbolic Paths.vi"
+                    },
+                    {
+                      "@Name": "Keep ApplyLib in Memory.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Support/Keep ApplyLib in Memory.vi"
+                    },
+                    {
+                      "@Name": "lv_icon.rtm",
+                      "@Type": "Document",
+                      "@URL": "/<resource>/plugins/NIIconEditor/Support/lv_icon.rtm"
+                    }
+                  ]
+                },
+                {
+                  "@Name": "User Dialogs",
+                  "@Type": "Folder",
+                  "#whitespace": [
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t"
+                  ],
+                  "Item": [
+                    {
+                      "@Name": "IconEditorSettings.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/User Dialogs/IconEditorSettings.vi"
+                    },
+                    {
+                      "@Name": "Center Dialog on Caller.vi",
+                      "@Type": "VI",
+                      "@URL": "/<resource>/plugins/NIIconEditor/User Dialogs/SubVIs/Center Dialog on Caller.vi"
+                    }
+                  ]
+                },
+                {
+                  "@Name": "Delete Icon Editor Source Files.vi",
+                  "@Type": "VI",
+                  "@URL": "/<resource>/plugins/NIIconEditor/Delete Icon Editor Source Files.vi"
+                },
+                {
+                  "@Name": "Get Callers of Icon Editor Packed Library.vi",
+                  "@Type": "VI",
+                  "@URL": "/<resource>/plugins/NIIconEditor/Get Callers of Icon Editor Packed Library.vi"
+                },
+                {
+                  "@Name": "Get Callers of Icon Editor Source Files.vi",
+                  "@Type": "VI",
+                  "@URL": "/<resource>/plugins/NIIconEditor/Get Callers of Icon Editor Source Files.vi"
+                },
+                {
+                  "@Name": "Get Icon Editor Source Paths.vi",
+                  "@Type": "VI",
+                  "@URL": "/<resource>/plugins/NIIconEditor/Get Icon Editor Source Paths.vi"
+                },
+                {
+                  "@Name": "Launch Icon Editor From String.vi",
+                  "@Type": "VI",
+                  "@URL": "/<resource>/plugins/NIIconEditor/Launch Icon Editor From String.vi"
+                }
+              ]
+            },
+            {
+              "@Name": "lv_icon.lvlib",
+              "@Type": "Library",
+              "@URL": "/<vilib>/LabVIEW Icon API/lv_icon/lv_icon.lvlib"
+            },
+            {
+              "@Name": "lv_icon.vit",
+              "@Type": "VI",
+              "@URL": "/<resource>/plugins/lv_icon.vit"
+            },
+            {
+              "@Name": "lv_IconEditor.lvlib",
+              "@Type": "Library",
+              "@URL": "/<resource>/plugins/lv_IconEditor.lvlib"
+            },
+            {
+              "@Name": "SAMPLE_lv_icon.vi",
+              "@Type": "VI",
+              "@URL": "/<resource>/plugins/SAMPLE_lv_icon.vi"
+            }
+          ]
+        },
+        {
+          "@Name": "Tooling",
+          "@Type": "Folder",
+          "#whitespace": [
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t"
+          ],
+          "Item": [
+            {
+              "@Name": "support",
+              "@Type": "Folder",
+              "#whitespace": [
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t"
+              ],
+              "Item": [
+                {
+                  "@Name": "Add Files to Archive.vi",
+                  "@Type": "VI",
+                  "@URL": "../Tooling/support/Add Files to Archive.vi"
+                },
+                {
+                  "@Name": "Delete Icon Editor from LV Installation.vi",
+                  "@Type": "VI",
+                  "@URL": "../Tooling/support/Delete Icon Editor from LV Installation.vi"
+                },
+                {
+                  "@Name": "Get Paths to Icon Editor Files in LV Installation.vi",
+                  "@Type": "VI",
+                  "@URL": "../Tooling/support/Get Paths to Icon Editor Files in LV Installation.vi"
+                },
+                {
+                  "@Name": "Prompt to Confirm Archival.vi",
+                  "@Type": "VI",
+                  "@URL": "../Tooling/support/Prompt to Confirm Archival.vi"
+                },
+                {
+                  "@Name": "Set LibraryPaths to Include Icon Editor.vi",
+                  "@Type": "VI",
+                  "@URL": "../Tooling/support/Set LibraryPaths to Include Icon Editor.vi"
+                }
+              ]
+            },
+            {
+              "@Name": "Force Icon Editor to Unload.vi",
+              "@Type": "VI",
+              "@URL": "../Tooling/Force Icon Editor to Unload.vi"
+            },
+            {
+              "@Name": "Post Build Icon Editor PPL.vi",
+              "@Type": "VI",
+              "@URL": "../Tooling/Post Build Icon Editor PPL.vi"
+            },
+            {
+              "@Name": "Pre Build Icon Editor PPL.vi",
+              "@Type": "VI",
+              "@URL": "../Tooling/Pre Build Icon Editor PPL.vi"
+            },
+            {
+              "@Name": "Prepare LV to Use Icon Editor Source.vi",
+              "@Type": "VI",
+              "@URL": "../Tooling/Prepare LV to Use Icon Editor Source.vi"
+            }
+          ]
+        },
+        {
+          "@Name": "vi.lib/LabVIEW Icon API",
+          "@Type": "Folder",
+          "#whitespace": [
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t"
+          ],
+          "Item": [
+            {
+              "@Name": "lv_icon",
+              "@Type": "Folder",
+              "#whitespace": [
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t"
+              ],
+              "Item": [
+                {
+                  "@Name": "Classes",
+                  "@Type": "Folder",
+                  "#whitespace": [
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t"
+                  ],
+                  "Item": [
+                    {
+                      "@Name": "Icon.lvclass",
+                      "@Type": "LVClass",
+                      "@URL": "/<vilib>/LabVIEW Icon API/lv_icon/Classes/Icon/Icon.lvclass"
+                    },
+                    {
+                      "@Name": "Icon Framework.lvclass",
+                      "@Type": "LVClass",
+                      "@URL": "/<vilib>/LabVIEW Icon API/lv_icon/Classes/Icon Framework/Icon Framework.lvclass"
+                    },
+                    {
+                      "@Name": "Layer.lvclass",
+                      "@Type": "LVClass",
+                      "@URL": "/<vilib>/LabVIEW Icon API/lv_icon/Classes/Layer/Layer.lvclass"
+                    },
+                    {
+                      "@Name": "Load & Unload.lvclass",
+                      "@Type": "LVClass",
+                      "@URL": "/<vilib>/LabVIEW Icon API/lv_icon/Classes/Load_Unload/Load & Unload.lvclass"
+                    }
+                  ]
+                },
+                {
+                  "@Name": "Controls",
+                  "@Type": "Folder",
+                  "#whitespace": [
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t\t",
+                    "\r\n\t\t\t\t"
+                  ],
+                  "Item": [
+                    {
+                      "@Name": "Alignment.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<vilib>/LabVIEW Icon API/lv_icon/Controls/Alignment.ctl"
+                    },
+                    {
+                      "@Name": "BodyText.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<vilib>/LabVIEW Icon API/lv_icon/Controls/BodyText.ctl"
+                    },
+                    {
+                      "@Name": "BodyTextPosition.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<vilib>/LabVIEW Icon API/lv_icon/Controls/BodyTextPosition.ctl"
+                    },
+                    {
+                      "@Name": "Font.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<vilib>/LabVIEW Icon API/lv_icon/Controls/Font.ctl"
+                    },
+                    {
+                      "@Name": "Graphic.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<vilib>/LabVIEW Icon API/lv_icon/Controls/Graphic.ctl"
+                    },
+                    {
+                      "@Name": "IEColor.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<vilib>/LabVIEW Icon API/lv_icon/Controls/IEColor.ctl"
+                    },
+                    {
+                      "@Name": "LabVIEW Icon Stored Information.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<vilib>/LabVIEW Icon API/lv_icon/Controls/LabVIEW Icon Stored Information.ctl"
+                    },
+                    {
+                      "@Name": "Layer.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<vilib>/LabVIEW Icon API/lv_icon/Controls/Layer.ctl"
+                    },
+                    {
+                      "@Name": "LayerType.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<vilib>/LabVIEW Icon API/lv_icon/Controls/LayerType.ctl"
+                    },
+                    {
+                      "@Name": "Pathes.ctl",
+                      "@Type": "VI",
+                      "@URL": "/<vilib>/LabVIEW Icon API/lv_icon/Controls/Pathes.ctl"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "@Name": "Set Text Icon",
+              "@Type": "Folder",
+              "#whitespace": [
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t"
+              ],
+              "Item": [
+                {
+                  "@Name": "Configure Named Icons.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/LabVIEW Icon API/Set Text Icon/Configure Named Icons.vi"
+                },
+                {
+                  "@Name": "Group 1-Character Tokens.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/LabVIEW Icon API/Set Text Icon/Group 1-Character Tokens.vi"
+                },
+                {
+                  "@Name": "Text-Based VI Icon.lvlib",
+                  "@Type": "Library",
+                  "@URL": "/<vilib>/LabVIEW Icon API/Set Text Icon/Text-Based VI Icon.lvlib"
+                }
+              ]
+            },
+            {
+              "@Name": "LabVIEW Icon API.lvlib",
+              "@Type": "Library",
+              "@URL": "/<vilib>/LabVIEW Icon API/LabVIEW Icon API.lvlib"
+            }
+          ]
+        },
+        {
+          "@Name": "Unit tests",
+          "@Type": "Folder",
+          "#whitespace": [
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t"
+          ],
+          "Property": {
+            "@Name": "NI.SortType",
+            "@Type": "Int",
+            "#text": "1"
+          },
+          "Item": [
+            {
+              "@Name": "Editor Position.lvclass",
+              "@Type": "LVClass",
+              "@URL": "../Test/Unit Tests/Editor Position/Editor Position.lvclass"
+            },
+            {
+              "@Name": "Missing in Project.lvclass",
+              "@Type": "LVClass",
+              "@URL": "../Test/Unit Tests/Missing in Project/Missing in Project.lvclass"
+            },
+            {
+              "@Name": "Text-Based VI Icon Tests.lvclass",
+              "@Type": "LVClass",
+              "@URL": "../Test/Unit Tests/Text-Based VI Icon Tests/Text-Based VI Icon Tests.lvclass"
+            },
+            {
+              "@Name": "Undo Redo Core.lvclass",
+              "@Type": "LVClass",
+              "@URL": "../Test/Unit Tests/Undo Redo Core/Undo Redo Core.lvclass"
+            }
+          ]
+        },
+        {
+          "@Name": "Dependencies",
+          "@Type": "Dependencies",
+          "#whitespace": [
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t\t",
+            "\r\n\t\t"
+          ],
+          "Item": [
+            {
+              "@Name": "vi.lib",
+              "@Type": "Folder",
+              "#whitespace": [
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t"
+              ],
+              "Item": [
+                {
+                  "@Name": "Picture to Pixmap.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/pictutil.llb/Picture to Pixmap.vi"
+                },
+                {
+                  "@Name": "imagedata.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/imagedata.ctl"
+                },
+                {
+                  "@Name": "Create Mask.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/pictutil.llb/Create Mask.vi"
+                },
+                {
+                  "@Name": "Unflatten Pixmap.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/pixmap.llb/Unflatten Pixmap.vi"
+                },
+                {
+                  "@Name": "Bit-array To Byte-array.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/pictutil.llb/Bit-array To Byte-array.vi"
+                },
+                {
+                  "@Name": "Get Image Subset.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/pictutil.llb/Get Image Subset.vi"
+                },
+                {
+                  "@Name": "Coerce Bad Rect.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/pictutil.llb/Coerce Bad Rect.vi"
+                },
+                {
+                  "@Name": "Flatten Pixmap.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/pixmap.llb/Flatten Pixmap.vi"
+                },
+                {
+                  "@Name": "Draw Flattened Pixmap.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Draw Flattened Pixmap.vi"
+                },
+                {
+                  "@Name": "FixBadRect.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/pictutil.llb/FixBadRect.vi"
+                },
+                {
+                  "@Name": "Color to RGB.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/colorconv.llb/Color to RGB.vi"
+                },
+                {
+                  "@Name": "RGB to Color.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/colorconv.llb/RGB to Color.vi"
+                },
+                {
+                  "@Name": "Draw Unflattened Pixmap.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Draw Unflattened Pixmap.vi"
+                },
+                {
+                  "@Name": "Draw True-Color Pixmap.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Draw True-Color Pixmap.vi"
+                },
+                {
+                  "@Name": "Draw 4-Bit Pixmap.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Draw 4-Bit Pixmap.vi"
+                },
+                {
+                  "@Name": "Draw 8-Bit Pixmap.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Draw 8-Bit Pixmap.vi"
+                },
+                {
+                  "@Name": "Draw 1-Bit Pixmap.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Draw 1-Bit Pixmap.vi"
+                },
+                {
+                  "@Name": "Empty Picture",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Empty Picture"
+                },
+                {
+                  "@Name": "Draw Text at Point.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Draw Text at Point.vi"
+                },
+                {
+                  "@Name": "Get Text Rect.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Get Text Rect.vi"
+                },
+                {
+                  "@Name": "Draw Text in Rect.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Draw Text in Rect.vi"
+                },
+                {
+                  "@Name": "PCT Pad String.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/PCT Pad String.vi"
+                },
+                {
+                  "@Name": "Draw Rect.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Draw Rect.vi"
+                },
+                {
+                  "@Name": "Set Pen State.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Set Pen State.vi"
+                },
+                {
+                  "@Name": "Space Constant.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/dlg_ctls.llb/Space Constant.vi"
+                },
+                {
+                  "@Name": "Error Cluster From Error Code.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Error Cluster From Error Code.vi"
+                },
+                {
+                  "@Name": "LVRectTypeDef.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/miscctls.llb/LVRectTypeDef.ctl"
+                },
+                {
+                  "@Name": "Draw Oval.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Draw Oval.vi"
+                },
+                {
+                  "@Name": "Dflt Data Dir.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/file.llb/Dflt Data Dir.vi"
+                },
+                {
+                  "@Name": "Compare Two Paths.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Compare Two Paths.vi"
+                },
+                {
+                  "@Name": "Get File Extension.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Get File Extension.vi"
+                },
+                {
+                  "@Name": "Read JPEG File.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/jpeg.llb/Read JPEG File.vi"
+                },
+                {
+                  "@Name": "Check Path.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/jpeg.llb/Check Path.vi"
+                },
+                {
+                  "@Name": "Directory of Top Level VI.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/jpeg.llb/Directory of Top Level VI.vi"
+                },
+                {
+                  "@Name": "Read PNG File.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/png.llb/Read PNG File.vi"
+                },
+                {
+                  "@Name": "Create Mask By Alpha.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Create Mask By Alpha.vi"
+                },
+                {
+                  "@Name": "Read BMP File.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/bmp.llb/Read BMP File.vi"
+                },
+                {
+                  "@Name": "Read BMP File Data.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/bmp.llb/Read BMP File Data.vi"
+                },
+                {
+                  "@Name": "Read BMP Header Info.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/bmp.llb/Read BMP Header Info.vi"
+                },
+                {
+                  "@Name": "Calc Long Word Padded Width.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/bmp.llb/Calc Long Word Padded Width.vi"
+                },
+                {
+                  "@Name": "Flip and Pad for Picture Control.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/bmp.llb/Flip and Pad for Picture Control.vi"
+                },
+                {
+                  "@Name": "Recursive File List.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Recursive File List.vi"
+                },
+                {
+                  "@Name": "List Directory and LLBs.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/List Directory and LLBs.vi"
+                },
+                {
+                  "@Name": "New Zip File.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/zip/New Zip File.vi"
+                },
+                {
+                  "@Name": "Path To Command Line String.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/AdvancedString/Path To Command Line String.vi"
+                },
+                {
+                  "@Name": "PathToUNIXPathString.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Platform/CFURL.llb/PathToUNIXPathString.vi"
+                },
+                {
+                  "@Name": "Add File to Zip.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/zip/Add File to Zip.vi"
+                },
+                {
+                  "@Name": "Relative Path To Platform Independent String.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/AdvancedString/Relative Path To Platform Independent String.vi"
+                },
+                {
+                  "@Name": "Close Zip File.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/zip/Close Zip File.vi"
+                },
+                {
+                  "@Name": "Clear Errors.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Clear Errors.vi"
+                },
+                {
+                  "@Name": "Check if File or Folder Exists.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Check if File or Folder Exists.vi"
+                },
+                {
+                  "@Name": "NI_FileType.lvlib",
+                  "@Type": "Library",
+                  "@URL": "/<vilib>/Utility/lvfile.llb/NI_FileType.lvlib"
+                },
+                {
+                  "@Name": "NI_PackedLibraryUtility.lvlib",
+                  "@Type": "Library",
+                  "@URL": "/<vilib>/Utility/LVLibp/NI_PackedLibraryUtility.lvlib"
+                },
+                {
+                  "@Name": "1D String Array to Delimited String.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/AdvancedString/1D String Array to Delimited String.vi"
+                },
+                {
+                  "@Name": "Delimited String to 1D String Array.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/AdvancedString/Delimited String to 1D String Array.vi"
+                },
+                {
+                  "@Name": "NI_LVConfig.lvlib",
+                  "@Type": "Library",
+                  "@URL": "/<vilib>/Utility/config.llb/NI_LVConfig.lvlib"
+                },
+                {
+                  "@Name": "Trim Whitespace.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Trim Whitespace.vi"
+                },
+                {
+                  "@Name": "whitespace.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/whitespace.ctl"
+                },
+                {
+                  "@Name": "8.6CompatibleGlobalVar.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/config.llb/8.6CompatibleGlobalVar.vi"
+                },
+                {
+                  "@Name": "NI_Data Type.lvlib",
+                  "@Type": "Library",
+                  "@URL": "/<vilib>/Utility/Data Type/NI_Data Type.lvlib"
+                },
+                {
+                  "@Name": "Get LV Class Name.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/LVClass/Get LV Class Name.vi"
+                },
+                {
+                  "@Name": "Test Suite.lvclass",
+                  "@Type": "LVClass",
+                  "@URL": "/<vilib>/Astemes/LUnit/Test Suite.lvclass"
+                },
+                {
+                  "@Name": "Get LV Class Path.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/LVClass/Get LV Class Path.vi"
+                },
+                {
+                  "@Name": "Librarian Get Info.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Librarian Get Info.vi"
+                },
+                {
+                  "@Name": "Librarian File Info Out.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Librarian File Info Out.ctl"
+                },
+                {
+                  "@Name": "Librarian Path Location.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Librarian Path Location.vi"
+                },
+                {
+                  "@Name": "Is Path and Not Empty.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/file.llb/Is Path and Not Empty.vi"
+                },
+                {
+                  "@Name": "Find First Error.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Find First Error.vi"
+                },
+                {
+                  "@Name": "Get VI Library File Info.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Get VI Library File Info.vi"
+                },
+                {
+                  "@Name": "Librarian.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Librarian.vi"
+                },
+                {
+                  "@Name": "Librarian File Info In.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Librarian File Info In.ctl"
+                },
+                {
+                  "@Name": "Librarian File List.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Librarian File List.ctl"
+                },
+                {
+                  "@Name": "Simple Error Handler.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Simple Error Handler.vi"
+                },
+                {
+                  "@Name": "DialogType.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/DialogType.ctl"
+                },
+                {
+                  "@Name": "General Error Handler.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/General Error Handler.vi"
+                },
+                {
+                  "@Name": "DialogTypeEnum.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/DialogTypeEnum.ctl"
+                },
+                {
+                  "@Name": "General Error Handler Core CORE.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/General Error Handler Core CORE.vi"
+                },
+                {
+                  "@Name": "Check Special Tags.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Check Special Tags.vi"
+                },
+                {
+                  "@Name": "TagReturnType.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/TagReturnType.ctl"
+                },
+                {
+                  "@Name": "Set String Value.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Set String Value.vi"
+                },
+                {
+                  "@Name": "GetRTHostConnectedProp.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/GetRTHostConnectedProp.vi"
+                },
+                {
+                  "@Name": "Error Code Database.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Error Code Database.vi"
+                },
+                {
+                  "@Name": "Format Message String.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Format Message String.vi"
+                },
+                {
+                  "@Name": "Find Tag.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Find Tag.vi"
+                },
+                {
+                  "@Name": "Search and Replace Pattern.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Search and Replace Pattern.vi"
+                },
+                {
+                  "@Name": "Set Bold Text.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Set Bold Text.vi"
+                },
+                {
+                  "@Name": "Details Display Dialog.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Details Display Dialog.vi"
+                },
+                {
+                  "@Name": "ErrWarn.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/ErrWarn.ctl"
+                },
+                {
+                  "@Name": "eventvkey.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/event_ctls.llb/eventvkey.ctl"
+                },
+                {
+                  "@Name": "Not Found Dialog.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Not Found Dialog.vi"
+                },
+                {
+                  "@Name": "Three Button Dialog.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Three Button Dialog.vi"
+                },
+                {
+                  "@Name": "Three Button Dialog CORE.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Three Button Dialog CORE.vi"
+                },
+                {
+                  "@Name": "Longest Line Length in Pixels.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Longest Line Length in Pixels.vi"
+                },
+                {
+                  "@Name": "Convert property node font to graphics font.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Convert property node font to graphics font.vi"
+                },
+                {
+                  "@Name": "Get String Text Bounds.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Get String Text Bounds.vi"
+                },
+                {
+                  "@Name": "LVBoundsTypeDef.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/miscctls.llb/LVBoundsTypeDef.ctl"
+                },
+                {
+                  "@Name": "BuildHelpPath.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/BuildHelpPath.vi"
+                },
+                {
+                  "@Name": "GetHelpDir.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/GetHelpDir.vi"
+                },
+                {
+                  "@Name": "Draw Rectangle.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Draw Rectangle.vi"
+                },
+                {
+                  "@Name": "LVPoint32TypeDef.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/miscctls.llb/LVPoint32TypeDef.ctl"
+                },
+                {
+                  "@Name": "Draw Point.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Draw Point.vi"
+                },
+                {
+                  "@Name": "Open Registry Key.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/registry/registry.llb/Open Registry Key.vi"
+                },
+                {
+                  "@Name": "Registry SAM.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/registry/registry.llb/Registry SAM.ctl"
+                },
+                {
+                  "@Name": "Registry RtKey.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/registry/registry.llb/Registry RtKey.ctl"
+                },
+                {
+                  "@Name": "Registry refnum.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/registry/registry.llb/Registry refnum.ctl"
+                },
+                {
+                  "@Name": "Registry View.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/registry/registry.llb/Registry View.ctl"
+                },
+                {
+                  "@Name": "STR_ASCII-Unicode.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/registry/registry.llb/STR_ASCII-Unicode.vi"
+                },
+                {
+                  "@Name": "Registry WinErr-LVErr.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/registry/registry.llb/Registry WinErr-LVErr.vi"
+                },
+                {
+                  "@Name": "Registry Handle Master.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/registry/registry.llb/Registry Handle Master.vi"
+                },
+                {
+                  "@Name": "Query Registry Key Info.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/registry/registry.llb/Query Registry Key Info.vi"
+                },
+                {
+                  "@Name": "Enum Registry Values Simple.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/registry/registry.llb/Enum Registry Values Simple.vi"
+                },
+                {
+                  "@Name": "Enum Registry Values.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/registry/registry.llb/Enum Registry Values.vi"
+                },
+                {
+                  "@Name": "Registry Simplify Data Type.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/registry/registry.llb/Registry Simplify Data Type.vi"
+                },
+                {
+                  "@Name": "Close Registry Key.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/registry/registry.llb/Close Registry Key.vi"
+                },
+                {
+                  "@Name": "Write PNG File.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/png.llb/Write PNG File.vi"
+                },
+                {
+                  "@Name": "Check Data Size.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/jpeg.llb/Check Data Size.vi"
+                },
+                {
+                  "@Name": "Check Color Table Size.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/jpeg.llb/Check Color Table Size.vi"
+                },
+                {
+                  "@Name": "Check File Permissions.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/jpeg.llb/Check File Permissions.vi"
+                },
+                {
+                  "@Name": "Create Directory Recursive.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Create Directory Recursive.vi"
+                },
+                {
+                  "@Name": "Write BMP File.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/bmp.llb/Write BMP File.vi"
+                },
+                {
+                  "@Name": "Write BMP Data.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/bmp.llb/Write BMP Data.vi"
+                },
+                {
+                  "@Name": "Write BMP Data To Buffer.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/bmp.llb/Write BMP Data To Buffer.vi"
+                },
+                {
+                  "@Name": "Write JPEG File.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/jpeg.llb/Write JPEG File.vi"
+                },
+                {
+                  "@Name": "Draw Line.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Draw Line.vi"
+                },
+                {
+                  "@Name": "Move Pen.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/picture.llb/Move Pen.vi"
+                },
+                {
+                  "@Name": "Test Case.lvclass",
+                  "@Type": "LVClass",
+                  "@URL": "/<vilib>/Astemes/LUnit/Test Case.lvclass"
+                },
+                {
+                  "@Name": "LUnit Runnable.lvclass",
+                  "@Type": "LVClass",
+                  "@URL": "/<vilib>/Astemes/LUnit/LUnit Runnable.lvclass"
+                },
+                {
+                  "@Name": "RectSize.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/PictureSupport.llb/RectSize.vi"
+                },
+                {
+                  "@Name": "OffsetRect.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/PictureSupport.llb/OffsetRect.vi"
+                },
+                {
+                  "@Name": "System Exec.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Platform/system.llb/System Exec.vi"
+                },
+                {
+                  "@Name": "LVRowAndColumnTypeDef.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/miscctls.llb/LVRowAndColumnTypeDef.ctl"
+                },
+                {
+                  "@Name": "Set Busy.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/cursorutil.llb/Set Busy.vi"
+                },
+                {
+                  "@Name": "Set Cursor.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/cursorutil.llb/Set Cursor.vi"
+                },
+                {
+                  "@Name": "Set Cursor (Cursor ID).vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/cursorutil.llb/Set Cursor (Cursor ID).vi"
+                },
+                {
+                  "@Name": "Set Cursor (Icon Pict).vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/cursorutil.llb/Set Cursor (Icon Pict).vi"
+                },
+                {
+                  "@Name": "Unset Busy.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/cursorutil.llb/Unset Busy.vi"
+                },
+                {
+                  "@Name": "Librarian Rename.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Librarian Rename.vi"
+                },
+                {
+                  "@Name": "Compare Src And Dst Simple.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Compare Src And Dst Simple.vi"
+                },
+                {
+                  "@Name": "Librarian OK to Delete.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Librarian OK to Delete.vi"
+                },
+                {
+                  "@Name": "Librarian Delete Dialog.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Librarian Delete Dialog.vi"
+                },
+                {
+                  "@Name": "Librarian Delete.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Librarian Delete.vi"
+                },
+                {
+                  "@Name": "Delete Directory Recursive.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Delete Directory Recursive.vi"
+                },
+                {
+                  "@Name": "Delete From VI Library.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Delete From VI Library.vi"
+                },
+                {
+                  "@Name": "NI_Multibyte Utilities.lvlib",
+                  "@Type": "Library",
+                  "@URL": "/<vilib>/Utility/Multibyte/NI_Multibyte Utilities.lvlib"
+                },
+                {
+                  "@Name": "Open URL in Default Browser.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Platform/browser.llb/Open URL in Default Browser.vi"
+                },
+                {
+                  "@Name": "Open URL in Default Browser (string).vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Platform/browser.llb/Open URL in Default Browser (string).vi"
+                },
+                {
+                  "@Name": "Open URL in Default Browser core.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Platform/browser.llb/Open URL in Default Browser core.vi"
+                },
+                {
+                  "@Name": "Open URL in Default Browser (path).vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Platform/browser.llb/Open URL in Default Browser (path).vi"
+                },
+                {
+                  "@Name": "Path to URL.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/printing/PathToURL.llb/Path to URL.vi"
+                },
+                {
+                  "@Name": "Path to URL inner.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/printing/PathToURL.llb/Path to URL inner.vi"
+                },
+                {
+                  "@Name": "Escape Characters for HTTP.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/printing/PathToURL.llb/Escape Characters for HTTP.vi"
+                },
+                {
+                  "@Name": "LVPositionTypeDef.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/miscctls.llb/LVPositionTypeDef.ctl"
+                },
+                {
+                  "@Name": "subFile Dialog.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/express/express input/FileDialogBlock.llb/subFile Dialog.vi"
+                },
+                {
+                  "@Name": "ex_CorrectErrorChain.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/express/express shared/ex_CorrectErrorChain.vi"
+                },
+                {
+                  "@Name": "LabVIEWHTTPClient.lvlib",
+                  "@Type": "Library",
+                  "@URL": "/<vilib>/httpClient/LabVIEWHTTPClient.lvlib"
+                },
+                {
+                  "@Name": "Generate Temporary File Path.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/libraryn.llb/Generate Temporary File Path.vi"
+                },
+                {
+                  "@Name": "NI_XML.lvlib",
+                  "@Type": "Library",
+                  "@URL": "/<vilib>/xml/NI_XML.lvlib"
+                },
+                {
+                  "@Name": "NI_Unzip.lvlib",
+                  "@Type": "Library",
+                  "@URL": "/<vilib>/zip/NI_Unzip.lvlib"
+                },
+                {
+                  "@Name": "lveventtype.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/event_ctls.llb/lveventtype.ctl"
+                },
+                {
+                  "@Name": "Write to XML File.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/xml.llb/Write to XML File.vi"
+                },
+                {
+                  "@Name": "Trim Whitespace One-Sided.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/error.llb/Trim Whitespace One-Sided.vi"
+                },
+                {
+                  "@Name": "Single String To Qualified Name Array.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/LVClass/Single String To Qualified Name Array.vi"
+                },
+                {
+                  "@Name": "Qualified Name Array To Single String.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/LVClass/Qualified Name Array To Single String.vi"
+                },
+                {
+                  "@Name": "Write to XML File(string).vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/xml.llb/Write to XML File(string).vi"
+                },
+                {
+                  "@Name": "Open_Create_Replace File.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/_oldvers/_oldvers.llb/Open_Create_Replace File.vi"
+                },
+                {
+                  "@Name": "compatFileDialog.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/_oldvers/_oldvers.llb/compatFileDialog.vi"
+                },
+                {
+                  "@Name": "compatOpenFileOperation.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/_oldvers/_oldvers.llb/compatOpenFileOperation.vi"
+                },
+                {
+                  "@Name": "compatCalcOffset.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/_oldvers/_oldvers.llb/compatCalcOffset.vi"
+                },
+                {
+                  "@Name": "Write to XML File(array).vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/xml.llb/Write to XML File(array).vi"
+                },
+                {
+                  "@Name": "CenterRectInBnds.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/PictureSupport.llb/CenterRectInBnds.vi"
+                },
+                {
+                  "@Name": "RectCentroid.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/PictureSupport.llb/RectCentroid.vi"
+                },
+                {
+                  "@Name": "POffsetRect.vi",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/picture/PictureSupport.llb/POffsetRect.vi"
+                },
+                {
+                  "@Name": "Enum to Array of Enums.vim",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/numeric/Enum to Array of Enums.vim"
+                },
+                {
+                  "@Name": "LVAllMonitorsDisplayTypeDef.ctl",
+                  "@Type": "VI",
+                  "@URL": "/<vilib>/Utility/miscctls.llb/LVAllMonitorsDisplayTypeDef.ctl"
+                }
+              ]
+            },
+            {
+              "@Name": "Advapi32.dll",
+              "@Type": "Document",
+              "@URL": "Advapi32.dll",
+              "#whitespace": [
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t"
+              ],
+              "Property": {
+                "@Name": "NI.PreserveRelativePath",
+                "@Type": "Bool",
+                "#text": "true"
+              }
+            },
+            {
+              "@Name": "kernel32.dll",
+              "@Type": "Document",
+              "@URL": "kernel32.dll",
+              "#whitespace": [
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t"
+              ],
+              "Property": {
+                "@Name": "NI.PreserveRelativePath",
+                "@Type": "Bool",
+                "#text": "true"
+              }
+            },
+            {
+              "@Name": "DOMUserDefRef.dll",
+              "@Type": "Document",
+              "@URL": "DOMUserDefRef.dll",
+              "#whitespace": [
+                "\r\n\t\t\t\t",
+                "\r\n\t\t\t"
+              ],
+              "Property": {
+                "@Name": "NI.PreserveRelativePath",
+                "@Type": "Bool",
+                "#text": "true"
+              }
+            },
+            {
+              "@Name": "Add dev dist if present.vi",
+              "@Type": "VI",
+              "@URL": "../Tooling/support/Add dev dist if present.vi"
+            },
+            {
+              "@Name": "LV Config Read.vi",
+              "@Type": "VI",
+              "@URL": "/<resource>/dialog/lvconfig.llb/LV Config Read.vi"
+            },
+            {
+              "@Name": "LV Config Read Boolean.vi",
+              "@Type": "VI",
+              "@URL": "/<resource>/dialog/lvconfig.llb/LV Config Read Boolean.vi"
+            },
+            {
+              "@Name": "LV Config Read String.vi",
+              "@Type": "VI",
+              "@URL": "/<resource>/dialog/lvconfig.llb/LV Config Read String.vi"
+            },
+            {
+              "@Name": "LV Config Read Pathlist.vi",
+              "@Type": "VI",
+              "@URL": "/<resource>/dialog/lvconfig.llb/LV Config Read Pathlist.vi"
+            },
+            {
+              "@Name": "LV Config Read Color.vi",
+              "@Type": "VI",
+              "@URL": "/<resource>/dialog/lvconfig.llb/LV Config Read Color.vi"
+            },
+            {
+              "@Name": "LV Config Read Numeric (I32).vi",
+              "@Type": "VI",
+              "@URL": "/<resource>/dialog/lvconfig.llb/LV Config Read Numeric (I32).vi"
+            },
+            {
+              "@Name": "LV Config Write.vi",
+              "@Type": "VI",
+              "@URL": "/<resource>/dialog/lvconfig.llb/LV Config Write.vi"
+            },
+            {
+              "@Name": "LV Config Write Boolean.vi",
+              "@Type": "VI",
+              "@URL": "/<resource>/dialog/lvconfig.llb/LV Config Write Boolean.vi"
+            },
+            {
+              "@Name": "LV Config Write String.vi",
+              "@Type": "VI",
+              "@URL": "/<resource>/dialog/lvconfig.llb/LV Config Write String.vi"
+            },
+            {
+              "@Name": "LV Config Write Pathlist.vi",
+              "@Type": "VI",
+              "@URL": "/<resource>/dialog/lvconfig.llb/LV Config Write Pathlist.vi"
+            },
+            {
+              "@Name": "LV Config Write Color.vi",
+              "@Type": "VI",
+              "@URL": "/<resource>/dialog/lvconfig.llb/LV Config Write Color.vi"
+            },
+            {
+              "@Name": "LV Config Write Numeric (I32).vi",
+              "@Type": "VI",
+              "@URL": "/<resource>/dialog/lvconfig.llb/LV Config Write Numeric (I32).vi"
+            },
+            {
+              "@Name": "Discover Who Invoked The Icon Editor.vi",
+              "@Type": "VI",
+              "@URL": "/<resource>/plugins/IconEditor/Discover Who Invoked The Icon Editor.vi"
+            },
+            {
+              "@Name": "Who Invoked Icon Editor.ctl",
+              "@Type": "VI",
+              "@URL": "/<resource>/plugins/IconEditor/Who Invoked Icon Editor.ctl"
+            },
+            {
+              "@Name": "Icon Editor Invoker Type.ctl",
+              "@Type": "VI",
+              "@URL": "/<resource>/plugins/IconEditor/Icon Editor Invoker Type.ctl"
+            },
+            {
+              "@Name": "LV Config Remove.vi",
+              "@Type": "VI",
+              "@URL": "/<resource>/dialog/lvconfig.llb/LV Config Remove.vi"
+            }
+          ]
+        },
+        {
+          "@Name": "Build Specifications",
+          "@Type": "Build",
+          "#whitespace": [
+            "\r\n\t\t\t",
+            "\r\n\t\t"
+          ],
+          "Item": {
+            "@Name": "Editor Packed Library",
+            "@Type": "Packed Library",
+            "#whitespace": [
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t\t",
+              "\r\n\t\t\t"
+            ],
+            "Property": [
+              {
+                "@Name": "Bld_autoIncrement",
+                "@Type": "Bool",
+                "#text": "true"
+              },
+              {
+                "@Name": "Bld_buildCacheID",
+                "@Type": "Str",
+                "#text": "{2EFDE742-60A0-4EBA-A8BF-5DA02968166D}"
+              },
+              {
+                "@Name": "Bld_buildSpecName",
+                "@Type": "Str",
+                "#text": "Editor Packed Library"
+              },
+              {
+                "@Name": "Bld_excludeLibraryItems",
+                "@Type": "Bool",
+                "#text": "true"
+              },
+              {
+                "@Name": "Bld_excludePolymorphicVIs",
+                "@Type": "Bool",
+                "#text": "true"
+              },
+              {
+                "@Name": "Bld_excludeTypedefs",
+                "@Type": "Bool",
+                "#text": "true"
+              },
+              {
+                "@Name": "Bld_localDestDir",
+                "@Type": "Path",
+                "#text": "../resource/plugins"
+              },
+              {
+                "@Name": "Bld_localDestDirType",
+                "@Type": "Str",
+                "#text": "relativeToProject"
+              },
+              {
+                "@Name": "Bld_modifyLibraryFile",
+                "@Type": "Bool",
+                "#text": "true"
+              },
+              {
+                "@Name": "Bld_preActionVIID",
+                "@Type": "Ref",
+                "#text": "/My Computer/Tooling/Pre Build Icon Editor PPL.vi"
+              },
+              {
+                "@Name": "Bld_previewCacheID",
+                "@Type": "Str",
+                "#text": "{C699D48A-6A0A-4A55-BF6A-D6FC254001CD}"
+              },
+              {
+                "@Name": "Bld_version.build",
+                "@Type": "Int",
+                "#text": "1"
+              },
+              {
+                "@Name": "Bld_version.major",
+                "@Type": "Int",
+                "#text": "1"
+              },
+              {
+                "@Name": "Destination[0].destName",
+                "@Type": "Str",
+                "#text": "lv_icon.lvlibp"
+              },
+              {
+                "@Name": "Destination[0].path",
+                "@Type": "Path",
+                "#text": "../resource/plugins/lv_icon.lvlibp"
+              },
+              {
+                "@Name": "Destination[0].path.type",
+                "@Type": "Str",
+                "#text": "relativeToProject"
+              },
+              {
+                "@Name": "Destination[0].preserveHierarchy",
+                "@Type": "Bool",
+                "#text": "true"
+              },
+              {
+                "@Name": "Destination[0].type",
+                "@Type": "Str",
+                "#text": "App"
+              },
+              {
+                "@Name": "Destination[1].destName",
+                "@Type": "Str",
+                "#text": "Support Directory"
+              },
+              {
+                "@Name": "Destination[1].path",
+                "@Type": "Path",
+                "#text": "../resource/plugins"
+              },
+              {
+                "@Name": "Destination[1].path.type",
+                "@Type": "Str",
+                "#text": "relativeToProject"
+              },
+              {
+                "@Name": "DestinationCount",
+                "@Type": "Int",
+                "#text": "2"
+              },
+              {
+                "@Name": "PackedLib_callersAdapt",
+                "@Type": "Bool",
+                "#text": "true"
+              },
+              {
+                "@Name": "Source[0].itemID",
+                "@Type": "Str",
+                "#text": "{138797B9-53A9-4873-9DF2-49472334A11F}"
+              },
+              {
+                "@Name": "Source[0].type",
+                "@Type": "Str",
+                "#text": "Container"
+              },
+              {
+                "@Name": "Source[1].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[1].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/resource\\/plugins/lv_icon.lvlib"
+              },
+              {
+                "@Name": "Source[1].Library.allowMissingMembers",
+                "@Type": "Bool",
+                "#text": "true"
+              },
+              {
+                "@Name": "Source[1].Library.atomicCopy",
+                "@Type": "Bool",
+                "#text": "true"
+              },
+              {
+                "@Name": "Source[1].Library.LVLIBPtopLevel",
+                "@Type": "Bool",
+                "#text": "true"
+              },
+              {
+                "@Name": "Source[1].preventRename",
+                "@Type": "Bool",
+                "#text": "true"
+              },
+              {
+                "@Name": "Source[1].sourceInclusion",
+                "@Type": "Str",
+                "#text": "TopLevel"
+              },
+              {
+                "@Name": "Source[1].type",
+                "@Type": "Str",
+                "#text": "Library"
+              },
+              {
+                "@Name": "Source[10].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[10].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/vi.lib\\/LabVIEW Icon API/LabVIEW Icon API.lvlib/Get Library Icon.vi"
+              },
+              {
+                "@Name": "Source[10].sourceInclusion",
+                "@Type": "Str",
+                "#text": "Include"
+              },
+              {
+                "@Name": "Source[10].type",
+                "@Type": "Str",
+                "#text": "VI"
+              },
+              {
+                "@Name": "Source[11].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[11].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/vi.lib\\/LabVIEW Icon API/LabVIEW Icon API.lvlib/Get VI Icon.vi"
+              },
+              {
+                "@Name": "Source[11].sourceInclusion",
+                "@Type": "Str",
+                "#text": "Include"
+              },
+              {
+                "@Name": "Source[11].type",
+                "@Type": "Str",
+                "#text": "VI"
+              },
+              {
+                "@Name": "Source[12].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[12].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/vi.lib\\/LabVIEW Icon API/LabVIEW Icon API.lvlib/Low Level Functions/Generate Border User Layer.vi"
+              },
+              {
+                "@Name": "Source[12].sourceInclusion",
+                "@Type": "Str",
+                "#text": "Include"
+              },
+              {
+                "@Name": "Source[12].type",
+                "@Type": "Str",
+                "#text": "VI"
+              },
+              {
+                "@Name": "Source[13].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[13].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/vi.lib\\/LabVIEW Icon API/LabVIEW Icon API.lvlib/Support/Create Icon Framework.vi"
+              },
+              {
+                "@Name": "Source[13].sourceInclusion",
+                "@Type": "Str",
+                "#text": "Include"
+              },
+              {
+                "@Name": "Source[13].type",
+                "@Type": "Str",
+                "#text": "VI"
+              },
+              {
+                "@Name": "Source[14].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[14].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/vi.lib\\/LabVIEW Icon API/LabVIEW Icon API.lvlib/Support/Draw Template Glyph.vi"
+              },
+              {
+                "@Name": "Source[14].sourceInclusion",
+                "@Type": "Str",
+                "#text": "Include"
+              },
+              {
+                "@Name": "Source[14].type",
+                "@Type": "Str",
+                "#text": "VI"
+              },
+              {
+                "@Name": "Source[15].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[15].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/vi.lib\\/LabVIEW Icon API/LabVIEW Icon API.lvlib/Support/Populate Body Text Data.vi"
+              },
+              {
+                "@Name": "Source[15].sourceInclusion",
+                "@Type": "Str",
+                "#text": "Include"
+              },
+              {
+                "@Name": "Source[15].type",
+                "@Type": "Str",
+                "#text": "VI"
+              },
+              {
+                "@Name": "Source[16].Container.applyInclusion",
+                "@Type": "Bool",
+                "#text": "true"
+              },
+              {
+                "@Name": "Source[16].Container.depDestIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[16].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[16].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/vi.lib\\/LabVIEW Icon API/LabVIEW Icon API.lvlib/Controls"
+              },
+              {
+                "@Name": "Source[16].sourceInclusion",
+                "@Type": "Str",
+                "#text": "Include"
+              },
+              {
+                "@Name": "Source[16].type",
+                "@Type": "Str",
+                "#text": "Container"
+              },
+              {
+                "@Name": "Source[17].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[17].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/resource\\/plugins/NIIconEditor/Miscellaneous/Graphics/LoadGraphics.vi"
+              },
+              {
+                "@Name": "Source[17].sourceInclusion",
+                "@Type": "Str",
+                "#text": "Include"
+              },
+              {
+                "@Name": "Source[17].type",
+                "@Type": "Str",
+                "#text": "VI"
+              },
+              {
+                "@Name": "Source[2].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[2].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/vi.lib\\/LabVIEW Icon API/LabVIEW Icon API.lvlib"
+              },
+              {
+                "@Name": "Source[2].Library.allowMissingMembers",
+                "@Type": "Bool",
+                "#text": "true"
+              },
+              {
+                "@Name": "Source[2].type",
+                "@Type": "Str",
+                "#text": "Library"
+              },
+              {
+                "@Name": "Source[3].Container.applyProperties",
+                "@Type": "Bool",
+                "#text": "true"
+              },
+              {
+                "@Name": "Source[3].Container.depDestIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[3].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/vi.lib\\/LabVIEW Icon API"
+              },
+              {
+                "@Name": "Source[3].properties[0].type",
+                "@Type": "Str",
+                "#text": "Allow debugging"
+              },
+              {
+                "@Name": "Source[3].properties[0].value",
+                "@Type": "Bool",
+                "#text": "false"
+              },
+              {
+                "@Name": "Source[3].propertiesCount",
+                "@Type": "Int",
+                "#text": "1"
+              },
+              {
+                "@Name": "Source[3].type",
+                "@Type": "Str",
+                "#text": "Container"
+              },
+              {
+                "@Name": "Source[4].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[4].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/resource\\/plugins/NIIconEditor/Miscellaneous/Icon Editor/Keep IE in Memory.vi"
+              },
+              {
+                "@Name": "Source[4].sourceInclusion",
+                "@Type": "Str",
+                "#text": "Include"
+              },
+              {
+                "@Name": "Source[4].type",
+                "@Type": "Str",
+                "#text": "VI"
+              },
+              {
+                "@Name": "Source[5].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[5].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/resource\\/plugins/NIIconEditor/Support/ApplyLibIconOverlayToVIIcon.vi"
+              },
+              {
+                "@Name": "Source[5].type",
+                "@Type": "Str",
+                "#text": "VI"
+              },
+              {
+                "@Name": "Source[6].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[6].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/resource\\/plugins/NIIconEditor/Miscellaneous/Create new class icon user layers.vi"
+              },
+              {
+                "@Name": "Source[6].type",
+                "@Type": "Str",
+                "#text": "VI"
+              },
+              {
+                "@Name": "Source[7].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[7].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/resource\\/plugins/NIIconEditor/Launch Icon Editor From String.vi"
+              },
+              {
+                "@Name": "Source[7].sourceInclusion",
+                "@Type": "Str",
+                "#text": "Include"
+              },
+              {
+                "@Name": "Source[7].type",
+                "@Type": "Str",
+                "#text": "VI"
+              },
+              {
+                "@Name": "Source[8].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[8].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/vi.lib\\/LabVIEW Icon API/LabVIEW Icon API.lvlib/Set Library Icon.vi"
+              },
+              {
+                "@Name": "Source[8].sourceInclusion",
+                "@Type": "Str",
+                "#text": "Include"
+              },
+              {
+                "@Name": "Source[8].type",
+                "@Type": "Str",
+                "#text": "VI"
+              },
+              {
+                "@Name": "Source[9].destinationIndex",
+                "@Type": "Int",
+                "#text": "0"
+              },
+              {
+                "@Name": "Source[9].itemID",
+                "@Type": "Ref",
+                "#text": "/My Computer/vi.lib\\/LabVIEW Icon API/LabVIEW Icon API.lvlib/Set VI Icon.vi"
+              },
+              {
+                "@Name": "Source[9].sourceInclusion",
+                "@Type": "Str",
+                "#text": "Include"
+              },
+              {
+                "@Name": "Source[9].type",
+                "@Type": "Str",
+                "#text": "VI"
+              },
+              {
+                "@Name": "SourceCount",
+                "@Type": "Int",
+                "#text": "18"
+              },
+              {
+                "@Name": "TgtF_companyName",
+                "@Type": "Str",
+                "#text": "National Instruments"
+              },
+              {
+                "@Name": "TgtF_fileDescription",
+                "@Type": "Str",
+                "#text": "Icon Editor Packed Library"
+              },
+              {
+                "@Name": "TgtF_internalName",
+                "@Type": "Str",
+                "#text": "Icon Editor Packed Library"
+              },
+              {
+                "@Name": "TgtF_legalCopyright",
+                "@Type": "Str",
+                "#text": "Copyright © 2024 National Instruments"
+              },
+              {
+                "@Name": "TgtF_productName",
+                "@Type": "Str",
+                "#text": "Icon Editor Packed Library"
+              },
+              {
+                "@Name": "TgtF_targetfileGUID",
+                "@Type": "Str",
+                "#text": "{8000CA4B-2279-41C6-9767-84059F743142}"
+              },
+              {
+                "@Name": "TgtF_targetfileName",
+                "@Type": "Str",
+                "#text": "lv_icon.lvlibp"
+              },
+              {
+                "@Name": "TgtF_versionIndependent",
+                "@Type": "Bool",
+                "#text": "true"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

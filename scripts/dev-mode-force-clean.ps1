@@ -39,8 +39,7 @@ Write-Host "Using VIPB: $VipbPath"
 Write-Host @"
 Token updates – `Set_Development_Mode.ps1` (via `DevModeBind`/`DevModeForceClean`) calls `AddTokenToLabVIEW.ps1`, which:
 - resolves `$VipbPath` to determine LabVIEW version/bitness,
-- invokes `g-cli` / `Create_LV_INI_Token.vi` to insert the repo path into each canonical `LabVIEW.ini`,
-- writes `LocalHost.LibraryPaths=C:\repos\...` so LabVIEW loads your source tree instead of packed libraries.
+- writes `LocalHost.LibraryPaths=C:\repos\...` directly into the canonical INI (no Create_LV_INI_Token.vi) so LabVIEW loads your source tree instead of packed libraries.
 
 Preparing sources – once the tokens are present, `Prepare_LabVIEW_source.ps1`:
 - calls `g-cli` / `PrepareIESource.vi`, unpacks `vi.lib`, removes packed libs, and makes sure the repo VIs are runnable.

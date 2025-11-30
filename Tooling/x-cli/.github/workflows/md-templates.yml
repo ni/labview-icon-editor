@@ -1,0 +1,307 @@
+name: Markdown Templates Preview
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    env:
+      MD_TEMPLATES_TOPN: ${{ vars.MD_TEMPLATES_TOPN }}
+      MD_TEMPLATES_MINCOUNT: ${{ vars.MD_TEMPLATES_MINCOUNT }}
+      MD_TEMPLATES_INCLUDE_SNIPPETS: ${{ vars.MD_TEMPLATES_INCLUDE_SNIPPETS }}
+      MD_TEMPLATES_SUGGEST_MINCOUNT: ${{ vars.MD_TEMPLATES_SUGGEST_MINCOUNT }}
+      MD_TEMPLATES_HISTORY_PUBLISH: ${{ vars.MD_TEMPLATES_HISTORY_PUBLISH }}
+      MD_TEMPLATES_CYCLE_WINDOW: ${{ vars.MD_TEMPLATES_CYCLE_WINDOW }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Render templates
+        shell: pwsh
+        run: |
+          ./scripts/render_markdown_templates.ps1 -VerboseLog
+        continue-on-error: true
+
+      - name: Upload rendered examples
+        uses: actions/upload-artifact@v4
+        with:
+          name: md-templates
+          path: docs/templates/markdown/**/*.example.md
+        if: always()
+        continue-on-error: true
+
+      - name: Upload render manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: md-templates-manifest
+          path: artifacts/md-templates/manifest.json
+        if: always()
+        continue-on-error: true
+
+      - name: Aggregate to sessions-manifest.json (PR preview)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $manifest = 'artifacts/md-templates/manifest.json'
+          if (-not (Test-Path $manifest)) {
+            Write-Host 'Manifest not found; skip aggregation.'
+            exit 0
+          }
+          $items = Get-Content $manifest -Raw | ConvertFrom-Json
+          # Ensure array
+          if ($items -isnot [System.Collections.IEnumerable]) { $items = @($items) }
+          foreach ($it in $items) {
+            if (-not ($it.PSObject.Properties.Name -contains 'domain')) { $it | Add-Member -NotePropertyName domain -NotePropertyValue 'default' -Force }
+          }
+          $outDir = 'artifacts/md-templates'
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          $outFile = Join-Path $outDir 'sessions-manifest.json'
+          $obj = [ordered]@{
+            schema = 'md.templates.sessions/v1'
+            ts = (Get-Date).ToString('o')
+            count = ($items | Measure-Object).Count
+            items = $items
+          }
+          $obj | ConvertTo-Json -Depth 8 | Out-File -FilePath $outFile -Encoding utf8
+          Write-Host "Wrote: $outFile"
+          if ($env:GITHUB_STEP_SUMMARY) {
+            $sb = New-Object System.Text.StringBuilder
+            [void]$sb.AppendLine('### Markdown Templates Preview Summary')
+            $ok = ($items | Where-Object { $_.status -eq 'ok' }).Count
+            $err = ($items | Where-Object { $_.status -ne 'ok' }).Count
+            [void]$sb.AppendLine("- items: $($items.Count) (ok: $ok, error: $err)")
+            # Optional: Top placeholders (optionally skip snippets group)
+            $includeSnip = $env:MD_TEMPLATES_INCLUDE_SNIPPETS -eq '1'
+            $forCounts = if ($includeSnip) { $items } else { $items | Where-Object { $_.group -ne 'snippets' } }
+            $counts = @{}
+            foreach ($it in $forCounts) {
+              $arr = $it.placeholdersUsed
+              if ($null -eq $arr) { continue }
+              foreach ($ph in $arr) {
+                if (-not $ph) { continue }
+                if (-not $counts.ContainsKey($ph)) { $counts[$ph] = 0 }
+                $counts[$ph]++
+              }
+            }
+            $topEnv = $env:MD_TEMPLATES_TOPN
+            [int]$topN = ($topEnv -as [int])
+            if (-not $topN -or $topN -le 0) { $topN = 10 }
+            $minEnv = $env:MD_TEMPLATES_MINCOUNT
+            [int]$minCount = ($minEnv -as [int])
+            if (-not $minCount -or $minCount -le 0) { $minCount = 1 }
+            [void]$sb.AppendLine("- Effective thresholds: TopN=$topN, MinCount=$minCount")
+            if ($counts.Count -gt 0) {
+              $top = $counts.GetEnumerator() | Where-Object { $_.Value -ge $minCount } | Sort-Object -Property Value -Descending | Select-Object -First $topN
+              [void]$sb.AppendLine('')
+              if ($top.Count -gt 0) {
+                $snipNote = if ($includeSnip) { '' } else { ' (snippets excluded)' }
+                [void]$sb.AppendLine("Top placeholders (TopN=$topN, MinCount=$minCount)$snipNote")
+                [void]$sb.AppendLine('| Placeholder | Count |')
+                [void]$sb.AppendLine('|---|---:|')
+                foreach ($kv in $top) { [void]$sb.AppendLine("| $($kv.Key) | $($kv.Value) |") }
+              } else {
+                [void]$sb.AppendLine('Top placeholders: none meet MinCount threshold')
+              }
+            } else {
+              [void]$sb.AppendLine('Top placeholders: none (no placeholders found in this run)')
+            }
+            # Per-group counts
+            $groups = $items | Group-Object group
+            if ($groups) {
+              [void]$sb.AppendLine('')
+              [void]$sb.AppendLine('Items by group:')
+              foreach ($g in $groups) { [void]$sb.AppendLine("- $($g.Name): $($g.Count)") }
+            }
+            $sb.ToString() | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+        continue-on-error: true
+
+      - name: Validate sessions manifest (optional)
+        shell: pwsh
+        run: |
+          if (Test-Path 'artifacts/md-templates/sessions-manifest.json') {
+            $json = Get-Content 'artifacts/md-templates/sessions-manifest.json' -Raw
+            Test-Json -Json $json -SchemaFile 'docs/schemas/v1/md.templates.sessions.v1.schema.json' | Out-Null
+            Write-Host 'Schema validation OK'
+          } else {
+            Write-Host 'sessions-manifest.json not found; skipping schema validation.'
+          }
+        continue-on-error: true
+
+      - name: Generate suggestions artifact (placeholders not in defaults)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $manifest = 'artifacts/md-templates/sessions-manifest.json'
+          if (-not (Test-Path $manifest)) { Write-Host 'No sessions manifest; skip'; exit 0 }
+          $includeSnip = $env:MD_TEMPLATES_INCLUDE_SNIPPETS -eq '1'
+          $minCountEnv = $env:MD_TEMPLATES_SUGGEST_MINCOUNT
+          [int]$minCount = ($minCountEnv -as [int]); if (-not $minCount -or $minCount -le 0) { $minCount = 2 }
+          $defaultsPath = 'docs/templates/markdown/contexts/default.json'
+          $defaults = @()
+          if (Test-Path $defaultsPath) {
+            try { $j = Get-Content $defaultsPath -Raw | ConvertFrom-Json; $defaults = @($j.PSObject.Properties.Name) } catch { $defaults = @() }
+          }
+          $data = Get-Content $manifest -Raw | ConvertFrom-Json
+          $items = @($data.items)
+          if (-not $includeSnip) { $items = $items | Where-Object { $_.group -ne 'snippets' } }
+          $counts = @{}
+          $totalPH = 0
+          foreach ($it in $items) { $arr = $it.placeholdersUsed; if ($null -eq $arr) { continue }; foreach ($ph in $arr) { if (-not $ph) { continue }; $totalPH++; if (-not $counts.ContainsKey($ph)) { $counts[$ph] = 0 }; $counts[$ph]++ } }
+          $suggest = @()
+          foreach ($kv in $counts.GetEnumerator()) {
+            if ($defaults -contains $kv.Key) { continue }
+            if ($kv.Value -lt $minCount) { continue }
+            $suggest += [ordered]@{ placeholder=$kv.Key; count=[int]$kv.Value }
+          }
+          $suggest = $suggest | Sort-Object -Property count -Descending
+          $outDir = 'artifacts/md-templates'
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          $outFile = Join-Path $outDir 'suggested-placeholders.json'
+          $obj = [ordered]@{
+            schema = 'md.templates.suggestions/v1'
+            ts = (Get-Date).ToString('o')
+            inputs = [ordered]@{ include_snippets = $includeSnip; min_count = $minCount; defaults_path = $defaultsPath; defaults = $defaults }
+            stats = [ordered]@{ total_items = $items.Count; placeholders_total = $totalPH; unique = $counts.Count }
+            suggestions = $suggest
+          }
+          $obj | ConvertTo-Json -Depth 8 | Out-File -FilePath $outFile -Encoding utf8
+          Write-Host "Wrote suggestions: $outFile"
+          if ($env:GITHUB_STEP_SUMMARY) {
+            $sb = New-Object System.Text.StringBuilder
+            [void]$sb.AppendLine('')
+            [void]$sb.AppendLine('Suggestions (not in defaults):')
+            if ($suggest.Count -gt 0) {
+              foreach ($s in ($suggest | Select-Object -First 10)) { [void]$sb.AppendLine("- $($s.placeholder): $($s.count)") }
+              if ($suggest.Count -gt 10) { [void]$sb.AppendLine("(... $($suggest.Count - 10) more)") }
+            } else {
+              [void]$sb.AppendLine('None above threshold')
+            }
+            $sb.ToString() | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+        continue-on-error: true
+
+      - name: Validate suggestions (optional)
+        shell: pwsh
+        run: |
+          if (Test-Path 'artifacts/md-templates/suggested-placeholders.json') {
+            $json = Get-Content 'artifacts/md-templates/suggested-placeholders.json' -Raw
+            Test-Json -Json $json -SchemaFile 'docs/schemas/v1/md.templates.suggestions.v1.schema.json' | Out-Null
+            Write-Host 'Suggestions schema validation OK'
+          } else { Write-Host 'No suggestions to validate' }
+        continue-on-error: true
+
+      - name: Upload suggestions
+        uses: actions/upload-artifact@v4
+        with:
+          name: md-templates-suggestions-preview
+          path: artifacts/md-templates/suggested-placeholders.json
+        if: always()
+        continue-on-error: true
+
+      - name: Checkout gh-pages (history)
+        if: ${{ env.MD_TEMPLATES_HISTORY_PUBLISH == '1' }}
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+          fetch-depth: 0
+        continue-on-error: true
+
+      - name: Append suggestions to history (JSONL)
+        if: ${{ env.MD_TEMPLATES_HISTORY_PUBLISH == '1' }}
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'artifacts/md-templates/suggested-placeholders.json')) { Write-Host 'No suggestions file; skip append'; exit 0 }
+          if (-not (Test-Path 'gh-pages/.git')) { Write-Host 'gh-pages branch not available; skip history append'; exit 0 }
+          $histDir = 'gh-pages/telemetry/templates'
+          New-Item -ItemType Directory -Force -Path $histDir | Out-Null
+          $line = Get-Content 'artifacts/md-templates/suggested-placeholders.json' -Raw
+          Add-Content -Path (Join-Path $histDir 'suggestions.jsonl') -Value $line
+          pushd gh-pages
+          git config user.email "actions@users.noreply.github.com"
+          git config user.name "github-actions"
+          git add telemetry/templates/suggestions.jsonl
+          if ((git status --porcelain) -ne $null) { git commit -m "templates: append suggestions (preview)"; git push }
+          popd
+
+      - name: Rolling suggestions (last N cycles)
+        if: ${{ env.MD_TEMPLATES_HISTORY_PUBLISH == '1' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $hist = 'gh-pages/telemetry/templates/suggestions.jsonl'
+          [int]$N = ($env:MD_TEMPLATES_CYCLE_WINDOW -as [int]); if (-not $N -or $N -le 0) { $N = 8 }
+          $outDir='artifacts/md-templates'; New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          $outFile = Join-Path $outDir 'suggested-placeholders-rolling.json'
+          if (-not (Test-Path $hist)) {
+            # Create empty rolling file for consistency
+            $objEmpty = [ordered]@{ schema='md.templates.suggestions/v1'; ts=(Get-Date).ToString('o'); inputs=[ordered]@{ include_snippets=($env:MD_TEMPLATES_INCLUDE_SNIPPETS -eq '1'); min_count=([int]($env:MD_TEMPLATES_SUGGEST_MINCOUNT -as [int] ?? 2)); defaults_path='docs/templates/markdown/contexts/default.json'; defaults=@(); window=$N }; stats=[ordered]@{ total_items=0; placeholders_total=0; unique=0 }; suggestions=@() }
+            $objEmpty | ConvertTo-Json -Depth 8 | Out-File -FilePath $outFile -Encoding utf8
+            if ($env:GITHUB_STEP_SUMMARY) { "- Rolling window entries: 0" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8 }
+            exit 0
+          }
+          $lines = Get-Content $hist -Raw -Encoding utf8 -ErrorAction Stop -TotalCount 0 | Select-String ".*" | ForEach-Object { $_.ToString() }
+          if (-not $lines) {
+            $objEmpty = [ordered]@{ schema='md.templates.suggestions/v1'; ts=(Get-Date).ToString('o'); inputs=[ordered]@{ include_snippets=($env:MD_TEMPLATES_INCLUDE_SNIPPETS -eq '1'); min_count=([int]($env:MD_TEMPLATES_SUGGEST_MINCOUNT -as [int] ?? 2)); defaults_path='docs/templates/markdown/contexts/default.json'; defaults=@(); window=$N }; stats=[ordered]@{ total_items=0; placeholders_total=0; unique=0 }; suggestions=@() }
+            $objEmpty | ConvertTo-Json -Depth 8 | Out-File -FilePath $outFile -Encoding utf8
+            if ($env:GITHUB_STEP_SUMMARY) { "- Rolling window entries: 0" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8 }
+            exit 0
+          }
+          $last = @($lines)[-1 * [Math]::Min($N, @($lines).Count)..-1]
+          # Parse and aggregate
+          $defaultsPath = 'docs/templates/markdown/contexts/default.json'
+          $defaults = @(); if (Test-Path $defaultsPath) { try { $j = Get-Content $defaultsPath -Raw | ConvertFrom-Json; $defaults = @($j.PSObject.Properties.Name) } catch { $defaults=@() } }
+          $includeSnip = $env:MD_TEMPLATES_INCLUDE_SNIPPETS -eq '1'
+          $minCountEnv = $env:MD_TEMPLATES_SUGGEST_MINCOUNT; [int]$minCount = ($minCountEnv -as [int]); if (-not $minCount -or $minCount -le 0) { $minCount = 2 }
+          $counts = @{}
+          $itemsTotal = 0; $phTotal = 0
+          foreach ($ln in $last) {
+            try { $obj = $ln | ConvertFrom-Json } catch { continue }
+            $items = @($obj.items)
+            if (-not $includeSnip) { $items = $items | Where-Object { $_.group -ne 'snippets' } }
+            $itemsTotal += $items.Count
+            foreach ($it in $items) {
+              $arr = $it.placeholdersUsed; if ($null -eq $arr) { continue }
+              foreach ($ph in $arr) { if (-not $ph) { continue }; $phTotal++; if (-not $counts.ContainsKey($ph)) { $counts[$ph]=0 }; $counts[$ph]++ }
+            }
+          }
+          $suggest = @(); foreach ($kv in $counts.GetEnumerator()) { if ($defaults -contains $kv.Key) { continue }; if ($kv.Value -lt $minCount) { continue }; $suggest += [ordered]@{ placeholder=$kv.Key; count=[int]$kv.Value } }
+          $suggest = $suggest | Sort-Object -Property count -Descending
+          # Ensure we write the rolling file even if no suggestions meet threshold
+          $objOut = [ordered]@{ schema='md.templates.suggestions/v1'; ts=(Get-Date).ToString('o'); inputs=[ordered]@{ include_snippets=$includeSnip; min_count=$minCount; defaults_path=$defaultsPath; defaults=$defaults; window=$N }; stats=[ordered]@{ total_items=$itemsTotal; placeholders_total=$phTotal; unique=$counts.Count }; suggestions=$suggest }
+          $objOut | ConvertTo-Json -Depth 8 | Out-File -FilePath $outFile -Encoding utf8
+          if ($env:GITHUB_STEP_SUMMARY) {
+            $sb=New-Object System.Text.StringBuilder
+            [void]$sb.AppendLine('')
+            [void]$sb.AppendLine("- Rolling window entries: $($last.Count)")
+            [void]$sb.AppendLine("Rolling Suggestions (last $N cycles):")
+            if ($suggest.Count -gt 0) { foreach ($s in ($suggest | Select-Object -First 10)) { [void]$sb.AppendLine("- $($s.placeholder): $($s.count)") } } else { [void]$sb.AppendLine('None above threshold') }
+            $sb.ToString() | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+        continue-on-error: true
+
+      - name: Upload rolling suggestions
+        uses: actions/upload-artifact@v4
+        with:
+          name: md-templates-suggestions-rolling-preview
+          path: artifacts/md-templates/suggested-placeholders-rolling.json
+        if: always()
+        continue-on-error: true
+      - name: Upload sessions manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: md-templates-sessions-preview
+          path: artifacts/md-templates/sessions-manifest.json
+        if: always()
+        continue-on-error: true

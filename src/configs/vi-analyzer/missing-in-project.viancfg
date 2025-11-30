@@ -1,0 +1,6 @@
+{
+  "schema": "vi-analyzer/config@v1",
+  "description": "Targets the MissingInProject CLI VI and supporting tests for dev-mode verification.",
+  "targetType": "folder",
+  "targetPath": "scripts/missing-in-project"
+}

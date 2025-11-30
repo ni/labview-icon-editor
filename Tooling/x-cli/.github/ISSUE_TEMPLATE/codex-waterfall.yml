@@ -1,0 +1,37 @@
+name: "Codex Request: Waterfall Stage"
+description: "Stage-specific request for the waterfall agents."
+title: "wf: <short summary> | stage: <requirements/design/implementation/testing/deployment> | SRS: FGC-REQ-…"
+labels: ["codex", "automation"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please read **[AGENTS.md](../AGENTS.md)** and **[WATERFALL.md](../WATERFALL.md)**.
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Codex Mode
+      options: [codex]
+    validations: { required: true }
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Stage
+      options: [requirements, design, implementation, testing, deployment]
+    validations: { required: true }
+  - type: textarea
+    id: srs
+    attributes:
+      label: SRS IDs (one per line)
+    validations: { required: true }
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+    validations: { required: true }

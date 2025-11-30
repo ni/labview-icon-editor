@@ -1,0 +1,14 @@
+{
+  "requests": [
+    {
+      "pairId": "vi-attr/Base.vi",
+      "baseline": {
+        "path": "fixtures/vi-attr/Base.vi"
+      },
+      "candidate": {
+        "path": "fixtures/vi-attr/Head.vi"
+      },
+      "name": "vi-attr: Base vs Head"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+# PMP Checklist (Concise)
+
+-   [ ] Scope, objectives, stakeholders (15289.Plans)
+-   [ ] Lifecycle model & milestones (12207.Project_Planning)
+-   [ ] Roles & org (15289.Plans; 828.Roles_Responsibilities)
+-   [ ] Risk register with owners (12207.Risk_Management)
+-   [ ] QA activities & independence (12207.Quality_Assurance)
+-   [ ] CM & release: SemVer baselines; required checks listed (10007.Configuration_Identification; Change_Control)
+-   [ ] Measurement set & thresholds (12207.Measurement)
+-   [ ] Info management (repos, retention) (12207.Information_Management)
+-   [ ] V&V exit criteria reference (29119_2.Exit_Criteria)
+-   [ ] Tailoring documented (12207.Tailoring)
