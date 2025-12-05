@@ -358,6 +358,7 @@
 				<Item Name="Pyramid.png" Type="Document" URL="../Test/Templates/Pyramid.png"/>
 				<Item Name="Library Template.lvlib" Type="Library" URL="../Test/Templates/Library Template/Library Template.lvlib"/>
 				<Item Name="Class Template.lvclass" Type="LVClass" URL="../Test/Templates/Class Template/Class Template.lvclass"/>
+				<Item Name="Control Template.ctl" Type="VI" URL="../Test/Templates/Control Template.ctl"/>
 			</Item>
 		</Item>
 		<Item Name="Dependencies" Type="Dependencies"/>
