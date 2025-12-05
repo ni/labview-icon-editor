@@ -1,0 +1,25 @@
+name: ADR Lint / adr-lint
+
+defaults:
+  run:
+    working-directory: './'
+
+on:
+  pull_request:
+    branches: [ main, develop, release/*, feature/*, hotfix/* ]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  adr-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - name: Lint ADRs and agent config language
+        run: python .github/scripts/lint_requirements_language.py

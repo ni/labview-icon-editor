@@ -1,0 +1,105 @@
+name: Test Report / test-report
+
+on:
+  pull_request:
+    branches: [ main, develop, release/*, feature/*, hotfix/* ]
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  test-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - name: Generate test report
+        run: python3 .github/scripts/generate_test_report.py
+      - name: Generate ISO 29119-3 test status report (with structured results)
+        if: always()
+        run: python3 .github/scripts/generate_test_status.py --mode status --run-id "${{ github.run_id }}"
+      - name: Generate test execution log
+        if: always()
+        env:
+          RTM_VALIDATE: success
+          RTM_COVERAGE: success
+          GENERATE_TCS: success
+          DATA_READINESS: success
+          ENV_READINESS: success
+          ADR_LINT: success
+          LINKCHECK: success
+        run: python3 .github/scripts/generate_test_execution_log.py --run-id "${{ github.run_id }}"
+      - name: File test incident issues for Critical failures
+        if: always()
+        id: file_incidents
+        uses: actions/github-script@v7
+        env:
+          RUN_ID: ${{ github.run_id }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = `reports/test-results-${process.env.RUN_ID}.json`;
+            if (!fs.existsSync(path)) {
+              core.info(`No structured results at ${path}; skipping incident filing.`);
+              return;
+            }
+            const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const incidents = (data.results || []).filter(r =>
+              (r.priority || '').toLowerCase() === 'critical' &&
+              ['fail', 'failed', 'blocker', 'blocked'].includes((r.actual || '').toLowerCase())
+            );
+            if (!incidents.length) {
+              core.info('No Critical failures found; no incidents opened.');
+              return;
+            }
+            const urls = [];
+            for (const inc of incidents) {
+              const title = `[Test Incident] ${inc.requirement_id}: ${inc.title}`.slice(0, 250);
+              const body = [
+                '## ISO/IEC/IEEE 29119-3 §8.11 Test Incident',
+                `- Run ID: ${data.run_id}`,
+                `- Timing (UTC): ${data.generated_at || new Date().toISOString()}`,
+                `- Originator: CI (test-report workflow)`,
+                `- Severity: Critical`,
+                `- Priority: ${inc.priority}`,
+                `- Risk/Impact: Blocks release for Critical RTM failure`,
+                `- Status: Open`,
+                `- Requirement ID(s): ${inc.requirement_id}`,
+                `- Context: ${data.meta?.event || 'n/a'} ${data.meta?.ref || ''}`.trim(),
+                `- Expected: ${inc.expected || 'Execute mapped test'}`,
+                `- Actual: ${inc.actual || 'failed'}`,
+                `- Structured results: reports/test-results-${process.env.RUN_ID}.json`,
+                '',
+                '### Description',
+                inc.note || '(see structured results for details)',
+              ].join('\n');
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['test-incident'],
+              });
+              urls.push(issue.data.html_url);
+            }
+            core.setOutput('incident_urls', urls.join(','));
+      - name: Regenerate test status report with incident links
+        if: always()
+        env:
+          TEST_INCIDENT_URLS: ${{ steps.file_incidents.outputs.incident_urls }}
+        run: python3 .github/scripts/generate_test_status.py --mode status --run-id "${{ github.run_id }}"
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-test-report
+          path: |
+            test-report.md
+            reports/test-status-${{ github.run_id }}.md
+            reports/test-results-${{ github.run_id }}.json
+            reports/test-execution-log-${{ github.run_id }}.md

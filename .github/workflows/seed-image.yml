@@ -1,0 +1,183 @@
+name: Publish Seed Docker image
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag suffix (e.g., v1.0.0; default latest)"
+        required: false
+        default: "latest"
+      registry:
+        description: "Container registry hostname (default ghcr.io)"
+        required: false
+        default: "ghcr.io"
+      registry_owner:
+        description: "Registry namespace/owner (defaults to repository owner)"
+        required: false
+        default: ""
+      image_name:
+        description: "Image name (defaults to <repo-name>-seed)"
+        required: false
+        default: ""
+  push:
+    branches: [main, develop, release-alpha, release-beta, release-rc]
+    paths:
+      - "Tooling/seed/**"
+      - "Tooling/dotnet/VipbJsonTool/**"
+      - "Tooling/docker/seed/**"
+      - ".github/workflows/seed-image.yml"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      image_name: ${{ steps.names.outputs.image_name }}
+      tag_suffix: ${{ env.TAG_SUFFIX }}
+      image_digest: ${{ steps.build.outputs.digest }}
+      registry: ${{ steps.names.outputs.registry }}
+    env:
+      TAG_SUFFIX: ${{ github.event.inputs.tag || '' }}
+    steps:
+      - name: "Guard: Linux runner"
+        run: |
+          if [ "${RUNNER_OS}" != "Linux" ]; then
+            echo "This workflow publishes Docker images and must run on Linux runners."
+            exit 1
+          fi
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Resolve tag suffix
+        id: tag
+        run: |
+          tag="${TAG_SUFFIX}"
+          if [ -z "${tag}" ]; then
+            case "${GITHUB_REF_NAME}" in
+              main) tag="latest" ;;
+              develop) tag="develop" ;;
+              release-alpha) tag="alpha" ;;
+              release-beta) tag="beta" ;;
+              release-rc) tag="rc" ;;
+              *) tag="${GITHUB_REF_NAME}" ;;
+            esac
+          fi
+          tag="${tag//\//-}"
+          tag="${tag,,}"
+          echo "tag_suffix=${tag}" >> "$GITHUB_OUTPUT"
+          echo "TAG_SUFFIX=${tag}" >> "$GITHUB_ENV"
+
+      - name: Compute image name (lowercase owner)
+        id: names
+        env:
+          INPUT_REGISTRY: ${{ github.event.inputs.registry }}
+          INPUT_OWNER: ${{ github.event.inputs.registry_owner }}
+          INPUT_IMAGE: ${{ github.event.inputs.image_name }}
+        run: |
+          registry="${INPUT_REGISTRY:-ghcr.io}"
+          owner_raw="${INPUT_OWNER:-${{ github.repository_owner }}}"
+          owner_lc="$(echo "$owner_raw" | tr '[:upper:]' '[:lower:]')"
+          owner_clean="$(echo "$owner_lc" | tr -c 'a-z0-9_.-/' '-')"
+
+          repo_name="${GITHUB_REPOSITORY##*/}"
+          repo_name_lc="$(echo "$repo_name" | tr '[:upper:]' '[:lower:]')"
+          repo_name_clean="$(echo "$repo_name_lc" | tr -c 'a-z0-9_.-/' '-')"
+          default_image="${repo_name_clean}-seed"
+
+          image_raw="${INPUT_IMAGE:-${default_image}}"
+          image_lc="$(echo "$image_raw" | tr '[:upper:]' '[:lower:]')"
+          image_clean="$(echo "$image_lc" | tr -c 'a-z0-9_.-/' '-')"
+
+          echo "registry=${registry}" >> "$GITHUB_OUTPUT"
+          echo "image_name=${registry}/${owner_clean}/${image_clean}" >> "$GITHUB_OUTPUT"
+
+          if [ -z "${registry}" ] || [ -z "${owner_clean}" ] || [ -z "${image_clean}" ]; then
+            echo "Registry, owner, and image name must all resolve to non-empty values." >&2
+            exit 1
+          fi
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ steps.names.outputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        id: build
+        with:
+          context: .
+          file: Tooling/seed/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.names.outputs.image_name }}:${{ env.TAG_SUFFIX }}
+            ${{ steps.names.outputs.image_name }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.description=LabVIEW CI/CD Seed - VIPB/LVPROJ conversion and seeding tools
+
+  smoke-test:
+    name: Smoke test published Seed image
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: ${{ needs.build-and-push.outputs.image_name }}
+      TAG_SUFFIX: ${{ needs.build-and-push.outputs.tag_suffix }}
+      IMAGE_DIGEST: ${{ needs.build-and-push.outputs.image_digest }}
+      REGISTRY: ${{ needs.build-and-push.outputs.registry }}
+    steps:
+      - name: "Guard: Linux runner"
+        run: |
+          if [ "${RUNNER_OS}" != "Linux" ]; then
+            echo "This job requires a Linux runner to exercise the Docker image."
+            exit 1
+          fi
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY || 'ghcr.io' }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull image by digest
+        run: |
+          if [ -z "${IMAGE_NAME}" ] || [ -z "${IMAGE_DIGEST}" ]; then
+            echo "Image name or digest missing from build job outputs." >&2
+            exit 1
+          fi
+
+          image_ref="${IMAGE_NAME}@${IMAGE_DIGEST}"
+          echo "IMAGE_REF=${image_ref}" >> "$GITHUB_ENV"
+          docker pull "${image_ref}"
+
+      - name: Run vipb2json smoke test
+        run: |
+          mkdir -p artifacts/seed-image-smoke
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -w /workspace \
+            "${IMAGE_REF}" \
+            vipb2json --input Tooling/deployment/seed.vipb --output /workspace/artifacts/seed-image-smoke/seed.json
+
+          if [ ! -s artifacts/seed-image-smoke/seed.json ]; then
+            echo "Seed image smoke test did not produce metadata." >&2
+            exit 1
+          fi
+
+      - name: Upload smoke test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: seed-image-smoke
+          path: artifacts/seed-image-smoke/seed.json
+          if-no-files-found: error

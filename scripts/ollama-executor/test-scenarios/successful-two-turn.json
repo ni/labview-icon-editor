@@ -1,0 +1,18 @@
+{
+  "name": "Successful Two-Turn Build",
+  "description": "LLM successfully builds source distribution in two turns (propose command, then mark done)",
+  "goal": "Build Source Distribution LV2025 64-bit",
+  "expectedTurns": 2,
+  "turns": [
+    {
+      "turn": 1,
+      "response": "{\"run\":\"pwsh -NoProfile -File scripts/build-source-distribution/Build_Source_Distribution.ps1 -RepositoryPath . -Package_LabVIEW_Version 2025 -SupportedBitness 64\"}"
+    },
+    {
+      "turn": 2,
+      "response": "{\"done\":true,\"summary\":\"Source distribution built successfully for LV2025 64-bit\"}"
+    }
+  ],
+  "expectedOutcome": "success",
+  "expectedCommandCount": 1
+}

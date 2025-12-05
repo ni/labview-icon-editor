@@ -1,0 +1,18 @@
+{
+  "description": "Windows helper that invokes OrchestrationCli local-sd + PPL post-build and emits the handshake.",
+  "orchestrationCli": {
+    "subcommand": "local-sd",
+    "runKey": "local-sd-ppl",
+    "lockPath": ".locks/orchestration.lock",
+    "lockTtlSec": 900,
+    "skipLocalSdBuild": false
+  },
+  "handoff": {
+    "zipRelativePath": "builds/artifacts/labview-icon-api.zip",
+    "pplRelativePath": "artifacts/labview-icon-api.ppl",
+    "handshakeJson": "artifacts/labview-icon-api-handshake.json"
+  },
+  "scripts": [
+    "scripts/orchestration/Run-LocalSd-Ppl.ps1"
+  ]
+}

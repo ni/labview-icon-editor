@@ -1,0 +1,35 @@
+name: Source Distribution Smoke
+
+on:
+  schedule:
+    - cron: '0 9 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run source distribution smoke
+        shell: pwsh
+        run: |
+          Set-Location "$env:GITHUB_WORKSPACE"
+          pwsh -NoProfile -File scripts/smoke/Run-SourceDistSmoke.ps1 -RepoPath . -TimeoutSec 180
+
+      - name: Upload smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-dist-smoke
+          path: |
+            builds/artifacts/source-distribution.zip
+            builds/LabVIEWIconAPI/**
+            builds/cache/mock-source-dist-index.json

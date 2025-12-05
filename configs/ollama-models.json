@@ -1,0 +1,22 @@
+{
+  "ollama": {
+    "version": "0.3.1",
+    "sha256": "a7a1b9a3b7d8d2d5c2f9c1abc5d1f2b3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9"
+  },
+  "models": [
+    {
+      "name": "llama3-8b-local",
+      "pull": "llama3:8b",
+      "tag": "llama3-8b-local",
+      "sha256": "3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9a7a1b9a3b7d8d2d5c2f9c1abc5d1f2"
+    },
+    {
+      "name": "mistral-7b-local",
+      "pull": "mistral-7b",
+      "tag": "mistral-7b-local",
+      "sha256": "b9a7a1b9a3b7d8d2d5c2f9c1abc5d1f23e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8"
+    }
+  ],
+  "primary_model": "llama3-8b-local",
+  "cache_threshold_mb": 4096
+}

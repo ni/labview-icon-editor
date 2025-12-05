@@ -1,0 +1,42 @@
+# Profile: Consume the Windows SD handshake inside Docker Desktop.
+# Each task mirrors the in-container work done by scripts/orchestration/ConsumeSdInContainer.ps1, which the Docker harness (`Run-ConsumeSd-DockerHarness.ps1`) orchestrates.
+tasks:
+  - id: verify-handshake
+    description: Read the handshake metadata and log the staged zip/ppl paths plus SHA256 values before touching the lock.
+    command: pwsh
+    args:
+      - -NoProfile
+      - -Command
+      - >
+        $json=Join-Path (Get-Location).ProviderPath 'artifacts/labview-icon-api-handshake.json';
+        if (-not (Test-Path -LiteralPath $json)) { throw "Handhshake file missing at $json" }
+        $data=Get-Content -LiteralPath $json | ConvertFrom-Json;
+        Write-Host "[handshake] runKey=$($data.runKey) lock=$($data.lockPath) ttl=${data.lockTtlSec}s";
+        foreach ($label in @('zip','ppl')) {
+          $entry = if ($label -eq 'zip') { $data.zipRelPath } else { $data.pplRelPath };
+          $path = Join-Path (Get-Location).ProviderPath $entry;
+          if (-not (Test-Path -LiteralPath $path)) { throw "Missing $label at $path" }
+          $hash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash;
+          Write-Host "[handshake] ${label} -> $entry (staged=$($data[\"${label}Sha256\"])) actual=$hash";
+          if ($data["${label}Sha256"] -and $data["${label}Sha256"] -ne $hash) { throw "$label hash mismatch" }
+        }
+
+  - id: consume-busy
+    dependsOn: [verify-handshake]
+    description: Launch a container run that keeps the lock so the next consumer observes a busy error.
+    command: pwsh
+    args:
+      - -NoProfile
+      - -Command
+      - >
+        ./scripts/orchestration/ConsumeSdInContainer.ps1 -Repo (Get-Location).ProviderPath -HandshakePath artifacts/labview-icon-api-handshake.json -RunKey docker-harness-A -KeepLock
+
+  - id: consume-force
+    dependsOn: [consume-busy]
+    description: Run again with --force-lock so the consumer can override the busy lock and exit successfully.
+    command: pwsh
+    args:
+      - -NoProfile
+      - -Command
+      - >
+        ./scripts/orchestration/ConsumeSdInContainer.ps1 -Repo (Get-Location).ProviderPath -HandshakePath artifacts/labview-icon-api-handshake.json -RunKey docker-harness-B -Force

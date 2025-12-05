@@ -1,0 +1,118 @@
+{
+  "lv_versions": {
+    "2021": {
+      "version": "21.0",
+      "year": 2021,
+      "normalized": 2021,
+      "features": [
+        "Malleable VIs",
+        "Conditional Disable Structures",
+        "In-Place Element Structure"
+      ],
+      "deprecated_apis": [],
+      "new_in_version": [
+        "Malleable VI support"
+      ]
+    },
+    "2023": {
+      "version": "23.0",
+      "year": 2023,
+      "normalized": 2023,
+      "features": [
+        "Malleable VIs",
+        "Conditional Disable Structures",
+        "In-Place Element Structure",
+        "Enhanced Error Handling",
+        "Improved VI Analyzer"
+      ],
+      "deprecated_apis": [
+        "Get Date/Time String"
+      ],
+      "new_in_version": [
+        "Enhanced error handling VIs"
+      ]
+    },
+    "2024": {
+      "version": "24.0",
+      "year": 2024,
+      "normalized": 2024,
+      "features": [
+        "Malleable VIs",
+        "Conditional Disable Structures",
+        "In-Place Element Structure",
+        "Enhanced Error Handling",
+        "Improved VI Analyzer",
+        "Advanced Threading"
+      ],
+      "deprecated_apis": [
+        "Get Date/Time String",
+        "Legacy File I/O VIs"
+      ],
+      "new_in_version": [
+        "Advanced threading primitives"
+      ]
+    },
+    "2025": {
+      "version": "25.0",
+      "year": 2025,
+      "normalized": 2025,
+      "features": [
+        "Malleable VIs",
+        "Conditional Disable Structures",
+        "In-Place Element Structure",
+        "Enhanced Error Handling",
+        "Improved VI Analyzer",
+        "Advanced Threading",
+        "VI History Suite",
+        "VI Comparison Report"
+      ],
+      "deprecated_apis": [
+        "Get Date/Time String",
+        "Legacy File I/O VIs",
+        "Old String Format VIs"
+      ],
+      "new_in_version": [
+        "VI History Suite API (2025.3+)",
+        "VI Comparison Report (2025.3+)"
+      ]
+    }
+  },
+  "platform_features": {
+    "64bit_only": [
+      "Large Memory Allocation (>2GB)",
+      "Advanced Threading",
+      "High-Performance Computing VIs"
+    ],
+    "32bit_only": [
+      "Legacy DLL Support (some vendors)"
+    ],
+    "cross_platform": [
+      "Core LabVIEW VIs",
+      "File I/O",
+      "String Manipulation",
+      "Numeric Operations"
+    ]
+  },
+  "file_format_versions": {
+    "21.0": {
+      "format_code": "0x0D000000",
+      "lv_version": "2021",
+      "backward_compatible_to": "2020"
+    },
+    "23.0": {
+      "format_code": "0x0E000000",
+      "lv_version": "2023",
+      "backward_compatible_to": "2021"
+    },
+    "24.0": {
+      "format_code": "0x0F000000",
+      "lv_version": "2024",
+      "backward_compatible_to": "2023"
+    },
+    "25.0": {
+      "format_code": "0x10000000",
+      "lv_version": "2025",
+      "backward_compatible_to": "2024"
+    }
+  }
+}

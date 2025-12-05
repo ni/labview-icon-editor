@@ -1,0 +1,70 @@
+name: Build and Release Source Distribution
+
+defaults:
+  run:
+    working-directory: './'
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Optional tag/release name (defaults to sd-<run>-<short-sha>)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release-sd:
+    # Do not run on pull_request; GITHUB_TOKEN in PRs cannot create releases
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute tag
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            tag="${{ github.event.inputs.tag }}"
+          else
+            short_sha=$(echo "${GITHUB_SHA:-unknown}" | head -c 8)
+            tag="sd-${GITHUB_RUN_NUMBER}-${short_sha}"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $tag"
+
+      - name: Create source-distribution zip
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          zip -r artifacts/source-distribution.zip . \
+            -x ".git/*" \
+               "artifacts/*" \
+               "*.gitignore" \
+               ".github/workflows/*run*" \
+               ".github/workflows/*release*" \
+               "builds/*"
+          ls -lh artifacts
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; uploading asset with clobber."
+            gh release upload "$TAG" artifacts/source-distribution.zip --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            echo "Creating release $TAG and uploading asset."
+            gh release create "$TAG" --title "$TAG" --notes "Source distribution artifact" --repo "$GITHUB_REPOSITORY" artifacts/source-distribution.zip
+          fi

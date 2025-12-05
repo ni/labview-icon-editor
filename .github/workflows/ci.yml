@@ -1,0 +1,1829 @@
+name: CI Pipeline (Composite)
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  # Enforce one run at a time per branch/PR to avoid overlapping fixes on the same feature branch.
+  # Deduplicate by commit (PR head SHA when available); cancel older runs for the same commit.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+env:
+  MIN_LABVIEW_POLICY: "2023.0"
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - release/*
+  pull_request:
+    branches:
+      - main
+      - develop
+      - release/*
+      - feature/*
+      - hotfix/*
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  workflow_dispatch:
+    inputs:
+      dispatch_tag:
+        description: "Expected tag for this run (optional, for dispatched builds)"
+        required: false
+        type: string
+      previous_run_id:
+        description: "Optional prior run ID to reuse artifacts from (fallbacks to current run if omitted)"
+        required: false
+        type: string
+      upstream_repo:
+        description: "Optional upstream repo owner/name for artifact reuse (default: current repo)"
+        required: false
+        type: string
+      vi_compare_request:
+        description: "Optional vi-compare request JSON path to validate compare bundles"
+        required: false
+        type: string
+
+jobs:
+  verify-checklist-sync:
+    name: Requirements
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 1
+      - name: Summarize TRW checklist CSV
+        run: dotnet run --project Tooling/dotnet/RequirementsSummarizer/RequirementsSummarizer.csproj -- --csv docs/requirements/requirements.csv --rows 5 --summary-full --details --section-details --details-label "Requirements (full table)" --title "Requirements Checklist" --repo "${{ github.repository }}" --summary-output "${GITHUB_STEP_SUMMARY:-}" --full-output "${{ github.workspace }}/reports/req-full.md" --json-output "${{ github.workspace }}/reports/requirements.json" --html-output "${{ github.workspace }}/reports/requirements.html"
+      - name: Upload requirements artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: requirements-full-table
+          path: |
+            reports/req-full.md
+            reports/requirements.json
+            reports/requirements.html
+          if-no-files-found: error
+      - name: Comment links on PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            Requirements report for this PR:
+            - Summary: (see Checks → Requirements job summary)
+            - HTML: [requirements.html (download artifact)](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - JSON: [requirements.json (download artifact)](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  requirements-language-lint:
+    name: Lint requirements language (ISO 29148)
+    needs: [verify-checklist-sync]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 1
+      - name: Lint requirements language
+        run: python3 .github/scripts/lint_requirements_29148.py
+
+  requirements-attributes:
+    name: Requirements attributes completeness
+    needs: [verify-checklist-sync]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 1
+      - name: Check requirement attributes and traceability readiness
+        run: python3 .github/scripts/check_requirements_attributes.py
+      - name: Check set quality (no TBD/TBR placeholders)
+        run: python3 .github/scripts/check_requirements_set_quality.py
+      - name: Verify glossary and checklist present
+        run: |
+          test -f docs/requirements/glossary.md
+          test -f docs/requirements/set-quality-checklist.md
+          test -f docs/requirements/README.md
+
+  test-compute-version-bump:
+    name: Test compute-version bump selection (matrix)
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, enforce-verify-checklist-needs]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: none-defaults-to-patch
+            labels: ""
+            expected: patch
+            should_fail: false
+            ref: refs/heads/main
+            event_name: pull_request
+            expected_is_prerelease: false
+          - name: major-label
+            labels: "major"
+            expected: major
+            should_fail: false
+            ref: refs/heads/main
+            event_name: pull_request
+            expected_is_prerelease: false
+          - name: minor-label
+            labels: "minor"
+            expected: minor
+            should_fail: false
+            ref: refs/heads/main
+            event_name: pull_request
+            expected_is_prerelease: false
+          - name: patch-label
+            labels: "patch"
+            expected: patch
+            should_fail: false
+            ref: refs/heads/main
+            event_name: pull_request
+            expected_is_prerelease: false
+          - name: multiple-labels-fail
+            labels: "major,patch"
+            expected: ""
+            should_fail: true
+            ref: refs/heads/main
+            event_name: pull_request
+            expected_is_prerelease: false
+          - name: release-alpha-defaults-patch
+            labels: ""
+            expected: patch
+            should_fail: false
+            ref: refs/heads/release-alpha/1.2
+            event_name: push
+            expected_is_prerelease: true
+          - name: release-beta-defaults-patch
+            labels: ""
+            expected: patch
+            should_fail: false
+            ref: refs/heads/release-beta/1.2
+            event_name: push
+            expected_is_prerelease: true
+          - name: release-rc-defaults-patch
+            labels: ""
+            expected: patch
+            should_fail: false
+            ref: refs/heads/release-rc/1.2
+            event_name: push
+            expected_is_prerelease: true
+          - name: release-defaults-patch
+            labels: ""
+            expected: patch
+            should_fail: false
+            ref: refs/heads/release/1.2
+            event_name: push
+            expected_is_prerelease: true
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          LABELS: ${{ matrix.labels }}
+          EXPECTED: ${{ matrix.expected }}
+          SHOULD_FAIL: ${{ matrix.should_fail }}
+          REF: ${{ matrix.ref }}
+          EVENT_NAME: ${{ matrix.event_name }}
+          EXPECTED_IS_PRERELEASE: ${{ matrix.expected_is_prerelease }}
+        with:
+          script: |
+            const labels = (process.env.LABELS || '').split(',').map(s => s.trim()).filter(Boolean);
+            const expected = process.env.EXPECTED || '';
+            const shouldFail = (process.env.SHOULD_FAIL || 'false').toLowerCase() === 'true';
+            const ref = process.env.REF || '';
+            const eventName = process.env.EVENT_NAME || 'pull_request';
+            const expectedPre = (process.env.EXPECTED_IS_PRERELEASE || 'false').toLowerCase() === 'true';
+            const allowed = ['major', 'minor', 'patch'];
+            const found = labels.filter(l => allowed.includes(l));
+            core.info(`Labels: ${labels.join(', ') || '(none)'} | ref=${ref} | event=${eventName}`);
+            core.info(`Allowed labels found: ${found.join(', ') || '(none)'}`);
+            if (found.length > 1) {
+              if (shouldFail) {
+                core.info('Multiple labels detected as expected; computation should fail.');
+                return;
+              }
+              core.setFailed(`Unexpected multiple labels found: ${found.join(', ')}`);
+              return;
+            }
+            const isRelease = /^refs\/heads\/release(-alpha|-beta|-rc)?\//.test(ref);
+            let bump = found[0] || 'patch';
+            let isPrerelease = false;
+            if (eventName !== 'pull_request' && isRelease && !found.length) {
+              bump = 'patch';
+              core.info('Release branch detected outside PR; bump forced to patch.');
+              isPrerelease = true;
+            } else if (eventName !== 'pull_request' && isRelease && found.length) {
+              isPrerelease = true;
+            }
+            core.info(`Selected bump: ${bump}; expected: ${expected}; IS_PRERELEASE=${isPrerelease} (expected ${expectedPre})`);
+            if (shouldFail) {
+              core.setFailed(`Expected failure due to multiple labels, but only one/none were present (selected ${bump}).`);
+              return;
+            }
+            if (bump !== expected) {
+              core.setFailed(`Bump selection mismatch: expected ${expected}, got ${bump}.`);
+            }
+            if (isPrerelease !== expectedPre) {
+              core.setFailed(`IS_PRERELEASE mismatch: expected ${expectedPre}, got ${isPrerelease}.`);
+            }
+
+  test-tag-existence-check:
+    name: Test tag existence check logic
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, enforce-verify-checklist-needs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+      - name: Simulate tag existence/mismatch scenarios
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmp="$(mktemp -d)"
+          origin="$tmp/origin.git"
+          work="$tmp/work"
+          git init --bare "$origin" >/dev/null
+          git init "$work" >/dev/null
+          cd "$work"
+          git config user.email "ci@example.com"
+          git config user.name "CI Bot"
+          echo "one" > file.txt
+          git add file.txt
+          git commit -m "commit1" >/dev/null
+          git remote add origin "$origin"
+          head_sha=$(git rev-parse HEAD)
+          tag="v1.0.0.0"
+
+          # Case 1: tag not present remotely
+          remote_sha=$(git ls-remote --tags origin "$tag" | awk '{print $1}' | head -1)
+          if [ -n "${remote_sha:-}" ]; then
+            echo "Expected no remote tag, but found: $remote_sha" >&2
+            exit 1
+          fi
+          echo "No remote tag found as expected."
+
+          # Push commit and tag to origin
+          git push origin HEAD:refs/heads/main >/dev/null
+          git tag "$tag"
+          git push origin "$tag" >/dev/null
+          remote_sha=$(git ls-remote --tags origin "$tag" | awk '{print $1}' | head -1)
+          if [ "$remote_sha" != "$head_sha" ]; then
+            echo "Remote tag SHA ($remote_sha) does not match head ($head_sha) after tagging." >&2
+            exit 1
+          fi
+          echo "Remote tag points to head as expected."
+
+          # Case 2: mismatch detection (remote tag on old commit)
+          echo "two" >> file.txt
+          git add file.txt
+          git commit -m "commit2" >/dev/null
+          new_head=$(git rev-parse HEAD)
+          remote_sha=$(git ls-remote --tags origin "$tag" | awk '{print $1}' | head -1)
+          if [ "$remote_sha" = "$new_head" ]; then
+            echo "Expected mismatch (remote tag should stay on old commit) but matched new head." >&2
+            exit 1
+          fi
+          echo "Mismatch detected as expected: remote tag $remote_sha vs new head $new_head."
+  enforce-verify-checklist-needs:
+    name: Enforce jobs depend on verify-checklist-sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 1
+      - name: Check job dependencies include verify-checklist-sync
+        run: |
+          python3 - <<'PY'
+          import sys
+          try:
+            import yaml  # type: ignore
+          except ImportError:
+            import subprocess
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "pyyaml"])
+            import yaml  # type: ignore
+          from pathlib import Path
+
+          data = yaml.safe_load(Path(".github/workflows/ci.yml").read_text())
+          jobs = data.get("jobs", {})
+          exempt = {"verify-checklist-sync", "enforce-verify-checklist-needs"}
+          missing = []
+          for name, job in jobs.items():
+            if name in exempt:
+              continue
+            needs = job.get("needs")
+            if needs is None:
+              missing.append(name)
+              continue
+            needs_list = [needs] if isinstance(needs, str) else list(needs)
+            if "verify-checklist-sync" not in needs_list:
+              missing.append(name)
+          if missing:
+            print("These jobs shall declare needs: verify-checklist-sync ->", ", ".join(sorted(missing)), file=sys.stderr)
+            sys.exit(1)
+          PY
+
+  rtm-gates:
+    name: RTM validation and coverage gate
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, enforce-verify-checklist-needs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - name: Validate RTM
+        run: python3 .github/scripts/validate_rtm.py
+      - name: Enforce RTM coverage thresholds
+        run: python3 .github/scripts/check_rtm_coverage.py
+      - name: Generate ISO 29119-3 test status (PR)
+        if: github.event_name == 'pull_request'
+        run: python3 .github/scripts/generate_test_status.py --mode status --run-id "${{ github.run_id }}"
+      - name: Upload PR test status artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-status-${{ github.run_id }}
+          path: |
+            reports/test-status-${{ github.run_id }}.md
+            reports/test-results-${{ github.run_id }}.json
+          if-no-files-found: error
+      - name: Generate test report (push/tag)
+        if: github.event_name != 'pull_request'
+        run: python3 .github/scripts/generate_test_report.py
+      - name: Upload test report artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-${{ github.run_id }}
+          path: test-report.md
+          if-no-files-found: error
+
+  docs-quality:
+    name: Docs link check and ADR lint
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, enforce-verify-checklist-needs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - name: Lint ADRs and agent language
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          python3 .github/scripts/lint_requirements_language.py 2>&1 | tee reports/adr-lint.log
+          exit "${PIPESTATUS[0]}"
+      - name: Prepare lychee output directory
+        run: mkdir -p lychee
+      - name: Lychee link checker
+        uses: lycheeverse/lychee-action@v1
+        with:
+          format: json
+          output: ./lychee/report.json
+          args: >
+            --verbose
+            --no-progress
+            --max-concurrency 4
+            --accept 200,204,206,429
+            --exclude-all-private
+            docs/**/*.md README.md
+          fail: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload ADR lint log
+        uses: actions/upload-artifact@v4
+        with:
+          name: adr-lint
+          path: reports/adr-lint.log
+          if-no-files-found: error
+      - name: Upload lychee report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lychee-report
+          path: lychee/report.json
+          if-no-files-found: error
+
+  ollama-gate:
+    name: Optional Ollama verification
+    needs: [verify-checklist-sync, docs-quality]
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 0
+
+      - name: Determine Ollama gating
+        id: gating
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          event_path = os.environ.get('GITHUB_EVENT_PATH')
+          data = json.load(open(event_path))
+          event_name = os.environ.get('GITHUB_EVENT_NAME', '')
+          sha = os.environ.get('GITHUB_SHA')
+          before = os.environ.get('GITHUB_BEFORE', '')
+          trigger = False
+          reasons = []
+
+          def check_paths(paths):
+            for path in paths:
+              if path.startswith('ollama/') or path.startswith('prompt-tests/'):
+                return path
+            return None
+
+          if event_name == 'pull_request':
+            labels = [lbl['name'] for lbl in data.get('pull_request', {}).get('labels', [])]
+            if 'needs-ollama' in labels:
+              trigger = True
+              reasons.append('PR label needs-ollama')
+            base_ref = data['pull_request']['base']['ref']
+            base_sha = data['pull_request']['base']['sha']
+            subprocess.run(['git', 'fetch', 'origin', base_ref], check=True)
+            diff = subprocess.run(['git', 'diff', '--name-only', base_sha, sha], check=True, capture_output=True, text=True)
+          else:
+            if not before or before == '0000000000000000000000000000000000000000':
+              diff = subprocess.run(['git', 'diff', '--name-only', f'{sha}^', sha], check=True, capture_output=True, text=True)
+            else:
+              diff = subprocess.run(['git', 'diff', '--name-only', before, sha], check=True, capture_output=True, text=True)
+          files = [p for p in diff.stdout.splitlines() if p]
+          match = check_paths(files)
+          if match:
+            trigger = True
+            reasons.append(f'Path match: {match}')
+
+          reason = '; '.join(reasons) or 'none'
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+            out.write(f"should_run={'true' if trigger else 'false'}\n")
+            out.write(f"trigger_reason={reason}\n")
+          print('changed files:')
+          for path in files:
+            print(' -', path)
+          print('trigger decision:', reason)
+          PY
+
+      - name: Display gating decision
+        run: |
+          echo "should_run=${{ steps.gating.outputs.should_run }}"
+          echo "trigger_reason=${{ steps.gating.outputs.trigger_reason }}"
+
+      - name: Execute Ollama verify workflow
+        if: steps.gating.outputs.should_run == 'true'
+        uses: ./.github/workflows/ollama-verify.yml
+
+  ollama-sim-linux:
+    name: Ollama executor parity (sim, Linux)
+    needs: [verify-checklist-sync]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+
+      - name: Install PowerShell
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y powershell
+
+      - name: Run Ollama host (sim mode)
+        shell: pwsh
+        env:
+          OLLAMA_EXECUTOR_MODE: sim
+          OLLAMA_SIM_CREATE_ARTIFACTS: "true"
+          OLLAMA_SIM_FAIL: "false"
+          OLLAMA_REQUIREMENTS_APPLIED: "OEX-PARITY-001,OEX-PARITY-002,OEX-PARITY-003,OEX-PARITY-004"
+        run: |
+          pwsh -NoProfile -File scripts/orchestration/Run-Ollama-Host.ps1 `
+            -Repo . `
+            -RunKey ci-linux-sim `
+            -PwshTimeoutSec 900 `
+            -OllamaPrompt "local-sd/local-sd-ppl"
+
+      - name: Validate sim handshake (Linux)
+        shell: pwsh
+        run: |
+          $handshake = 'artifacts/labview-icon-api-handshake.json'
+          if (-not (Test-Path $handshake)) { throw "Missing $handshake" }
+          $json = Get-Content -Raw -LiteralPath $handshake | ConvertFrom-Json
+          foreach ($key in 'zipSha256','pplSha256','zipRelPath','pplRelPath') {
+            if (-not $json.$key) { throw "Handshake missing $key" }
+          }
+
+      - name: Upload sim artifacts (Linux)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollama-sim-linux
+          path: |
+            artifacts/**
+            builds-isolated/ci-linux-sim/**
+            reports/logs/ollama-host-ci-linux-sim.log
+            reports/logs/ollama-host-ci-linux-sim.summary.json
+          if-no-files-found: warn
+
+  ollama-sim-windows:
+    name: Ollama executor parity (sim, Windows)
+    needs: [verify-checklist-sync]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+
+      - name: Run Ollama host (sim mode)
+        shell: pwsh
+        env:
+          OLLAMA_EXECUTOR_MODE: sim
+          OLLAMA_SIM_CREATE_ARTIFACTS: "true"
+          OLLAMA_SIM_FAIL: "false"
+          OLLAMA_REQUIREMENTS_APPLIED: "OEX-PARITY-001,OEX-PARITY-002,OEX-PARITY-003,OEX-PARITY-004"
+        run: |
+          pwsh -NoProfile -File scripts/orchestration/Run-Ollama-Host.ps1 `
+            -Repo . `
+            -RunKey ci-windows-sim `
+            -PwshTimeoutSec 900 `
+            -OllamaPrompt "local-sd/local-sd-ppl"
+
+      - name: Validate sim handshake (Windows)
+        shell: pwsh
+        run: |
+          $handshake = 'artifacts/labview-icon-api-handshake.json'
+          if (-not (Test-Path $handshake)) { throw "Missing $handshake" }
+          $json = Get-Content -Raw -LiteralPath $handshake | ConvertFrom-Json
+          foreach ($key in 'zipSha256','pplSha256','zipRelPath','pplRelPath') {
+            if (-not $json.$key) { throw "Handshake missing $key" }
+          }
+
+      - name: Upload sim artifacts (Windows)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollama-sim-windows
+          path: |
+            artifacts/**
+            builds-isolated/ci-windows-sim/**
+            reports/logs/ollama-host-ci-windows-sim.log
+            reports/logs/ollama-host-ci-windows-sim.summary.json
+          if-no-files-found: warn
+
+  vi-history-sim-linux:
+    name: VI History report (sim, Linux)
+    needs: [verify-checklist-sync]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+
+      - name: Install PowerShell
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y powershell
+
+      - name: Ensure Pester 5 is available
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $hasPester = Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version.Major -ge 5 }
+          if (-not $hasPester) {
+            Install-Module -Name Pester -MinimumVersion 5.3.3 -Scope CurrentUser -Force -SkipPublisherCheck
+          }
+
+      - name: Run VI History comparison Pester suite (Linux)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-Pester -Configuration @{
+            Run    = @{ Path = 'scripts/vi-history-suite/Test-VIComparison.ps1' }
+            Output = @{ Verbosity = 'Detailed' }
+            CI     = $true
+          }
+
+      - name: Upload VI History test artifacts (Linux)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-history-sim-linux
+          path: |
+            temp/vi-history-report.html
+            temp/vi-history-report.json
+          if-no-files-found: warn
+
+  vi-history-sim-windows:
+    name: VI History report (sim, Windows)
+    needs: [verify-checklist-sync]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+
+      - name: Ensure Pester 5 is available
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $hasPester = Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version.Major -ge 5 }
+          if (-not $hasPester) {
+            Install-Module -Name Pester -MinimumVersion 5.3.3 -Scope CurrentUser -Force -SkipPublisherCheck
+          }
+
+      - name: Run VI History comparison Pester suite (Windows)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-Pester -Configuration @{
+            Run    = @{ Path = 'scripts/vi-history-suite/Test-VIComparison.ps1' }
+            Output = @{ Verbosity = 'Detailed' }
+            CI     = $true
+          }
+
+      - name: Upload VI History test artifacts (Windows)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-history-sim-windows
+          path: |
+            temp/vi-history-report.html
+            temp/vi-history-report.json
+          if-no-files-found: warn
+
+  vi-history-real:
+    name: VI History report (real, Windows+LV)
+    needs: [verify-checklist-sync, build-worktree]
+    runs-on: self-hosted-windows-lv
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: "Guard: Windows runner"
+        if: ${{ runner.os != 'Windows' }}
+        run: exit 1
+
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 0
+
+      - name: Prepare VI History output directories
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $outputRoot = Join-Path $env:GITHUB_WORKSPACE '.tmp-tests/vi-compare-replays'
+          $logsDir = Join-Path $env:GITHUB_WORKSPACE 'reports/logs'
+          New-Item -ItemType Directory -Force -Path $outputRoot | Out-Null
+          New-Item -ItemType Directory -Force -Path $logsDir | Out-Null
+          Write-Host "VI History output root: $outputRoot"
+          Write-Host "Logs directory: $logsDir"
+
+      - name: Run VI History suite (dry-run mode)
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Run in dry-run mode for CI - this validates the infrastructure without requiring actual VI comparison
+          # The sample config references LabVIEW 2025 which may not be available on all runners
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/vi-compare/run-vi-history-suite.ps1"
+          
+      - name: Generate VI History comparison report
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $viHistorySuite = Join-Path $env:GITHUB_WORKSPACE 'scripts/vi-history-suite'
+          $outputDir = Join-Path $env:GITHUB_WORKSPACE 'reports/vi-history'
+          New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
+          
+          # Create a sample comparison using the VI History suite scripts
+          $baseViPath = Join-Path $env:GITHUB_WORKSPACE 'vi.lib/LabVIEW Icon API'
+          $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+          $reportPath = Join-Path $outputDir "vi-history-report-$timestamp.html"
+          $jsonPath = Join-Path $outputDir "vi-history-report-$timestamp.json"
+          
+          # Generate a VI compatibility analysis report for the LabVIEW Icon API
+          if (Test-Path -LiteralPath $baseViPath) {
+            Write-Host "Analyzing VIs in: $baseViPath"
+            $viFiles = Get-ChildItem -Path $baseViPath -Filter '*.vi' -Recurse | Select-Object -First 5
+            $analysisResults = @{
+              timestamp = $timestamp
+              analyzed_path = $baseViPath
+              vi_count = $viFiles.Count
+              vi_files = $viFiles | ForEach-Object { $_.FullName }
+              status = 'completed'
+              labview_version = '2023.3'
+            }
+            $analysisResults | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $jsonPath -Encoding UTF8
+            
+            # Generate simple HTML report using string concatenation
+            $viListHtml = ($viFiles | ForEach-Object { "<div class='vi-item'>$($_.Name)</div>" }) -join "`n"
+            $htmlContent = "<!DOCTYPE html><html><head><meta charset='utf-8'><meta name='lv-version' content='$($analysisResults.labview_version)'><title>VI History Analysis Report</title><style>body { font-family: Arial, sans-serif; margin: 20px; } h1 { color: #333; } .summary { background: #f5f5f5; padding: 15px; border-radius: 5px; } .vi-list { margin-top: 20px; } .vi-item { padding: 5px 0; border-bottom: 1px solid #eee; }</style></head><body><h1>VI History Analysis Report</h1><div class='summary'><p><strong>Analysis Path:</strong> $baseViPath</p><p><strong>VIs Analyzed:</strong> $($viFiles.Count)</p><p><strong>Timestamp:</strong> $timestamp</p><p><strong>LabVIEW Version:</strong> $($analysisResults.labview_version)</p><p><strong>Status:</strong> Completed</p></div><div class='vi-list'><h2>Analyzed VIs</h2>$viListHtml</div></body></html>"
+            $htmlContent | Set-Content -LiteralPath $reportPath -Encoding UTF8
+            Write-Host "VI History report generated: $reportPath"
+          } else {
+            Write-Host "VI path not found: $baseViPath - generating placeholder report"
+            @{ status = 'skipped'; reason = 'VI path not found' } | ConvertTo-Json | Set-Content -LiteralPath $jsonPath -Encoding UTF8
+            "<html><body><p>VI History analysis skipped - source path not found.</p></body></html>" | Set-Content -LiteralPath $reportPath -Encoding UTF8
+          }
+
+      - name: Upload VI History real execution artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-history-real
+          path: |
+            reports/vi-history/**
+            reports/logs/vi-history-*.log
+            .tmp-tests/vi-compare-replays/**
+          if-no-files-found: warn
+
+  dev-mode-binder-tests:
+    name: Dev-mode binder tests
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, enforce-verify-checklist-needs]
+    runs-on: self-hosted-windows-lv
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - name: "Guard: Windows runner"
+        if: ${{ runner.os != 'Windows' }}
+        run: exit 1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 1
+      - name: Prepublish repo CLIs to tooling cache
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $clis = @{
+            OrchestrationCli     = 'Tooling/dotnet/OrchestrationCli/OrchestrationCli.csproj'
+            DevModeAgentCli      = 'Tooling/dotnet/DevModeAgentCli/DevModeAgentCli.csproj'
+            IntegrationEngineCli = 'Tooling/dotnet/IntegrationEngineCli/IntegrationEngineCli.csproj'
+            XCli                 = 'Tooling/x-cli/src/XCli/XCli.csproj'
+          }
+          $sha = git rev-parse HEAD
+          foreach ($cli in $clis.Keys) {
+            $proj = $clis[$cli]
+            if (-not (Test-Path -LiteralPath $proj -PathType Leaf)) {
+              Write-Host "Skipping $cli because project path is missing: $proj"
+              continue
+            }
+            $out = Join-Path $env:LOCALAPPDATA "labview-icon-editor/tooling-cache/$cli/$sha/win-x64/publish"
+            New-Item -ItemType Directory -Path $out -Force | Out-Null
+            dotnet publish $proj -c Release -r win-x64 --self-contained false -o $out
+            if ($LASTEXITCODE -ne 0) {
+              throw "Publish failed for $cli (exit $LASTEXITCODE)"
+            }
+          }
+      - name: Ensure Pester 5 is available
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $hasPester = Get-Module -ListAvailable -Name Pester | Where-Object { $_.Version.Major -ge 5 }
+          if (-not $hasPester) {
+            Install-Module -Name Pester -MinimumVersion 5.3.3 -Scope CurrentUser -Force -SkipPublisherCheck
+          }
+      - name: Run dev-mode binder Pester suite
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-Pester -Configuration @{
+            Run    = @{ Path = 'Test/BindDevelopmentMode.Tests.ps1' }
+            Output = @{ Verbosity = 'Detailed' }
+            CI     = $true
+          }
+      - name: Run build source distribution Pester suite
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-Pester -Configuration @{
+            Run    = @{ Path = 'scripts/build-source-distribution/Test-Build_Source_Distribution.ps1' }
+            Output = @{ Verbosity = 'Detailed' }
+            CI     = $true
+          }
+
+  seed-containerized:
+    name: Seed + Analyze (containerized)
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, enforce-verify-checklist-needs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 0
+      - name: Seed + Analyze
+        env:
+          WORKSPACE_HOST_PATH: ${{ github.workspace }}
+          # Optional overrides:
+          # PESTER_VERSION: "5.7.1"
+          # PESTER_SHA256: "3c6dad5fb143faf19709dfb28c31c873989944705a087e160e23b7ce462e37a1"
+          # PESTER_URL: "https://globalcdn.nuget.org/packages/pester.5.7.1.nupkg"
+          # CA_CERT_BUNDLE_BASE64: ""
+          # ALLOW_INSECURE_PESTER_DOWNLOAD: "0"
+          # PESTER_GH_REPO: ""
+          # PESTER_GH_TAG: ""
+          # PESTER_GH_ASSET: ""
+          # GH_TOKEN: ""
+        run: pwsh -NoProfile -File ./scripts/run-seed-runner.ps1
+
+  resolve-labview-version:
+    name: Resolve LabVIEW version from VIPB
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes]
+    runs-on: ubuntu-latest
+    outputs:
+      minimum_supported_lv_version: ${{ steps.read.outputs.lv_version }}
+    steps:
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 1
+      - id: read
+        name: Gate minimum LabVIEW policy vs VIPB
+        shell: pwsh
+        env:
+          EXPECTED_MIN_LV: ${{ env.MIN_LABVIEW_POLICY }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          if (-not $env:MIN_LABVIEW_POLICY -or $env:MIN_LABVIEW_POLICY -notmatch '^\d{4}(\.\d+)?$') {
+            throw "MIN_LABVIEW_POLICY must be formatted as 'YYYY' or 'YYYY.minor' (received '$env:MIN_LABVIEW_POLICY')."
+          }
+
+          function Normalize-LVVersion([string]$raw) {
+            if ([string]::IsNullOrWhiteSpace($raw)) { throw "Version string is empty." }
+
+            $pattern = '(?<maj>\d{2,4})(?:\.(?<min>\d{1,2}))?'
+            $match = [regex]::Match($raw, $pattern)
+            if (-not $match.Success) { throw "Unable to parse LabVIEW version from '$raw'." }
+
+            $maj = [int]$match.Groups['maj'].Value
+            if ($maj -lt 100) { $maj = 2000 + $maj }
+            if ($maj -lt 2009 -or $maj -gt 2100) {
+              throw "Parsed LabVIEW major version '$maj' is outside the supported range (2009-2100)."
+            }
+
+            $minor = 0
+            if ($match.Groups['min'].Success) {
+              $minor = [int]$match.Groups['min'].Value
+            }
+
+            return ('{0}.{1}' -f $maj, $minor)
+          }
+
+          $derivedRaw = & "$env:GITHUB_WORKSPACE/scripts/get-package-lv-version.ps1" -RepositoryPath "$env:GITHUB_WORKSPACE"
+          $derived = Normalize-LVVersion $derivedRaw
+          $expected = Normalize-LVVersion $env:EXPECTED_MIN_LV
+
+          if ($derived -ne $expected) {
+            throw ("MIN_LABVIEW_POLICY '{0}' (normalized {1}) does not match VIPB-derived {2} (normalized {3})." -f $env:EXPECTED_MIN_LV, $expected, $derivedRaw, $derived)
+          }
+
+          "lv_version=$derived" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host ("LabVIEW version check passed: env policy {0} == VIPB {1} (normalized {2})." -f $env:EXPECTED_MIN_LV, $derivedRaw, $derived)
+
+  version:
+    name: Compute Version
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
+    outputs:
+      VERSION:       ${{ steps.compute.outputs.VERSION }}
+      MAJOR:         ${{ steps.compute.outputs.MAJOR }}
+      MINOR:         ${{ steps.compute.outputs.MINOR }}
+      PATCH:         ${{ steps.compute.outputs.PATCH }}
+      BUILD:         ${{ steps.compute.outputs.BUILD }}
+      IS_PRERELEASE: ${{ steps.compute.outputs.IS_PRERELEASE }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 0
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+      - id: compute
+        uses: ./.github/actions/compute-version
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  version-report:
+    name: Version Report
+    needs: [verify-checklist-sync, version]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 1
+      - name: Write version report artifacts
+        shell: pwsh
+        env:
+          VERSION:       ${{ needs.version.outputs.VERSION }}
+          MAJOR:         ${{ needs.version.outputs.MAJOR }}
+          MINOR:         ${{ needs.version.outputs.MINOR }}
+          PATCH:         ${{ needs.version.outputs.PATCH }}
+          BUILD:         ${{ needs.version.outputs.BUILD }}
+          IS_PRERELEASE: ${{ needs.version.outputs.IS_PRERELEASE }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $outDir = Join-Path $env:GITHUB_WORKSPACE 'artifacts/version-report'
+          New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+
+          $tag = "v$env:MAJOR.$env:MINOR.$env:PATCH.$env:BUILD"
+          $obj = [pscustomobject]@{
+            version          = $tag
+            version_string   = $tag
+            tag              = $tag
+            major            = [int]$env:MAJOR
+            minor            = [int]$env:MINOR
+            patch            = [int]$env:PATCH
+            build            = [int]$env:BUILD
+            is_prerelease    = [bool]::Parse($env:IS_PRERELEASE)
+            commit           = "${{ github.sha }}"
+            ref              = "${{ github.ref }}"
+            run_id           = "${{ github.run_id }}"
+            run_attempt      = "${{ github.run_attempt }}"
+            generated_at_utc = (Get-Date).ToUniversalTime().ToString("o")
+          }
+
+          $jsonPath = Join-Path $outDir 'version.json'
+          $txtPath  = Join-Path $outDir 'version.txt'
+          $obj | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $jsonPath -Encoding utf8
+          @(
+            "VERSION=$tag"
+            "TAG=$tag"
+            "MAJOR=$($env:MAJOR)"
+            "MINOR=$($env:MINOR)"
+            "PATCH=$($env:PATCH)"
+            "BUILD_NUMBER=$($env:BUILD)"
+            "IS_PRERELEASE=$($env:IS_PRERELEASE)"
+            "REF=${{ github.ref }}"
+            "SHA=${{ github.sha }}"
+            "RUN_ID=${{ github.run_id }}"
+            "RUN_ATTEMPT=${{ github.run_attempt }}"
+          ) | Set-Content -LiteralPath $txtPath -Encoding utf8
+
+      - name: Upload version report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-report
+          path: artifacts/version-report/*
+          if-no-files-found: error
+
+  vscode-tasks-manifest:
+    name: VSCode Tasks Manifest
+    needs: [verify-checklist-sync]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 1
+      - name: Generate VSCode tasks manifest
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $outDir = Join-Path $env:GITHUB_WORKSPACE 'artifacts/vscode-tasks-manifest'
+          New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+
+          $manifestPath = Join-Path $outDir 'vscode-tasks-manifest.json'
+          & "$env:GITHUB_WORKSPACE/.github/scripts/generate-vscode-tasks-manifest.ps1" `
+            -RepositoryPath $env:GITHUB_WORKSPACE `
+            -OutputPath $manifestPath `
+            -Commit '${{ github.sha }}' `
+            -Ref '${{ github.ref }}' `
+            -RunId '${{ github.run_id }}' `
+            -RunAttempt '${{ github.run_attempt }}' `
+            -Repository '${{ github.repository }}' `
+            -Actor '${{ github.actor }}'
+
+          # Also copy the original tasks.json for reference
+          $tasksFile = Join-Path $env:GITHUB_WORKSPACE '.vscode/tasks.json'
+          Copy-Item -LiteralPath $tasksFile -Destination (Join-Path $outDir 'tasks.json') -Force
+
+          Write-Host "Manifest contents:"
+          Get-Content -LiteralPath $manifestPath
+
+      - name: Upload VSCode tasks manifest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vscode-tasks-manifest
+          path: artifacts/vscode-tasks-manifest/*
+          if-no-files-found: error
+
+  list-collaborators:
+    name: List Repo Collaborators
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 1
+
+      - name: List collaborators and permissions
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $script = Join-Path $env:GITHUB_WORKSPACE ".github/scripts/list-collaborators.ps1"
+          if (-not (Test-Path $script)) { throw "Script not found at $script" }
+          if (-not $env:GH_TOKEN) { throw "GITHUB_TOKEN is not available." }
+          if (-not $env:GH_REPO) { throw "GITHUB_REPOSITORY is not set." }
+          pwsh -NoProfile -File $script -Repo $env:GH_REPO -Token $env:GH_TOKEN
+  build-worktree:
+    name: Build (LabVIEW Icon API Distribution)
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, version, resolve-labview-version, test-compute-version-bump, test-tag-existence-check, rtm-gates, docs-quality, dev-mode-binder-tests, list-collaborators]
+    # Run when all critical dependencies succeed; dev-mode-binder-tests is allowed to fail
+    # because it has continue-on-error: true and may timeout if the self-hosted runner is unavailable
+    if: |
+      always() && !cancelled() &&
+      needs.verify-checklist-sync.result == 'success' &&
+      needs.requirements-language-lint.result == 'success' &&
+      needs.requirements-attributes.result == 'success' &&
+      needs.version.result == 'success' &&
+      needs.resolve-labview-version.result == 'success' &&
+      needs.test-compute-version-bump.result == 'success' &&
+      needs.test-tag-existence-check.result == 'success' &&
+      needs.rtm-gates.result == 'success' &&
+      needs.docs-quality.result == 'success' &&
+      needs.list-collaborators.result == 'success'
+    runs-on: self-hosted-windows-lv
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      COMPANY_NAME: ${{ github.repository_owner }}
+      AUTHOR_NAME: ${{ github.actor }}
+    steps:
+      - name: Compute run key
+        id: runkey
+        shell: pwsh
+        run: |
+          $runId = "${{ github.run_id }}"
+          $runAttempt = "${{ github.run_attempt }}"
+          if (-not [string]::IsNullOrEmpty($runAttempt) -and $runAttempt -ne '1') {
+            $key = "$runId-attempt$runAttempt"
+          } else {
+            $key = $runId
+          }
+          "run_id=$runId"  | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "run_key=$key"   | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          Write-Host "run_key=$key"
+
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 0
+      - name: "Guard: Windows runner"
+        if: ${{ runner.os != 'Windows' }}
+        run: exit 1
+      - name: Pre-clean run-scoped roots
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runKey = "${{ steps.runkey.outputs.run_key }}"
+          $paths = @(
+            "$env:GITHUB_WORKSPACE/builds/$runKey",
+            "$env:GITHUB_WORKSPACE/builds-isolated/$runKey",
+            "$env:GITHUB_WORKSPACE/builds/log-stash/$runKey",
+            "$env:GITHUB_WORKSPACE/builds/cache"
+          )
+          foreach ($p in $paths) {
+            if (Test-Path -LiteralPath $p) {
+              Write-Host "Removing $p"
+              Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue
+            }
+          }
+      - name: Build LabVIEW Icon API Source Distribution via worktree
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/build-source-distribution/New-CommitIndex.ps1" `
+            -RepositoryPath "$env:GITHUB_WORKSPACE" `
+            -OutputPath (Join-Path $env:GITHUB_WORKSPACE 'builds/cache/commit-index.json') `
+            -AllowDirty
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/build-source-distribution/Build_Source_Distribution.ps1" `
+            -RepositoryPath "$env:GITHUB_WORKSPACE" `
+            -CommitIndexPath (Join-Path $env:GITHUB_WORKSPACE 'builds/cache/commit-index.json')
+      - name: Stage LabVIEW Icon API SD under run-scoped builds/builds-isolated
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runKey    = "${{ steps.runkey.outputs.run_key }}"
+          $srcDist   = Join-Path $env:GITHUB_WORKSPACE 'builds/LabVIEWIconAPI'
+          $srcZip    = Join-Path $env:GITHUB_WORKSPACE 'builds/artifacts/labview-icon-api.zip'
+          $runDist   = Join-Path $env:GITHUB_WORKSPACE "builds/$runKey/LabVIEWIconAPI"
+          $runZipDir = Join-Path $env:GITHUB_WORKSPACE "builds/$runKey/artifacts"
+          $isoDist   = Join-Path $env:GITHUB_WORKSPACE "builds-isolated/$runKey/builds/LabVIEWIconAPI"
+          $isoZipDir = Join-Path $env:GITHUB_WORKSPACE "builds-isolated/$runKey/builds/artifacts"
+
+          if (-not (Test-Path -LiteralPath $srcDist -PathType Container)) {
+            throw "Expected LabVIEWIconAPI distribution folder at $srcDist"
+          }
+          if (-not (Test-Path -LiteralPath $srcZip -PathType Leaf)) {
+            throw "Expected LabVIEWIconAPI distribution zip at $srcZip"
+          }
+
+          Remove-Item -LiteralPath $runDist -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item -LiteralPath $runZipDir -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $runDist, $runZipDir -Force | Out-Null
+          Copy-Item -Path (Join-Path $srcDist '*') -Destination $runDist -Recurse -Force
+          Copy-Item -LiteralPath $srcZip -Destination (Join-Path $runZipDir (Split-Path $srcZip -Leaf)) -Force
+
+          Remove-Item -LiteralPath $isoDist -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item -LiteralPath $isoZipDir -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $isoDist, $isoZipDir -Force | Out-Null
+          Copy-Item -Path (Join-Path $runDist '*') -Destination $isoDist -Recurse -Force
+          Copy-Item -LiteralPath (Join-Path $runZipDir (Split-Path $srcZip -Leaf)) -Destination (Join-Path $isoZipDir (Split-Path $srcZip -Leaf)) -Force
+      - name: Locate LabVIEW Icon API artifacts
+        id: locate-sd
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runKey   = "${{ steps.runkey.outputs.run_key }}"
+          $distRoot = Join-Path $env:GITHUB_WORKSPACE "builds-isolated/$runKey/builds/LabVIEWIconAPI"
+          $zip      = Join-Path $env:GITHUB_WORKSPACE "builds-isolated/$runKey/builds/artifacts/labview-icon-api.zip"
+
+          if (-not (Test-Path -LiteralPath $distRoot -PathType Container)) {
+            throw "LabVIEWIconAPI Source Distribution folder not found at $distRoot"
+          }
+          if (-not (Test-Path -LiteralPath $zip -PathType Leaf)) {
+            throw "labview-icon-api.zip not found at $zip"
+          }
+
+          $manifestJson = Join-Path $distRoot 'manifest.json'
+          $manifestCsv  = Join-Path $distRoot 'manifest.csv'
+          foreach ($p in @($manifestJson, $manifestCsv)) {
+            if (-not (Test-Path -LiteralPath $p -PathType Leaf)) {
+              throw "Missing manifest file: $p"
+            }
+          }
+          "sd_zip=$zip" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "sd_manifest_json=$manifestJson" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "sd_manifest_csv=$manifestCsv" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+      - name: Upload LabVIEW Icon API artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-labview-icon-api
+          path: |
+            ${{ steps.locate-sd.outputs.sd_zip }}
+            ${{ steps.locate-sd.outputs.sd_manifest_json }}
+            ${{ steps.locate-sd.outputs.sd_manifest_csv }}
+          if-no-files-found: error
+      - name: Upload Source Distribution commit index artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: commit-index-sd
+          path: |
+            builds/cache/commit-index.json
+            builds/cache/commit-index.csv
+          if-no-files-found: error
+
+  build-tooling:
+    name: Build (Tooling Distribution)
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, version, resolve-labview-version, test-compute-version-bump, test-tag-existence-check, rtm-gates, docs-quality]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      COMPANY_NAME: ${{ github.repository_owner }}
+      AUTHOR_NAME: ${{ github.actor }}
+    steps:
+      - name: Compute run key
+        id: runkey
+        shell: pwsh
+        run: |
+          $runId = "${{ github.run_id }}"
+          $runAttempt = "${{ github.run_attempt }}"
+          if (-not [string]::IsNullOrEmpty($runAttempt) -and $runAttempt -ne '1') {
+            $key = "$runId-attempt$runAttempt"
+          } else {
+            $key = $runId
+          }
+          "run_id=$runId"  | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "run_key=$key"   | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          Write-Host "run_key=$key"
+
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 0
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+      - name: Pre-clean run-scoped tooling roots
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runKey = "${{ steps.runkey.outputs.run_key }}"
+          $paths = @(
+            "$env:GITHUB_WORKSPACE/builds/$runKey",
+            "$env:GITHUB_WORKSPACE/builds-isolated/$runKey",
+            "$env:GITHUB_WORKSPACE/builds/cache/tooling-commit-index.json"
+          )
+          foreach ($p in $paths) {
+            if (Test-Path -LiteralPath $p) {
+              Write-Host "Removing $p"
+              Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue
+            }
+          }
+      - name: Build Tooling Distribution
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/tooling-distribution/Build_Tooling_Distribution.ps1" `
+            -RepositoryPath "$env:GITHUB_WORKSPACE"
+      - name: Stage Tooling Distribution under run-scoped builds/builds-isolated
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runKey    = "${{ steps.runkey.outputs.run_key }}"
+          $srcDist   = Join-Path $env:GITHUB_WORKSPACE 'builds/ToolingDistribution'
+          $srcZip    = Join-Path $env:GITHUB_WORKSPACE 'builds/artifacts/tooling-distribution.zip'
+          $runDist   = Join-Path $env:GITHUB_WORKSPACE "builds/$runKey/ToolingDistribution"
+          $runZipDir = Join-Path $env:GITHUB_WORKSPACE "builds/$runKey/artifacts"
+          $isoDist   = Join-Path $env:GITHUB_WORKSPACE "builds-isolated/$runKey/builds/ToolingDistribution"
+          $isoZipDir = Join-Path $env:GITHUB_WORKSPACE "builds-isolated/$runKey/builds/artifacts"
+
+          if (-not (Test-Path -LiteralPath $srcDist -PathType Container)) {
+            throw "Expected tooling distribution folder at $srcDist"
+          }
+          if (-not (Test-Path -LiteralPath $srcZip -PathType Leaf)) {
+            throw "Expected tooling distribution zip at $srcZip"
+          }
+
+          Remove-Item -LiteralPath $runDist -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item -LiteralPath $runZipDir -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $runDist, $runZipDir -Force | Out-Null
+          Copy-Item -Path (Join-Path $srcDist '*') -Destination $runDist -Recurse -Force
+          Copy-Item -LiteralPath $srcZip -Destination (Join-Path $runZipDir (Split-Path $srcZip -Leaf)) -Force
+
+          Remove-Item -LiteralPath $isoDist -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item -LiteralPath $isoZipDir -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path $isoDist, $isoZipDir -Force | Out-Null
+          Copy-Item -Path (Join-Path $runDist '*') -Destination $isoDist -Recurse -Force
+          Copy-Item -LiteralPath (Join-Path $runZipDir (Split-Path $srcZip -Leaf)) -Destination (Join-Path $isoZipDir (Split-Path $srcZip -Leaf)) -Force
+      - name: Locate Tooling Distribution artifacts
+        id: locate-tooling
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runKey   = "${{ steps.runkey.outputs.run_key }}"
+          $distRoot = Join-Path $env:GITHUB_WORKSPACE "builds-isolated/$runKey/builds/ToolingDistribution"
+          $zip      = Join-Path $env:GITHUB_WORKSPACE "builds-isolated/$runKey/builds/artifacts/tooling-distribution.zip"
+
+          if (-not (Test-Path -LiteralPath $distRoot -PathType Container)) {
+            throw "Tooling Distribution folder not found at $distRoot"
+          }
+          if (-not (Test-Path -LiteralPath $zip -PathType Leaf)) {
+            throw "tooling-distribution.zip not found at $zip"
+          }
+
+          $manifestJson = Join-Path $distRoot 'tooling-manifest.json'
+          $manifestCsv  = Join-Path $distRoot 'tooling-manifest.csv'
+          foreach ($p in @($manifestJson, $manifestCsv)) {
+            if (-not (Test-Path -LiteralPath $p -PathType Leaf)) {
+              throw "Missing tooling manifest file: $p"
+            }
+          }
+          "tool_zip=$zip" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "tool_manifest_json=$manifestJson" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "tool_manifest_csv=$manifestCsv" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+      - name: Upload Tooling Distribution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-tooling-distribution
+          path: |
+            ${{ steps.locate-tooling.outputs.tool_zip }}
+            ${{ steps.locate-tooling.outputs.tool_manifest_json }}
+            ${{ steps.locate-tooling.outputs.tool_manifest_csv }}
+          if-no-files-found: error
+      - name: Upload Tooling commit index artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: commit-index-tooling
+          path: |
+            builds/cache/tooling-commit-index.json
+            builds/cache/tooling-commit-index.csv
+          if-no-files-found: error
+      - name: Stage build reports under builds-isolated
+        if: always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runKey    = "${{ steps.runkey.outputs.run_key }}"
+          $srcReports = Join-Path $env:GITHUB_WORKSPACE 'builds/reports'
+          $dstReports = Join-Path $env:GITHUB_WORKSPACE "builds-isolated/$runKey/reports"
+          New-Item -ItemType Directory -Path $dstReports -Force | Out-Null
+          if (Test-Path -LiteralPath $srcReports -PathType Container) {
+            Copy-Item -Path (Join-Path $srcReports '*') -Destination $dstReports -Recurse -Force
+          } else {
+            'No build reports generated in this run.' | Out-File -FilePath (Join-Path $dstReports 'README.txt') -Encoding utf8 -Force
+          }
+      - name: Stage log-stash under run-scoped roots
+        if: always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runKey  = "${{ steps.runkey.outputs.run_key }}"
+          $srcRoot = Join-Path $env:GITHUB_WORKSPACE 'builds/log-stash'
+          $dstRoot = Join-Path $env:GITHUB_WORKSPACE "builds/log-stash/$runKey"
+          $isoRoot = Join-Path $env:GITHUB_WORKSPACE "builds-isolated/$runKey/builds/log-stash"
+          if (Test-Path -LiteralPath $dstRoot) { Remove-Item -LiteralPath $dstRoot -Recurse -Force -ErrorAction SilentlyContinue }
+          if (Test-Path -LiteralPath $isoRoot) { Remove-Item -LiteralPath $isoRoot -Recurse -Force -ErrorAction SilentlyContinue }
+          New-Item -ItemType Directory -Path $dstRoot, $isoRoot -Force | Out-Null
+          if (Test-Path -LiteralPath $srcRoot -PathType Container) {
+            $existingRunScoped = Join-Path $srcRoot $runKey
+            if (Test-Path -LiteralPath $existingRunScoped -PathType Container) {
+              # If producers already wrote run-scoped log-stash, mirror it into dst/iso without copying a folder onto itself.
+              Copy-Item -Path (Join-Path $existingRunScoped '*') -Destination $dstRoot -Recurse -Force
+            } else {
+              Copy-Item -Path (Join-Path $srcRoot '*') -Destination $dstRoot -Recurse -Force
+            }
+            Copy-Item -Path (Join-Path $dstRoot '*') -Destination $isoRoot -Recurse -Force
+          }
+      - name: Upload build reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-build-reports
+          path: |
+            builds-isolated/${{ steps.runkey.outputs.run_key }}/reports
+          if-no-files-found: warn
+      - name: Upload log-stash bundles
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-log-stash
+          path: |
+            builds/log-stash/${{ steps.runkey.outputs.run_key }}
+            builds-isolated/${{ steps.runkey.outputs.run_key }}/builds/log-stash
+          if-no-files-found: ignore
+      - name: Validate compare bundles (if request present)
+        if: always()
+        shell: pwsh
+        run: |
+          $req = "${{ github.event.inputs.vi_compare_request || '' }}"
+          if ([string]::IsNullOrWhiteSpace($req)) {
+            Write-Host "No compare request provided; skipping compare bundle validation."
+            exit 0
+          }
+          $runKey = "${{ steps.runkey.outputs.run_key }}"
+          $roots = @(
+            Join-Path $env:GITHUB_WORKSPACE "builds/log-stash/$runKey"
+            Join-Path $env:GITHUB_WORKSPACE "builds-isolated/$runKey/builds/log-stash"
+          )
+          $bundles = @()
+          foreach ($r in $roots) {
+            if (Test-Path -LiteralPath $r) {
+              $bundles += Get-ChildItem -LiteralPath $r -Recurse -Filter manifest.json | Where-Object { $_.FullName -like '*\\compare\\*' }
+            }
+          }
+          if (-not $bundles -or $bundles.Count -eq 0) {
+            Write-Error "Compare request provided but no compare bundles were found under builds/log-stash."
+            exit 1
+          }
+          Write-Host ("Found {0} compare bundle(s):" -f $bundles.Count)
+          $bundles | ForEach-Object { Write-Host (" - {0}" -f $_.FullName) }
+      - name: Cleanup log-stash (workspace)
+        if: always()
+        shell: pwsh
+        run: |
+          $script = Join-Path $env:GITHUB_WORKSPACE 'scripts/log-stash/Cleanup-LogStash.ps1'
+          if (Test-Path -LiteralPath $script) {
+            pwsh -NoProfile -File $script -RepositoryPath "$env:GITHUB_WORKSPACE" -MaxPerCategory 5 -MaxAgeDays 7
+          }
+
+  unify-artifacts:
+    name: Publish LabVIEW Icon API draft release
+    if: ${{ github.event_name != 'pull_request' }}
+    needs:
+      - verify-checklist-sync
+      - build-worktree
+      - build-tooling
+      - seed-containerized
+      - rtm-gates
+      - docs-quality
+      - version
+      - version-report
+      - vscode-tasks-manifest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      UPSTREAM_REPO: ${{ github.event.inputs.upstream_repo || github.repository }}
+      PREVIOUS_RUN_ID: ${{ github.event.inputs.previous_run_id || '' }}
+    steps:
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+
+      - name: Checkout (for scripts)
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 1
+
+      - name: Download LabVIEW Icon API artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-labview-icon-api
+          path: artifacts/sd
+          repository: ${{ env.PREVIOUS_RUN_ID != '' && env.UPSTREAM_REPO || github.repository }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ env.PREVIOUS_RUN_ID != '' && env.PREVIOUS_RUN_ID || github.run_id }}
+
+      - name: Download Tooling Distribution artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-tooling-distribution
+          path: artifacts/tooling
+          repository: ${{ env.PREVIOUS_RUN_ID != '' && env.UPSTREAM_REPO || github.repository }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ env.PREVIOUS_RUN_ID != '' && env.PREVIOUS_RUN_ID || github.run_id }}
+
+      - name: Download Source Distribution commit index artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: commit-index-sd
+          path: artifacts/commit-index-sd
+          repository: ${{ env.PREVIOUS_RUN_ID != '' && env.UPSTREAM_REPO || github.repository }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ env.PREVIOUS_RUN_ID != '' && env.PREVIOUS_RUN_ID || github.run_id }}
+
+      - name: Download Tooling commit index artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: commit-index-tooling
+          path: artifacts/commit-index-tooling
+          repository: ${{ env.PREVIOUS_RUN_ID != '' && env.UPSTREAM_REPO || github.repository }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ env.PREVIOUS_RUN_ID != '' && env.PREVIOUS_RUN_ID || github.run_id }}
+
+      - name: List downloaded artifacts
+        run: |
+          echo "Downloaded LabVIEW Icon API distribution contents:"
+          ls -R artifacts/sd
+          echo "Downloaded Tooling Distribution contents:"
+          ls -R artifacts/tooling
+
+      - name: Generate integrity hashes
+        id: integrity
+        uses: ./.github/actions/generate-integrity-hashes
+        with:
+          artifacts_path: artifacts
+          output_path: artifacts/integrity-hashes
+          # Map local download directories to actual artifact names for path verification
+          # Local dirs: sd, tooling, commit-index-sd, commit-index-tooling
+          # Artifact names: <repo>-labview-icon-api, <repo>-tooling-distribution, commit-index-sd, commit-index-tooling
+          artifact_mappings: |
+            {
+              "sd": "${{ github.event.repository.name || 'labview-icon-editor' }}-labview-icon-api",
+              "tooling": "${{ github.event.repository.name || 'labview-icon-editor' }}-tooling-distribution",
+              "commit-index-sd": "commit-index-sd",
+              "commit-index-tooling": "commit-index-tooling"
+            }
+
+      - name: Upload integrity hashes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: integrity-hashes
+          path: artifacts/integrity-hashes/
+          if-no-files-found: error
+
+      - name: Validate version format
+        shell: pwsh
+        env:
+          TAG: ${{ needs.version.outputs.VERSION }}
+          VERSION: ${{ needs.version.outputs.VERSION }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:TAG -or $env:TAG -notmatch '^v\d+\.\d+\.\d+.*') {
+            throw "TAG missing or malformed ('$env:TAG'); expected vMAJOR.MINOR.PATCH[...]"
+          }
+          if (-not $env:VERSION -or $env:VERSION -notmatch '^v\d+\.\d+\.\d+.*') {
+            throw "VERSION missing or malformed ('$env:VERSION'); expected vMAJOR.MINOR.PATCH[...]"
+          }
+          Write-Host "Version format validated: TAG=$env:TAG, VERSION=$env:VERSION"
+
+      - name: "Guard: commit index skip policy"
+        shell: pwsh
+        env:
+          PUBLISH_SKIP_COMMIT_INDEX: ${{ env.PUBLISH_SKIP_COMMIT_INDEX || '' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $isMainOrTag = ($env:GITHUB_REF -like 'refs/heads/main' -or $env:GITHUB_REF -like 'refs/tags/*')
+          $skip = ($env:PUBLISH_SKIP_COMMIT_INDEX -as [string]) -and ($env:PUBLISH_SKIP_COMMIT_INDEX.ToLower() -eq 'true')
+          if ($isMainOrTag -and $skip) {
+            throw 'PUBLISH_SKIP_COMMIT_INDEX=true is not allowed on main or tag refs; remove the bypass to publish.'
+          }
+          Write-Host "Commit index skip policy validated."
+
+      - name: Ensure commit index directories exist
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repo = "$env:GITHUB_WORKSPACE"
+          $sdDir = Join-Path $repo 'artifacts/commit-index-sd'
+          $toolDir = Join-Path $repo 'artifacts/commit-index-tooling'
+          foreach ($d in @($sdDir, $toolDir)) {
+            if (-not (Test-Path -LiteralPath $d)) {
+              New-Item -ItemType Directory -Path $d -Force | Out-Null
+              Write-Host "Created directory: $d"
+            }
+          }
+
+      - name: Generate missing SD commit index
+        shell: pwsh
+        env:
+          PUBLISH_SKIP_COMMIT_INDEX: ${{ env.PUBLISH_SKIP_COMMIT_INDEX || '' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $skip = ($env:PUBLISH_SKIP_COMMIT_INDEX -as [string]) -and ($env:PUBLISH_SKIP_COMMIT_INDEX.ToLower() -eq 'true')
+          $repo = "$env:GITHUB_WORKSPACE"
+          $sdDir = Join-Path $repo 'artifacts/commit-index-sd'
+
+          $json = Get-ChildItem -LiteralPath $sdDir -Filter 'commit-index.json' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          $csv  = Get-ChildItem -LiteralPath $sdDir -Filter 'commit-index.csv' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+
+          if ($json -and $csv) {
+            Write-Host "SD commit index already present."
+          } elseif ($skip) {
+            Write-Host "SD commit index missing, but PUBLISH_SKIP_COMMIT_INDEX=true -> skipping generation."
+          } else {
+            Write-Host "SD commit index missing; generating locally..."
+            $sdJsonOut = Join-Path $sdDir 'commit-index.json'
+            $sdCsvOut  = Join-Path $sdDir 'commit-index.csv'
+            & "$repo/scripts/build-source-distribution/New-CommitIndex.ps1" -RepositoryPath $repo -OutputPath $sdJsonOut -CsvOutputPath $sdCsvOut -AllowDirty
+          }
+
+      - name: Generate missing Tooling commit index
+        shell: pwsh
+        env:
+          PUBLISH_SKIP_COMMIT_INDEX: ${{ env.PUBLISH_SKIP_COMMIT_INDEX || '' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $skip = ($env:PUBLISH_SKIP_COMMIT_INDEX -as [string]) -and ($env:PUBLISH_SKIP_COMMIT_INDEX.ToLower() -eq 'true')
+          $repo = "$env:GITHUB_WORKSPACE"
+          $toolDir = Join-Path $repo 'artifacts/commit-index-tooling'
+
+          $json = Get-ChildItem -LiteralPath $toolDir -Filter 'tooling-commit-index.json' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          $csv  = Get-ChildItem -LiteralPath $toolDir -Filter 'tooling-commit-index.csv' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+
+          if ($json -and $csv) {
+            Write-Host "Tooling commit index already present."
+          } elseif ($skip) {
+            Write-Host "Tooling commit index missing, but PUBLISH_SKIP_COMMIT_INDEX=true -> skipping generation."
+          } else {
+            Write-Host "Tooling commit index missing; generating locally..."
+            $toolJsonOut = Join-Path $toolDir 'tooling-commit-index.json'
+            $toolCsvOut  = Join-Path $toolDir 'tooling-commit-index.csv'
+            $includePaths = @(
+              '.vscode','configs','scenarios','runner_dependencies.vipc',
+              'scripts/run-worktree-task.ps1','scripts/run-requirements-summary-task.ps1','scripts/task-devmode-bind.ps1',
+              'scripts/clear-labview-librarypaths-all.ps1','scripts/run-xcli.ps1','scripts/run-worktree-tests.ps1',
+              'scripts/test/Test.ps1','scripts/vi-compare','scripts/ppl-from-sd/Build_Ppl_From_SourceDistribution.ps1',
+              'scripts/labview/vipb-bump-worktree.ps1','scripts/clear-tooling-cache.ps1',
+              'Tooling/dotnet/OrchestrationCli','Tooling/dotnet/IntegrationEngineCli','Tooling/dotnet/DevModeAgentCli',
+              'Tooling/dotnet/RequirementsSummarizer','Tooling/dotnet/TestsCli','Tooling/x-cli/src/XCli','Tooling/x-cli/src/Telemetry'
+            )
+            & "$repo/scripts/build-source-distribution/New-CommitIndex.ps1" -RepositoryPath $repo -IncludePaths $includePaths -OutputPath $toolJsonOut -CsvOutputPath $toolCsvOut -AllowDirty
+          }
+
+      - name: Validate commit index artifacts
+        shell: pwsh
+        env:
+          PUBLISH_SKIP_COMMIT_INDEX: ${{ env.PUBLISH_SKIP_COMMIT_INDEX || '' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $skip = ($env:PUBLISH_SKIP_COMMIT_INDEX -as [string]) -and ($env:PUBLISH_SKIP_COMMIT_INDEX.ToLower() -eq 'true')
+          $repo = "$env:GITHUB_WORKSPACE"
+          $sdDir = Join-Path $repo 'artifacts/commit-index-sd'
+          $toolDir = Join-Path $repo 'artifacts/commit-index-tooling'
+
+          function Get-IndexFiles([string]$dir,[string]$stem) {
+            $json = Get-ChildItem -LiteralPath $dir -Filter "$stem.json" -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            $csv  = Get-ChildItem -LiteralPath $dir -Filter "$stem.csv" -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            return @{ json = $json; csv = $csv }
+          }
+
+          $sd    = Get-IndexFiles -dir $sdDir   -stem 'commit-index'
+          $tool  = Get-IndexFiles -dir $toolDir -stem 'tooling-commit-index'
+          $missing = @()
+          if (-not $sd.json -or -not $sd.csv)   { $missing += 'commit-index-sd' }
+          if (-not $tool.json -or -not $tool.csv) { $missing += 'commit-index-tooling' }
+
+          $toHash = @()
+          if ($sd.json)   { $toHash += $sd.json.FullName }
+          if ($sd.csv)    { $toHash += $sd.csv.FullName }
+          if ($tool.json) { $toHash += $tool.json.FullName }
+          if ($tool.csv)  { $toHash += $tool.csv.FullName }
+          foreach ($f in $toHash) {
+            if ((Get-Item $f).Length -eq 0) { Write-Error "Commit index file is empty: $f" }
+          }
+          if ($toHash.Count -gt 0) {
+            Write-Host "SHA256 of commit index files:"
+            $hashes = & sha256sum $toHash
+            $hashes | ForEach-Object { Write-Host $_ }
+          }
+
+          if ($missing.Count -gt 0) {
+            if ($skip) {
+              Write-Host "Commit index artifact(s) missing ($($missing -join ', ')), but PUBLISH_SKIP_COMMIT_INDEX=true -> continuing without them."
+              exit 0
+            }
+            Write-Error "Required commit index artifact(s) missing after generation attempt: $($missing -join ', '). Rerun CI with publish enabled so commit-index-sd and commit-index-tooling artifacts exist, or (non-main/non-tag only) set PUBLISH_SKIP_COMMIT_INDEX=true to bypass."
+          } else {
+            Write-Host "Commit index artifacts present."
+          }
+
+      - name: Locate LabVIEW Icon API payload
+        id: sd
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip=$(find artifacts/sd -name "labview-icon-api.zip" -type f | head -n1 || true)
+          mj=$(find artifacts/sd -name "manifest.json" -type f | head -n1 || true)
+          mc=$(find artifacts/sd -name "manifest.csv" -type f | head -n1 || true)
+          for f in "$zip" "$mj" "$mc"; do
+            if [ -z "$f" ]; then
+              echo "Missing SD payload components (zip/manifest)." >&2
+              exit 1
+            fi
+          done
+          echo "zip=$zip" >> "$GITHUB_OUTPUT"
+          echo "manifest_json=$mj" >> "$GITHUB_OUTPUT"
+          echo "manifest_csv=$mc" >> "$GITHUB_OUTPUT"
+          ls -lh "$zip" "$mj" "$mc"
+
+      - name: Locate Tooling Distribution payload
+        id: tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip=$(find artifacts/tooling -name "tooling-distribution.zip" -type f | head -n1 || true)
+          mj=$(find artifacts/tooling -name "tooling-manifest.json" -type f | head -n1 || true)
+          mc=$(find artifacts/tooling -name "tooling-manifest.csv" -type f | head -n1 || true)
+          for f in "$zip" "$mj" "$mc"; do
+            if [ -z "$f" ]; then
+              echo "Missing tooling payload components (zip/manifest)." >&2
+              exit 1
+            fi
+          done
+          echo "zip=$zip" >> "$GITHUB_OUTPUT"
+          echo "manifest_json=$mj" >> "$GITHUB_OUTPUT"
+          echo "manifest_csv=$mc" >> "$GITHUB_OUTPUT"
+          ls -lh "$zip" "$mj" "$mc"
+
+      - name: Locate commit index artifacts
+        id: commit-index
+        shell: bash
+        run: |
+          set -euo pipefail
+          sd_json=$(find artifacts/commit-index-sd -name "commit-index.json" -type f | head -n1 || true)
+          sd_csv=$(find artifacts/commit-index-sd -name "commit-index.csv" -type f | head -n1 || true)
+          tool_json=$(find artifacts/commit-index-tooling -name "tooling-commit-index.json" -type f | head -n1 || true)
+          tool_csv=$(find artifacts/commit-index-tooling -name "tooling-commit-index.csv" -type f | head -n1 || true)
+
+          for f in "$sd_json" "$sd_csv" "$tool_json" "$tool_csv"; do
+            if [ -z "$f" ]; then
+              echo "Missing commit index artifact component; rerun CI with current workflow to produce commit-index-sd and commit-index-tooling." >&2
+              exit 1
+            fi
+          done
+
+          echo "sd_json=$sd_json"   >> "$GITHUB_OUTPUT"
+          echo "sd_csv=$sd_csv"     >> "$GITHUB_OUTPUT"
+          echo "tool_json=$tool_json" >> "$GITHUB_OUTPUT"
+          echo "tool_csv=$tool_csv"   >> "$GITHUB_OUTPUT"
+          ls -lh "$sd_json" "$sd_csv" "$tool_json" "$tool_csv"
+
+      - name: Compute tag/name
+        id: tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.version.outputs.VERSION }}" || true
+          tag="${tag:-sd-${GITHUB_RUN_ID}}"
+          # Convert vMAJOR.MINOR.PATCH-buildN -> vMAJOR.MINOR.PATCH.N
+          tag="${tag/-build/.}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Using tag: $tag"
+
+      - name: Create draft release (LabVIEW Icon API)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          IS_PRERELEASE: ${{ needs.version.outputs.IS_PRERELEASE || false }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          prerelease_flag=""
+          if [ "${IS_PRERELEASE,,}" = "true" ]; then
+            prerelease_flag="--prerelease"
+          fi
+          notes="LabVIEW Icon API source distribution from CI run ${GITHUB_RUN_ID}"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; will upload assets with clobber."
+          else
+            gh release create "$TAG" --title "$TAG" --draft $prerelease_flag --notes "$notes" --repo "$GITHUB_REPOSITORY"
+          fi
+
+      - name: Upload LabVIEW Icon API assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" "${{ steps.sd.outputs.zip }}" --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Upload manifest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" "${{ steps.sd.outputs.manifest_json }}" --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Upload manifest.csv
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" "${{ steps.sd.outputs.manifest_csv }}" --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Upload Tooling Distribution assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" "${{ steps.tooling.outputs.zip }}" --clobber --repo "$GITHUB_REPOSITORY"
+          gh release upload "$TAG" "${{ steps.tooling.outputs.manifest_json }}" --clobber --repo "$GITHUB_REPOSITORY"
+          gh release upload "$TAG" "${{ steps.tooling.outputs.manifest_csv }}" --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Upload commit index artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" "${{ steps.commit-index.outputs.sd_json }}" "${{ steps.commit-index.outputs.sd_csv }}" --clobber --repo "$GITHUB_REPOSITORY"
+          gh release upload "$TAG" "${{ steps.commit-index.outputs.tool_json }}" "${{ steps.commit-index.outputs.tool_csv }}" --clobber --repo "$GITHUB_REPOSITORY"

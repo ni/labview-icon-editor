@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en" data-lv-report="vi-comparison" data-lv-version="25.3">
+<head>
+    <meta charset="UTF-8">
+    <meta name="lv-version" content="25.3">
+    <meta name="report-type" content="vi-comparison">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{REPORT_TITLE}}</title>
+    <style>
+        :root {
+            --bg: #0b1526;
+            --panel: #0f1f35;
+            --panel-strong: #132949;
+            --text: #e8f1ff;
+            --muted: #a9bcd7;
+            --accent: #5df3ff;
+            --accent-2: #ffb347;
+            --ok: #2ad179;
+            --warn: #f5a524;
+            --error: #ff4d6d;
+            --radius: 16px;
+            --shadow: 0 20px 70px rgba(0,0,0,0.35);
+            font-family: "Space Grotesk", "Segoe UI", sans-serif;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: radial-gradient(circle at 15% 20%, rgba(93,243,255,0.08), transparent 35%),
+                        radial-gradient(circle at 80% 10%, rgba(255,179,71,0.12), transparent 30%),
+                        linear-gradient(135deg, #0b1526, #0b1020 55%, #0c1b30);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        .report {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 24px 48px;
+        }
+        .hero {
+            background: linear-gradient(135deg, rgba(19,41,73,0.9), rgba(12,27,48,0.85));
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: var(--radius);
+            padding: 28px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 16px;
+        }
+        .hero h1 {
+            margin: 0;
+            font-size: 2.1rem;
+            letter-spacing: 0.4px;
+        }
+        .hero .subtitle {
+            color: var(--muted);
+            margin-top: 6px;
+            font-size: 0.95rem;
+        }
+        .pill {
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(93,243,255,0.14);
+            color: var(--accent);
+            font-weight: 600;
+            letter-spacing: 0.2px;
+        }
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+            margin: 20px 0;
+        }
+        .summary-card {
+            background: var(--panel);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: var(--radius);
+            padding: 18px;
+            box-shadow: var(--shadow);
+            transition: transform 120ms ease, border-color 120ms ease;
+        }
+        .summary-card:hover { transform: translateY(-3px); border-color: rgba(93,243,255,0.4); }
+        .summary-card .label { color: var(--muted); font-size: 0.9rem; }
+        .summary-card .value { font-size: 1.9rem; margin: 6px 0; }
+        .summary-card .subtext { color: var(--muted); font-size: 0.9rem; }
+        .summary-card.ok { border-color: rgba(42,209,121,0.4); }
+        .summary-card.alert { border-color: rgba(255,77,109,0.5); }
+        .panel {
+            background: var(--panel);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: var(--radius);
+            padding: 18px;
+            box-shadow: var(--shadow);
+            margin-top: 18px;
+        }
+        .panel-title { font-weight: 700; margin-bottom: 10px; font-size: 1.05rem; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 14px;
+        }
+        ul { margin: 0; padding-left: 18px; color: var(--muted); }
+        table.compatibility {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--panel-strong);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        table.compatibility th, table.compatibility td {
+            padding: 10px;
+            text-align: left;
+        }
+        table.compatibility thead { background: rgba(255,255,255,0.04); }
+        table.compatibility tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+        .compatible { color: var(--ok); }
+        .warnings { color: var(--accent-2); }
+        .incompatible { color: var(--error); }
+        .callout {
+            padding: 12px 14px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.04);
+        }
+        .callout strong { display: block; margin-bottom: 6px; }
+        .callout.severity-high { border-color: rgba(255,77,109,0.6); }
+        .callout.severity-medium { border-color: rgba(245,165,36,0.6); }
+        .callout.severity-low { border-color: rgba(93,243,255,0.4); }
+        .callout.severity-ok { border-color: rgba(42,209,121,0.6); }
+        .detail h3 { margin-top: 8px; margin-bottom: 8px; }
+        .detail ul { margin-bottom: 12px; }
+        @media (max-width: 640px) {
+            .hero { flex-direction: column; align-items: flex-start; }
+            .hero h1 { font-size: 1.6rem; }
+        }
+    </style>
+</head>
+<body>
+    <main class="report">
+        <section class="hero">
+            <div>
+                <h1>{{REPORT_TITLE}}</h1>
+                <div class="subtitle">Base: {{BASE_NAME}} | Compare: {{COMPARE_NAME}}</div>
+            </div>
+            <div class="pill">Recommendation: {{RECOMMENDATION}}</div>
+        </section>
+        <section class="summary" id="summary-cards">
+            {{SUMMARY_CARDS}}
+        </section>
+        <section class="panel">
+            <div class="panel-title">Change Overview</div>
+            <div class="panel-body">{{COMPARISON}}</div>
+        </section>
+        <section class="grid">
+            <div class="panel">
+                <div class="panel-title">Compatibility Matrix</div>
+                <div class="panel-body">{{COMPATIBILITY}}</div>
+            </div>
+            <div class="panel">
+                <div class="panel-title">Breaking Changes</div>
+                <div class="panel-body">{{BREAKING}}</div>
+            </div>
+        </section>
+        <section class="panel">
+            <div class="panel-title">Detailed Analysis</div>
+            <div class="panel-body details">{{DETAILS}}</div>
+        </section>
+    </main>
+    <script type="application/json" id="vi-comparison-data">{{PAYLOAD_JSON}}</script>
+</body>
+</html>

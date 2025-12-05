@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1.0.0",
+  "description": "Sample VS Code task manifest for extracted SD flows (validate SD zip, build PPL from extracted SD).",
+  "tasks": [
+    {
+      "label": "sd-validate",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "scripts/common/invoke-repo-cli.ps1",
+        "-Cli",
+        "OrchestrationCli",
+        "--",
+        "source-dist-verify",
+        "--repo",
+        "${workspaceFolder}"
+      ],
+      "notes": "Validates the extracted SD zip and manifests using OrchestrationCli."
+    },
+    {
+      "label": "sd-build-ppl",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "scripts/ppl-from-sd/Build_Ppl_From_SourceDistribution.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-SourceDistZip",
+        "builds/artifacts/labview-icon-api.zip"
+      ],
+      "notes": "Builds the PPL from the extracted SD zip; expects labview-icon-api.zip under builds/artifacts in the extracted SD."
+    },
+    {
+      "label": "sd-vi-history",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "scripts/vi-compare/run-vi-history-suite-sd.ps1",
+        "-SdRoot",
+        "${workspaceFolder}"
+      ],
+      "notes": "Runs the read-only vi-history suite against the extracted SD (no bind/build); refuses Program Files SdRoot and logs under reports/logs."
+    }
+  ]
+}

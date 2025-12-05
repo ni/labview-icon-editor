@@ -1,0 +1,121 @@
+name: "Generate Integrity Hashes"
+description: "Generates SHA256 checksums for release artifacts in a deterministic, verifiable format"
+inputs:
+  artifacts_path:
+    description: "Root path containing artifacts to checksum"
+    required: true
+  output_path:
+    description: "Path where the checksum file will be written"
+    required: false
+    default: "integrity-hashes"
+  output_filename:
+    description: "Name of the checksum file"
+    required: false
+    default: "artifacts.sha256"
+  artifact_mappings:
+    description: "JSON object mapping local directory names to artifact names for path translation (e.g., {\"sd\": \"repo-labview-icon-api\"})"
+    required: false
+    default: "{}"
+outputs:
+  checksum_file:
+    description: "Full path to the generated checksum file"
+    value: ${{ steps.generate.outputs.checksum_file }}
+  checksum_count:
+    description: "Number of files checksummed"
+    value: ${{ steps.generate.outputs.checksum_count }}
+runs:
+  using: "composite"
+  steps:
+    - name: Generate SHA256 checksums
+      id: generate
+      shell: bash
+      env:
+        ARTIFACTS_PATH: ${{ inputs.artifacts_path }}
+        OUTPUT_PATH: ${{ inputs.output_path }}
+        OUTPUT_FILENAME: ${{ inputs.output_filename }}
+        ARTIFACT_MAPPINGS: ${{ inputs.artifact_mappings }}
+      run: |
+        set -euo pipefail
+
+        # Resolve paths
+        artifacts_root="${ARTIFACTS_PATH}"
+        output_dir="${OUTPUT_PATH}"
+
+        # Create output directory
+        mkdir -p "$output_dir"
+
+        # Normalize paths to absolute locations so later cd operations do not break writes
+        if command -v realpath &> /dev/null; then
+          artifacts_root="$(realpath "$artifacts_root")"
+        else
+          artifacts_root="$(cd "$artifacts_root" && pwd)"
+        fi
+
+        output_dir="$(cd "$output_dir" && pwd)"
+        output_file="${output_dir}/${OUTPUT_FILENAME}"
+
+        # Parse artifact mappings using jq if provided
+        # Format: {"local_dir": "artifact_name", ...}
+        declare -A dir_to_artifact
+        if [ -n "$ARTIFACT_MAPPINGS" ] && [ "$ARTIFACT_MAPPINGS" != "{}" ]; then
+          if command -v jq &> /dev/null; then
+            while IFS="=" read -r key value; do
+              [ -n "$key" ] && dir_to_artifact["$key"]="$value"
+            done < <(echo "$ARTIFACT_MAPPINGS" | jq -r 'to_entries[] | "\(.key)=\(.value)"')
+          else
+            echo "Warning: jq not available, artifact mappings will not be applied" >&2
+          fi
+        fi
+
+        echo "Generating SHA256 checksums for artifacts in: $artifacts_root"
+        echo "Output will be written to: $output_file"
+
+        # Change to artifacts directory
+        cd "$artifacts_root"
+
+        # Track checksum count
+        count=0
+
+        # Process all directories using find for safer iteration
+        while IFS= read -r -d '' dir; do
+          dir_name=$(basename "$dir")
+          
+          # Skip the output directory if it's inside artifacts
+          if [ "$dir_name" = "$(basename "$output_dir")" ]; then
+            continue
+          fi
+
+          # Determine the artifact name (use mapping if available, otherwise use dir name)
+          artifact_name="$dir_name"
+          if [ -n "${dir_to_artifact[*]:-}" ]; then
+            for key in "${!dir_to_artifact[@]}"; do
+              if [ "$key" = "$dir_name" ]; then
+                artifact_name="${dir_to_artifact[$key]}"
+                break
+              fi
+            done
+          fi
+
+          # Generate checksums for all files in this directory
+          while IFS= read -r -d '' file; do
+            rel_file="${file#$dir_name/}"
+            hash=$(sha256sum "$file" | cut -d' ' -f1)
+            # Path relative to the output directory pointing to sibling artifact dir
+            echo "$hash  ../$artifact_name/$rel_file" >> "$output_file"
+            ((count++))
+          done < <(find "$dir_name" -type f -print0)
+        done < <(find . -maxdepth 1 -type d -not -name '.' -print0)
+
+        # Sort for consistent, deterministic output
+        if [ -f "$output_file" ]; then
+          sort -k2 "$output_file" -o "$output_file"
+          echo "Generated $count checksums:"
+          cat "$output_file"
+        else
+          echo "ERROR: No artifact files found to checksum in $artifacts_root!" >&2
+          exit 1
+        fi
+
+        # Set outputs
+        echo "checksum_file=$output_file" >> "$GITHUB_OUTPUT"
+        echo "checksum_count=$count" >> "$GITHUB_OUTPUT"

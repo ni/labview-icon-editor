@@ -1,0 +1,13 @@
+{
+  "name": "Invalid JSON Recovery",
+  "description": "LLM sends invalid JSON but recovers after user feedback",
+  "goal": "Build Source Distribution",
+  "expectedTurns": 4,
+  "turns": [
+    {"turn": 1, "response": "I will build the source distribution now"},
+    {"turn": 2, "response": "{\"run\":\"pwsh -NoProfile -File scripts/build-source-distribution/Build_Source_Distribution.ps1 -RepositoryPath . -Package_LabVIEW_Version 2025 -SupportedBitness 64\"}"},
+    {"turn": 3, "response": "{\"done\":true,\"summary\":\"Build completed\"}"}
+  ],
+  "expectedOutcome": "success",
+  "expectedCommandCount": 1
+}

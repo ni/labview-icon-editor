@@ -1,0 +1,13 @@
+services:
+  seed:
+    build:
+      context: ../../..
+      dockerfile: Tooling/seed/Dockerfile
+    image: seed-local:latest
+    pull_policy: never
+    stdin_open: true
+    tty: true
+    volumes:
+      - ${WORKSPACE_HOST_PATH:-../../..}:/workspace
+    working_dir: /workspace
+    command: ["seed", "--help"]

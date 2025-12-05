@@ -1,0 +1,15 @@
+{
+  "name": "Max Turns Reached",
+  "description": "LLM keeps proposing commands until max turns limit",
+  "goal": "Build everything",
+  "expectedTurns": 5,
+  "turns": [
+    {"turn": 1, "response": "{\"run\":\"pwsh -NoProfile -File scripts/build-source-distribution/Build_Source_Distribution.ps1 -RepositoryPath . -Package_LabVIEW_Version 2025 -SupportedBitness 64\"}"},
+    {"turn": 2, "response": "{\"run\":\"pwsh -NoProfile -File scripts/build-source-distribution/Build_Source_Distribution.ps1 -RepositoryPath . -Package_LabVIEW_Version 2021 -SupportedBitness 32\"}"},
+    {"turn": 3, "response": "{\"run\":\"pwsh -NoProfile -File scripts/build-source-distribution/Build_Source_Distribution.ps1 -RepositoryPath . -Package_LabVIEW_Version 2021 -SupportedBitness 64\"}"},
+    {"turn": 4, "response": "{\"run\":\"pwsh -NoProfile -File scripts/build-source-distribution/Build_Source_Distribution.ps1 -RepositoryPath . -Package_LabVIEW_Version 2025 -SupportedBitness 32\"}"},
+    {"turn": 5, "response": "{\"run\":\"pwsh -NoProfile -File scripts/build-source-distribution/Build_Source_Distribution.ps1 -RepositoryPath . -Package_LabVIEW_Version 2020 -SupportedBitness 64\"}"}
+  ],
+  "expectedOutcome": "max_turns_reached",
+  "expectedCommandCount": 5
+}

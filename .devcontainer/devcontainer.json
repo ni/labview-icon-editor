@@ -1,0 +1,41 @@
+{
+  "name": "labview-icon-editor-sandbox (dotnet + ollama bench)",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "remoteUser": "root",
+  "workspaceFolder": "/workspaces/labview-icon-editor-sandbox",
+  "postCreateCommand": "dotnet restore Tooling/dotnet/RequirementsSummarizer/RequirementsSummarizer.csproj && dotnet build Tooling/dotnet/RequirementsSummarizer/RequirementsSummarizer.csproj",
+  "mounts": [
+    "source=nuget-cache,target=/root/.nuget/packages,type=volume",
+    "source=ollama-cache,target=/root/.ollama,type=volume",
+    "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-vscode.powershell"
+      ]
+    },
+    "codespaces": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-vscode.powershell"
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "pwsh",
+        "task.allowAutomaticTasks": "on"
+      }
+    }
+  },
+  "containerEnv": {
+    "OLLAMA_IMAGE": "ghcr.io/svelderrainruiz/ollama-local:cpu-preloaded",
+    "OLLAMA_MODEL_TAG": "llama3-8b-local:latest",
+    "OLLAMA_HOST": "http://host.docker.internal:11435"
+  },
+  "runArgs": [
+    "--add-host=host.docker.internal:host-gateway"
+  ]
+}

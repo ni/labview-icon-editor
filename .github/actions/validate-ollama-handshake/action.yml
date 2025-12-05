@@ -1,0 +1,52 @@
+name: Validate Ollama handshake
+description: Validate the labview-icon-api-handshake.json for required keys
+
+inputs:
+  handshake_path:
+    description: "Path to labview-icon-api-handshake.json"
+    required: false
+    default: "artifacts/labview-icon-api-handshake.json"
+  required_keys:
+    description: "Comma-separated list of required JSON keys"
+    required: false
+    default: "zipSha256,pplSha256,zipRelPath,pplRelPath,mode,requirements"
+  allow_missing:
+    description: "If true, skip validation when handshake file is missing (for jobs that don't generate it)"
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Validate Ollama handshake file
+      shell: pwsh
+      run: |
+        $path = '${{ inputs.handshake_path }}'
+        $allowMissing = '${{ inputs.allow_missing }}' -eq 'true'
+
+        if (-not (Test-Path -LiteralPath $path)) {
+          if ($allowMissing) {
+            Write-Host "Handshake file not found at $path - skipping validation (allow_missing=true)" -ForegroundColor Yellow
+            "⚠️ Handshake validation skipped: file not found (allow_missing=true)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+            exit 0
+          }
+          throw "Missing handshake file: $path"
+        }
+
+        $json = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
+        $keys = ('${{ inputs.required_keys }}' -split ',') | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+
+        foreach ($key in $keys) {
+          if (-not $json.PSObject.Properties.Name -contains $key) {
+            throw "Handshake missing key: $key"
+          }
+          if (-not $json.$key) {
+            throw "Handshake key '$key' is empty"
+          }
+        }
+
+        $mode = $json.mode
+        $req = $json.requirements -join ','
+        Write-Host "mode=$mode; requirements=$req" -ForegroundColor Gray
+        "✅ Handshake validated: mode=$mode requirements=$req" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+        Write-Host "Handshake validation succeeded for $path" -ForegroundColor Green

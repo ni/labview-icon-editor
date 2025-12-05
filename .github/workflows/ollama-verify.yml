@@ -1,0 +1,183 @@
+name: Ollama Verify
+
+on:
+  workflow_call: {}
+  workflow_dispatch: {}
+  push:
+    paths:
+      - 'ollama/**'
+      - 'prompt-tests/**'
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'ollama/**'
+      - 'prompt-tests/**'
+  pull_request_target:
+    types: [labeled]
+
+concurrency:
+  group: ollama-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    if: ${{ github.event_name != 'pull_request_target' || (github.event.label != null && github.event.label.name == 'needs-ollama') }}
+    name: Verify Ollama runtime
+    timeout-minutes: 120
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:24.04
+      options: --cpus=2 --memory=4g
+    env:
+      MODEL_CONFIG: configs/ollama-models.json
+      OLLAMA_HOST: http://localhost:11435
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          set-safe-directory: true
+
+      - name: Install prerequisites
+        shell: bash
+        run: |
+          set -euxo pipefail
+          apt-get update
+          apt-get install -y curl wget tar unzip pwsh jq
+
+      - name: Parse Ollama model config
+        id: parse-config
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import hashlib
+          config_path = os.environ['MODEL_CONFIG']
+          with open(config_path, 'r', encoding='utf-8') as fp:
+            cfg = json.load(fp)
+          primary = cfg.get('primary_model') or (cfg.get('models') or [{}])[0].get('tag', '')
+          threshold = cfg.get('cache_threshold_mb', 4096)
+          cache_key = hashlib.sha256(json.dumps(cfg, sort_keys=True).encode('utf-8')).hexdigest()
+          outputs = {
+            'ollama_version': cfg['ollama']['version'],
+            'ollama_sha': cfg['ollama'].get('sha256', ''),
+            'cache_key': cache_key,
+            'primary_model': primary,
+            'model_count': len(cfg.get('models', [])),
+            'cache_threshold_mb': threshold
+          }
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as out:
+            for key, value in outputs.items():
+              out.write(f"{key}={value}\n")
+          PY
+
+      - name: Emit config summary
+        run: |
+          echo "Configured Ollama version: ${{ steps.parse-config.outputs.ollama_version }}" 
+          echo "Primary model tag: ${{ steps.parse-config.outputs.primary_model }}" 
+          echo "Model count: ${{ steps.parse-config.outputs.model_count }}" 
+          cat configs/ollama-models.json
+
+      - name: Install Ollama CLI
+        shell: bash
+        run: |
+          set -euxo pipefail
+          version=${{ steps.parse-config.outputs.ollama_version }}
+          url="https://github.com/ollama/ollama/releases/download/v${version}/ollama-linux-amd64.tar.gz"
+          curl -L "$url" -o /tmp/ollama.tar.gz
+          tar -xzf /tmp/ollama.tar.gz -C /tmp
+          chmod +x /tmp/ollama
+          mv /tmp/ollama /usr/local/bin/ollama
+
+      - name: Restore Ollama model cache
+        uses: actions/cache@v4
+        id: ollama-model-cache
+        with:
+          path: ~/.ollama/models
+          key: ollama-models-${{ steps.parse-config.outputs.cache_key }}
+          restore-keys: |
+            ollama-models-
+
+      - name: Pull pinned models
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p ~/.ollama/models
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          cfg = json.load(open(os.environ['MODEL_CONFIG']))
+          for model in cfg.get('models', []):
+            pull = model['pull']
+            tag = model['tag']
+            subprocess.run(['ollama', 'pull', pull], check=True)
+            subprocess.run(['ollama', 'cp', pull, tag], check=True)
+          PY
+
+      - name: Verify pulled model digests
+        shell: bash
+        run: |
+          set -euxo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+          cfg = json.load(open(os.environ['MODEL_CONFIG']))
+          success = True
+          for model in cfg.get('models', []):
+            tag = model['tag']
+            expected = model.get('sha256')
+            if not expected:
+              continue
+            proc = subprocess.run(['ollama', 'inspect', '--json', tag], capture_output=True, text=True)
+            if proc.returncode != 0:
+              print(f"warning: failed to inspect {tag}: {proc.stderr}")
+              success = False
+              continue
+            data = json.loads(proc.stdout)
+            digest = data.get('digest') or data.get('model', {}).get('digest')
+            if not digest:
+              print(f"warning: digest missing for {tag}")
+              success = False
+              continue
+            if digest != expected:
+              print(f"digest mismatch for {tag}: expected {expected}, got {digest}")
+              success = False
+          if not success:
+            sys.exit(1)
+          PY
+
+      - name: Start Ollama server
+        shell: bash
+        run: |
+          set -euxo pipefail
+          nohup ollama serve --port 11435 --threads 2 --memory 4096m > ollama-served.log 2>&1 &
+          echo $! > ollama.pid
+          sleep 5
+          ollama version
+
+      - name: Run prompt tests
+        shell: pwsh
+        env:
+          OLLAMA_HOST: ${{ env.OLLAMA_HOST }}
+          OLLAMA_MODEL_TAG: ${{ steps.parse-config.outputs.primary_model }}
+        run: |
+          pwsh -NoProfile -File scripts/ollama-executor/check-ollama-endpoint.ps1
+
+      - name: Cleanup Ollama runtime
+        if: always()
+        shell: bash
+        run: |
+          set -euxo pipefail
+          if [ -f ollama.pid ]; then
+            kill "$(cat ollama.pid)" 2>/dev/null || true
+            rm -f ollama.pid
+          fi
+          pkill -f 'ollama serve' || true
+          rm -rf ~/.ollama/tmp/*
+          cache_mb=$(du -sm ~/.ollama/models 2>/dev/null | cut -f1 || echo 0)
+          threshold=${{ steps.parse-config.outputs.cache_threshold_mb }}
+          if [ -n "$threshold" ] && [ "$cache_mb" -gt "$threshold" ]; then
+            rm -rf ~/.ollama/models/*
+          fi

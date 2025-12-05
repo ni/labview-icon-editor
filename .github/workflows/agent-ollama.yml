@@ -1,0 +1,146 @@
+name: Agent / Ollama Executor
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Run mode: sim (safe default) or real (Windows prereq path)"
+        required: false
+        default: "sim"
+        type: choice
+        options: [sim, real]
+      windows_runner_label:
+        description: "Optional Windows runner label(s) for real mode (e.g., windows-latest or [\"self-hosted\",\"windows\",\"self-hosted-windows-lv\"]). If empty, real mode falls back to a Windows sim run."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  ollama-sim:
+    if: inputs.mode == 'sim'
+    name: Ollama executor (sim, safe default)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+
+      - name: Install PowerShell
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y powershell
+
+      - name: Run Ollama host (sim mode, no prereq gate)
+        shell: pwsh
+        env:
+          OLLAMA_EXECUTOR_MODE: sim
+          OLLAMA_SIM_CREATE_ARTIFACTS: "true"
+          OLLAMA_REQUIREMENTS_APPLIED: "OEX-PARITY-001,OEX-PARITY-002,OEX-PARITY-003,OEX-PARITY-004"
+        run: |
+          pwsh -NoProfile -File scripts/orchestration/Run-Ollama-Host.ps1 `
+            -Repo . `
+            -RunKey agent-sim-${{ github.run_id }} `
+            -PwshTimeoutSec 900 `
+            -OllamaPrompt "local-sd/local-sd-ppl"
+
+      - name: Validate sim handshake
+        shell: pwsh
+        run: |
+          $handshake = 'artifacts/labview-icon-api-handshake.json'
+          if (-not (Test-Path $handshake)) { throw "Missing $handshake" }
+          $json = Get-Content -Raw -LiteralPath $handshake | ConvertFrom-Json
+          foreach ($key in 'zipSha256','pplSha256','zipRelPath','pplRelPath') {
+            if (-not $json.$key) { throw "Handshake missing $key" }
+          }
+
+      - name: Upload sim artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-ollama-sim-${{ github.run_id }}
+          path: |
+            artifacts/**
+            builds-isolated/**
+            reports/logs/ollama-host-*.log
+            reports/logs/ollama-host-*.summary.json
+          if-no-files-found: warn
+
+  ollama-real:
+    if: inputs.mode == 'real' && inputs.windows_runner_label != ''
+    name: Ollama executor (real, Windows prereqs enforced)
+    runs-on: ${{ fromJson(format('["{0}"]', inputs.windows_runner_label)) }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+
+      - name: Run Ollama host (real)
+        shell: pwsh
+        env:
+          OLLAMA_EXECUTOR_MODE: ""
+        run: |
+          pwsh -NoProfile -File scripts/orchestration/Run-Ollama-Host.ps1 `
+            -Repo . `
+            -RunKey agent-real-${{ github.run_id }} `
+            -PwshTimeoutSec 1800 `
+            -OllamaPrompt "local-sd/local-sd-ppl"
+
+      - name: Upload real artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-ollama-real-${{ github.run_id }}
+          path: |
+            artifacts/**
+            builds-isolated/**
+            reports/logs/ollama-host-*.log
+            reports/logs/ollama-host-*.summary.json
+            reports/logs/ollama-host-*.fail.json
+          if-no-files-found: warn
+
+  ollama-windows-sim-fallback:
+    if: inputs.mode == 'real' && inputs.windows_runner_label == ''
+    name: Ollama executor (sim fallback on Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+
+      - name: Run Ollama host (sim fallback)
+        shell: pwsh
+        env:
+          OLLAMA_EXECUTOR_MODE: sim
+          OLLAMA_SIM_CREATE_ARTIFACTS: "true"
+          OLLAMA_REQUIREMENTS_APPLIED: "OEX-PARITY-001,OEX-PARITY-002,OEX-PARITY-003,OEX-PARITY-004"
+        run: |
+          pwsh -NoProfile -File scripts/orchestration/Run-Ollama-Host.ps1 `
+            -Repo . `
+            -RunKey agent-windows-sim-${{ github.run_id }} `
+            -PwshTimeoutSec 900 `
+            -OllamaPrompt "local-sd/local-sd-ppl"
+
+      - name: Validate sim handshake (Windows)
+        shell: pwsh
+        run: |
+          $handshake = 'artifacts/labview-icon-api-handshake.json'
+          if (-not (Test-Path $handshake)) { throw "Missing $handshake" }
+          $json = Get-Content -Raw -LiteralPath $handshake | ConvertFrom-Json
+          foreach ($key in 'zipSha256','pplSha256','zipRelPath','pplRelPath') {
+            if (-not $json.$key) { throw "Handshake missing $key" }
+          }
+
+      - name: Upload sim artifacts (Windows)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-ollama-windows-sim-${{ github.run_id }}
+          path: |
+            artifacts/**
+            builds-isolated/**
+            reports/logs/ollama-host-*.log
+            reports/logs/ollama-host-*.summary.json
+          if-no-files-found: warn

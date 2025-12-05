@@ -1,0 +1,65 @@
+{
+  "deprecations": [
+    {
+      "api": "Get Date/Time String",
+      "category": "Time & Date",
+      "deprecated_in": "2023",
+      "removed_in": null,
+      "replacement": "Format Date/Time String",
+      "migration_guide": "Replace 'Get Date/Time String' with 'Format Date/Time String'. The new VI provides more formatting options and better localization support.",
+      "severity": "medium",
+      "breaking_change": false
+    },
+    {
+      "api": "Legacy File I/O VIs",
+      "category": "File I/O",
+      "deprecated_in": "2024",
+      "removed_in": null,
+      "replacement": "Modern File I/O Express VIs",
+      "migration_guide": "Use the Express File I/O VIs or the native file primitives. Legacy VIs remain for backward compatibility but are not recommended for new development.",
+      "severity": "low",
+      "breaking_change": false
+    },
+    {
+      "api": "Old String Format VIs",
+      "category": "String",
+      "deprecated_in": "2025",
+      "removed_in": null,
+      "replacement": "Format Into String (with type specifier)",
+      "migration_guide": "Replace old string formatting VIs with 'Format Into String' which supports modern type specifiers and better performance.",
+      "severity": "medium",
+      "breaking_change": false
+    },
+    {
+      "api": "32-bit DLL Call",
+      "category": "External Code",
+      "deprecated_in": "2024",
+      "removed_in": "2026",
+      "replacement": "64-bit DLL Call or .NET Assembly",
+      "migration_guide": "Migrate to 64-bit DLLs or use .NET assemblies. 32-bit support will be removed in LabVIEW 2026.",
+      "severity": "high",
+      "breaking_change": true
+    }
+  ],
+  "breaking_changes": [
+    {
+      "change": "Removal of 32-bit support",
+      "affected_versions": ["2026+"],
+      "impact": "High - All 32-bit DLL calls will fail",
+      "migration_path": "Recompile DLLs for 64-bit or use .NET wrappers",
+      "timeline": "Deprecated in 2024, removed in 2026"
+    },
+    {
+      "change": "VI File Format Update",
+      "affected_versions": ["2025+"],
+      "impact": "Medium - Older LV versions cannot open 2025+ VIs",
+      "migration_path": "Save for previous version when targeting older LabVIEW",
+      "timeline": "Introduced in 2025.0"
+    }
+  ],
+  "migration_resources": {
+    "documentation": "https://www.ni.com/docs/en-US/bundle/labview/page/deprecated-features.html",
+    "community_forum": "https://forums.ni.com/",
+    "support_contact": "ni.com/support"
+  }
+}

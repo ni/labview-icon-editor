@@ -1,0 +1,27 @@
+name: CLA Validation
+
+defaults:
+  run:
+    working-directory: './'
+
+on:
+  pull_request:
+    paths:
+      - "docs/cla/**"
+      - ".github/CODEOWNERS"
+  workflow_dispatch: {}
+
+jobs:
+  validate-cla:
+    name: Validate CLA manifest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+
+      - name: Validate CLA manifest schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          python .github/scripts/validate-cla.py

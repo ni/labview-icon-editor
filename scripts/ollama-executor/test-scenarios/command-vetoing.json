@@ -1,0 +1,14 @@
+{
+  "name": "Command Vetoing",
+  "description": "LLM proposes forbidden command, gets rejected, then proposes valid command",
+  "goal": "Build Source Distribution",
+  "expectedTurns": 4,
+  "turns": [
+    {"turn": 1, "response": "{\"run\":\"rm -rf /\"}"},
+    {"turn": 2, "response": "{\"run\":\"pwsh -NoProfile -File scripts/build-source-distribution/Build_Source_Distribution.ps1 -RepositoryPath . -Package_LabVIEW_Version 2025 -SupportedBitness 64\"}"},
+    {"turn": 3, "response": "{\"done\":true,\"summary\":\"Build completed successfully\"}"}
+  ],
+  "expectedOutcome": "success",
+  "expectedCommandCount": 1,
+  "expectedVetoedCommands": 1
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$comment": "Regression test database for Ollama Executor command vetting. Add tests using Test-Regressions.ps1 -AddRegression",
+  "version": "1.0",
+  "_documentation": {
+    "purpose": "Tracks previously-fixed security bugs to prevent them from reappearing",
+    "usage": "Run 'pwsh -NoProfile -File scripts/ollama-executor/Test-Regressions.ps1' to verify all regressions",
+    "add_test": "Run 'pwsh -NoProfile -File scripts/ollama-executor/Test-Regressions.ps1 -AddRegression' to add new test",
+    "test_fields": {
+      "id": "Unique identifier (REG-XXX)",
+      "bug_id": "Brief description of the original bug",
+      "description": "What the test verifies",
+      "added_date": "Date the regression test was added (YYYY-MM-DD)",
+      "test_command": "Command to test against vetting",
+      "expected_result": "Either 'rejected' or 'accepted'",
+      "verification": "Type of check - 'vetting' for command vetting tests"
+    }
+  },
+  "tests": [
+    {
+      "expected_result": "rejected",
+      "added_date": "2025-12-03",
+      "id": "REG-001",
+      "description": "Commands using ..\\ or ../ should be rejected",
+      "bug_id": "Parent directory traversal not blocked",
+      "verification": "vetting",
+      "test_command": "pwsh -NoProfile -File scripts/../other.ps1"
+    },
+    {
+      "expected_result": "rejected",
+      "added_date": "2025-12-03",
+      "id": "REG-002",
+      "description": "Commands with ; should be rejected to prevent injection",
+      "bug_id": "Command chaining with semicolon not blocked",
+      "verification": "vetting",
+      "test_command": "pwsh -NoProfile -File scripts/test.ps1; rm -rf /"
+    }
+  ]
+}

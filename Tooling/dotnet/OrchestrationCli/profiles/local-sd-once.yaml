@@ -1,0 +1,91 @@
+# Orchestration plan: one-run local LabVIEW Icon API source distribution (no upstream/GH dispatch).
+# This is a starter profile for OrchestrationCli/IntegrationEngine to execute the one-run SD flow.
+# Steps:
+# 1) Prereq check (dotnet/LabVIEW/VIPM/git/Pester) via Verify-RunnerPrereqs.ps1
+# 2) Build SD via Build_Source_Distribution.ps1
+# 3) Generate commit-index artifacts (sd/tooling) via New-CommitIndex.ps1
+# 4) Hash produced artifacts (sha256)
+# 5) Stage run-scoped artifacts under builds-isolated/<run>/...
+#
+# Notes: integrate this task graph into OrchestrationCli/IntegrationEngine; adjust workdir and run_key
+# handling as the CLI wiring is added.
+tasks:
+  - id: prereq-check
+    description: Verify runner prerequisites for SD build
+    condition: "!env.OLLAMA_EXECUTOR_MODE || env.OLLAMA_EXECUTOR_MODE != 'sim'"
+    command: pwsh
+    args:
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+      - scripts/setup-runner/Verify-RunnerPrereqs.ps1
+
+  - id: build-sd
+    description: Build LabVIEW Icon API source distribution
+    dependsOn: [prereq-check]
+    command: pwsh
+    args:
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+      - scripts/build-source-distribution/Build_Source_Distribution.ps1
+
+  - id: commit-index-sd
+    description: Generate commit-index for SD
+    dependsOn: [build-sd]
+    command: pwsh
+    args:
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+      - scripts/build-source-distribution/New-CommitIndex.ps1
+      - -RepositoryPath
+      - .
+      - -OutputPath
+      - artifacts/commit-index-sd/commit-index.json
+      - -CsvOutputPath
+      - artifacts/commit-index-sd/commit-index.csv
+      - -AllowDirty
+
+  - id: commit-index-tooling
+    description: Generate commit-index for tooling include paths
+    dependsOn: [build-sd]
+    command: pwsh
+    args:
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+      - scripts/build-source-distribution/New-CommitIndex.ps1
+      - -RepositoryPath
+      - .
+      - -IncludePaths
+      - '.vscode','configs','scenarios','runner_dependencies.vipc','scripts','Tooling','Tooling/x-cli/src/XCli','Tooling/x-cli/src/Telemetry'
+      - -OutputPath
+      - artifacts/commit-index-tooling/tooling-commit-index.json
+      - -CsvOutputPath
+      - artifacts/commit-index-tooling/tooling-commit-index.csv
+      - -AllowDirty
+
+  - id: hash-artifacts
+    description: Hash SD artifacts (sha256)
+    dependsOn: [build-sd, commit-index-sd, commit-index-tooling]
+    command: pwsh
+    args:
+      - -NoProfile
+      - -Command
+      - >
+        $root='artifacts'; $files = Get-ChildItem -Path $root -Recurse -File;
+        if ($files) { $files | ForEach-Object { $_.FullName } | & sha256sum | Set-Content artifacts/sha256.txt } else { throw 'No artifacts to hash' }
+
+  - id: stage-run
+    description: Stage run-scoped artifacts under builds-isolated/<run>
+    dependsOn: [hash-artifacts]
+    command: pwsh
+    args:
+      - -NoProfile
+      - -Command
+      - >
+        $runKey = 'local-once'; $dst = Join-Path 'builds-isolated' $runKey;
+        New-Item -ItemType Directory -Path $dst -Force | Out-Null;
+        Copy-Item -Path 'artifacts' -Destination $dst -Recurse -Force;
+        Write-Host "Staged artifacts under $dst"

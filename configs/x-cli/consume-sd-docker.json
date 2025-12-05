@@ -1,0 +1,16 @@
+{
+  "description": "Docker consumer helper for IntegrationCli to verify the SD handshake inside Docker Desktop.",
+  "docker": {
+    "image": "consume-sd-harness",
+    "runKeys": [
+      "docker-harness-A",
+      "docker-harness-B"
+    ],
+    "lockTtlSec": 900,
+    "handshakeJson": "artifacts/labview-icon-api-handshake.json"
+  },
+  "scripts": [
+    "scripts/orchestration/Run-ConsumeSd-DockerHarness.ps1",
+    "scripts/orchestration/ConsumeSdInContainer.ps1"
+  ]
+}

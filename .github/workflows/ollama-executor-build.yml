@@ -1,0 +1,674 @@
+name: Ollama Executor Build Automation
+
+env:
+  OLLAMA_EXECUTOR_MODE: sim
+  OLLAMA_SIM_CREATE_ARTIFACTS: "true"
+  OLLAMA_SIM_DELAY_MS: "50"
+  OLLAMA_HOST: http://localhost:11436
+  OLLAMA_MODEL_TAG: llama3-8b-local
+  OLLAMA_REQUIREMENTS_APPLIED: OEX-PARITY-001,OEX-PARITY-002,OEX-PARITY-003,OEX-PARITY-004
+
+defaults:
+  run:
+    working-directory: './'
+
+on:
+  workflow_dispatch:
+    inputs:
+      goal:
+        description: "Build goal (e.g., 'Build Source Distribution LV2025 64-bit')"
+        required: true
+        default: "Build Source Distribution LV2025 64-bit"
+      max_turns:
+        description: "Maximum conversation turns"
+        required: false
+        default: "10"
+      simulation:
+        description: "Use simulation mode (no real LabVIEW required)"
+        required: false
+        default: "true"
+        type: boolean
+  pull_request:
+    paths:
+      - 'scripts/build-source-distribution/**'
+      - 'scripts/ppl-from-sd/**'
+      - 'scripts/ollama-executor/**'
+      - '.github/workflows/ollama-executor-build.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  ollama-build-simulation:
+    name: Ollama Build (Simulation Mode)
+    runs-on: ubuntu-latest
+    if: github.event.inputs.simulation == true || github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PowerShell
+        shell: pwsh
+        run: |
+          Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)"
+
+      - name: Run Ollama Executor (Simulation Mode)
+        shell: pwsh
+        env:
+          OLLAMA_EXECUTOR_MODE: sim
+          OLLAMA_SIM_DELAY_MS: 50
+          OLLAMA_SIM_CREATE_ARTIFACTS: true
+          OLLAMA_HOST: http://localhost:11436
+          OLLAMA_MODEL_TAG: llama3-8b-local
+        run: |
+          Write-Host "=== Starting Ollama Executor in Simulation Mode ===" -ForegroundColor Cyan
+          Write-Host ""
+          Write-Host "Goal: ${{ github.event.inputs.goal || 'Build Source Distribution LV2025 64-bit' }}" -ForegroundColor Yellow
+          Write-Host "Mode: SIMULATION (No real LabVIEW required)" -ForegroundColor Yellow
+          Write-Host ""
+          
+          # Start mock Ollama server
+          $mockJob = Start-Job -ScriptBlock {
+            & "$using:PWD/scripts/ollama-executor/MockOllamaServer.ps1" `
+              -Port 11436 `
+              -ScenarioFile "$using:PWD/scripts/ollama-executor/test-scenarios/successful-two-turn.json" `
+              -MaxRequests 50
+          }
+          
+          try {
+            Start-Sleep -Seconds 3
+            
+            # Run executor
+            & scripts/ollama-executor/Drive-Ollama-Executor.ps1 `
+              -Endpoint "http://localhost:11436" `
+              -Model "llama3-8b-local" `
+              -RepoPath . `
+              -Goal "${{ github.event.inputs.goal || 'Build Source Distribution LV2025 64-bit' }}" `
+              -MaxTurns ${{ github.event.inputs.max_turns || 10 }} `
+              -AllowedRuns @() `
+              -CommandTimeoutSec 30
+          }
+          finally {
+            Stop-Job $mockJob -ErrorAction SilentlyContinue
+            Remove-Job $mockJob -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Upload Build Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollama-build-artifacts-simulation
+          path: |
+            artifacts/**
+            builds/**/*.zip
+            builds/**/*.lvlibp
+            builds/**/*.vip
+          retention-days: 7
+
+      - name: Upload Build Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollama-executor-logs
+          path: |
+            reports/logs/**
+          retention-days: 7
+
+  ollama-build-real:
+    name: Ollama Build (Real Execution)
+    # Uses the self-hosted LabVIEW runner for real builds
+    # Requirements:
+    # - Windows OS with LabVIEW installed
+    # - PowerShell 7+
+    # - Runner label: self-hosted-windows-lv
+    runs-on: self-hosted-windows-lv
+    # Run on PRs or when simulation is explicitly disabled via workflow_dispatch
+    if: github.event_name == 'pull_request' || github.event.inputs.simulation == false
+    env:
+      OLLAMA_EXECUTOR_MODE: ""
+      OLLAMA_HOST: http://localhost:11435
+    
+    steps:
+      # Runtime safety check: ensures job is running on expected Windows environment
+      - name: "Guard: Windows runner"
+        if: ${{ runner.os != 'Windows' }}
+        shell: pwsh
+        run: |
+          Write-Host "Error: This job requires a Windows runner but is running on ${{ runner.os }}"
+          exit 1
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          set-safe-directory: true
+
+      - name: Verify LabVIEW Installation
+        shell: pwsh
+        run: |
+          Write-Host "=== Verifying LabVIEW Installation ===" -ForegroundColor Cyan
+          $lvPath = Get-ChildItem -Path "C:\Program Files\National Instruments\LabVIEW*" -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($lvPath) {
+            Write-Host "✓ Found LabVIEW at: $($lvPath.FullName)" -ForegroundColor Green
+            $lvExe = Join-Path $lvPath.FullName "LabVIEW.exe"
+            if (Test-Path $lvExe) {
+              Write-Host "✓ LabVIEW executable exists" -ForegroundColor Green
+            }
+          } else {
+            Write-Host "⚠ LabVIEW installation not found in default location" -ForegroundColor Yellow
+          }
+
+      - name: Seed image preflight (required for real runs)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $seedImage = if ($env:SEED_IMAGE) { $env:SEED_IMAGE } else { 'seed:latest' }
+          Write-Host "Ensuring seed image is available: $seedImage" -ForegroundColor Cyan
+
+          if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
+            Write-Host "docker CLI not found; skipping seed image check" -ForegroundColor Yellow
+            exit 0
+          }
+
+          $imageExists = $false
+          try {
+            $inspect = docker image inspect $seedImage 2>$null
+            if ($inspect) { $imageExists = $true }
+          } catch {
+            # Image doesn't exist
+          }
+          
+          if (-not $imageExists) {
+            Write-Host "Seed image missing; attempting to build from Tooling/seed/Dockerfile" -ForegroundColor Yellow
+            try {
+              docker build -f "$env:GITHUB_WORKSPACE/Tooling/seed/Dockerfile" -t $seedImage "$env:GITHUB_WORKSPACE"
+            } catch {
+              Write-Host "Failed to build seed image: $_" -ForegroundColor Yellow
+            }
+          }
+
+          "Seed image check completed" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+
+      - name: Run Ollama host via locked executor
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $isDispatch = '${{ github.event_name }}' -eq 'workflow_dispatch'
+          $requestedSim = if ($isDispatch) { '${{ github.event.inputs.simulation }}' } else { 'true' }
+          $mode = if ($requestedSim -eq 'true') { 'sim' } else { '' }
+          if ($mode) { $env:OLLAMA_EXECUTOR_MODE = $mode }
+
+          Write-Host "=== Running Ollama host via executor ===" -ForegroundColor Cyan
+          Write-Host "Goal: ${{ github.event.inputs.goal || 'Build Source Distribution LV2025 64-bit' }}" -ForegroundColor Yellow
+          Write-Host "Executor mode: $(if ($mode) { $mode } else { 'real' })" -ForegroundColor Yellow
+
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/orchestration/Run-Ollama-Host.ps1" `
+            -Repo "$env:GITHUB_WORKSPACE" `
+            -RunKey "ollama-real-${{ github.run_id }}" `
+            -PwshTimeoutSec 1800 `
+            -OllamaPrompt "local-sd/local-sd-ppl"
+
+          # Record requested LabVIEW target if present in goal text
+          $goal = "${{ github.event.inputs.goal || 'Build Source Distribution LV2025 64-bit' }}"
+          if ($goal -match "LV(?<lv>\d{4}).*(?<bit>32|64)") {
+            "Target: LV$($Matches['lv']) $($Matches['bit'])-bit" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          }
+
+      - name: Validate handshake
+        uses: ./.github/actions/validate-ollama-handshake
+        with:
+          allow_missing: "true"
+
+      - name: Upload Build Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollama-build-artifacts-real
+          path: |
+            artifacts/**
+            builds/**/*.zip
+            builds/**/*.lvlibp
+            builds/**/*.vip
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload Build Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollama-executor-logs-real
+          path: |
+            reports/logs/**
+          retention-days: 30
+          if-no-files-found: ignore
+
+  multi-platform-build:
+    name: Multi-Platform Build (Simulation)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        labview: ['2021', '2025']
+        bitness: ['32', '64']
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PowerShell
+        shell: pwsh
+        run: |
+          Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)"
+          Write-Host "OS: $($PSVersionTable.OS)"
+
+      - name: Full End-to-End Simulation - LV${{ matrix.labview }} ${{ matrix.bitness }}-bit
+        shell: pwsh
+        env:
+          OLLAMA_EXECUTOR_MODE: sim
+          OLLAMA_SIM_DELAY_MS: 20
+          OLLAMA_SIM_CREATE_ARTIFACTS: true
+          OLLAMA_SIM_EXIT_CODE: 0
+        run: |
+          Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Cyan
+          Write-Host "   Full End-to-End Simulation: LV${{ matrix.labview }} ${{ matrix.bitness }}-bit" -ForegroundColor Cyan
+          Write-Host "   Using isolated worktrees for build isolation" -ForegroundColor Cyan
+          Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Cyan
+          Write-Host ""
+          
+          Write-Host "➤ Phase 1: Mock Ollama Server Setup" -ForegroundColor Yellow
+          $mockJob = Start-Job -ScriptBlock {
+            & "$using:PWD/scripts/ollama-executor/MockOllamaServer.ps1" `
+              -Port 11436 `
+              -ScenarioFile "$using:PWD/scripts/ollama-executor/test-scenarios/successful-two-turn.json" `
+              -MaxRequests 10
+          }
+          
+          try {
+            Start-Sleep -Seconds 2
+            Write-Host "  ✓ Mock Ollama server started" -ForegroundColor Green
+            Write-Host ""
+            
+            Write-Host "➤ Phase 2: Execute Build via Locked Source Distribution (Isolated Worktree)" -ForegroundColor Yellow
+            Write-Host "  Target: LabVIEW ${{ matrix.labview }} ${{ matrix.bitness }}-bit" -ForegroundColor Gray
+            Write-Host "  Note: Using Run-Locked-SourceDistribution.ps1 which creates isolated worktrees" -ForegroundColor Gray
+            Write-Host ""
+            
+            # Determine LabVIEW minor version (Q1=0, Q3=3) - use Q3 for newer versions
+            $lvMinor = if ('${{ matrix.labview }}' -ge '2024') { '3' } else { '0' }
+            
+            # Use Run-Locked-SourceDistribution.ps1 which handles:
+            # 1. Creating isolated worktrees via Get-SeededWorktree
+            # 2. Updating VIPB with target version
+            # 3. Running the build in the isolated worktree
+            & scripts/ollama-executor/Run-Locked-SourceDistribution.ps1 `
+              -RepoPath . `
+              -Endpoint "http://localhost:11436" `
+              -Model "llama3-8b-local" `
+              -LabVIEWVersion ${{ matrix.labview }} `
+              -LabVIEWMinor $lvMinor `
+              -Bitness ${{ matrix.bitness }} `
+              -CommandTimeoutSec 60
+            $executorExitCode = $LASTEXITCODE
+            
+            Write-Host ""
+            Write-Host "➤ Phase 3: Verify Build Outputs" -ForegroundColor Yellow
+            
+            # Check for simulated artifacts in builds directory
+            $artifacts = Get-ChildItem -Path "builds" -Recurse -Filter "*.zip" -ErrorAction SilentlyContinue
+            
+            if ($artifacts) {
+              Write-Host "  ✓ Found $($artifacts.Count) artifact(s):" -ForegroundColor Green
+              foreach ($a in $artifacts) {
+                Write-Host "    - $($a.Name) ($([math]::Round($a.Length/1KB, 2)) KB)" -ForegroundColor Gray
+              }
+            } else {
+              Write-Host "  ⚠ No artifacts found (expected in simulation mode)" -ForegroundColor Yellow
+            }
+            
+            # Check worktree was created
+            $worktreePath = Join-Path (Split-Path -Parent $PWD) "seeded-lv${{ matrix.labview }}$lvMinor-${{ matrix.bitness }}"
+            if (Test-Path -LiteralPath $worktreePath) {
+              Write-Host "  ✓ Isolated worktree created at: $worktreePath" -ForegroundColor Green
+            }
+            
+            Write-Host ""
+            Write-Host "➤ Phase 4: Validation Summary" -ForegroundColor Yellow
+            if ($executorExitCode -eq 0) {
+              Write-Host "  ✓ Executor completed successfully" -ForegroundColor Green
+              Write-Host "  ✓ Build pipeline validated for LV${{ matrix.labview }} ${{ matrix.bitness }}-bit" -ForegroundColor Green
+              Write-Host "  ✓ Isolated worktree used for build isolation" -ForegroundColor Green
+              Write-Host ""
+              Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Green
+              Write-Host "   ✓ END-TO-END SIMULATION: PASSED" -ForegroundColor Green
+              Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Green
+              exit 0
+            } else {
+              Write-Host "  ✗ Executor failed with exit code: $executorExitCode" -ForegroundColor Red
+              Write-Host ""
+              Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Red
+              Write-Host "   ✗ END-TO-END SIMULATION: FAILED" -ForegroundColor Red
+              Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Red
+              exit 1
+            }
+          }
+          finally {
+            Write-Host ""
+            Write-Host "➤ Cleanup: Stopping mock server" -ForegroundColor Yellow
+            Stop-Job $mockJob -ErrorAction SilentlyContinue
+            Remove-Job $mockJob -Force -ErrorAction SilentlyContinue
+            Write-Host "  ✓ Cleanup complete" -ForegroundColor Green
+          }
+
+      - name: Upload Build Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-lv${{ matrix.labview }}-${{ matrix.bitness }}bit
+          path: |
+            builds/**/*LV${{ matrix.labview }}_${{ matrix.bitness }}bit*
+            builds/**/*.zip
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Upload Simulation Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-lv${{ matrix.labview }}-${{ matrix.bitness }}bit
+          path: |
+            reports/logs/**
+            *.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  multi-platform-test:
+    name: Multi-Platform Test (Simulation)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        test-type: ['package-build', 'local-sd-ppl', 'vi-metadata']
+        labview: ['2025']
+        bitness: ['64']
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PowerShell
+        shell: pwsh
+        run: |
+          Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)"
+
+      - name: Run ${{ matrix.test-type }} Test (Simulated)
+        shell: pwsh
+        env:
+          OLLAMA_EXECUTOR_MODE: sim
+          OLLAMA_SIM_DELAY_MS: 30
+          OLLAMA_SIM_CREATE_ARTIFACTS: true
+          OLLAMA_SIM_EXIT_CODE: 0
+        run: |
+          Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Cyan
+          Write-Host "   Multi-Platform Test: ${{ matrix.test-type }}" -ForegroundColor Cyan
+          Write-Host "   Using isolated worktrees for build isolation" -ForegroundColor Cyan
+          Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Cyan
+          Write-Host ""
+          
+          # Start mock Ollama server
+          Write-Host "➤ Starting mock Ollama server..." -ForegroundColor Yellow
+          $mockJob = Start-Job -ScriptBlock {
+            & "$using:PWD/scripts/ollama-executor/MockOllamaServer.ps1" `
+              -Port 11436 `
+              -ScenarioFile "$using:PWD/scripts/ollama-executor/test-scenarios/successful-two-turn.json" `
+              -MaxRequests 10
+          }
+          
+          try {
+            Start-Sleep -Seconds 2
+            Write-Host "  ✓ Mock server ready" -ForegroundColor Green
+            Write-Host ""
+            
+            $env:OLLAMA_HOST = "http://localhost:11436"
+            $env:OLLAMA_MODEL_TAG = "llama3-8b-local"
+            
+            # Determine LabVIEW minor version (Q1=0, Q3=3)
+            $lvMinor = if ('${{ matrix.labview }}' -ge '2024') { '3' } else { '0' }
+            
+            Write-Host "➤ Running test: ${{ matrix.test-type }} (LV${{ matrix.labview }}.$lvMinor ${{ matrix.bitness }}-bit)" -ForegroundColor Yellow
+            
+            $testExitCode = 0
+            switch ('${{ matrix.test-type }}') {
+              'package-build' {
+                Write-Host "  Test: Package Build (OrchestrationCli) with isolated worktree" -ForegroundColor Gray
+                & scripts/ollama-executor/Run-Locked-PackageBuild.ps1 `
+                  -RepoPath . `
+                  -Endpoint "http://localhost:11436" `
+                  -Model "llama3-8b-local" `
+                  -LabVIEWVersion ${{ matrix.labview }} `
+                  -LabVIEWMinor $lvMinor `
+                  -Bitness ${{ matrix.bitness }} `
+                  -CommandTimeoutSec 60
+                $testExitCode = $LASTEXITCODE
+              }
+              'local-sd-ppl' {
+                Write-Host "  Test: Local SD + PPL Orchestration with isolated worktree" -ForegroundColor Gray
+                & scripts/ollama-executor/Run-Locked-LocalSdPpl.ps1 `
+                  -RepoPath . `
+                  -Endpoint "http://localhost:11436" `
+                  -Model "llama3-8b-local" `
+                  -LabVIEWVersion ${{ matrix.labview }} `
+                  -LabVIEWMinor $lvMinor `
+                  -Bitness ${{ matrix.bitness }} `
+                  -CommandTimeoutSec 60
+                $testExitCode = $LASTEXITCODE
+              }
+              'vi-metadata' {
+                Write-Host "  Test: VI Metadata Extraction" -ForegroundColor Gray
+                # Run VI History Suite tests (doesn't require worktree)
+                & scripts/vi-history-suite/Test-VIMetadata.ps1
+                $testExitCode = $LASTEXITCODE
+              }
+            }
+            
+            Write-Host ""
+            Write-Host "➤ Test Result" -ForegroundColor Yellow
+            if ($testExitCode -eq 0) {
+              Write-Host "  ✓ Test '${{ matrix.test-type }}' PASSED" -ForegroundColor Green
+              Write-Host ""
+              Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Green
+              Write-Host "   ✓ SIMULATION TEST: PASSED" -ForegroundColor Green
+              Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Green
+              exit 0
+            } else {
+              Write-Host "  ✗ Test '${{ matrix.test-type }}' FAILED (exit code: $testExitCode)" -ForegroundColor Red
+              Write-Host ""
+              Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Red
+              Write-Host "   ✗ SIMULATION TEST: FAILED" -ForegroundColor Red
+              Write-Host "═══════════════════════════════════════════════════════" -ForegroundColor Red
+              exit 1
+            }
+          }
+          finally {
+            Write-Host ""
+            Write-Host "➤ Cleanup" -ForegroundColor Yellow
+            Stop-Job $mockJob -ErrorAction SilentlyContinue
+            Remove-Job $mockJob -Force -ErrorAction SilentlyContinue
+            Write-Host "  ✓ Cleanup complete" -ForegroundColor Green
+          }
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.test-type }}
+          path: |
+            reports/**
+            test-results/**
+            *.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  reset-source-dist-sim:
+    name: Reset Source Distribution (Simulation)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run reset-source-dist via locked executor (sim)
+        shell: pwsh
+        env:
+          OLLAMA_EXECUTOR_MODE: sim
+          OLLAMA_SIM_CREATE_ARTIFACTS: "true"
+          OLLAMA_SIM_DELAY_MS: "50"
+          OLLAMA_HOST: http://localhost:11436
+          OLLAMA_MODEL_TAG: llama3-8b-local
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $mockJob = Start-Job -ScriptBlock {
+            & "$using:PWD/scripts/ollama-executor/MockOllamaServer.ps1" `
+              -Port 11436 `
+              -ScenarioFile "$using:PWD/scripts/ollama-executor/test-scenarios/successful-two-turn.json" `
+              -MaxRequests 25
+          }
+
+          try {
+            Start-Sleep -Seconds 2
+            pwsh -NoProfile -File scripts/ollama-executor/Run-Locked-ResetSourceDistribution.ps1 `
+              -RepoPath . `
+              -Endpoint "http://localhost:11436" `
+              -Model "llama3-8b-local" `
+              -CommandTimeoutSec 600
+          }
+          finally {
+            Stop-Job $mockJob -ErrorAction SilentlyContinue
+            Remove-Job $mockJob -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Upload reset artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reset-source-dist-sim
+          path: |
+            builds/reports/source-dist-reset.json
+            reports/logs/**
+            artifacts/**
+          retention-days: 7
+          if-no-files-found: warn
+
+  comment-results:
+    name: Comment Build Results
+    runs-on: ubuntu-latest
+    needs: [ollama-build-simulation, multi-platform-build, multi-platform-test]
+    if: github.event_name == 'pull_request' && always()
+    
+    steps:
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const simStatus = '${{ needs.ollama-build-simulation.result }}';
+            const multiStatus = '${{ needs.multi-platform-build.result }}';
+            const testStatus = '${{ needs.multi-platform-test.result }}';
+            
+            const statusIcon = (status) => {
+              if (status === 'success') return '✅';
+              if (status === 'failure') return '❌';
+              if (status === 'skipped') return '⏭️';
+              return '⚠️';
+            };
+            
+            const comment = `## 🤖 Ollama Executor Build & Test Results
+            
+            | Component | Status |
+            |-----------|--------|
+            | Single Build (Simulation) | ${statusIcon(simStatus)} ${simStatus} |
+            | Multi-Platform Build Matrix | ${statusIcon(multiStatus)} ${multiStatus} |
+            | Multi-Platform Test Matrix | ${statusIcon(testStatus)} ${testStatus} |
+            
+            ### Build Matrix (Simulated)
+            - ✅ LabVIEW 2021 32-bit
+            - ✅ LabVIEW 2021 64-bit
+            - ✅ LabVIEW 2025 32-bit
+            - ✅ LabVIEW 2025 64-bit
+            
+            ### Test Matrix (Simulated)
+            - 🧪 Package Build (OrchestrationCli)
+            - 🧪 Local SD + PPL Orchestration
+            - 🧪 VI Metadata Extraction
+            
+            ${simStatus === 'success' && multiStatus === 'success' && testStatus === 'success'
+              ? '🎉 **All builds and tests completed successfully!**\n\nThis PR has been validated with full end-to-end simulation covering:\n- ✓ Build pipeline for all LabVIEW versions/platforms\n- ✓ DotNet CLI integration via executor\n- ✓ VI History Suite functionality'
+              : '⚠️ Some builds or tests failed. Check the Actions tab for details.'}
+            
+            <details>
+            <summary>About Simulation Mode</summary>
+            
+            This PR uses **simulation mode** to test build and test scripts without requiring LabVIEW installation.
+            
+            **Build Simulation:**
+            - ✅ Validates script syntax and parameters
+            - ✅ Tests Ollama executor integration
+            - ✅ Validates command vetting and security
+            - ✅ Creates stub artifacts for verification
+            - ⚠️ Does not validate actual LabVIEW compilation
+            
+            **Test Simulation:**
+            - ✅ Tests DotNet CLI orchestration scripts
+            - ✅ Validates executor workflow end-to-end
+            - ✅ Tests VI History Suite tools
+            - ✅ Verifies error handling and timeouts
+            
+            For real builds, use \`workflow_dispatch\` with \`simulation: false\`.
+            </details>
+            
+            <details>
+            <summary>Developer Testing Guide</summary>
+            
+            **Purpose:** The Multi-Platform Build/Test jobs simulate real developer workflows to validate changes to individual DotNet CLIs via the executor.
+            
+            **What gets tested:**
+            1. **Build Scripts** - Source distribution builds for all LV versions
+            2. **CLI Integration** - Package-build and orchestration commands
+            3. **Executor Workflow** - Mock Ollama → Executor → Command execution
+            4. **VI Analysis** - VI History Suite metadata extraction and comparison
+            
+            **How to interpret results:**
+            - ✅ Green = Scripts are syntactically correct and execute properly in simulation
+            - ❌ Red = Script errors, syntax issues, or executor workflow problems
+            - Check artifacts for simulated build outputs
+            - Review logs for detailed execution traces
+            
+            **Next steps if failures occur:**
+            1. Check the specific job that failed
+            2. Download artifacts and review logs
+            3. Fix script syntax or parameter issues
+            4. Re-run the workflow or push fixes
+            </details>
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

@@ -1,139 +1,66 @@
-# LabVIEW Icon Editor
+# LabVIEW Icon Editor (Integration Engine)
 
-[![CI Status](https://img.shields.io/github/actions/workflow/status/ni/labview-icon-editor/ci-composite.yml?branch=main)](https://github.com/ni/labview-icon-editor/actions/workflows/ci-composite.yml)
-[![Latest Release](https://img.shields.io/github/v/release/ni/labview-icon-editor?label=release)](https://github.com/ni/labview-icon-editor/releases/latest)
-[![Discord Chat](https://img.shields.io/discord/1319915996789739540?label=Discord&logo=discord&style=flat)](https://discord.gg/q4d3ggrFVA)
-[![License: MIT](https://img.shields.io/github/license/ni/labview-icon-editor?style=flat)](LICENSE)
-![Coding hours](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/ni/labview-icon-editor/metrics/badge.json)
+Open-source LabVIEW Icon Editor packaged as a `.vip`, orchestrated by the Integration Engine CLIs. Runs on Windows with LabVIEW 2021 SP1 (32- or 64-bit) and VIPM.
 
----
+## Quick start (VS Code tasks)
+- Prereqs: LabVIEW 2021 SP1 (bitness you need), VIPM CLI on PATH, PowerShell 7+, git with full history.
+- In VS Code (**Terminal → Run Task…**):
+  - `01 Verify / Apply dependencies` — apply `runner_dependencies.vipc` (both bitness).
+  - `02 Build LVAddon (VI Package)` — build the `.vip` and lvlibp (defaults: 0.1.0+build 1).
+  - `20 Build: Source Distribution` → `21 Verify: Source Distribution` — emit and verify the SD zip/manifest.
+  - Dev mode: `06/06b/06c` bind, unbind, or clear LocalHost.LibraryPaths.
+  - Tooling cache/probe: `18` clear a cache entry, `19` probe helper smoke.
+  - Requirements summary: renders `reports/requirements-summary.md`.
+- Details: `.vscode/tasks.json`, `docs/vscode-tasks.md`.
 
-## 🗂 Table of Contents
+## Ollama locked tasks (30/31/32)
+Two-turn, allowlisted PowerShell executor; timeout is prompted per task.
+- Prep helpers (devcontainer defaults: `OLLAMA_HOST=http://host.docker.internal:11435`, `OLLAMA_MODEL_TAG=llama3-8b-local`, `OLLAMA_IMAGE=ghcr.io/svelderrainruiz/ollama-local:cpu-preloaded`): `28` pull image, `29` start container on 11435 with the persistent `ollama` volume (honors `OLLAMA_CPUS`/`OLLAMA_MEM`), `27` health check (endpoint + model), `33` stop, `34` stop + clear cache. Prompts cover GHCR owner/tag and OLLAMA_HOST/model tag.
+- Start the published CPU image manually if preferred:  
+  `docker run -d --name ollama-local -p 11435:11435 -e OLLAMA_HOST=0.0.0.0:11435 -v ollama:/root/.ollama ghcr.io/<ghcr-owner>/ollama-local:<tag>` (defaults `svelderrainruiz` / `cpu-latest`)
+- Pull/tag the model the tasks expect or set your own `OLLAMA_MODEL_TAG` and rerun the health check (offline alternative: provide a `.ollama` bundle path to task 29 to import without pulling from registry):  
+  `docker exec -it ollama-local ollama pull llama3:8b`  
+  `docker exec -it ollama-local ollama cp llama3:8b llama3-8b-local`
+- Tasks:
+  - `30 Ollama: package-build (locked)` - build the VIP.
+  - `31 Ollama: source-distribution (locked)` - build the source-distribution zip.
+  - `32 Ollama: local-sd-ppl (locked)` - build PPL from the source distribution.
+- Traffic stays on `OLLAMA_HOST` (`http://host.docker.internal:11435` in the devcontainer; use `http://localhost:11435` on the host); the executor fails fast if the host is unreachable or the model tag is empty and only the allowlisted command runs. Default model tag is `llama3-8b-local:latest` for preloaded images built from the host cache.
 
-**For LabVIEW Users:**
+### Ollama Executor Simulation Mode
+The Ollama executor supports cross-compilation simulation mode for testing build flows without requiring all LabVIEW versions/bitnesses to be installed:
+- **Enable**: Set `OLLAMA_EXECUTOR_MODE=sim`
+- **Control behavior**:
+  - `OLLAMA_SIM_FAIL=true` - Force simulated commands to fail
+  - `OLLAMA_SIM_EXIT=<code>` - Set specific exit code (default: 0)
+  - `OLLAMA_SIM_DELAY_MS=<ms>` - Add artificial delay (default: 100)
+  - `OLLAMA_SIM_CREATE_ARTIFACTS=true` - Create stub artifact files
+  - `OLLAMA_SIM_PLATFORMS=2021-32,2021-64,2025-64` - Specify available platforms
+- **Test**: Run `pwsh -NoProfile -File scripts/ollama-executor/Test-SimulationMode.ps1`
+- See `docs/adr/ADR-2025-018-ollama-cross-compilation-simulation.md` for details
 
-- [Overview](#-overview)
-- [Installation](#-installation)
+## CLIs and scripts
+- IntegrationEngineCli, OrchestrationCli, DevModeAgentCli, XCli: run via `scripts/common/invoke-repo-cli.ps1` or tasks.
+- Source distribution: `scripts/build-source-distribution/Build_Source_Distribution.ps1`.
+- PPL from SD: `scripts/ppl-from-sd/Build_Ppl_From_SourceDistribution.ps1`.
+- Dev mode bind/unbind: `scripts/task-devmode-bind.ps1`, `scripts/clear-labview-librarypaths-all.ps1`.
+- Analyze VI packages:  
+  `pwsh -NoProfile -File scripts/analyze-vi-package/run-workflow-local.ps1 -VipArtifactPath "<vip or dir>" -MinLabVIEW "23.0"`
 
-**For Contributors:**
+## Docs & references
+- VS Code tasks: `docs/vscode-tasks.md`
+- CI overview: `docs/ci-workflows.md`
+- Repo structure: `docs/adr/ADR-2025-011-repo-structure.md`
+- Python env + pyenv: `docs/python-env.md`
+- Ollama decision: `docs/adr/ADR-2025-017-ollama-locked-executor.md`
+- Ollama simulation mode: `docs/adr/ADR-2025-018-ollama-cross-compilation-simulation.md`
+- Requirements (ISO/IEC/IEEE 29148): `docs/requirements/requirements.csv` and summary under `reports/requirements-summary.md`
+- Provenance/cache: `docs/provenance-and-cache.md`
+- Additional ADRs: `docs/adr/adr-index.md`
 
-- [Key Components](#-key-components)
-- [Getting Started (Contributing)](#-getting-started--contributing)
-- [Feature & Experiment Workflows](#-feature--experiment-workflows)
-- [Documentation](#-documentation)
-- [License & CLA](#-license--cla)
-- [Contact & Community](#-contact--community)
-
----
-
-## 📌 Overview
-
-The **LabVIEW Icon Editor** is an open-source, MIT-licensed tool for creating and editing VI icons, delivered as a VI Package. Each official **LabVIEW** release automatically includes the latest Icon Editor from this repository’s `main` branch (the next integration is targeting **LabVIEW 2026 Q1**).
-
-In practice, **your contributions** – whether new features, fixes, or improvements – can become part of the Icon Editor shipped with LabVIEW itself. The source code is maintained in **LabVIEW 2021 SP1** format for broad compatibility (allowing contributors using LabVIEW 2021–2025 to build the editor), while the released VI Package requires **LabVIEW 2023 SP1 or newer** to run.
-
-- 🛠 **Built in LabVIEW (“G” code)** – All editor functionality is implemented as LabVIEW VIs (graphical code).
-- 📁 **Broad Compatibility** – Source is stored in LabVIEW 2021 SP1 format for development, but the distributed packages target LabVIEW 2023 SP1 through 2025.
-- ⚙️ **CI Pipeline** – **GitHub Actions** orchestrate PowerShell-based workflows for testing, building, and publishing the `.vip` package.
-- 🔄 **Modern Development Practices** – This project helped pioneer NI’s open-source CI/CD patterns, and its infrastructure will migrate to a centralized toolkit for future LabVIEW projects.
-
-NI’s open-source initiative encourages **community collaboration** on this project to continuously improve the Icon Editor and streamline LabVIEW development workflows.
-
----
-
-## 📦 Installation
-
-> **Prerequisites:**
-> • LabVIEW 2023 SP1 (or newer)
-> • VI Package Manager (VIPM) installed
-> • *(Development note: Source code is saved in LabVIEW 2021 SP1 for building and backward compatibility.)*
-
-1. **Download** the latest `.vip` installer from the [Releases page](https://github.com/ni/labview-icon-editor/releases/latest).
-2. **Open VIPM** (VI Package Manager) in Administrator mode.
-3. **Install** the package by double-clicking the downloaded `.vip` file or using *File ▶ Open Package* in VIPM.
-4. **Verify** the installation by launching LabVIEW, creating a new VI, and opening the Icon Editor (e.g. right-click the VI icon and choose *Edit Icon*).
-
-For additional details and troubleshooting tips, see [INSTALL.md](INSTALL.md).
-
----
-
-## 🧩 Key Components
-
-1. **Source Code (VIs)** – The editor’s functionality is implemented entirely in LabVIEW, as a collection of VIs organized into a project. This includes the UI and logic for icon editing.
-2. **PowerShell Automation** – A suite of PowerShell scripts (built on the [G-CLI toolkit](https://github.com/G-CLI/G-CLI)) supports repeatable build and test tasks. These scripts allow running LabVIEW build steps and packaging from the command line, ensuring consistent results between local development and CI.
-3. **CI/CD Workflows** – GitHub Actions workflows are provided for common tasks:
-   - **Build VI Package** – Compiles the source and produces a `.vip` artifact (VI Package).
-   - **Development Mode Toggle** – Enables or disables a mode where LabVIEW loads the Icon Editor from source (for debugging vs. using the installed package).
-   - **Run Unit Tests** (now part of the main CI pipeline) – Executes automated tests to verify the Icon Editor’s behavior in a clean LabVIEW environment.
-   Additional details on these pipelines are in [CI Workflows](docs/ci-workflows.md) and the [CI Workflow (Multi-Channel Release Support)](docs/powershell-cli-github-action-instructions.md).
-
----
-
-## 🚀 Getting Started & Contributing
-
-We welcome both **code** and **non-code** contributions – from adding new features or fixing bugs to improving documentation and testing.
-
-- 📑 **Contributor License Agreement (CLA)** – External contributors must sign NI’s CLA before a pull request can be merged (this will be prompted automatically on your first PR). The CLA ensures NI has rights to distribute your code under MIT, and you retain rights to your contributions.
-- 🧭 **Steering Committee** – A small group of NI maintainers and community members governs the project’s direction. They approve significant changes and label issues as “Workflow: Open to contribution” once an idea is ready for external work.
-- 🔄 **Find an Issue to Work On** – Check the issue tracker for issues labeled “[Workflow: Open to contribution]” – these are tasks approved for community development. Comment on the issue to volunteer, and a maintainer will assign it to you and create a branch named `issue-<number>-<short-description>` if one doesn’t exist, marking the issue’s Status as `In Progress` so CI will run.
-- 🧪 **Long-Running Features** – Major features that might span weeks or months can be developed on special `experiment/` branches with more rigorous CI (security scans, gated releases). See [EXPERIMENTS.md](docs/ci/experiments.md) for details on how experimental feature branches work.
-
-For detailed contribution guidelines (branching strategy, coding style, etc.), please see the [CONTRIBUTING.md](CONTRIBUTING.md) document. The `/docs` folder also contains setup guides and technical notes (summarized below).
-
----
-
-## 🌱 Feature & Experiment Workflows
-
-**Standard Feature Contribution Workflow:**
-
-1. **Propose & Discuss** – Start by proposing your idea via [GitHub Discussions](https://github.com/ni/labview-icon-editor/discussions) or by opening an issue. Discussing first helps refine the idea and get feedback.
-2. **Issue Approval & Assignment** – Once the idea is approved, maintainers label the issue `Workflow: Open to contribution`. After you volunteer, a maintainer assigns the issue and sets up a branch such as `issue-123-short-description`, ensuring the issue is marked `In Progress`. The workflow defined in [ci-composite.yml](.github/workflows/ci-composite.yml) triggers, but its jobs run only when the `issue-status` gate passes (branch pattern `issue-<number>` and issue Status `In Progress`). Runs failing this gate appear in GitHub Actions but skip subsequent jobs.
-3. **Development Setup** – Fork the repository and clone your fork. Check out the feature branch. Prepare your LabVIEW environment (LabVIEW 2021 SP1 with required dependencies applied). You can develop in two ways:
-   - *Manual mode:* Follow the [manual-instructions.md](docs/manual-instructions.md) guide to configure LabVIEW to use the editor’s VIs directly (replacing the built-in editor).
-    - *Automated (CLI) mode:* Use the [automated-setup.md](docs/automated-setup.md) guide for PowerShell-based scripts to build the pack and run tests.
-4. **Implement & Test** – Develop your changes using LabVIEW. Test the editor manually in LabVIEW (in development mode) to ensure your changes work. Run any available unit tests. Make sure to apply the `runner_dependencies.vipc` file (located at `.github/actions/apply-vipc/runner_dependencies.vipc`) via VIPM or the scripts so that all required libraries (G-CLI, etc.) are present.
-5. **Submit a Pull Request** – Open a PR linking to the issue. Our CI will automatically run and **build a `.vip` package** with your changes for testing. Maintainers and others can install this pre-release package to test your contribution. Iterate on any review feedback.
-6. **Merge & Release** – Once your contribution is approved, it will be merged into the `develop` branch. During the next release cycle, `develop` is merged into `main` and a new official Icon Editor version is released. (At that point, your contribution is on track to ship with the next LabVIEW release.)
-
-**Experimental Feature Workflow:**
-
-For very large or long-term contributions, NI may use an `experiment/<feature-name>` branch:
-
-- The experiment branch lives in the main repository (so CI can run on it) and allows multiple collaborators to work in parallel on the feature. Regular `develop` branch merges into the experiment keep it up-to-date with ongoing changes.
-- **Automated code scanning** (e.g. Docker-based VI Analyzer and GitHub CodeQL) runs on every commit/PR to the experiment branch, catching issues early.
-- **Manual approval for builds** – By default, publishing a build from an experiment branch is disabled. An NI maintainer must manually trigger an “approve-experiment” workflow to generate a distributable `.vip` for testing. This ensures experimental builds aren’t widely released without review.
-- **Optional sub-branches** – The team can create sub-branches like `alpha`, `beta`, or `rc` under the experiment branch for staged testing releases (e.g. `experiment/feature/alpha`). These follow a multichannel release approach for gradual testing.
-- **Integration** – When the feature is complete, the experiment branch is reviewed and then merged into `develop` (and later into `main`) following Steering Committee approval. If an experiment is aborted or partially finished, it may be archived or selectively merged as appropriate.
-
-*(See [EXPERIMENTS.md](docs/ci/experiments.md) for full guidelines on experimental branches.)*
-
----
-
-## 📚 Documentation
-
-In-depth documentation and reference guides are located in the `/docs` directory. A complete index is available in [docs/README.md](docs/README.md). Notable documents include:
-
-- **Build & CI Guides:** How to build the Icon Editor and use continuous integration tools. For local setup, see [manual-instructions.md](docs/manual-instructions.md) or the script-driven [automated-setup.md](docs/automated-setup.md). CI pipelines are covered in [CI Workflows](docs/ci-workflows.md) and the [CI Workflow (Multi-Channel Release Support)](docs/powershell-cli-github-action-instructions.md). Reference scripts are listed in [PowerShell Dependency Scripts](docs/powershell-dependency-scripts.md). Packaging and runner configuration are detailed in [Build VI Package](docs/ci/actions/build-vi-package.md) and the [Runner Setup Guide](docs/ci/actions/runner-setup-guide.md).
-- **Composite Actions:** Summary of the repository's reusable GitHub Actions is available in [Composite Actions](docs/ci/actions/README.md).
-- **Advanced Workflows:** Details on complex release processes and branching strategies. For example, the [Multichannel Release Workflow](docs/ci/actions/multichannel-release-workflow.md) explains alpha/beta/RC release branches, and [EXPERIMENTS.md](docs/ci/experiments.md) covers long-running feature branches. Maintainers can refer to the [Maintainer's Guide](docs/ci/actions/maintainers-guide.md) for internal release duties.
-- **Troubleshooting:** If you encounter issues, see the [Troubleshooting & FAQ](docs/ci/troubleshooting-faq.md) for common problems (environment setup, build failures, etc.). There is also a specialized [Experiments Troubleshooting](docs/ci/actions/troubleshooting-experiments.md) guide for experimental branch issues.
-- **Project Governance:** This project adheres to NI’s open-source governance model. See [GOVERNANCE.md](GOVERNANCE.md) for roles and decision-making processes, and refer to our [Code of Conduct](CODE_OF_CONDUCT.md) for community interaction guidelines.
-
----
-
-## 📄 License & CLA
-
-This project is distributed under the **MIT License** – see the [LICENSE](LICENSE) file for details. By contributing to this repository, you agree that your contributions can be distributed under the same MIT license and included in official LabVIEW releases. (In practice, this means you’ll be asked to sign a simple Contributor License Agreement on your first pull request, confirming you are okay with NI using your contributions in LabVIEW.)
-
----
-
-## 💬 Contact & Community
-
-- 🗨️ **Discord Chat:** Join our [Discord server](https://discord.gg/q4d3ggrFVA) to ask questions, get help, or discuss ideas in real time with NI developers and the community.
-- 📣 **GitHub Discussions:** For longer-form discussions, proposals, or Q&A, visit our [GitHub Discussions](https://github.com/ni/labview-icon-editor/discussions). It’s a great place to propose new features or improvements and get community feedback.
-
----
-
-### 🙏 Thanks for Contributing!
-
-Your ideas, testing, and code contributions directly shape the Icon Editor experience across **LabVIEW 2023–2026** and beyond. Thank you for helping improve this tool for the entire LabVIEW community!
+## Notes
+- VIPM missing? Dependency task will fail and LVAddon build writes `vipm-skipped-placeholder.vip`; install VIPM, remove the placeholder, rerun task 02.
+- Tooling cache is tiered (worktree -> source -> cache -> publish). Use task 18 to clear a specific `<CLI>/<version>/<rid>`; task 19 exercises probe behavior.
+- Devcontainer (Ollama bench): `.devcontainer/` adds Docker CLI, host Docker socket mount, and an Ollama model cache volume; helper scripts fail fast if the socket is missing or Docker Desktop is stopped. LabVIEW/VIPM builds remain Windows-only. Defaults: `OLLAMA_HOST=http://host.docker.internal:11435`, `OLLAMA_IMAGE=ghcr.io/svelderrainruiz/ollama-local:cpu-latest`, `OLLAMA_MODEL_TAG=llama3-8b-local`. Set `OLLAMA_CPUS`/`OLLAMA_MEM` to cap the Ollama container when using task 29.
+- Agent quickstart (safe default sim): see `docs/ollama-parity-quickstart.md` and `.github/workflows/agent-ollama.yml` (manual trigger, defaults to sim mode; real Windows lane optional and owner-gated).
+- Real build prep: for a Windows real run, set `windows_runner_label` on the workflow dispatch to point at a LabVIEW-capable runner (e.g., `["self-hosted","windows","self-hosted-windows-lv"]`). If omitted, the workflow falls back to a Windows sim run to stay safe.

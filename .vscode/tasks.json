@@ -1,0 +1,1387 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Containers: Docker",
+      "type": "process",
+      "command": "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe",
+      "args": [
+        "build",
+        "--pull",
+        "--rm",
+        "-f",
+        ".devcontainer/Dockerfile",
+        "-t",
+        "labviewiconeditorfinalfork:latest",
+        ".devcontainer"
+      ],
+      "problemMatcher": [],
+      "detail": "Build the devcontainer image locally (docker build)."
+    },
+    {
+      "label": "01 Verify / Apply dependencies",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/Tooling/dotnet/OrchestrationCli/OrchestrationCli.csproj",
+        "--",
+        "apply-deps",
+        "--repo",
+        "${workspaceFolder}",
+        "--bitness",
+        "both",
+        "--vipc-path",
+        "runner_dependencies.vipc",
+        "--timeout-sec",
+        "900"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Orchestration CLI: apply dependencies via apply-deps (runner_dependencies.vipc for both bitness)."
+    },
+    {
+      "label": "02 Build LVAddon (VI Package)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/Tooling/dotnet/OrchestrationCli/OrchestrationCli.csproj",
+        "--",
+        "package-build",
+        "--repo",
+        "${workspaceFolder}",
+        "--ref",
+        "HEAD",
+        "--bitness",
+        "64",
+        "--lvlibp-bitness",
+        "both",
+        "--major",
+        "0",
+        "--minor",
+        "1",
+        "--patch",
+        "0",
+        "--build",
+        "1",
+        "--company",
+        "LabVIEW-Community-CI-CD",
+        "--author",
+        "Local Developer"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "windows": {
+        "args": [
+          "run",
+          "--project",
+          "${workspaceFolder}/Tooling/dotnet/OrchestrationCli/OrchestrationCli.csproj",
+          "--",
+          "package-build",
+          "--repo",
+          "${workspaceFolder}",
+          "--ref",
+          "HEAD",
+          "--bitness",
+          "64",
+          "--lvlibp-bitness",
+          "both",
+          "--major",
+          "0",
+          "--minor",
+          "1",
+          "--patch",
+          "0",
+          "--build",
+          "1",
+          "--company",
+          "LabVIEW-Community-CI-CD",
+          "--author",
+          "Local Developer",
+          "--managed"
+        ]
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Orchestration CLI: package-build (calls IntegrationEngineCli; managed on Windows)."
+    },
+    {
+      "label": "17 Build (isolated worktree)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/run-worktree-task.ps1",
+        "-SourceRepoPath",
+        "${workspaceFolder}",
+        "-Ref",
+        "${input:testsRef}",
+        "-SupportedBitness",
+        "both",
+        "-LvlibpBitness",
+        "both",
+        "-Major",
+        "0",
+        "-Minor",
+        "1",
+        "-Patch",
+        "0",
+        "-Build",
+        "1",
+        "-CompanyName",
+        "LabVIEW-Community-CI-CD",
+        "-AuthorName",
+        "Local Developer"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Runs the build in a temporary git worktree and shows notifications; keeps the main repo untouched."
+    },
+    {
+      "label": "03 Orchestration: Restore packaged sources",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/Tooling/dotnet/OrchestrationCli/OrchestrationCli.csproj",
+        "--",
+        "restore-sources",
+        "--repo",
+        "${workspaceFolder}",
+        "--bitness",
+        "${input:labviewBitness}",
+        "--lv-version",
+        "2021",
+        "--timeout-sec",
+        "120"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Orchestration CLI: restore packaged sources if dev-mode token present (timeout 120s)."
+    },
+    {
+      "label": "04 Orchestration: Close LabVIEW",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/Tooling/dotnet/OrchestrationCli/OrchestrationCli.csproj",
+        "--",
+        "labview-close",
+        "--repo",
+        "${workspaceFolder}",
+        "--bitness",
+        "${input:labviewBitness}",
+        "--lv-version",
+        "2021",
+        "--timeout-sec",
+        "60"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Orchestration CLI: close LabVIEW for selected bitness/version."
+    },
+    {
+      "label": "05 Requirements summary (dotnet)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/Tooling/dotnet/RequirementsSummarizer/RequirementsSummarizer.csproj",
+        "--",
+        "--csv",
+        "${workspaceFolder}/docs/requirements/requirements.csv",
+        "--summary-output",
+        "${workspaceFolder}/reports/requirements-summary.md",
+        "--summary-full",
+        "--details",
+        "--details-open"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Generates a markdown summary of docs/requirements/requirements.csv using the dotnet RequirementsSummarizer CLI."
+    },
+    {
+      "label": "05b Requirements summary (bundled SD)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/run-requirements-summary-task.ps1",
+        "-Csv",
+        "docs/requirements/requirements.csv",
+        "-Summary",
+        "reports/requirements-summary.md",
+        "-Html",
+        "reports/requirements-summary.html",
+        "-HighPrioritySummary",
+        "reports/requirements-summary-high.md"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Regenerates requirements summaries using the bundled RequirementsSummarizer from an extracted Source Distribution (no dotnet SDK needed)."
+    },
+    {
+      "label": "06 DevMode: Bind (auto)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/task-devmode-bind.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-Mode",
+        "bind",
+        "-Bitness",
+        "auto"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Uses DevModeAgentCli to bind LocalHost.LibraryPaths; LabVIEW version/bitness auto-resolved from the repo VIPB."
+    },
+    {
+      "label": "06b DevMode: Unbind (auto)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/task-devmode-bind.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-Mode",
+        "unbind",
+        "-Bitness",
+        "auto"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Uses DevModeAgentCli to unbind LocalHost.LibraryPaths; LabVIEW version/bitness auto-resolved from the repo VIPB."
+    },
+    {
+      "label": "06c DevMode: Clear/Unbind all LabVIEW versions",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/clear-labview-librarypaths-all.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Clears LocalHost.LibraryPaths entries for all detected LabVIEW versions (32/64) and runs restore per version/bitness."
+    },
+    {
+      "label": "07 x-cli: VI Analyzer (raw)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/Tooling/x-cli/src/XCli/XCli.csproj",
+        "--",
+        "vi-analyzer-run",
+        "--request",
+        "${workspaceFolder}/configs/vi-analyzer-request.sample.json"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "XCLI_ALLOW_PROCESS_START": "1",
+          "XCLI_REPO_ROOT": "${workspaceFolder}",
+          "LABVIEW_BITNESS": "${input:labviewBitness}"
+        }
+      },
+      "dependsOn": [
+        "DevMode: Bind (DevModeAgentCli)"
+      ],
+      "dependsOrder": "sequence",
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Runs VI Analyzer via x-cli (requires LabVIEW/LabVIEWCLI and src/tools/icon-editor/Invoke-VIAnalyzer.ps1)."
+    },
+    {
+      "label": "21b VIPB: Override seed.vipb (repo)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/labview/vipb-bump-worktree.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-TargetLabVIEWVersion",
+        "${input:vipbTargetLv}",
+        "-NoWorktree"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Override Tooling/deployment/seed.vipb in-place to the target LabVIEW version (no worktree)."
+    },
+    {
+      "label": "06d DevMode: Bind (repo, 64-bit)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/task-devmode-bind.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-Mode",
+        "bind",
+        "-Bitness",
+        "64",
+        "-UseWorktree:$false"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Bind LocalHost.LibraryPaths for the repo using the VIPB version (repo path, no worktree)."
+    },
+    {
+      "label": "21c VIPB override + DevMode (repo)",
+      "dependsOn": [
+        "21b VIPB: Override seed.vipb (repo)",
+        "06d DevMode: Bind (repo, 64-bit)"
+      ],
+      "dependsOrder": "sequence",
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Sequential: override seed.vipb to target version, then bind dev mode on the repo for 64-bit."
+    },
+    {
+      "label": "08 x-cli: VI Analyzer",
+      "dependsOn": [
+        "07 x-cli: VI Analyzer (raw)",
+        "DevMode: Unbind (DevModeAgentCli)"
+      ],
+      "dependsOrder": "sequence",
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Compound: bind dev mode, run x-cli VI Analyzer, then unbind."
+    },
+    {
+      "label": "20 Build: Source Distribution",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/run-xcli.ps1",
+        "-Runner",
+        "gcli",
+        "source-dist-build",
+        "--repo",
+        "${workspaceFolder}",
+        "--commit-index",
+        "builds/cache/commit-index.json",
+        "--verbose-git",
+        "--perf-cpu",
+        "--allow-dirty"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "TMP": "C:/Users/${env:USERNAME}/AppData/Local/Temp/labview-icon-editor",
+          "TEMP": "C:/Users/${env:USERNAME}/AppData/Local/Temp/labview-icon-editor"
+        }
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Build the Source Distribution via g-cli (default) or LabVIEWCLI when selected; emits manifests + zip under builds/."
+    },
+    {
+      "label": "21 Verify: Source Distribution",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/Tooling/dotnet/OrchestrationCli/OrchestrationCli.csproj",
+        "--",
+        "source-dist-verify",
+        "--repo",
+        "${workspaceFolder}",
+        "--source-dist-log-stash",
+        "--source-dist-strict"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "TMP": "C:/Users/${env:USERNAME}/AppData/Local/Temp/labview-icon-editor",
+          "TEMP": "C:/Users/${env:USERNAME}/AppData/Local/Temp/labview-icon-editor"
+        }
+      },
+      "dependsOn": [
+        "20 Build: Source Distribution"
+      ],
+      "dependsOrder": "sequence",
+      "group": "test",
+      "problemMatcher": [],
+      "detail": "Verify builds/artifacts/source-distribution.zip manifest commits against git; emits report under builds/reports/source-distribution-verify/ and `[artifact]` lines."
+    },
+    {
+      "label": "22 Build PPL from Source Distribution",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ppl-from-sd/Build_Ppl_From_SourceDistribution.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-Package_LabVIEW_Version",
+        "2021",
+        "-SupportedBitness",
+        "64",
+        "-Major",
+        "0",
+        "-Minor",
+        "1",
+        "-Patch",
+        "0",
+        "-Build",
+        "0"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "TMP": "C:/temp",
+          "TEMP": "C:/temp"
+        }
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Extract source-distribution.zip, copy tooling/scripts, bind dev-mode to the extracted tree, and build the PPL (no git metadata required)."
+    },
+    {
+      "label": "23 Orchestration: SD->PPL (LabVIEWCLI)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/Tooling/dotnet/OrchestrationCli/OrchestrationCli.csproj",
+        "--",
+        "sd-ppl-lvcli",
+        "--repo",
+        "${workspaceFolder}",
+        "--bitness",
+        "64",
+        "--lv-version",
+        "2021",
+        "--timeout-sec",
+        "1800"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Runs the serialized Source Distribution -> PPL flow via OrchestrationCli (LabVIEWCLI builds, g-cli bind/unbind, per-run temp/logs)."
+    },
+    {
+      "label": "35 Ollama: publish preloaded image",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ollama-executor/dispatch-preloaded-image.ps1",
+        "-Ref",
+        "main",
+        "-TagSuffix",
+        "cpu-latest",
+        "-BundleUrl",
+        "${input:ollamaBundleUrl}",
+        "-BundleSha256",
+        "${input:ollamaBundleSha}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Dispatch the Publish Ollama CPU image workflow with a bundle URL/SHA256 to bake a preloaded tag."
+    },
+    {
+      "label": "36 Ollama: verify bundle import (devcontainer)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ollama-executor/verify-bundle-import.ps1",
+        "-BundlePath",
+        "${input:ollamaModelBundlePath}",
+        "-Host",
+        "${input:ollamaHost}",
+        "-ModelTag",
+        "${input:ollamaModelTag}",
+        "-Port",
+        "11435"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Start ollama-local with a local .ollama bundle, verify the model tag, health check, then stop the container."
+    },
+    {
+      "label": "21 VIPB: Bump LabVIEW version",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/labview/vipb-bump-worktree.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-TargetLabVIEWVersion",
+        "${input:vipbTargetLv}",
+        "-RunSourceDistribution",
+        "-RunPackageBuild"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Build seed docker image locally, bump seed.vipb LabVIEW version, and create a one-commit-ahead worktree with the change."
+    },
+    {
+      "label": "21d Seed: dotnet VIPB update",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/labview/invoke-update-vipb-dotnet-task.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-TargetBranch",
+        "${input:vipbTargetBranch}",
+        "-BaseBranch",
+        "${input:vipbBaseBranch}",
+        "-WorkingBranch",
+        "${input:vipbWorkingBranch}",
+        "-LabVIEWVersion",
+        "${input:vipbTargetLv}",
+        "-LabVIEWMinor",
+        "${input:vipbTargetMinor}",
+        "-Bitness",
+        "${input:vipbTargetBitness}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "VIPB_COMMIT_MESSAGE": "${input:vipbCommitMessage}"
+        }
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Checks out the chosen branch, re-encodes seed.vipb via VipbJsonTool, and commits the LabVIEW version change."
+    },
+    {
+      "label": "09 x-cli: VI History (vi-compare-run)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/Tooling/x-cli/src/XCli/XCli.csproj",
+        "--",
+        "vi-compare-run",
+        "--request",
+        "${workspaceFolder}/configs/vi-compare-run-request.sample.json"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "XCLI_ALLOW_PROCESS_START": "1",
+          "XCLI_REPO_ROOT": "${workspaceFolder}"
+        }
+      },
+      "dependsOn": [
+        "DevMode: Bind (DevModeAgentCli)"
+      ],
+      "dependsOrder": "sequence",
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Replays a VI compare scenario via x-cli and tools/icon-editor/Replay-ViCompareScenario.ps1."
+    },
+    {
+      "label": "09b x-cli: VI History from SD (read-only)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/vi-compare/run-vi-history-suite-sd.ps1",
+        "-SdRoot",
+        "${workspaceFolder}",
+        "-IncludeSample"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Runs vi-history/vi-compare replay against an extracted Source Distribution (read-only analysis; no bind/build)."
+    },
+    {
+      "label": "SD: VI History (bundled)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/vi-compare/run-vi-history-suite-sd.ps1",
+        "-SdRoot",
+        "${workspaceFolder}",
+        "-IncludeSample"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Run vi-history/vi-compare replay from an extracted SD using bundled scripts (read-only; safe for SD consumers)."
+    },
+    {
+      "label": "SD: Build x-cli (bundled)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/Tooling/x-cli/src/XCli/XCli.csproj",
+        "-c",
+        "Release"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Builds bundled x-cli inside the extracted SD (Release/win-x64)."
+    },
+    {
+      "label": "SD: VI History (execute)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/vi-compare/run-vi-history-suite-sd.ps1",
+        "-SdRoot",
+        "${workspaceFolder}",
+        "-IncludeSample",
+        "-AllowExecute"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "dependsOn": [
+        "SD: Build x-cli (bundled)"
+      ],
+      "dependsOrder": "sequence",
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Run vi-history/vi-compare replay from extracted SD with execution enabled (after building bundled x-cli)."
+    },
+    {
+      "label": "26 Ollama: turn-key bench",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ollama-executor/Run-OllamaDesignBench.ps1",
+        "-RepoPath",
+        "${workspaceFolder}",
+        "-Host",
+        "${input:ollamaHost}",
+        "-ModelTag",
+        "${input:ollamaModelTag}",
+        "-Owner",
+        "${input:ollamaGhcrOwner}",
+        "-Tag",
+        "${input:ollamaGhcrTag}",
+        "-ModelBundlePath",
+        "${input:ollamaModelBundlePath}",
+        "-Mode",
+        "${input:ollamaBenchMode}",
+        "-CommandTimeoutSec",
+        "${input:ollamaBenchTimeoutSec}",
+        "-StopMode",
+        "${input:ollamaBenchStopMode}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "detail": "Pull/start/health-check Ollama in one step and optionally run the locked Design Bench flows."
+    },
+    {
+      "label": "27 Ollama: health check",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ollama-executor/check-ollama-endpoint.ps1",
+        "-Host",
+        "${input:ollamaHost}",
+        "-ModelTag",
+        "${input:ollamaModelTag}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "detail": "Ping OLLAMA_HOST and verify the expected model tag exists."
+    },
+    {
+      "label": "30 Ollama: package-build (locked)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ollama-executor/Run-Locked-PackageBuild.ps1",
+        "-RepoPath",
+        "${workspaceFolder}",
+        "-Host",
+        "${input:ollamaHost}",
+        "-Model",
+        "${input:ollamaModelTag}",
+        "-CommandTimeoutSec",
+        "${input:ollamaPackageTimeoutSec}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Locked executor: only package-build is allowed; two turns (run + done)."
+    },
+    {
+      "label": "28 Ollama: pull image",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ollama-executor/pull-ollama-image.ps1",
+        "-Owner",
+        "${input:ollamaGhcrOwner}",
+        "-Tag",
+        "${input:ollamaGhcrTag}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "detail": "Pull the published CPU-only Ollama image (ghcr.io/svelderrainruiz/ollama-local:cpu-latest)."
+    },
+    {
+      "label": "29 Ollama: start container",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ollama-executor/run-ollama-container.ps1",
+        "-Owner",
+        "${input:ollamaGhcrOwner}",
+        "-Tag",
+        "${input:ollamaGhcrTag}",
+        "-ModelBundlePath",
+        "${input:ollamaModelBundlePath}",
+        "-BundleTargetTag",
+        "${input:ollamaModelTag}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "detail": "Start the published Ollama CPU container on localhost:11435 with persisted model volume."
+    },
+    {
+      "label": "31 Ollama: source-distribution (locked)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ollama-executor/Run-Locked-SourceDistribution.ps1",
+        "-RepoPath",
+        "${workspaceFolder}",
+        "-Host",
+        "${input:ollamaHost}",
+        "-Model",
+        "${input:ollamaModelTag}",
+        "-CommandTimeoutSec",
+        "${input:ollamaSdTimeoutSec}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Locked executor: only source-distribution build is allowed; two turns (run + done)."
+    },
+    {
+      "label": "32 Ollama: local-sd-ppl (locked)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ollama-executor/Run-Locked-LocalSdPpl.ps1",
+        "-RepoPath",
+        "${workspaceFolder}",
+        "-Host",
+        "${input:ollamaHost}",
+        "-Model",
+        "${input:ollamaModelTag}",
+        "-CommandTimeoutSec",
+        "${input:ollamaLocalSdPplTimeoutSec}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Locked executor: only local-sd-ppl orchestration is allowed; two turns (run + done)."
+    },
+    {
+      "label": "32b Ollama: reset source-dist workspace (locked)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ollama-executor/Run-Locked-ResetSourceDistribution.ps1",
+        "-RepoPath",
+        "${workspaceFolder}",
+        "-Host",
+        "${input:ollamaHost}",
+        "-Model",
+        "${input:ollamaModelTag}",
+        "-CommandTimeoutSec",
+        "${input:ollamaResetTimeoutSec}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Locked executor: archives/cleans Source Distribution output, regenerates commit index, and reruns the build via OrchestrationCli reset-source-dist."
+    },
+    {
+      "label": "33 Ollama: stop container",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ollama-executor/stop-ollama-container.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "detail": "Stop and remove the ollama-local container if running."
+    },
+    {
+      "label": "34 Ollama: reset container + cache",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/ollama-executor/stop-ollama-container.ps1",
+        "-RemoveVolume"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "build",
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "problemMatcher": [],
+      "detail": "Stop and remove the ollama-local container and clear the ollama volume (model cache reset)."
+    },
+    {
+      "label": "10 Tests: run (TestsCli)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/Tooling/dotnet/TestsCli/TestsCli.csproj",
+        "--",
+        "--repo",
+        "${workspaceFolder}",
+        "--bitness",
+        "${input:testsBitness}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": [],
+      "detail": "Runs scripts/test/Test.ps1 via TestsCli (bitness both|64|32)."
+    },
+    {
+      "label": "11 Tests: run (Orchestration CLI unit-tests)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/Tooling/dotnet/OrchestrationCli/OrchestrationCli.csproj",
+        "--",
+        "unit-tests",
+        "--repo",
+        "${workspaceFolder}",
+        "--bitness",
+        "${input:testsBitness}",
+        "--project",
+        "lv_icon_editor.lvproj",
+        "--timeout-sec",
+        "900"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": [],
+      "detail": "Orchestration CLI: run-unit-tests subcommand (bitness both|64|32)."
+    },
+    {
+      "label": "12 Tests: run (isolated worktree)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/run-worktree-tests.ps1",
+        "-SourceRepoPath",
+        "${workspaceFolder}",
+        "-Ref",
+        "${input:testsRef}",
+        "-SupportedBitness",
+        "${input:testsBitness}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": [],
+      "detail": "Creates a temporary git worktree and runs TestsCli there, copying builds/reports to builds-isolated-tests."
+    },
+    {
+      "label": "13 Orchestration: VI Analyzer",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/Tooling/dotnet/OrchestrationCli/OrchestrationCli.csproj",
+        "--",
+        "vi-analyzer",
+        "--repo",
+        "${workspaceFolder}",
+        "--bitness",
+        "${input:labviewBitness}",
+        "--request",
+        "configs/vi-analyzer-request.sample.json",
+        "--timeout-sec",
+        "900"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": [],
+      "detail": "Orchestration CLI: vi-analyzer subcommand with sample request JSON."
+    },
+    {
+      "label": "14 Orchestration: VI Compare",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/Tooling/dotnet/OrchestrationCli/OrchestrationCli.csproj",
+        "--",
+        "vi-compare",
+        "--repo",
+        "${workspaceFolder}",
+        "--bitness",
+        "${input:labviewBitness}",
+        "--scenario",
+        "scenarios/sample/vi-diff-requests.json",
+        "--lv-version",
+        "2025",
+        "--require-devmode",
+        "--auto-bind-devmode",
+        "--timeout-sec",
+        "120"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": [],
+      "detail": "Orchestration CLI: vi-compare subcommand using the sample request JSON."
+    },
+    {
+      "label": "15 Orchestration: Missing-in-project check",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "${workspaceFolder}/Tooling/dotnet/OrchestrationCli/OrchestrationCli.csproj",
+        "--",
+        "missing-check",
+        "--repo",
+        "${workspaceFolder}",
+        "--bitness",
+        "${input:labviewBitness}",
+        "--project",
+        "lv_icon_editor.lvproj",
+        "--lv-version",
+        "2021",
+        "--timeout-sec",
+        "600"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": [],
+      "detail": "Orchestration CLI: missing-check subcommand (g-cli)."
+    },
+    {
+      "label": "16 Tests: VI Analyzer (Test.ps1)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/test/Test.ps1",
+        "-RepositoryPath",
+        "${workspaceFolder}",
+        "-ViAnalyzerOnly",
+        "-ViAnalyzerRequestPath",
+        "configs/vi-analyzer-request.sample.json"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": [],
+      "detail": "Runs VI Analyzer via Test.ps1 with the selected request; handles dev-mode bind/unbind internally."
+    },
+    {
+      "label": "19 Tests: Probe helper smoke",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/test/probe-helper-smoke.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": "test",
+      "problemMatcher": [],
+      "detail": "Runs probe-helper-smoke to cover worktree/source/cache/publish/clear/provenance scenarios."
+    }
+  ]
+,
+  "inputs": [
+    {
+      "id": "labviewBitness",
+      "type": "pickString",
+      "description": "Select LabVIEW bitness for dev mode/analyzer tasks",
+      "options": [
+        "64",
+        "32"
+      ],
+      "default": "64"
+    },
+    {
+      "id": "testsBitness",
+      "type": "pickString",
+      "description": "Select bitness for Tests: run (TestsCli)",
+      "options": [
+        "both",
+        "64",
+        "32"
+      ],
+      "default": "both"
+    },
+    {
+      "id": "testsRef",
+      "type": "promptString",
+      "description": "Git ref to checkout for isolated test worktree",
+      "default": "HEAD"
+    },
+    {
+      "id": "vipbTargetLv",
+      "type": "promptString",
+      "description": "Target LabVIEW version to set in seed.vipb (e.g., 2021, 2025)",
+      "default": "2023"
+    },
+    {
+      "id": "vipbTargetMinor",
+      "type": "pickString",
+      "description": "LabVIEW minor release to encode in seed.vipb (0 = Q1, 3 = Q3)",
+      "options": [
+        "0",
+        "3"
+      ],
+      "default": "3"
+    },
+    {
+      "id": "vipbTargetBitness",
+      "type": "pickString",
+      "description": "LabVIEW bitness for VIPB encoding",
+      "options": [
+        "64",
+        "32"
+      ],
+      "default": "64"
+    },
+    {
+      "id": "vipbBaseBranch",
+      "type": "promptString",
+      "description": "Base branch to branch from before running the dotnet VIPB update",
+      "default": "develop"
+    },
+    {
+      "id": "vipbWorkingBranch",
+      "type": "promptString",
+      "description": "Working branch to create/reset from the base branch (leave blank to operate directly on the fallback branch)",
+      "default": "seed/vipb-dotnet"
+    },
+    {
+      "id": "vipbTargetBranch",
+      "type": "promptString",
+      "description": "Fallback branch to update when no working branch name is provided",
+      "default": "develop"
+    },
+    {
+      "id": "vipbCommitMessage",
+      "type": "promptString",
+      "description": "Optional commit message override for the dotnet VIPB update",
+      "default": ""
+    },
+    {
+      "id": "ollamaSdTimeoutSec",
+      "type": "promptString",
+      "description": "Command timeout (seconds) for task 31 Ollama locked source-distribution",
+      "default": "240"
+    },
+    {
+      "id": "ollamaGhcrOwner",
+      "type": "promptString",
+      "description": "GHCR owner/namespace for ollama-local image (lowercase)",
+      "default": "svelderrainruiz"
+    },
+    {
+      "id": "ollamaGhcrTag",
+      "type": "promptString",
+      "description": "Tag for ollama-local image",
+      "default": "cpu-preloaded"
+    },
+    {
+      "id": "ollamaBundleUrl",
+      "type": "promptString",
+      "description": "Optional URL to llama3-8b-local .ollama bundle for preloaded image (leave blank to pull)",
+      "default": ""
+    },
+    {
+      "id": "ollamaBundleSha",
+      "type": "promptString",
+      "description": "Optional SHA256 for the .ollama bundle (used when URL is provided)",
+      "default": ""
+    },
+    {
+      "id": "ollamaHost",
+      "type": "promptString",
+      "description": "OLLAMA_HOST endpoint (health check + executor)",
+      "default": "http://localhost:11436"
+    },
+    {
+      "id": "ollamaModelBundlePath",
+      "type": "promptString",
+      "description": "Optional path to a .ollama model bundle to import (leave blank to skip)",
+      "default": ""
+    },
+    {
+      "id": "ollamaModelTag",
+      "type": "promptString",
+      "description": "Model tag expected for Ollama tasks",
+      "default": "llama3-8b-local:latest"
+    },
+    {
+      "id": "ollamaBenchMode",
+      "type": "pickString",
+      "description": "Turn-key bench flow to run after startup",
+      "options": [
+        "setup",
+        "package-build",
+        "source-distribution",
+        "local-sd-ppl",
+        "full"
+      ],
+      "default": "setup"
+    },
+    {
+      "id": "ollamaBenchTimeoutSec",
+      "type": "promptString",
+      "description": "Command timeout (seconds) for turn-key bench locked flows",
+      "default": "600"
+    },
+    {
+      "id": "ollamaBenchStopMode",
+      "type": "pickString",
+      "description": "What to do with the container after the turn-key bench",
+      "options": [
+        "leave-running",
+        "stop",
+        "reset"
+      ],
+      "default": "leave-running"
+    },
+    {
+      "id": "ollamaPackageTimeoutSec",
+      "type": "promptString",
+      "description": "Command timeout (seconds) for task 30 Ollama locked package-build",
+      "default": "120"
+    },
+    {
+      "id": "ollamaLocalSdPplTimeoutSec",
+      "type": "promptString",
+      "description": "Command timeout (seconds) for task 32 Ollama locked local-sd-ppl",
+      "default": "120"
+    },
+    {
+      "id": "ollamaResetTimeoutSec",
+      "type": "promptString",
+      "description": "Command timeout (seconds) for task 32b Ollama locked reset",
+      "default": "360"
+    },
+    {
+      "id": "cacheCliName",
+      "type": "pickString",
+      "description": "CLI name for clear-tooling-cache",
+      "options": [
+        "DevModeAgentCli",
+        "OrchestrationCli",
+        "IntegrationEngineCli",
+        "XCli"
+      ],
+      "default": "IntegrationEngineCli"
+    },
+    {
+      "id": "cacheVersion",
+      "type": "promptString",
+      "description": "CLI version/commit for clear-tooling-cache",
+      "default": "HEAD"
+    },
+    {
+      "id": "cacheRid",
+      "type": "pickString",
+      "description": "Runtime identifier for clear-tooling-cache",
+      "options": [
+        "win-x64",
+        "linux-x64",
+        "osx-x64"
+      ],
+      "default": "win-x64"
+    }
+  ]
+}

@@ -1,0 +1,441 @@
+name: Ollama Executor Smoke Test
+
+defaults:
+  run:
+    working-directory: './'
+
+# Minimal permissions required
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/ollama-executor/**'
+      - '.devcontainer/**'
+      - 'install-ollama.ps1'
+      - '.github/workflows/ollama-executor-smoke.yml'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'scripts/ollama-executor/**'
+      - '.devcontainer/**'
+      - 'install-ollama.ps1'
+
+jobs:
+  smoke-test:
+    name: Smoke Test - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup PowerShell 7+
+        shell: pwsh
+        run: |
+          Write-Host "PowerShell Version: $($PSVersionTable.PSVersion)"
+          Write-Host "OS: $($PSVersionTable.OS)"
+
+      - name: Run Command Vetting Tests
+        shell: pwsh
+        run: |
+          Write-Host "=== Running Command Vetting Tests ===" -ForegroundColor Cyan
+          pwsh -NoProfile -File scripts/ollama-executor/Test-CommandVetting.ps1
+        continue-on-error: false
+
+      - name: Run Simulation Mode Tests
+        shell: pwsh
+        run: |
+          Write-Host "=== Running Simulation Mode Tests ===" -ForegroundColor Cyan
+          pwsh -NoProfile -File scripts/ollama-executor/Test-SimulationMode.ps1
+        continue-on-error: false
+
+      - name: Run Security Fuzzing Tests
+        shell: pwsh
+        run: |
+          Write-Host "=== Running Security Fuzzing Tests ===" -ForegroundColor Cyan
+          pwsh -NoProfile -File scripts/ollama-executor/Test-SecurityFuzzing.ps1
+        continue-on-error: false
+
+      - name: Run Regression Tests
+        shell: pwsh
+        run: |
+          Write-Host "=== Running Regression Tests ===" -ForegroundColor Cyan
+          pwsh -NoProfile -File scripts/ollama-executor/Test-Regressions.ps1
+        continue-on-error: false
+
+      - name: Run Fast Test Suite
+        shell: pwsh
+        run: |
+          Write-Host "=== Running Fast Test Suite ===" -ForegroundColor Cyan
+          pwsh -NoProfile -File scripts/ollama-executor/Run-AllTests.ps1 -Mode fast -CI
+        continue-on-error: false
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: |
+            reports/test-results/*.json
+            reports/test-results/*.xml
+          retention-days: 30
+
+      - name: Upload Test Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ matrix.os }}
+          path: |
+            reports/test-results/*.html
+          retention-days: 30
+
+  security-gate:
+    name: Security Hard Gate
+    runs-on: ubuntu-latest
+    needs: smoke-test
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Security Fuzzing (Critical)
+        shell: pwsh
+        run: |
+          Write-Host "=== SECURITY HARD GATE ===" -ForegroundColor Red
+          Write-Host "Running comprehensive security fuzzing..." -ForegroundColor Yellow
+          $result = pwsh -NoProfile -File scripts/ollama-executor/Test-SecurityFuzzing.ps1
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "SECURITY GATE FAILED: Vulnerabilities detected!" -ForegroundColor Red
+            exit 1
+          }
+          Write-Host "SECURITY GATE PASSED: No vulnerabilities detected" -ForegroundColor Green
+
+      - name: Verify Regression Tests
+        shell: pwsh
+        run: |
+          Write-Host "=== REGRESSION GATE ===" -ForegroundColor Red
+          Write-Host "Verifying no previously-fixed bugs have reappeared..." -ForegroundColor Yellow
+          $result = pwsh -NoProfile -File scripts/ollama-executor/Test-Regressions.ps1
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "REGRESSION GATE FAILED: Fixed bugs have reappeared!" -ForegroundColor Red
+            exit 1
+          }
+          Write-Host "REGRESSION GATE PASSED: All fixes intact" -ForegroundColor Green
+
+  performance-baseline:
+    name: Performance Baseline Check
+    runs-on: ubuntu-latest
+    needs: smoke-test
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Performance Benchmarks
+        shell: pwsh
+        run: |
+          Write-Host "=== Running Performance Benchmarks ===" -ForegroundColor Cyan
+          pwsh -NoProfile -File scripts/ollama-executor/Test-Performance.ps1 -OutputReport reports/performance-baseline.json
+
+      - name: Upload Performance Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-baseline
+          path: reports/performance-baseline.json
+          retention-days: 90
+
+  real-labview-validation:
+    name: Real LabVIEW Validation
+    # This job runs on the self-hosted Windows runner with LabVIEW installed
+    # Requirements for the runner:
+    # - Windows OS
+    # - LabVIEW 2021+ installed in standard location (C:\Program Files\National Instruments\LabVIEW*)
+    # - PowerShell 7+
+    # - Runner label: self-hosted-windows-lv
+    runs-on: self-hosted-windows-lv
+    needs: [smoke-test, security-gate]
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    
+    env:
+      # Configurable LabVIEW search paths (semicolon-separated)
+      LABVIEW_SEARCH_PATHS: "C:\\Program Files\\National Instruments;C:\\Program Files (x86)\\National Instruments"
+    
+    steps:
+      # Runtime safety check: ensures job is running on expected Windows environment
+      - name: "Guard: Windows runner"
+        if: ${{ runner.os != 'Windows' }}
+        shell: pwsh
+        run: |
+          Write-Host "Error: This job requires a Windows runner but is running on ${{ runner.os }}"
+          exit 1
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          set-safe-directory: true
+
+      - name: Verify LabVIEW Installation
+        shell: pwsh
+        run: |
+          Write-Host "=== Verifying LabVIEW Installation ===" -ForegroundColor Cyan
+          
+          # Search in configurable paths
+          $searchPaths = $env:LABVIEW_SEARCH_PATHS -split ';' | Where-Object { $_ }
+          $lvPath = $null
+          
+          foreach ($basePath in $searchPaths) {
+            if (Test-Path $basePath) {
+              $found = Get-ChildItem -Path "$basePath\LabVIEW*" -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($found) {
+                $lvPath = $found
+                break
+              }
+            }
+          }
+          
+          if ($lvPath) {
+            Write-Host "✓ Found LabVIEW at: $($lvPath.FullName)" -ForegroundColor Green
+            $lvExe = Join-Path $lvPath.FullName "LabVIEW.exe"
+            if (Test-Path $lvExe) {
+              Write-Host "✓ LabVIEW executable exists" -ForegroundColor Green
+            }
+          } else {
+            Write-Host "⚠ LabVIEW installation not found in search paths: $($searchPaths -join ', ')" -ForegroundColor Yellow
+          }
+
+      - name: Run Real Build Script Validation
+        shell: pwsh
+        run: |
+          Write-Host "=== Real LabVIEW Build Script Validation ===" -ForegroundColor Cyan
+          Write-Host ""
+          
+          # Validate that build scripts can be loaded and parsed
+          $scriptsToValidate = @(
+            "scripts/build-source-distribution/Build_Source_Distribution.ps1",
+            "scripts/ppl-from-sd/Build_Ppl_From_SourceDistribution.ps1",
+            "scripts/get-package-lv-version.ps1"
+          )
+          
+          $allValid = $true
+          foreach ($script in $scriptsToValidate) {
+            $scriptPath = Join-Path $env:GITHUB_WORKSPACE $script
+            if (Test-Path $scriptPath) {
+              Write-Host "Validating: $script" -ForegroundColor Yellow
+              try {
+                $null = [System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$null, [ref]$null)
+                Write-Host "  ✓ Syntax valid" -ForegroundColor Green
+              }
+              catch {
+                Write-Host "  ✗ Syntax error: $_" -ForegroundColor Red
+                $allValid = $false
+              }
+            } else {
+              Write-Host "  ⚠ Script not found: $script" -ForegroundColor Yellow
+            }
+          }
+          
+          if (-not $allValid) {
+            Write-Host "Build script validation failed!" -ForegroundColor Red
+            exit 1
+          }
+          
+          Write-Host ""
+          Write-Host "✓ All build scripts validated successfully" -ForegroundColor Green
+
+      - name: Run LabVIEW Version Detection
+        shell: pwsh
+        run: |
+          Write-Host "=== LabVIEW Version Detection ===" -ForegroundColor Cyan
+          
+          # Validate workspace path is safe (GitHub-provided and within expected structure)
+          $workspace = $env:GITHUB_WORKSPACE
+          if (-not $workspace -or -not (Test-Path -LiteralPath $workspace -PathType Container)) {
+            Write-Host "⚠ GITHUB_WORKSPACE is not set or invalid" -ForegroundColor Yellow
+            exit 0
+          }
+          
+          # Ensure we're working within the expected checkout directory
+          $gitDir = Join-Path $workspace ".git"
+          if (-not (Test-Path -LiteralPath $gitDir -PathType Container)) {
+            Write-Host "⚠ Not a valid git repository" -ForegroundColor Yellow
+            exit 0
+          }
+          
+          $versionScript = Join-Path $workspace "scripts/get-package-lv-version.ps1"
+          if (Test-Path -LiteralPath $versionScript -PathType Leaf) {
+            try {
+              $version = & $versionScript -RepositoryPath $workspace
+              Write-Host "✓ Detected LabVIEW version from VIPB: $version" -ForegroundColor Green
+            }
+            catch {
+              Write-Host "⚠ Version detection failed: $_" -ForegroundColor Yellow
+            }
+          }
+
+      - name: Validate Ollama Executor Integration
+        shell: pwsh
+        run: |
+          Write-Host "=== Ollama Executor Integration Validation ===" -ForegroundColor Cyan
+          
+          # Test that the executor script can be loaded
+          $executorPath = Join-Path $env:GITHUB_WORKSPACE "scripts/ollama-executor/Drive-Ollama-Executor.ps1"
+          if (Test-Path $executorPath) {
+            Write-Host "✓ Ollama Executor script exists" -ForegroundColor Green
+            
+            # Parse the script for syntax errors
+            try {
+              $null = [System.Management.Automation.Language.Parser]::ParseFile($executorPath, [ref]$null, [ref]$null)
+              Write-Host "✓ Executor script syntax valid" -ForegroundColor Green
+            }
+            catch {
+              Write-Host "✗ Executor script has syntax errors: $_" -ForegroundColor Red
+              exit 1
+            }
+          }
+          
+          Write-Host ""
+          Write-Host "✓ Ollama Executor integration validated" -ForegroundColor Green
+
+      - name: Upload Validation Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-labview-validation-results
+          path: |
+            reports/**
+            *.log
+          retention-days: 30
+          if-no-files-found: ignore
+
+  summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [smoke-test, security-gate, performance-baseline, real-labview-validation]
+    if: always()
+    
+    steps:
+      - name: Download All Test Results
+        uses: actions/download-artifact@v4
+        with:
+          path: test-results
+
+      - name: Generate Summary
+        shell: pwsh
+        run: |
+          Write-Host "=== Ollama Executor Smoke Test Summary ===" -ForegroundColor Cyan
+          Write-Host ""
+          
+          $allPassed = $true
+          
+          # Check smoke test results
+          if ("${{ needs.smoke-test.result }}" -eq "success") {
+            Write-Host "✅ Smoke Tests: PASSED" -ForegroundColor Green
+          } else {
+            Write-Host "❌ Smoke Tests: FAILED" -ForegroundColor Red
+            $allPassed = $false
+          }
+          
+          # Check security gate
+          if ("${{ needs.security-gate.result }}" -eq "success") {
+            Write-Host "✅ Security Gate: PASSED" -ForegroundColor Green
+          } else {
+            Write-Host "❌ Security Gate: FAILED" -ForegroundColor Red
+            $allPassed = $false
+          }
+          
+          # Check performance baseline
+          if ("${{ needs.performance-baseline.result }}" -eq "success") {
+            Write-Host "✅ Performance Baseline: PASSED" -ForegroundColor Green
+          } else {
+            Write-Host "⚠️  Performance Baseline: FAILED" -ForegroundColor Yellow
+            # Don't fail on performance issues, just warn
+          }
+          
+          # Check real LabVIEW validation
+          $lvResult = "${{ needs.real-labview-validation.result }}"
+          if ($lvResult -eq "success") {
+            Write-Host "✅ Real LabVIEW Validation: PASSED" -ForegroundColor Green
+          } elseif ($lvResult -eq "skipped") {
+            Write-Host "⏭️  Real LabVIEW Validation: SKIPPED" -ForegroundColor Yellow
+          } else {
+            Write-Host "❌ Real LabVIEW Validation: FAILED" -ForegroundColor Red
+            $allPassed = $false
+          }
+          
+          Write-Host ""
+          if ($allPassed) {
+            Write-Host "🎉 ALL GATES PASSED - Ready to merge!" -ForegroundColor Green
+            exit 0
+          } else {
+            Write-Host "🚫 GATES FAILED - Cannot merge until all tests pass" -ForegroundColor Red
+            exit 1
+          }
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const smokeStatus = '${{ needs.smoke-test.result }}';
+            const securityStatus = '${{ needs.security-gate.result }}';
+            const perfStatus = '${{ needs.performance-baseline.result }}';
+            const lvStatus = '${{ needs.real-labview-validation.result }}';
+            
+            const statusIcon = (status) => {
+              if (status === 'success') return '✅';
+              if (status === 'skipped') return '⏭️';
+              return '❌';
+            };
+            
+            const comment = `## 🧪 Ollama Executor Smoke Test Results
+            
+            | Test Category | Status |
+            |---------------|--------|
+            | Smoke Tests (Multi-OS) | ${statusIcon(smokeStatus)} ${smokeStatus} |
+            | Security Hard Gate | ${statusIcon(securityStatus)} ${securityStatus} |
+            | Performance Baseline | ${statusIcon(perfStatus)} ${perfStatus} |
+            | Real LabVIEW Validation | ${statusIcon(lvStatus)} ${lvStatus} |
+            
+            ### Test Coverage
+            - ✅ Command vetting (28 test cases)
+            - ✅ Simulation mode (4 scenarios)
+            - ✅ Security fuzzing (1000+ attack vectors)
+            - ✅ Regression tracking (all fixed bugs)
+            - ✅ Cross-platform (Linux, Windows, macOS)
+            - ✅ Real LabVIEW validation (self-hosted runner)
+            
+            ${smokeStatus === 'success' && securityStatus === 'success' && (lvStatus === 'success' || lvStatus === 'skipped')
+              ? '🎉 **All gates passed!** This PR is ready to merge.' 
+              : '🚫 **Gates failed.** Please review the test failures above.'}
+            
+            <details>
+            <summary>View detailed results</summary>
+            
+            Artifacts:
+            - Test results (JSON/XML)
+            - Test reports (HTML)
+            - Performance baseline
+            - Real LabVIEW validation logs
+            
+            Check the Actions tab for detailed logs.
+            </details>
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

@@ -1,0 +1,114 @@
+name: Release Source Distribution to Sandbox
+
+defaults:
+  run:
+    working-directory: './'
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "CI run ID that produced the source distribution artifact"
+        required: true
+        type: string
+      tag:
+        description: "Optional tag/release name (defaults to computed version without -build suffix)"
+        required: false
+        type: string
+      target_repo:
+        description: "Target GitHub repo for the release (defaults to <owner>/labview-icon-editor-sandbox)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release-source-distribution:
+    # GITHUB_TOKEN in pull_request events lacks release permissions; skip instead of failing
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for version helpers)
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 0
+
+      - name: Compute version
+        id: version
+        uses: ./.github/actions/compute-version
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve tag and target repo
+        id: cfg
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = "${{ github.event.inputs.tag }}"
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            $tag = '${{ steps.version.outputs.VERSION }}' -replace '-build\d+$',''
+          }
+          if ([string]::IsNullOrWhiteSpace($tag)) { throw "Tag is empty; cannot continue." }
+          $targetRepo = "${{ github.event.inputs.target_repo }}"
+          if ([string]::IsNullOrWhiteSpace($targetRepo)) {
+            $targetRepo = "${{ github.repository_owner }}/labview-icon-editor-sandbox"
+          }
+          "tag=$tag" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "target_repo=$targetRepo" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "is_prerelease=${{ steps.version.outputs.IS_PRERELEASE }}" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          Write-Host ("Releasing tag '{0}' to repo '{1}'" -f $tag, $targetRepo)
+
+      - name: Download Source Distribution artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.inputs.run_id }}
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-source-distribution
+          path: artifacts/source-distribution
+
+      - name: Validate Source Distribution payload
+        id: files
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:GITHUB_WORKSPACE 'artifacts/source-distribution'
+          $zip = Get-ChildItem -Path $root -Filter 'source-distribution.zip' -File -Recurse | Select-Object -First 1
+          if (-not $zip) { throw "source-distribution.zip not found under $root" }
+          $manifestJson = Get-ChildItem -Path $root -Filter 'manifest.json' -File -Recurse | Select-Object -First 1
+          $manifestCsv = Get-ChildItem -Path $root -Filter 'manifest.csv' -File -Recurse | Select-Object -First 1
+          foreach ($f in @($manifestJson,$manifestCsv)) {
+            if (-not $f) { throw "Required manifest file missing under $root" }
+          }
+          "zip=$($zip.FullName)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "manifest_json=$($manifestJson.FullName)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "manifest_csv=$($manifestCsv.FullName)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          Get-ChildItem -Path $root -Recurse
+
+      - name: Create or update release in sandbox repo
+        env:
+          GH_TOKEN: ${{ secrets.SANDBOX_RELEASE_TOKEN }}
+          TAG: ${{ steps.cfg.outputs.tag }}
+          TARGET_REPO: ${{ steps.cfg.outputs.target_repo }}
+          IS_PRERELEASE: ${{ steps.cfg.outputs.is_prerelease }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "SANDBOX_RELEASE_TOKEN is required to publish to the sandbox repo." >&2
+            exit 1
+          fi
+          repo="$TARGET_REPO"
+          tag="$TAG"
+          prerelease_flag=""
+          if [ "${IS_PRERELEASE,,}" = "true" ]; then
+            prerelease_flag="--prerelease"
+          fi
+          if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
+            echo "Release $tag already exists in $repo; will upload assets."
+          else
+            gh release create "$tag" --repo "$repo" $prerelease_flag --notes "Source distribution from CI run ${{ github.event.inputs.run_id }}" >/dev/null
+          fi
+          gh release upload "$tag" "${{ steps.files.outputs.zip }}" --clobber --repo "$repo"
+          gh release upload "$tag" "${{ steps.files.outputs.manifest_json }}" "${{ steps.files.outputs.manifest_csv }}" --clobber --repo "$repo"

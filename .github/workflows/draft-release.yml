@@ -1,0 +1,324 @@
+name: Draft Release
+
+defaults:
+  run:
+    working-directory: './'
+
+on:
+  # Automatically trigger when CI completes successfully on main/release branches
+  workflow_run:
+    workflows: ["CI Pipeline (Composite)"]
+    types:
+      - completed
+    branches:
+      - main
+      - release/*
+
+  # Manual fallback - only requires selecting from successful CI runs
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "CI run ID (leave empty to use latest successful CI run on current branch)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  draft-release:
+    runs-on: ubuntu-latest
+    # Only run on successful CI completion or manual dispatch
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 0
+
+      - name: Determine CI run ID
+        id: ci_run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            # Automatic trigger - use the triggering workflow run
+            run_id="${{ github.event.workflow_run.id }}"
+            echo "Using CI run from workflow_run trigger: $run_id"
+          elif [ -n "${{ github.event.inputs.run_id }}" ]; then
+            # Manual trigger with explicit run_id
+            run_id="${{ github.event.inputs.run_id }}"
+            echo "Using manually specified CI run: $run_id"
+          else
+            # Manual trigger without run_id - find latest successful CI run on current branch
+            echo "Finding latest successful CI run on branch: ${{ github.ref_name }}"
+            run_id=$(gh run list --workflow=ci.yml --branch="${{ github.ref_name }}" --status=success --limit=1 --json databaseId --jq '.[0].databaseId // empty')
+            if [ -z "$run_id" ]; then
+              echo "ERROR: No successful CI run found on branch ${{ github.ref_name }}" >&2
+              exit 1
+            fi
+            echo "Using latest successful CI run: $run_id"
+          fi
+
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+      - name: Compute version
+        id: version
+        uses: ./.github/actions/compute-version
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Form tag
+        id: tag
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          set -euo pipefail
+          # Convert version format from CI convention to release tag format
+          # Example: v1.2.3-build456 -> v1.2.3.456
+          # The -buildN suffix is replaced with .N for the four-part version tag
+          tag="${VERSION/-build/.}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "Release tag/name: $tag"
+
+      - name: Download artifacts from CI run
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ steps.ci_run.outputs.run_id }}
+          path: artifacts
+
+      - name: Generate integrity hashes
+        id: integrity
+        uses: ./.github/actions/generate-integrity-hashes
+        with:
+          artifacts_path: artifacts
+          output_path: artifacts/integrity-hashes
+
+      - name: Build release asset inventory
+        shell: bash
+        env:
+          CI_RUN_ID: ${{ steps.ci_run.outputs.run_id }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          root="artifacts"
+          inv="$root/release-asset-inventory.txt"
+          mkdir -p "$root"
+
+          report() {
+            local label="$1"; shift
+            local pattern=("$@")
+            echo "### $label" >> "$inv"
+            if files=$(find "$root" -type f \( $(printf -- "-name \"%s\" -o " "${pattern[@]}") -false \) -print | sort); then
+              if [ -n "$files" ]; then
+                echo "$files" >> "$inv"
+              else
+                echo "MISSING" >> "$inv"
+              fi
+            else
+              echo "MISSING" >> "$inv"
+            fi
+            echo >> "$inv"
+          }
+
+          {
+            echo "Release asset inventory"
+            echo "CI run: $CI_RUN_ID"
+            echo "Tag: $TAG"
+            echo "Generated: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            echo
+            echo "Expected categories (low effort):"
+            echo "- Requirements snapshots (full table + ISO 29148 lint)"
+            echo "- Version report (VERSION_STRING/BUILD_NUMBER/tag + version JSON)"
+            echo "- SD/Tooling manifests + commit-index JSON/CSV"
+            echo "- CI evidence (build/verify/draft-release logs + log-stash summary)"
+            echo "- VS Code tasks manifest (paths/hashes/deps)"
+            echo "- Integrity hashes (SHA256 for published artifacts)"
+            echo "- Repro recipe (pinned container spec or one-shot rebuild script)"
+            echo
+          } > "$inv"
+
+          report "requirements snapshots" "requirements.*" "*requirements*lint*" "*iso-29148*"
+          report "version report" "*version*.json" "*version*.txt"
+          report "SD/Tooling manifests & commit indexes" "*manifest*.json" "*manifest*.csv" "*commit-index*.json" "*commit-index*.csv"
+          report "CI evidence" "*log*.txt" "*log*.md" "*log-stash*" "*report*.txt" "*report*.md"
+          report "VS Code tasks manifest" "*tasks*.json" "*tasks*.md"
+          report "integrity hashes" "*sha256*" "*checksum*" "*checksums*"
+          report "repro recipe" "*repro*" "*container*.yml" "*container*.yaml" "*rebuild*"
+
+          echo "### All artifacts" >> "$inv"
+          if files=$(find "$root" -type f -print | sort); then
+            if [ -n "$files" ]; then
+              echo "$files" >> "$inv"
+            else
+              echo "MISSING" >> "$inv"
+            fi
+          else
+            echo "MISSING" >> "$inv"
+          fi
+
+      - name: Verify required artifacts and hashes
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="artifacts"
+
+          require() {
+            local label="$1"; shift
+            local patterns=("$@")
+            local found=""
+            for p in "${patterns[@]}"; do
+              if f=$(find "$root" -type f -name "$p" -print -quit); then
+                if [ -n "$f" ]; then
+                  found="yes"
+                  break
+                fi
+              fi
+            done
+            if [ -z "$found" ]; then
+              echo "Missing required artifact: $label (patterns: ${patterns[*]})" >&2
+              exit 1
+            fi
+          }
+
+          require "requirements snapshot" "requirements.*"
+          require "version report" "*version*.json" "*version*.txt"
+          require "SD/Tooling manifests" "*manifest*.json"
+          require "commit indexes" "*commit-index*.json"
+          require "VSCode tasks manifest" "*tasks*.json"
+          require "integrity hashes" "*.sha256*" "*sha256*.txt"
+
+          # Verify all sha256 files present are valid
+          shopt -s globstar
+          sha_files=($(find "$root" -type f -name "*.sha256*" -print))
+          if [ "${#sha_files[@]}" -eq 0 ]; then
+            echo "No sha256 files found under $root; expected integrity hashes." >&2
+            exit 1
+          fi
+          for sha in "${sha_files[@]}"; do
+            dir=$(dirname "$sha")
+            base=$(basename "$sha")
+            echo "Verifying checksums in $sha"
+            (cd "$dir" && sha256sum -c "$base")
+          done
+
+      - name: Generate release notes
+        shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          CI_RUN_ID: ${{ steps.ci_run.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          inv_path="release-asset-inventory.txt"
+          notes="release-notes.md"
+          cat > "$notes" <<EOF
+          # $TAG (Draft)
+
+          CI run: $CI_RUN_ID
+
+          <details>
+            <summary>Requirements Snapshot</summary>
+
+            - requirements.html / requirements.json
+            - ISO 29148 lint report
+          </details>
+
+          <details>
+            <summary>Source & Tooling Manifests</summary>
+
+            - SD/Tooling manifest.json / manifest.csv
+            - commit-index.json / commit-index.csv
+            - VS Code tasks manifest
+          </details>
+
+          <details>
+            <summary>Version & Integrity</summary>
+
+            - version.json / version.txt (VERSION_STRING, BUILD_NUMBER, tag)
+            - sha256 checksum files for all artifacts
+          </details>
+
+          <details>
+            <summary>CI Evidence</summary>
+
+            - build/verify logs
+            - draft-release log
+            - log-stash summary/manifest (if produced)
+          </details>
+
+          <details>
+            <summary>Repro Recipe</summary>
+
+            - pinned container spec or one-shot rebuild script for SD/Tooling
+          </details>
+
+          <details>
+            <summary>Inventory</summary>
+
+            - $inv_path
+          </details>
+          EOF
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          IS_PRERELEASE: ${{ steps.version.outputs.IS_PRERELEASE }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          prerelease_flag=""
+          if [ "${IS_PRERELEASE,,}" = "true" ]; then
+            prerelease_flag="--prerelease"
+          fi
+          notes_file="release-notes.md"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; updating notes."
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$notes_file"
+          else
+            gh release create "$TAG" --title "$TAG" --draft $prerelease_flag --notes-file "$notes_file" --repo "$GITHUB_REPOSITORY"
+          fi
+
+      - name: Upload artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s globstar
+          root="artifacts"
+          found=0
+          for f in "$root"/**/*; do
+            [ -f "$f" ] || continue
+            name=$(basename "$f")
+            echo "Uploading $f as $name"
+            found=1
+            gh release upload "$TAG" "$f" --clobber --repo "$GITHUB_REPOSITORY"
+          done
+          if [ "$found" -eq 0 ]; then
+            echo "No files found under $root to upload." >&2
+            exit 1
+          fi
+
+      - name: Append requirements links to release notes
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="${{ steps.tag.outputs.tag }}"
+          repo="${GITHUB_REPOSITORY}"
+          # Fetch current body
+          current=$(gh release view "$tag" --repo "$repo" --json body --jq .body)
+          line="Requirements: [requirements.html](https://github.com/${repo}/releases/download/${tag}/requirements.html) | [requirements.json](https://github.com/${repo}/releases/download/${tag}/requirements.json)"
+          tmp=$(mktemp)
+          printf "%s\n\n%s\n" "${current:-}" "$line" > "$tmp"
+          gh release edit "$tag" --repo "$repo" --notes-file "$tmp"

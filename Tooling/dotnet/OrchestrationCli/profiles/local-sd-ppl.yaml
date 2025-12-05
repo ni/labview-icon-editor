@@ -1,0 +1,152 @@
+# Profile: Windows SD→PPL handoff
+# This plan describes the steps the Windows executor shall perform when driving the local-sd → PPL handshake.
+# Each task mirrors the operations in scripts/orchestration/Run-LocalSd-Ppl.ps1 and the associated OrchestrationCli call.
+tasks:
+  - id: prereq-check
+    description: Ensure dotnet, LabVIEW, VIPM, and git prerequisites exist before starting the SD build.
+    condition: "!env.OLLAMA_EXECUTOR_MODE || env.OLLAMA_EXECUTOR_MODE != 'sim'"
+    command: pwsh
+    args:
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+      - scripts/setup-runner/Verify-RunnerPrereqs.ps1
+
+  - id: build-source-distribution
+    dependsOn: [prereq-check]
+    description: Run Build_Source_Distribution.ps1 (OrchestrationCli local-sd) to produce labview-icon-api.zip and manifest artifacts.
+    command: pwsh
+    args:
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+      - scripts/build-source-distribution/Build_Source_Distribution.ps1
+      - -RepositoryPath
+      - .
+
+  - id: validate-zip
+    dependsOn: [build-source-distribution]
+    description: Confirm labview-icon-api.zip exists and capture its SHA256 for the handshake.
+    command: pwsh
+    args:
+      - -NoProfile
+      - -Command
+      - >
+        $zip='builds/artifacts/labview-icon-api.zip';
+        if (-not (Test-Path -LiteralPath $zip)) { throw "Source distribution zip missing at $zip" }
+        $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash;
+        Write-Host "[artifact][labview-icon-api.zip] $hash";
+        Set-Content -LiteralPath artifacts/labview-icon-api.zip.sha256 -Value $hash
+
+  - id: extract-sd
+    dependsOn: [validate-zip]
+    description: Extract labview-icon-api.zip to a stable path for tests/PPL (shared runKey/worktree).
+    command: pwsh
+    args:
+      - -NoProfile
+      - -Command
+      - >
+        $extract='builds/ppl-from-sd/local-sd-ppl';
+        if (Test-Path -LiteralPath $extract) { Remove-Item -LiteralPath $extract -Recurse -Force }
+        New-Item -ItemType Directory -Path $extract -Force | Out-Null;
+        Expand-Archive -LiteralPath builds/artifacts/labview-icon-api.zip -DestinationPath $extract -Force;
+        $proj=Join-Path $extract 'lv_icon_editor.lvproj';
+        if (-not (Test-Path -LiteralPath $proj -PathType Leaf)) { throw "Extracted SD missing project: $proj" }
+        Write-Host "[sequence] extracted lvproj: $proj"
+
+  - id: missing-check
+    dependsOn: [extract-sd]
+    description: Run missing-in-project against the extracted SD before PPL build.
+    command: pwsh
+    args:
+      - -NoProfile
+      - -File
+      - scripts/missing-in-project/RunMissingCheckWithGCLI.ps1
+      - -LVVersion
+      - 2021
+      - -Arch
+      - 64
+      - -ProjectFile
+      - builds/ppl-from-sd/local-sd-ppl/lv_icon_editor.lvproj
+
+  - id: unit-tests
+    dependsOn: [missing-check]
+    description: Run LUnit tests against the extracted SD before PPL build.
+    command: pwsh
+    args:
+      - -NoProfile
+      - -File
+      - scripts/run-unit-tests/RunUnitTests.ps1
+      - -SupportedBitness
+      - 64
+      - -Package_LabVIEW_Version
+      - 2021
+      - -AbsoluteProjectPath
+      - builds/ppl-from-sd/local-sd-ppl/lv_icon_editor.lvproj
+
+  - id: build-ppl
+    dependsOn: [unit-tests]
+    description: Build the Editor Packed Library from the zipped SD payload.
+    command: pwsh
+    args:
+      - -ExecutionPolicy
+      - Bypass
+      - -File
+      - scripts/ppl-from-sd/Build_Ppl_From_SourceDistribution.ps1
+      - -RepositoryPath
+      - .
+      - -SourceDistZip
+      - builds/artifacts/labview-icon-api.zip
+      - -ExtractRoot
+      - builds/ppl-from-sd/local-sd-ppl
+      - -UseExistingExtract
+
+  - id: handshake
+    dependsOn: [build-ppl]
+    description: Copy the zip + PPL into artifacts/, stage builds-isolated/<runKey>/, and write the handshake JSON.
+    command: pwsh
+    args:
+      - -NoProfile
+      - -Command
+      - >
+        $repo=(Get-Location).ProviderPath;
+        $runKey=$env:ORCH_RUN_KEY;
+        if (-not $runKey) { $runKey='local-sd-ppl' }
+        $lockPath=$env:ORCH_LOCK_PATH;
+        if (-not $lockPath) { $lockPath=Join-Path $repo '.locks/orchestration.lock' }
+        $ttl = $env:ORCH_LOCK_TTL_SEC;
+        if (-not $ttl) { $ttl=900 }
+        $zipSrc=Join-Path $repo 'builds/artifacts/labview-icon-api.zip';
+        $zipDest=Join-Path $repo 'artifacts/labview-icon-api.zip';
+        Copy-Item -LiteralPath $zipSrc -Destination $zipDest -Force;
+        $pplSrc=Join-Path $repo 'builds/ppl-from-sd/local-sd-ppl/resource/plugins/lv_icon.lvlibp';
+        $pplDest=Join-Path $repo 'artifacts/labview-icon-api.ppl';
+        Copy-Item -LiteralPath $pplSrc -Destination $pplDest -Force;
+        $artifactHashes = @(
+          @{Path=$zipDest; Label='labview-icon-api.zip'},
+          @{Path=$pplDest; Label='labview-icon-api.ppl'}
+        );
+        $data=@{};
+        foreach ($entry in $artifactHashes) {
+          $hash=(Get-FileHash -LiteralPath $entry.Path -Algorithm SHA256).Hash;
+          $rel=[System.IO.Path]::GetRelativePath($repo, $entry.Path);
+          $data[$entry.Label] = @{path=$rel; sha256=$hash};
+          Write-Host "[artifact][$($entry.Label)] $rel ($hash)";
+        }
+        $handshake = @{
+          runKey = $runKey;
+          lockPath = (Resolve-Path -LiteralPath $lockPath).Path;
+          lockTtlSec = [int]$ttl;
+          zipRelPath = [System.IO.Path]::GetRelativePath($repo, $zipDest);
+          zipSha256 = $data['labview-icon-api.zip'].sha256;
+          pplRelPath = [System.IO.Path]::GetRelativePath($repo, $pplDest);
+          pplSha256 = $data['labview-icon-api.ppl'].sha256;
+          timestampUtc = (Get-Date).ToUniversalTime().ToString('o')
+        };
+        $jsonPath=Join-Path $repo 'artifacts/labview-icon-api-handshake.json';
+        ConvertTo-Json $handshake -Depth 5 | Set-Content -LiteralPath $jsonPath -Encoding utf8;
+        $isoDir=Join-Path $repo 'builds-isolated';
+        $runDir=Join-Path $isoDir $runKey;
+        New-Item -ItemType Directory -Path $runDir -Force | Out-Null;
+        Copy-Item -Path 'artifacts' -Destination $runDir -Recurse -Force;
+        Write-Host "Staged handshake under $runDir"
