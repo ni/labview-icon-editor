@@ -32,6 +32,20 @@ if (-not $IsWindows) {
     exit 1
 }
 
+# Resolve repository root robustly (covers cases where known folders move when OneDrive is enabled/disabled).
+$resolverPath = Join-Path $PSScriptRoot 'common/resolve-repo-root.ps1'
+if (-not (Test-Path -LiteralPath $resolverPath -PathType Leaf)) {
+    Write-Error "Repo resolver not found at $resolverPath"
+    exit 1
+}
+. $resolverPath
+$resolvedRepo = Resolve-RepoRoot -StartPaths @($SourceRepoPath, $PSScriptRoot, (Get-Location).Path)
+if (-not $resolvedRepo) {
+    Write-Error "Unable to resolve repository root from '$SourceRepoPath' or the current script location."
+    exit 1
+}
+$SourceRepoPath = $resolvedRepo
+
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     Write-Warning "git not found on PATH; falling back to in-place orchestrator build (no worktree isolation)."
     $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
@@ -46,7 +60,7 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
         exit 1
     }
     $prov = & $resolver -CliName 'OrchestrationCli' -RepoPath $SourceRepoPath -SourceRepoPath $SourceRepoPath -PrintProvenance:$false
-    $args = @(
+    $cliArgs = @(
         "package-build",
         "--repo", $SourceRepoPath,
         "--ref", $Ref,
@@ -60,10 +74,10 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
         "--author", $AuthorName,
         "--labview-minor", "3"
     )
-    if ($IsWindows) { $args += "--managed" }
+    if ($IsWindows) { $cliArgs += "--managed" }
 
-    Write-Host ("{0} {1}" -f $prov.Command[0], ($prov.Command[1..($prov.Command.Count-1)] + $args -join ' '))
-    & $prov.Command[0] @($prov.Command[1..($prov.Command.Count-1)]) @args
+    Write-Host ("{0} {1}" -f $prov.Command[0], ($prov.Command[1..($prov.Command.Count-1)] + $cliArgs -join ' '))
+    & $prov.Command[0] @($prov.Command[1..($prov.Command.Count-1)]) @cliArgs
     exit $LASTEXITCODE
 }
 
