@@ -164,8 +164,8 @@ function Repair-NIIconEditor32From64 {
         [string]$LvVersion
     )
 
-    $pf64 = ${env:ProgramFiles}
-    $pf32 = ${env:ProgramFiles(x86)}
+    $pf64 = ${env:ProgramFiles}; if (-not $pf64) { try { $pf64 = [Environment]::GetFolderPath('ProgramFiles') } catch { } }
+    $pf32 = ${env:ProgramFiles(x86)}; if (-not $pf32) { try { $pf32 = [Environment]::GetFolderPath('ProgramFilesX86') } catch { } }
     if (-not $pf64 -or -not $pf32) {
         Write-Verbose "ProgramFiles/ProgramFiles(x86) not available; skipping NIIconEditor repair."
         return
@@ -173,6 +173,7 @@ function Repair-NIIconEditor32From64 {
 
     $root64 = Join-Path $pf64 "National Instruments\LabVIEW $LvVersion\resource\plugins\NIIconEditor"
     $root32 = Join-Path $pf32 "National Instruments\LabVIEW $LvVersion\resource\plugins\NIIconEditor"
+    $repoRoot = Join-Path $RepoPath "resource\plugins\NIIconEditor"
 
     $missingList = Join-Path $RepoPath 'missing_files.txt'
     if (-not (Test-Path -LiteralPath $missingList -PathType Leaf)) {
@@ -184,12 +185,21 @@ function Repair-NIIconEditor32From64 {
     if (-not $entries -or $entries.Count -eq 0) { return }
 
     $copied = 0
+    $missingBoth = @()
     foreach ($src in $entries) {
         $dest = $src.Replace($root64, $root32)
         if (Test-Path -LiteralPath $dest) { continue }
-        if (-not (Test-Path -LiteralPath $src)) {
-            Write-Warning ("[fixup] 64-bit NIIconEditor source missing: {0}" -f $src)
-            continue
+        $sourcePath = $src
+        if (-not (Test-Path -LiteralPath $sourcePath)) {
+            # Fall back to repo copy of the NIIconEditor tree if present.
+            $repoCandidate = $src.Replace($root64, $repoRoot)
+            if (Test-Path -LiteralPath $repoCandidate) {
+                $sourcePath = $repoCandidate
+            }
+            else {
+                $missingBoth += $src
+                continue
+            }
         }
 
         $destDir = Split-Path -Parent $dest
@@ -197,12 +207,17 @@ function Repair-NIIconEditor32From64 {
             New-Item -ItemType Directory -Path $destDir -Force | Out-Null
         }
 
-        Copy-Item -LiteralPath $src -Destination $dest -Force
+        Copy-Item -LiteralPath $sourcePath -Destination $dest -Force
         $copied += 1
     }
 
     if ($copied -gt 0) {
         Write-Information ("[fixup] Copied {0} NIIconEditor files into 32-bit LabVIEW {1}" -f $copied, $LvVersion) -InformationAction Continue
+    }
+
+    if ($missingBoth -and $missingBoth.Count -gt 0) {
+        $preview = ($missingBoth | Select-Object -First 10) -join [Environment]::NewLine
+        throw "NIIconEditor repair failed: {0} files are missing in both the 64-bit install and the repo fallback. Examples:`n{1}`nUpdate the install or add the missing files under resource/plugins/NIIconEditor." -f $missingBoth.Count, $preview
     }
 }
 
