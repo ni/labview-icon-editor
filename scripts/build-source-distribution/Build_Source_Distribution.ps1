@@ -482,6 +482,8 @@ $isolationTargets = @(
 )
 if (-not $SkipAssetIsolation) {
     Disable-LabVIEWAssets -Paths $isolationTargets
+    # Rehydrate the LabVIEW install with repo-sourced Icon Editor assets so <resource> lookups succeed during headless g-cli builds.
+    Sync-IconEditorAssets -RepoRoot $repoRoot -LabVIEWVersion $Package_LabVIEW_Version
 }
 
 try {
