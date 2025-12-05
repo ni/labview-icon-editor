@@ -215,47 +215,15 @@ Describe "OrchestrationCli reset-source-dist" -Tags @('Integration', 'Orchestrat
                 # Check for telemetry log
                 $telemetryDir = Join-Path $fixture.Path 'builds/logs'
                 if (Test-Path -LiteralPath $telemetryDir) {
-                    $telemetryLogs = Get-ChildItem -Path $telemetryDir -Filter '*.json' -File -ErrorAction SilentlyContinue
+                    $telemetryLogs = Get-ChildItem -Path $telemetryDir -Filter '*telemetry-source-dist-reset*.json' -File -ErrorAction SilentlyContinue
                     
                     if ($telemetryLogs.Count -gt 0) {
                         $telemetryPath = $telemetryLogs[0].FullName
                         $telemetry = Get-Content -LiteralPath $telemetryPath -Raw | ConvertFrom-Json
                         
-                        $telemetry.PSObject.Properties['build_spec'] | Should -Not -BeNullOrEmpty
+                        Test-TelemetryLog -TelemetryLogPath $telemetryPath -RequiredFields @('build_spec','labview_version','repo_root') | Should -BeTrue
                         $telemetry.build_spec | Should -Match 'source-dist-reset|reset'
-                        
-                        # Verify other standard fields
-                        Test-TelemetryLog -TelemetryLogPath $telemetryPath `
-                            -RequiredFields @('build_spec', 'repo_root') | 
-                            Should -BeTrue
-                    }
-                }
-            }
-            finally {
-                $fixture.Dispose.Invoke($fixture.Path)
-            }
-        }
-
-        It "fails test if telemetry is missing (guards instrumentation debt)" {
-            $fixture = New-SyntheticRepo -IncludeBuildsArtifacts
-
-            try {
-                $result = & $script:InvokeResetSourceDist -RepoPath $fixture.Path
-
-                $result.ExitCode | Should -Be 0
-
-                # This is a negative test: telemetry MUST exist
-                $telemetryDir = Join-Path $fixture.Path 'builds/logs'
-                
-                # If telemetry directory exists, logs must be present
-                if (Test-Path -LiteralPath $telemetryDir) {
-                    $telemetryLogs = Get-ChildItem -Path $telemetryDir -Filter '*.json' -File -ErrorAction SilentlyContinue
-                    
-                    # If implementation doesn't create telemetry yet, this test will catch it
-                    if ($telemetryLogs.Count -eq 0) {
-                        Write-Warning "Telemetry logging not yet implemented for reset-source-dist"
-                        # Mark as pending implementation
-                        Set-ItResult -Pending -Because "Telemetry logging not yet implemented"
+                        $telemetry.labview_version | Should -Not -BeNullOrEmpty
                     }
                 }
             }

@@ -523,6 +523,31 @@ public static class Program
             stderr = result.StdErr
         };
 
+        try
+        {
+            var logsDir = Path.Combine(repo, "builds", "logs");
+            Directory.CreateDirectory(logsDir);
+            var telemetryPath = Path.Combine(logsDir, $"telemetry-source-dist-reset-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}.json");
+            var telemetry = new
+            {
+                build_spec = "source-dist-reset",
+                labview_version = string.IsNullOrWhiteSpace(opts.LvVersion) ? "unknown" : opts.LvVersion,
+                bitness = opts.Bitness,
+                repo_root = repo,
+                status,
+                archive_existing = opts.ResetArchiveExisting,
+                emit_summary = opts.ResetEmitSummary,
+                summary_json = opts.ResetSummaryJson,
+                duration_ms = result.DurationMs,
+                generated_at = DateTime.UtcNow.ToString("o")
+            };
+            File.WriteAllText(telemetryPath, JsonSerializer.Serialize(telemetry, new JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch
+        {
+            // telemetry best-effort
+        }
+
         return new CommandResult("reset-source-dist", status, result.ExitCode, result.DurationMs, details);
     }
 
@@ -1258,6 +1283,32 @@ public static class Program
         log($"source-dist verify: checked={checkedCount}, null={nullCommits.Count}, failures={failures.Count}, warnings={warnings.Count}, strict={opts.SourceDistStrict}");
         Console.WriteLine($"[artifact][source-dist-verify] report: {GetRelativePathSafe(repo, reportPath)}");
         Console.WriteLine($"[artifact][source-dist-verify] extracted: {GetRelativePathSafe(repo, extractDir)}");
+
+        try
+        {
+            var logsDir = Path.Combine(repo, "builds", "logs");
+            Directory.CreateDirectory(logsDir);
+            var telemetryPath = Path.Combine(logsDir, $"telemetry-source-dist-verify-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}.json");
+            var telemetry = new
+            {
+                build_spec = "source-dist-verify",
+                labview_version = string.IsNullOrWhiteSpace(opts.LvVersion) ? "unknown" : opts.LvVersion,
+                bitness = opts.Bitness,
+                repo_root = repo,
+                zip = GetRelativePathSafe(repo, zipPath),
+                manifest = GetRelativePathSafe(repo, manifestJson),
+                commit_index = GetRelativePathSafe(repo, commitIndexPath),
+                status,
+                failures = failures.Count,
+                warnings = warnings.Count,
+                generated_at = DateTime.UtcNow.ToString("o")
+            };
+            File.WriteAllText(telemetryPath, JsonSerializer.Serialize(telemetry, new JsonSerializerOptions { WriteIndented = true }));
+        }
+        catch
+        {
+            // telemetry best-effort
+        }
 
         if (opts.SourceDistLogStash)
         {

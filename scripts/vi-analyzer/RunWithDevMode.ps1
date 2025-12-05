@@ -99,7 +99,10 @@ try {
         }
 
         $extraArgs = @()
-        if ($effectiveRequest.PSObject.Properties['additionalArguments'] -and $effectiveRequest.additionalArguments) {
+        if (-not $effectiveRequest.PSObject.Properties['additionalArguments']) {
+            $effectiveRequest | Add-Member -NotePropertyName 'additionalArguments' -NotePropertyValue @()
+        }
+        if ($effectiveRequest.additionalArguments) {
             $extraArgs = @($effectiveRequest.additionalArguments)
         }
         if ($portNumber -and -not ($extraArgs | Where-Object { $_ -eq '-PortNumber' })) {
@@ -109,8 +112,6 @@ try {
         }
         if ($extraArgs) {
             $effectiveRequest.additionalArguments = $extraArgs
-        } elseif (-not $effectiveRequest.PSObject.Properties['additionalArguments']) {
-            $effectiveRequest | Add-Member -NotePropertyName 'additionalArguments' -NotePropertyValue @()
         } elseif (-not $effectiveRequest.additionalArguments) {
             $effectiveRequest.additionalArguments = @()
         }

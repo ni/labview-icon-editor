@@ -173,7 +173,10 @@ class Program
                 [string]$RepoPath,
                 [string]$CommitIndexPath,
                 [string[]]$ExtraArgs,
-                [hashtable]$EnvOverrides
+                [hashtable]$EnvOverrides,
+                [string]$PackageVersion = '2025',
+                [string]$Bitness = '64',
+                [switch]$OmitCommitIndex
             )
 
             $envSnapshot = @{}
@@ -190,11 +193,13 @@ class Program
                     '-NonInteractive',
                     '-File', $script:Subject,
                     '-RepositoryPath', $RepoPath,
-                    '-Package_LabVIEW_Version', '2025',
-                    '-SupportedBitness', '64',
-                    '-CommitIndexPath', $CommitIndexPath,
+                    '-Package_LabVIEW_Version', $PackageVersion,
+                    '-SupportedBitness', $Bitness,
                     '-SkipAssetIsolation'
                 )
+                if (-not $OmitCommitIndex -and $CommitIndexPath) {
+                    $cliArgs += @('-CommitIndexPath', $CommitIndexPath)
+                }
                 if ($ExtraArgs) { $cliArgs += $ExtraArgs }
                 $output = & $script:PwshPath @cliArgs 2>&1
                 $code = $LASTEXITCODE
@@ -242,6 +247,19 @@ class Program
         }
     }
 
+    It "requires a commit index when the supplied path is missing" {
+        $fixture = & $script:NewBuildSdFixture
+        try {
+            $missingCommitIndex = Join-Path $fixture.Path 'builds/cache/missing-commit-index.json'
+            $run = & $script:InvokeBuildSourceDistribution -RepoPath $fixture.Path -CommitIndexPath $missingCommitIndex
+            $run.ExitCode | Should -Not -Be 0
+            ($run.Output -join ' ') | Should -Match 'Commit index not found'
+        }
+        finally {
+            $fixture.Dispose.Invoke($fixture.Path)
+        }
+    }
+
     It "invokes g-cli with LabVIEWIconAPI and records manifest metadata" {
         $fixture = & $script:NewBuildSdFixture -IncludeSupport
         $distRoot = Join-Path $fixture.Path 'builds/LabVIEWIconAPI'
@@ -281,6 +299,70 @@ class Program
         }
     }
 
+    It "builds g-cli command lines with overrides" {
+        $fixture = & $script:NewBuildSdFixture
+        $distRoot = Join-Path $fixture.Path 'builds/LabVIEWIconAPI'
+        $logPath = Join-Path $fixture.Path 'gcli-args-overrides.log'
+        $payloads = 'resource/plugins/generated/sample.vi'
+        $envOverrides = @{
+            BUILD_SD_TEST_GCLI_LOG = $logPath
+            BUILD_SD_TEST_DIST = $distRoot
+            BUILD_SD_TEST_PAYLOADS = $payloads
+        }
+
+        try {
+            $run = & $script:InvokeBuildSourceDistribution -RepoPath $fixture.Path -CommitIndexPath $fixture.CommitIndexPath -EnvOverrides $envOverrides -PackageVersion '2030' -Bitness '32' -ExtraArgs @('-GcliPath', $script:StubExePath)
+            if ($run.ExitCode -ne 0) {
+                Write-Host ($run.Output -join [Environment]::NewLine)
+            }
+            $run.ExitCode | Should -Be 0
+
+            $args = Get-Content -LiteralPath $logPath
+            $joined = $args -join ' '
+            $joined | Should -Match '--lv-ver 2030'
+            $joined | Should -Match '--arch 32'
+            $joined | Should -Match 'lvbuildspec'
+            $joined | Should -Match '-- -p .+lv_icon_editor.lvproj'
+            $joined | Should -Match '-b LabVIEWIconAPI'
+        }
+        finally {
+            $fixture.Dispose.Invoke($fixture.Path)
+        }
+    }
+
+    It "annotates manifest and CSV entries for nested payloads" {
+        $fixture = & $script:NewBuildSdFixture -IncludeSupport
+        $distRoot = Join-Path $fixture.Path 'builds/LabVIEWIconAPI'
+        $envOverrides = @{
+            BUILD_SD_TEST_DIST = $distRoot
+            BUILD_SD_TEST_PAYLOADS = 'resource/plugins/nested/deep/sample.vi'
+            BUILD_SD_TEST_GCLI_LOG = Join-Path $fixture.Path 'gcli-args-nested.log'
+        }
+
+        try {
+            $run = & $script:InvokeBuildSourceDistribution -RepoPath $fixture.Path -CommitIndexPath $fixture.CommitIndexPath -EnvOverrides $envOverrides -ExtraArgs @('-GcliPath', $script:StubExePath)
+            if ($run.ExitCode -ne 0) {
+                Write-Host ($run.Output -join [Environment]::NewLine)
+            }
+            $run.ExitCode | Should -Be 0
+
+            $manifestPath = Join-Path $distRoot 'manifest.json'
+            $csvPath = Join-Path $distRoot 'manifest.csv'
+            $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+            $nested = $manifest | Where-Object path -eq 'resource/plugins/nested/deep/sample.vi'
+            $nested | Should -Not -BeNullOrEmpty
+            $nested.commit_source | Should -Be 'index'
+            $nested.last_commit | Should -Match '^[0-9a-f]{40}$'
+
+            $csv = Get-Content -LiteralPath $csvPath | ConvertFrom-Csv
+            $csv.Count | Should -Be $manifest.Count
+            ($csv | Where-Object path -eq 'resource/plugins/nested/deep/sample.vi').commit_source | Should -Be 'index'
+        }
+        finally {
+            $fixture.Dispose.Invoke($fixture.Path)
+        }
+    }
+
     It "writes artifacts under an override output root" {
         $fixture = & $script:NewBuildSdFixture -IncludeSupport
         $overrideRoot = Join-Path $fixture.Path 'custom\sd-output'
@@ -299,6 +381,8 @@ class Program
             $run.ExitCode | Should -Be 0
             Test-Path -LiteralPath (Join-Path $overrideRoot 'manifest.json') | Should -BeTrue
             Test-Path -LiteralPath (Join-Path $fixture.Path 'builds/LabVIEWIconAPI') | Should -BeFalse
+            Test-Path -LiteralPath (Join-Path $fixture.Path 'builds-isolated/builds/LabVIEWIconAPI/manifest.json') | Should -BeTrue
+            Test-Path -LiteralPath (Join-Path $fixture.Path 'builds-isolated/builds/artifacts/labview-icon-api.zip') | Should -BeTrue
         }
         finally {
             $fixture.Dispose.Invoke($fixture.Path)
@@ -318,11 +402,15 @@ class Program
                 Write-Host ($run.Output -join [Environment]::NewLine)
             }
             $run.ExitCode | Should -Be 0
-            $manifestPath = Join-Path $distRoot 'manifest.json'
+            $artifactLine = ($run.Output | Where-Object { $_ -match '\[artifact\]\[labview-icon-api\] manifest.json:' } | Select-Object -First 1)
+            $artifactCsv = ($run.Output | Where-Object { $_ -match '\[artifact\]\[labview-icon-api\] manifest.csv:' } | Select-Object -First 1)
+            $manifestPath = if ($artifactLine) { Join-Path $fixture.Path ($artifactLine -split ':',2)[1].Trim() } else { Join-Path $distRoot 'manifest.json' }
             Test-Path -LiteralPath $manifestPath | Should -BeTrue
             $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
             $manifest.Count | Should -Be 0
-            Test-Path -LiteralPath (Join-Path $distRoot 'manifest.csv') | Should -BeTrue
+            $csvPath = if ($artifactCsv) { Join-Path $fixture.Path ($artifactCsv -split ':',2)[1].Trim() } else { Join-Path $distRoot 'manifest.csv' }
+            Test-Path -LiteralPath $csvPath | Should -BeTrue
+            (Get-Content -LiteralPath $csvPath | ConvertFrom-Csv).Count | Should -Be 0
         }
         finally {
             $fixture.Dispose.Invoke($fixture.Path)

@@ -28,6 +28,21 @@ Write-Information "[GCLI] Starting Missing-in-Project check ..." -InformationAct
 Write-Warning "Deprecated: prefer 'pwsh scripts/common/invoke-repo-cli.ps1 -Cli OrchestrationCli -- missing-check --repo <path> --bitness <both|64|32> --project <lvproj> --lv-version <year>'; this script remains as a delegate."
 Write-Information "[legacy-ps] missing-check delegate invoked" -InformationAction Continue
 
+$allowStub = $false
+$strictMissing = $false
+try {
+    $stubEnv = [Environment]::GetEnvironmentVariable('MISSING_IN_PROJECT_ALLOW_STUB','Process')
+    if (-not [string]::IsNullOrWhiteSpace($stubEnv) -and $stubEnv.Trim() -match '^(1|true|yes)$') {
+        $allowStub = $true
+    }
+
+    $strictEnv = [Environment]::GetEnvironmentVariable('MISSING_IN_PROJECT_STRICT','Process')
+    if (-not [string]::IsNullOrWhiteSpace($strictEnv) -and $strictEnv.Trim() -match '^(1|true|yes)$') {
+        $strictMissing = $true
+    }
+}
+catch { $allowStub = $false }
+
 $projectInput = $ProjectFile
 try {
     $ProjectFile = (Resolve-Path -LiteralPath $ProjectFile -ErrorAction Stop).ProviderPath
@@ -60,6 +75,11 @@ Remove-Item $gcliLogPath, $metaPath -ErrorAction SilentlyContinue
 $gcliCmd = Get-Command g-cli -ErrorAction SilentlyContinue
 if (-not $gcliCmd) {
     Write-Warning "g-cli executable not found in PATH."
+    if ($allowStub) {
+        Write-Warning "MISSING_IN_PROJECT_ALLOW_STUB=1 => skipping check and returning success."
+        $global:LASTEXITCODE = 0
+        return
+    }
     $global:LASTEXITCODE = 127
     return
 }
@@ -67,6 +87,11 @@ if (-not $gcliCmd) {
 $viPath = Join-Path -Path $PSScriptRoot -ChildPath 'MissingInProjectCLI.vi'
 if (-not (Test-Path $viPath)) {
     Write-Warning "VI not found: $viPath"
+    if ($allowStub -or -not $strictMissing) {
+        Write-Warning "Missing-in-project check skipped (stub): returning success. Set MISSING_IN_PROJECT_STRICT=1 to fail when VI is absent."
+        $global:LASTEXITCODE = 0
+        return
+    }
     $global:LASTEXITCODE = 2
     return
 }

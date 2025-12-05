@@ -1,0 +1,12 @@
+{
+  "labVIEWVersion": 2023,
+  "bitness": "64",
+  "analysisProjectPath": "lv_icon_editor.lvproj",
+  "tests": [
+    {
+      "viPath": "Tooling/CI CD.lvproj",
+      "configPath": "configs/vi-analyzer-config.sample.xml"
+    }
+  ],
+  "timeoutSeconds": 120
+}

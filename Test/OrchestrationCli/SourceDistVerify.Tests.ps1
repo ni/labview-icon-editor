@@ -229,6 +229,46 @@ Describe "OrchestrationCli source-dist-verify" -Tags @('Integration', 'Orchestra
         }
     }
 
+    Context "Telemetry" {
+        It "emits telemetry with build_spec and labview_version" {
+            $fixture = New-SyntheticRepo -IncludeSupport
+            $distRoot = Join-Path $fixture.Path 'builds/LabVIEWIconAPI'
+
+            $envOverrides = @{
+                BUILD_SD_TEST_DIST = $distRoot
+                BUILD_SD_TEST_PAYLOADS = 'resource/plugins/generated/sample.vi'
+            }
+
+            try {
+                # Build then verify to trigger telemetry
+                $buildResult = & $script:InvokeSourceDistBuild `
+                    -RepoPath $fixture.Path `
+                    -EnvOverrides $envOverrides
+
+                $buildResult.ExitCode | Should -Be 0
+
+                $verifyResult = & $script:InvokeSourceDistVerify -RepoPath $fixture.Path
+                $verifyResult.ExitCode | Should -Be 0
+
+                $logDir = Join-Path $fixture.Path 'builds/logs'
+                Test-Path -LiteralPath $logDir | Should -BeTrue
+
+                $telemetryLogs = Get-ChildItem -Path $logDir -Filter '*telemetry-source-dist-verify*.json' -File -ErrorAction SilentlyContinue
+                $telemetryLogs.Count | Should -BeGreaterThan 0
+
+                $telemetryPath = $telemetryLogs[0].FullName
+                Test-TelemetryLog -TelemetryLogPath $telemetryPath -RequiredFields @('build_spec','labview_version') | Should -BeTrue
+
+                $telemetry = Get-Content -LiteralPath $telemetryPath -Raw | ConvertFrom-Json
+                $telemetry.build_spec | Should -Match 'source-dist-verify'
+                $telemetry.PSObject.Properties['labview_version'] | Should -Not -BeNullOrEmpty
+            }
+            finally {
+                $fixture.Dispose.Invoke($fixture.Path)
+            }
+        }
+    }
+
     Context "Missing manifest handling" {
         It "reports error when manifest does not exist" {
             $fixture = New-SyntheticRepo

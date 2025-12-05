@@ -743,12 +743,18 @@ if ($nonAllowed.Count -gt 0) {
     throw "Manifest contains paths outside allowed scope (resource/, vi.lib/LabVIEW Icon API/, Test/Unit tests/): $sample"
 }
 
-$manifest | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $manifestPath -Encoding utf8
+$manifestJson = ConvertTo-Json -InputObject $manifest -Depth 5
+Set-Content -LiteralPath $manifestPath -Value $manifestJson -Encoding utf8
 # Also emit CSV for spreadsheet/requirements ingestion.
 $manifestCsvPath = Join-Path $distRoot 'manifest.csv'
-$manifest | Select-Object path,last_commit,commit_author,commit_date,commit_source,size_bytes |
-    ConvertTo-Csv -NoTypeInformation |
-    Set-Content -LiteralPath $manifestCsvPath -Encoding utf8
+$manifestCsvRows = if ($manifest.Count -gt 0) {
+    $manifest | Select-Object path,last_commit,commit_author,commit_date,commit_source,size_bytes |
+        ConvertTo-Csv -NoTypeInformation
+}
+else {
+    @('"path","last_commit","commit_author","commit_date","commit_source","size_bytes"')
+}
+$manifestCsvRows | Set-Content -LiteralPath $manifestCsvPath -Encoding utf8
 Write-Host ("Manifest written: {0}" -f $manifestPath)
 $manifestEndTime = Get-Date
 $manifestDuration = ($manifestEndTime - $manifestStartTime).TotalSeconds
