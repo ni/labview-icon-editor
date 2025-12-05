@@ -154,6 +154,58 @@ function Assert-DevModeTokenForRepo {
     throw ("Dev-mode token not found for {0}-bit LabVIEW {1} pointing to {2}. Run task '06 DevMode: Bind (auto)' first, then rerun the build." -f $Bitness, $LvVersion, $repoFull)
 }
 
+# Some LabVIEW installs ship the NIIconEditor source tree only with the 64-bit installation; the 32-bit
+# tree can be missing, which causes the 32-bit PPL build to fail with missing-source errors. When we know
+# the list of missing files (tracked in missing_files.txt), copy any absent 32-bit files from the 64-bit
+# install before building.
+function Repair-NIIconEditor32From64 {
+    param(
+        [string]$RepoPath,
+        [string]$LvVersion
+    )
+
+    $pf64 = ${env:ProgramFiles}
+    $pf32 = ${env:ProgramFiles(x86)}
+    if (-not $pf64 -or -not $pf32) {
+        Write-Verbose "ProgramFiles/ProgramFiles(x86) not available; skipping NIIconEditor repair."
+        return
+    }
+
+    $root64 = Join-Path $pf64 "National Instruments\LabVIEW $LvVersion\resource\plugins\NIIconEditor"
+    $root32 = Join-Path $pf32 "National Instruments\LabVIEW $LvVersion\resource\plugins\NIIconEditor"
+
+    $missingList = Join-Path $RepoPath 'missing_files.txt'
+    if (-not (Test-Path -LiteralPath $missingList -PathType Leaf)) {
+        Write-Verbose "missing_files.txt not found; skipping NIIconEditor repair."
+        return
+    }
+
+    $entries = Get-Content -LiteralPath $missingList -ErrorAction SilentlyContinue | Where-Object { $_ -and ($_ -like "$root64*") }
+    if (-not $entries -or $entries.Count -eq 0) { return }
+
+    $copied = 0
+    foreach ($src in $entries) {
+        $dest = $src.Replace($root64, $root32)
+        if (Test-Path -LiteralPath $dest) { continue }
+        if (-not (Test-Path -LiteralPath $src)) {
+            Write-Warning ("[fixup] 64-bit NIIconEditor source missing: {0}" -f $src)
+            continue
+        }
+
+        $destDir = Split-Path -Parent $dest
+        if (-not (Test-Path -LiteralPath $destDir)) {
+            New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+        }
+
+        Copy-Item -LiteralPath $src -Destination $dest -Force
+        $copied += 1
+    }
+
+    if ($copied -gt 0) {
+        Write-Information ("[fixup] Copied {0} NIIconEditor files into 32-bit LabVIEW {1}" -f $copied, $LvVersion) -InformationAction Continue
+    }
+}
+
 $commitKey = $null
 function Resolve-CommitKey {
     param([string]$RepoPath,[string]$CommitParam)
@@ -1487,6 +1539,9 @@ try {
                 throw ("64-bit LabVIEW {0} process(es) remain before 32-bit phase after waiting 2s: {1}." -f $lvVersion, ($lv64pre.Id -join ', '))
             }
         }
+
+        # If the 32-bit NIIconEditor sources are missing from the LabVIEW install, hydrate them from the 64-bit tree using the curated missing_files.txt list.
+        Repair-NIIconEditor32From64 -RepoPath $RepositoryPath -LvVersion $lvVersion
 
         Show-BitnessBanner -Arch '32'
         Write-Information "Dependencies are expected to be applied beforehand (use the '01 Verify / Apply dependencies' task) before running the build." -InformationAction Continue
