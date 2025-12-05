@@ -65,12 +65,24 @@ Describe "LabVIEWIconAPI automation alignment" {
         $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).ProviderPath
         $buildScriptPath = Join-Path $repoRoot 'scripts/build-source-distribution/Build_Source_Distribution.ps1'
         $orchestrationPath = Join-Path $repoRoot 'Tooling/dotnet/OrchestrationCli/Program.cs'
-        $vipbPath = Join-Path $repoRoot 'Tooling/deployment/seed.vipb'
+        $vipbCandidates = @(
+            'Tooling/deployment/seed.vipb',
+            'Tooling/deployment/NI Icon editor.vipb'
+        )
+
+        $vipbPath = $vipbCandidates
+            | ForEach-Object { Join-Path $repoRoot $_ }
+            | Where-Object { Test-Path -LiteralPath $_ }
+            | Select-Object -First 1
 
         $project = [xml](Get-Content -LiteralPath (Join-Path $repoRoot 'lv_icon_editor.lvproj') -Raw)
         $specNode = $project.SelectSingleNode("//Item[@Type='Source Distribution' and @Name='LabVIEWIconAPI']")
         if (-not $specNode) {
             throw "Build spec 'LabVIEWIconAPI' not found in lv_icon_editor.lvproj"
+        }
+
+        if (-not $vipbPath) {
+            throw "VIPB template not found (checked: $($vipbCandidates -join ', ')). Restore seed.vipb or NI Icon editor.vipb."
         }
 
         $SpecName = $specNode.Property | Where-Object { $_.Name -eq 'Bld_buildSpecName' } | Select-Object -First 1 -ExpandProperty '#text'
