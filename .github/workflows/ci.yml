@@ -633,19 +633,21 @@ jobs:
           path: ${{ steps.locate-build.outputs.plugins_dir }}
           if-no-files-found: error
       - name: Upload VI Package artifact
+        if: steps.locate-build.outputs.vip_path != ''
         uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-vip
           path: ${{ steps.locate-build.outputs.vip_path }}
           if-no-files-found: error
       - name: Analyze built VI package
+        if: steps.locate-build.outputs.vip_path != ''
         id: analyze-vip
         uses: ./.github/actions/analyze-vi-package
         with:
           vip_artifact_path: ${{ steps.locate-build.outputs.vip_path }}
           min_labview: ${{ env.MIN_LABVIEW_POLICY }}
       - name: Upload VI package analysis results
-        if: always()
+        if: always() && steps.analyze-vip.outputs.junit != ''
         uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.repository.name || 'labview-icon-editor' }}-vip-analysis-junit
@@ -699,6 +701,71 @@ jobs:
           if (Test-Path -LiteralPath $script) {
             pwsh -NoProfile -File $script -RepositoryPath "$env:GITHUB_WORKSPACE" -MaxPerCategory 5 -MaxAgeDays 7
           }
+
+  source-dist:
+    name: Build Source Distribution
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, version, resolve-labview-version, test-compute-version-bump, test-tag-existence-check, rtm-gates, docs-quality]
+    runs-on: self-hosted-windows-lv
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          set-safe-directory: true
+          fetch-depth: 0
+      - name: "Guard: Windows runner"
+        if: ${{ runner.os != 'Windows' }}
+        run: exit 1
+      - name: Build commit index for SD
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/build-source-distribution/New-CommitIndex.ps1" `
+            -RepositoryPath "$env:GITHUB_WORKSPACE" `
+            -OutputPath (Join-Path $env:GITHUB_WORKSPACE 'builds/cache/commit-index.json') `
+            -AllowDirty
+      - name: Build LabVIEW Icon API Source Distribution
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/build-source-distribution/Build_Source_Distribution.ps1" `
+            -RepositoryPath "$env:GITHUB_WORKSPACE" `
+            -CommitIndexPath (Join-Path $env:GITHUB_WORKSPACE 'builds/cache/commit-index.json')
+      - name: Locate SD artifacts
+        id: locate-sd
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $distRoot = Join-Path $env:GITHUB_WORKSPACE 'builds/LabVIEWIconAPI'
+          $zip = Join-Path $env:GITHUB_WORKSPACE 'builds/artifacts/labview-icon-api.zip'
+          if (-not (Test-Path -LiteralPath $distRoot -PathType Container)) { throw "LabVIEWIconAPI dist folder missing: $distRoot" }
+          if (-not (Test-Path -LiteralPath $zip -PathType Leaf)) { throw "labview-icon-api.zip missing: $zip" }
+          $manifestJson = Join-Path $distRoot 'manifest.json'
+          $manifestCsv  = Join-Path $distRoot 'manifest.csv'
+          foreach ($p in @($manifestJson, $manifestCsv)) {
+            if (-not (Test-Path -LiteralPath $p -PathType Leaf)) { throw "Missing manifest: $p" }
+          }
+          "sd_zip=$zip" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "sd_manifest_json=$manifestJson" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "sd_manifest_csv=$manifestCsv" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+      - name: Upload Source Distribution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name || 'labview-icon-editor' }}-labview-icon-api
+          path: |
+            ${{ steps.locate-sd.outputs.sd_zip }}
+            ${{ steps.locate-sd.outputs.sd_manifest_json }}
+            ${{ steps.locate-sd.outputs.sd_manifest_csv }}
+          if-no-files-found: error
+      - name: Upload Source Distribution commit index
+        uses: actions/upload-artifact@v4
+        with:
+          name: commit-index-sd
+          path: |
+            builds/cache/commit-index.json
+            builds/cache/commit-index.csv
+          if-no-files-found: error
 
   unify-artifacts:
     name: Unify artifacts
