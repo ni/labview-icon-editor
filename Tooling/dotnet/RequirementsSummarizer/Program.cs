@@ -52,12 +52,14 @@ class Program
                 return 1;
             }
             
-            var headers = lines[0].Split(',').Select(h => h.Trim('"')).ToArray();
+            var headers = ParseCsvLine(lines[0]);
             var requirements = new List<Dictionary<string, string>>();
             
             for (int i = 1; i < lines.Length; i++)
             {
-                var values = lines[i].Split(',').Select(v => v.Trim('"')).ToArray();
+                if (string.IsNullOrWhiteSpace(lines[i])) continue;
+                
+                var values = ParseCsvLine(lines[i]);
                 if (values.Length == headers.Length)
                 {
                     var req = new Dictionary<string, string>();
@@ -193,5 +195,47 @@ class Program
         
         File.WriteAllText(path, sb.ToString());
         Console.WriteLine($"Generated HTML: {path}");
+    }
+    
+    static string[] ParseCsvLine(string line)
+    {
+        var fields = new List<string>();
+        var inQuotes = false;
+        var currentField = new StringBuilder();
+        
+        for (int i = 0; i < line.Length; i++)
+        {
+            char c = line[i];
+            
+            if (c == '"')
+            {
+                if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
+                {
+                    // Escaped quote
+                    currentField.Append('"');
+                    i++;
+                }
+                else
+                {
+                    // Toggle quote state
+                    inQuotes = !inQuotes;
+                }
+            }
+            else if (c == ',' && !inQuotes)
+            {
+                // Field delimiter
+                fields.Add(currentField.ToString());
+                currentField.Clear();
+            }
+            else
+            {
+                currentField.Append(c);
+            }
+        }
+        
+        // Add the last field
+        fields.Add(currentField.ToString());
+        
+        return fields.ToArray();
     }
 }
