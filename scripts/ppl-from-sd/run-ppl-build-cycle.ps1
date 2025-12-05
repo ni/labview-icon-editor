@@ -6,7 +6,8 @@ param(
     [ValidateSet('32','64')][string]$Bitness = '64',
     [switch]$SkipMissingCheck,
     [bool]$ReplacePluginsFolder = $true,
-    [switch]$DevModeForce
+    [switch]$DevModeForce,
+    [switch]$RunUnitTestsAfterMissingCheck
 )
 
 $ErrorActionPreference = 'Stop'
@@ -92,6 +93,20 @@ try {
     if (-not $SkipMissingCheck) {
         Write-Host "[ppl-cycle] Running missing-check"
         dotnet run --project "$repo/Tooling/dotnet/OrchestrationCli/OrchestrationCli.csproj" -- missing-check --repo "$SdRoot" --bitness $Bitness --project lv_icon_editor.lvproj --lv-version $LabVIEWVersion --timeout-sec 300
+    }
+
+    # 4.5) Optional unit tests immediately after missing-check
+    if ($RunUnitTestsAfterMissingCheck) {
+        $testScript = Join-Path $SdRoot 'scripts/test/Test.ps1'
+        if (-not (Test-Path -LiteralPath $testScript -PathType Leaf)) {
+            $candidate = Get-ChildItem -Path (Join-Path $SdRoot 'scripts') -Filter Test.ps1 -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($candidate) { $testScript = $candidate.FullName }
+        }
+        if (-not (Test-Path -LiteralPath $testScript -PathType Leaf)) {
+            throw "Unit test script not found in extracted tree (looked under $SdRoot\\scripts)"
+        }
+        Write-Host "[ppl-cycle] Running unit tests after missing-check"
+        pwsh -NoProfile -File $testScript -RepositoryPath $SdRoot -SupportedBitness $Bitness | Write-Output
     }
 
     # 5) Build

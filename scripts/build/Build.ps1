@@ -182,7 +182,7 @@ function Get-EnvOrDefaultBool {
         [bool]$Default = $false
     )
 
-    $val = $env:$Name
+    $val = [Environment]::GetEnvironmentVariable($Name)
     if ([string]::IsNullOrWhiteSpace($val)) { return $Default }
     switch -Regex ($val.Trim()) {
         '^(1|true|yes|on)$' { return $true }
