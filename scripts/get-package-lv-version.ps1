@@ -47,17 +47,18 @@ if (-not $generalSettings) { throw ("VIPB is missing Library_General_Settings: {
 $raw = ([string]$generalSettings.Package_LabVIEW_Version).Trim()
 if ([string]::IsNullOrWhiteSpace($raw)) { throw "Package_LabVIEW_Version not found in $($vipb.FullName)" }
 
-if ($raw -notmatch '(?i)labview') {
-    throw "Package_LabVIEW_Version must reference 'LabVIEW' or 'LabVIEW>=' (found '$raw' in $($vipb.FullName))."
-}
-
+# Accept either "LabVIEW>=2021" style tokens or legacy numeric-only values like "21.0 (64-bit)".
+$verToken = $null
 $pattern = '(?i)LabVIEW\s*(?:>=\s*)?(?<ver>\d{2,4}(?:\.\d+)?)'
 $match = [regex]::Match($raw, $pattern)
-if (-not $match.Success) {
-    throw "Package_LabVIEW_Version must specify a numeric LabVIEW version after the label (found '$raw' in $($vipb.FullName))."
+if ($match.Success) {
+    $verToken = $match.Groups['ver'].Value
+} elseif ($raw -match '^(?<ver>\d{1,4}(?:\.\d+)?)(?:\s|\(|$)') {
+    $verToken = $Matches['ver']
+} else {
+    throw "Package_LabVIEW_Version must specify a numeric LabVIEW version (found '$raw' in $($vipb.FullName))."
 }
 
-$verToken = $match.Groups['ver'].Value
 $parts = $verToken.Split('.')
 $maj = [int]$parts[0]
 if ($maj -lt 100) { $maj += 2000 }
