@@ -384,8 +384,8 @@ jobs:
           path: test-report.md
           if-no-files-found: error
 
-  docs-quality:
-    name: Docs link check and ADR lint
+  adr-lint:
+    name: ADR lint
     needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, enforce-verify-checklist-needs]
     runs-on: ubuntu-latest
     steps:
@@ -405,6 +405,24 @@ jobs:
           mkdir -p reports
           python3 .github/scripts/lint_requirements_language.py 2>&1 | tee reports/adr-lint.log
           exit "${PIPESTATUS[0]}"
+      - name: Upload ADR lint log
+        uses: actions/upload-artifact@v4
+        with:
+          name: adr-lint
+          path: reports/adr-lint.log
+          if-no-files-found: error
+
+  docs-link-check:
+    name: Docs link check (Lychee)
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, enforce-verify-checklist-needs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Guard: Linux runner"
+        if: ${{ runner.os != 'Linux' }}
+        run: exit 1
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
       - name: Prepare lychee output directory
         run: mkdir -p lychee
       - name: Lychee link checker
@@ -422,12 +440,6 @@ jobs:
           fail: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload ADR lint log
-        uses: actions/upload-artifact@v4
-        with:
-          name: adr-lint
-          path: reports/adr-lint.log
-          if-no-files-found: error
       - name: Upload lychee report
         uses: actions/upload-artifact@v4
         with:
@@ -437,7 +449,7 @@ jobs:
 
   ollama-gate:
     name: Optional Ollama verification
-    needs: [verify-checklist-sync, docs-quality]
+    needs: [verify-checklist-sync, adr-lint, docs-link-check]
     runs-on: ubuntu-latest
     timeout-minutes: 180
     continue-on-error: true
@@ -1075,7 +1087,7 @@ jobs:
           pwsh -NoProfile -File $script -Repo $env:GH_REPO -Token $env:GH_TOKEN
   build-worktree:
     name: Build (LabVIEW Icon API Distribution)
-    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, version, resolve-labview-version, test-compute-version-bump, test-tag-existence-check, rtm-gates, docs-quality, dev-mode-binder-tests, list-collaborators]
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, version, resolve-labview-version, test-compute-version-bump, test-tag-existence-check, rtm-gates, adr-lint, docs-link-check, dev-mode-binder-tests, list-collaborators]
     # Run when all critical dependencies succeed; dev-mode-binder-tests is allowed to fail
     # because it has continue-on-error: true and may timeout if the self-hosted runner is unavailable
     if: |
@@ -1088,7 +1100,8 @@ jobs:
       needs.test-compute-version-bump.result == 'success' &&
       needs.test-tag-existence-check.result == 'success' &&
       needs.rtm-gates.result == 'success' &&
-      needs.docs-quality.result == 'success' &&
+      needs.adr-lint.result == 'success' &&
+      needs.docs-link-check.result == 'success' &&
       needs.list-collaborators.result == 'success'
     runs-on: self-hosted-windows-lv
     timeout-minutes: 60
@@ -1225,7 +1238,7 @@ jobs:
 
   build-tooling:
     name: Build (Tooling Distribution)
-    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, version, resolve-labview-version, test-compute-version-bump, test-tag-existence-check, rtm-gates, docs-quality]
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, version, resolve-labview-version, test-compute-version-bump, test-tag-existence-check, rtm-gates, adr-lint, docs-link-check]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -1448,7 +1461,8 @@ jobs:
       - build-tooling
       - seed-containerized
       - rtm-gates
-      - docs-quality
+      - adr-lint
+      - docs-link-check
       - version
       - version-report
       - vscode-tasks-manifest
