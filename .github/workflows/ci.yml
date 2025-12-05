@@ -506,10 +506,6 @@ jobs:
           echo "should_run=${{ steps.gating.outputs.should_run }}"
           echo "trigger_reason=${{ steps.gating.outputs.trigger_reason }}"
 
-      - name: Execute Ollama verify workflow
-        if: steps.gating.outputs.should_run == 'true'
-        uses: ./.github/workflows/ollama-verify.yml
-
   ollama-sim-linux:
     name: Ollama executor parity (sim, Linux)
     needs: [verify-checklist-sync]
