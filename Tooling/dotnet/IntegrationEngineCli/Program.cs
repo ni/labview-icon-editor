@@ -165,7 +165,7 @@ internal static class Program
             return (null, ex.Message, false);
         }
 
-        bitness = ValidateChoice(bitness, "--bitness", "32", "64");
+        bitness = ValidateChoice(bitness, "--bitness", "both", "32", "64");
         lvlibpBitness = ValidateChoice(lvlibpBitness, "--lvlibp-bitness", "both", "32", "64");
         if (labviewMinor is not (0 or 3))
         {
@@ -310,7 +310,7 @@ internal static class Program
         Console.WriteLine("Options:");
         Console.WriteLine("  --repo <path>              Repository path (default: current directory)");
         Console.WriteLine("  --ref <ref>                Git ref to build (default: HEAD)");
-        Console.WriteLine("  --bitness <32|64>          LabVIEW bitness to build (default: 64)");
+        Console.WriteLine("  --bitness <32|64|both>     LabVIEW bitness to build (default: 64)");
         Console.WriteLine("  --lvlibp-bitness <both|32|64>  PPL bitness (default: both)");
         Console.WriteLine("  --major <int>              Version major (default: 0)");
         Console.WriteLine("  --minor <int>              Version minor (default: 1)");
