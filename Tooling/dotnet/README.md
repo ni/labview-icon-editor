@@ -8,7 +8,7 @@ All C# utilities live under `Tooling/dotnet/` and target .NET 8:
 - `RequirementsSummarizer` - renders summaries/tables from `docs/requirements/requirements.csv`.
 - `TestsCli` - runs `scripts/test/Test.ps1` for missing-in-project + unit tests.
 - `OllamaSmokeCli` - minimal Ollama POST to `/api/generate`, `/api/chat` (`--chat`), or `/api/embed` (`--embed`) for health checks.
-- `OrchestrationCompatCli` - pass-through shim to `OrchestrationCli` (same subcommands/options) plus `devmode-agent` forwarding to `DevModeAgentCli`.
+- `OrchestrationCli` - orchestrates LabVIEW flows (build, verify, tests, devmode, etc.).
 
 ## Dev container
 
@@ -28,6 +28,7 @@ A Dev Container is provided in `.devcontainer/` (Dockerfile + devcontainer.json)
 - Ollama smoke (direct POST to /api/generate or /api/chat):  
   `pwsh scripts/common/invoke-repo-cli.ps1 -Cli OllamaSmokeCli -- --endpoint http://localhost:11435 --model llama3-8b-local --prompt "Hello smoke"`  
   Add `--chat` to call `/api/chat`, `--embed` to call `/api/embed` (hash + length), `--stream` to print tokens live, `--format text` to output plain text, `--check-model` to preflight the model list, `--retries N --retry-delay-ms M` for transient errors, `--verbose` to echo payload/headers, `--save-body <path>` to capture the raw response, `--prompt-file <path>` to read prompt from file, `--prompt-base64 <b64>` to decode prompt, `--messages-file <path>` or `--messages-base64 <b64>` (JSON array) for chat messages, `--max-bytes N` to guard payload size, `--stop <token>` to truncate generation, `--expect-status N` to assert HTTP status, `--exit-on-empty` to fail on empty response, `--trace` for per-attempt timings, `--skip-cert-check` for self-signed local TLS, `--proxy <url>`, `--header key:value`, `--bearer <token>|--bearer-file <path>`, `--output <path>` to write the final text/JSON summary to a file.
-- OrchestrationCompatCli (pass-through to OrchestrationCli and DevModeAgentCli):  
-  `pwsh scripts/common/invoke-repo-cli.ps1 -Cli OrchestrationCompatCli -- <orchestration-cli-args>`  
-  For DevModeAgent: `pwsh scripts/common/invoke-repo-cli.ps1 -Cli OrchestrationCompatCli -- devmode-agent --phrase "/devmode bind 2021 64-bit force" [--execute] [--summary <path>]`
+- OrchestrationCli (primary entrypoint):  
+  `pwsh scripts/common/invoke-repo-cli.ps1 -Cli OrchestrationCli -- <subcommand> [options]`
+- DevModeAgentCli (devmode binder helper):  
+  `pwsh scripts/common/invoke-repo-cli.ps1 -Cli DevModeAgentCli -- --phrase "/devmode bind 2021 64-bit force" [--execute] [--summary <path>]`

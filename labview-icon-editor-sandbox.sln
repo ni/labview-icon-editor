@@ -22,8 +22,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestsCli", "Tooling\dotnet\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntegrationEngineCli", "Tooling\dotnet\IntegrationEngineCli\IntegrationEngineCli.csproj", "{50F97906-2984-402C-9533-1E8AACB958A7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrchestrationCompatCli", "Tooling\dotnet\OrchestrationCompatCli\OrchestrationCompatCli.csproj", "{AA45DEA9-478C-42EE-B5AA-17702F150DD2}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RequirementsSummarizer", "Tooling\dotnet\RequirementsSummarizer\RequirementsSummarizer.csproj", "{2A1B47C3-65D3-4351-A752-9E315F22FC98}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VipbJsonTool", "Tooling\dotnet\VipbJsonTool\VipbJsonTool.csproj", "{24A2B905-01B7-4FD1-A310-E0E334CFA138}"
@@ -74,10 +72,6 @@ Global
 		{50F97906-2984-402C-9533-1E8AACB958A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{50F97906-2984-402C-9533-1E8AACB958A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{50F97906-2984-402C-9533-1E8AACB958A7}.Release|Any CPU.Build.0 = Release|Any CPU
-		{AA45DEA9-478C-42EE-B5AA-17702F150DD2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AA45DEA9-478C-42EE-B5AA-17702F150DD2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AA45DEA9-478C-42EE-B5AA-17702F150DD2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AA45DEA9-478C-42EE-B5AA-17702F150DD2}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2A1B47C3-65D3-4351-A752-9E315F22FC98}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{2A1B47C3-65D3-4351-A752-9E315F22FC98}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2A1B47C3-65D3-4351-A752-9E315F22FC98}.Release|Any CPU.ActiveCfg = Release|Any CPU
