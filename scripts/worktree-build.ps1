@@ -488,6 +488,27 @@ finally {
         Write-Host "Keeping worktree at $WorktreePath (per -KeepWorktree)."
     }
 
+    # After worktree usage, restore dev-mode binding to the source repo to avoid leaving LocalHost.LibraryPaths pointing at a deleted worktree.
+    if ($PrepDevMode) {
+        try {
+            $sourceSetDev = Join-Path -Path $SourceRepoPath -ChildPath 'scripts/set-development-mode/Set_Development_Mode.ps1'
+            $sourceBinder = Join-Path -Path $SourceRepoPath -ChildPath 'scripts/bind-development-mode/BindDevelopmentMode.ps1'
+            if ((Test-Path -LiteralPath $sourceSetDev) -and (Test-Path -LiteralPath $sourceBinder)) {
+                $restoreBitness = if ($LvlibpBitness -eq 'both') { @('32','64') } else { @($SupportedBitness) }
+                Write-Separator "Dev-mode restore to source repo"
+                foreach ($arch in ($restoreBitness | Select-Object -Unique)) {
+                    Write-BitnessBanner -Arch $arch
+                    Write-Host "Rebinding dev mode to source repo ($arch-bit)..."
+                    & $sourceSetDev -RepositoryPath $SourceRepoPath -SupportedBitness $arch
+                    & $sourceBinder -RepositoryPath $SourceRepoPath -Mode bind -Bitness $arch -Force
+                }
+            }
+        }
+        catch {
+            Write-Warning ("Failed to restore dev-mode binding to source repo: {0}" -f $_.Exception.Message)
+        }
+    }
+
     if ($gcliMutex) {
         Write-Host ("Releasing LabVIEW g-cli/VIPM lock '{0}'" -f $GcliMutexName)
         Release-GCliMutex -Lock $gcliMutex
