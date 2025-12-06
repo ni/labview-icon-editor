@@ -79,13 +79,36 @@ if (-not $SeedImage) {
     $SeedImage = if ($env:SEED_IMAGE) { $env:SEED_IMAGE } else { "seed:latest" }
 }
 $SeedBuildContext = if ($SeedBuildContext) { (Resolve-Path -LiteralPath (Join-Path $repo $SeedBuildContext)).ProviderPath } else { $repo }
-$SeedDockerfile = if ($SeedDockerfile) { (Resolve-Path -LiteralPath (Join-Path $repo $SeedDockerfile)).ProviderPath } else { (Join-Path $repo 'Tooling/seed/Dockerfile') }
 
-# Build seed image locally before running
-Write-Host "[vipb-bump] Building seed image $SeedImage from $SeedBuildContext (Dockerfile: $SeedDockerfile)"
-docker build -f $SeedDockerfile -t $SeedImage $SeedBuildContext
-if ($LASTEXITCODE -ne 0) {
-    throw "Seed image build failed with exit code $LASTEXITCODE"
+# Try to resolve the Dockerfile; fall back to a prebuilt image if it is missing (e.g., trimmed checkout).
+$resolvedSeedDockerfile = $null
+if ($SeedDockerfile) {
+    $candidateDockerfile = Join-Path $repo $SeedDockerfile
+    if (Test-Path -LiteralPath $candidateDockerfile -PathType Leaf) {
+        $resolvedSeedDockerfile = (Resolve-Path -LiteralPath $candidateDockerfile).ProviderPath
+    } else {
+        Write-Warning "[vipb-bump] Seed Dockerfile not found at $candidateDockerfile; will use a prebuilt Seed image instead of building locally."
+    }
+}
+
+if ($resolvedSeedDockerfile) {
+    $SeedDockerfile = $resolvedSeedDockerfile
+    Write-Host "[vipb-bump] Building seed image $SeedImage from $SeedBuildContext (Dockerfile: $SeedDockerfile)"
+    docker build -f $SeedDockerfile -t $SeedImage $SeedBuildContext
+    if ($LASTEXITCODE -ne 0) {
+        throw "Seed image build failed with exit code $LASTEXITCODE"
+    }
+} else {
+    # Prefer the published image when we cannot build locally; allows CI sims to proceed even if the Dockerfile is absent.
+    $SeedDockerfile = $null
+    if (-not $env:SEED_IMAGE -and $SeedImage -eq 'seed:latest') {
+        $SeedImage = 'ghcr.io/labview-community-ci-cd/seed:latest'
+    }
+    Write-Host "[vipb-bump] Using prebuilt seed image $SeedImage (Dockerfile unavailable). Pulling..."
+    docker pull $SeedImage
+    if ($LASTEXITCODE -ne 0) {
+        throw "Seed image pull failed with exit code $LASTEXITCODE"
+    }
 }
 
 # Convert VIPB -> JSON, patch the LabVIEW version, convert back via seed image wrappers

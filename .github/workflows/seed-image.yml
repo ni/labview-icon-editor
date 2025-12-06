@@ -56,6 +56,15 @@ jobs:
       - name: Resolve tag suffix
         id: tag
         run: |
+          sanitize_component() {
+            echo "$1" \
+              | tr '[:upper:]' '[:lower:]' \
+              | sed -e 's/[^a-z0-9_.-]/-/g' \
+                    -e 's/[_.-]\{2,\}/-/g' \
+                    -e 's/^[_.-]*//' \
+                    -e 's/[_.-]*$//'
+          }
+
           tag="${TAG_SUFFIX}"
           if [ -z "${tag}" ]; then
             case "${GITHUB_REF_NAME}" in
@@ -67,8 +76,7 @@ jobs:
               *) tag="${GITHUB_REF_NAME}" ;;
             esac
           fi
-          tag="${tag//\//-}"
-          tag="${tag,,}"
+          tag="$(sanitize_component "${tag//\//-}")"
           echo "tag_suffix=${tag}" >> "$GITHUB_OUTPUT"
           echo "TAG_SUFFIX=${tag}" >> "$GITHUB_ENV"
 
@@ -79,19 +87,26 @@ jobs:
           INPUT_OWNER: ${{ github.event.inputs.registry_owner }}
           INPUT_IMAGE: ${{ github.event.inputs.image_name }}
         run: |
+          sanitize_component() {
+            # Lowercase, replace invalid chars with '-', collapse repeats, and trim leading/trailing separators.
+            echo "$1" \
+              | tr '[:upper:]' '[:lower:]' \
+              | sed -e 's/[^a-z0-9_.-]/-/g' \
+                    -e 's/[_.-]\{2,\}/-/g' \
+                    -e 's/^[_.-]*//' \
+                    -e 's/[_.-]*$//'
+          }
+
           registry="${INPUT_REGISTRY:-ghcr.io}"
           owner_raw="${INPUT_OWNER:-${{ github.repository_owner }}}"
-          owner_lc="$(echo "$owner_raw" | tr '[:upper:]' '[:lower:]')"
-          owner_clean="$(echo "$owner_lc" | tr -c 'a-z0-9_.-/' '-')"
+          owner_clean="$(sanitize_component "$owner_raw")"
 
           repo_name="${GITHUB_REPOSITORY##*/}"
-          repo_name_lc="$(echo "$repo_name" | tr '[:upper:]' '[:lower:]')"
-          repo_name_clean="$(echo "$repo_name_lc" | tr -c 'a-z0-9_.-/' '-')"
+          repo_name_clean="$(sanitize_component "$repo_name")"
           default_image="${repo_name_clean}-seed"
 
           image_raw="${INPUT_IMAGE:-${default_image}}"
-          image_lc="$(echo "$image_raw" | tr '[:upper:]' '[:lower:]')"
-          image_clean="$(echo "$image_lc" | tr -c 'a-z0-9_.-/' '-')"
+          image_clean="$(sanitize_component "$image_raw")"
 
           echo "registry=${registry}" >> "$GITHUB_OUTPUT"
           echo "image_name=${registry}/${owner_clean}/${image_clean}" >> "$GITHUB_OUTPUT"
@@ -114,6 +129,7 @@ jobs:
         with:
           context: .
           file: Tooling/seed/Dockerfile
+          pull: true
           push: true
           tags: |
             ${{ steps.names.outputs.image_name }}:${{ env.TAG_SUFFIX }}
@@ -170,8 +186,18 @@ jobs:
             "${IMAGE_REF}" \
             vipb2json --input Tooling/deployment/seed.vipb --output /workspace/artifacts/seed-image-smoke/seed.json
 
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -w /workspace \
+            "${IMAGE_REF}" \
+            json2vipb --input /workspace/artifacts/seed-image-smoke/seed.json --output /workspace/artifacts/seed-image-smoke/roundtrip.vipb
+
           if [ ! -s artifacts/seed-image-smoke/seed.json ]; then
             echo "Seed image smoke test did not produce metadata." >&2
+            exit 1
+          fi
+          if [ ! -s artifacts/seed-image-smoke/roundtrip.vipb ]; then
+            echo "Round-trip vipb was not produced." >&2
             exit 1
           fi
 
@@ -179,5 +205,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: seed-image-smoke
-          path: artifacts/seed-image-smoke/seed.json
+          path: |
+            artifacts/seed-image-smoke/seed.json
+            artifacts/seed-image-smoke/roundtrip.vipb
           if-no-files-found: error

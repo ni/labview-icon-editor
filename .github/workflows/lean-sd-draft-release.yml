@@ -1,0 +1,66 @@
+name: Lean SD Draft Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g., v0.1.0-lean)"
+        required: true
+        type: string
+      notes:
+        description: "Release notes (optional)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish-lean:
+    name: Publish lean SD draft
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          fetch-depth: 1
+          set-safe-directory: true
+
+      - name: Verify lean artifacts exist
+        run: |
+          required=(
+            "builds/artifacts/sd-bundle-lean.zip"
+            "builds/reports/source-distribution-verify/lean/manifest.json"
+            "builds/reports/source-distribution-verify/full/manifest.json"
+            "builds/cache/commit-index.json"
+          )
+          missing=0
+          for f in "${required[@]}"; do
+            if [[ ! -f "$f" ]]; then
+              echo "::error ::Missing artifact: $f" >&2
+              missing=1
+            fi
+          done
+          if [[ $missing -ne 0 ]]; then
+            echo "::error ::Lean artifacts not found; ensure Source Distribution + lean manifest steps ran in this workspace before publishing." >&2
+            exit 1
+          fi
+
+      - name: Create draft release and upload lean bundle
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          set -euo pipefail
+          notes_flag=()
+          if [[ -n "${NOTES:-}" ]]; then
+            notes_flag+=("--notes" "$NOTES")
+          else
+            notes_flag+=("--notes" "Lean SD bundle draft release")
+          fi
+          gh release create "$TAG" --draft "${notes_flag[@]}" \
+            builds/artifacts/sd-bundle-lean.zip#sd-bundle-lean.zip \
+            builds/reports/source-distribution-verify/lean/manifest.json#manifest-lean.json \
+            builds/reports/source-distribution-verify/full/manifest.json#manifest-full.json \
+            builds/cache/commit-index.json#commit-index.json

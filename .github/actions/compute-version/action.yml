@@ -66,21 +66,33 @@ runs:
         BUMP_TYPE:    ${{ steps.bump_type.outputs.bump_type }}
         BUILD_NUMBER: ${{ steps.inc_build.outputs.new_build_number }}
       run: |
+        $maj=0; $min=1; $pat=0
+        $latestTag = ''
         $latestRaw = git describe --tags --abbrev=0 2>$null
         if ($LASTEXITCODE -ne 0) {
           Write-Host "No existing tags were found; defaulting to 0.0.0."
-          $latestRaw = ''
           $global:LASTEXITCODE = 0
         }
-        if ([string]::IsNullOrWhiteSpace($latestRaw)) {
-          $maj=0; $min=1; $pat=0
-        }
         else {
-          $latest = $latestRaw.Trim().TrimStart('v') -replace '-build.*'
-          $parts = $latest.Split('.')
-          $maj = [int]$parts[0]
-          $min = if ($parts.Length -gt 1) { [int]$parts[1] } else { 0 }
-          $pat = if ($parts.Length -gt 2) { [int]$parts[2] } else { 0 }
+          $latestTag = $latestRaw.Trim()
+        }
+        if (-not [string]::IsNullOrWhiteSpace($latestTag)) {
+          $normalized = $latestTag.TrimStart('v') -replace '-build.*'
+          if ($normalized -notmatch '^\d+(\.\d+){0,2}$') {
+            Write-Warning ("Latest tag '{0}' is not a semantic version; falling back to 0.1.0 baseline." -f $latestTag)
+          }
+          else {
+            try {
+              $parts = $normalized.Split('.')
+              $maj = [int]$parts[0]
+              $min = if ($parts.Length -gt 1) { [int]$parts[1] } else { 0 }
+              $pat = if ($parts.Length -gt 2) { [int]$parts[2] } else { 0 }
+            }
+            catch {
+              Write-Warning ("Failed to parse latest tag '{0}' as a semantic version; using 0.1.0 baseline." -f $latestTag)
+              $maj=0; $min=1; $pat=0
+            }
+          }
         }
         switch ($env:BUMP_TYPE) {
           'major' { $maj++; $min=0; $pat=0 }
@@ -89,11 +101,12 @@ runs:
         }
         $branch = $Env:GITHUB_REF -replace '^refs/heads/',''
         $suffix = ''
-        if ($branch -like 'release-alpha/*') { $suffix = "alpha.$($Env:BUILD_NUMBER)" }
-        elseif ($branch -like 'release-beta/*')  { $suffix = "beta.$($Env:BUILD_NUMBER)" }
-        elseif ($branch -like 'release-rc/*')    { $suffix = "rc.$($Env:BUILD_NUMBER)" }
+        $isPre = 'false'
+        if ($branch -like 'release-alpha/*') { $suffix = "alpha.$($Env:BUILD_NUMBER)"; $isPre = 'true' }
+        elseif ($branch -like 'release-beta/*')  { $suffix = "beta.$($Env:BUILD_NUMBER)"; $isPre = 'true' }
+        elseif ($branch -like 'release-rc/*')    { $suffix = "rc.$($Env:BUILD_NUMBER)"; $isPre = 'true' }
+        elseif ($branch -like 'release/*')       { $isPre = 'true' }
         $version = if ($suffix) { "v$maj.$min.$pat-$suffix-build$($Env:BUILD_NUMBER)" } else { "v$maj.$min.$pat-build$($Env:BUILD_NUMBER)" }
-        $isPre  = if ($suffix) { 'true' } else { 'false' }
         Write-Host "Computed version => $version"
         "VERSION=$version"      | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
         "MAJOR=$maj"            | Out-File -FilePath $Env:GITHUB_OUTPUT -Append

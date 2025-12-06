@@ -45,7 +45,16 @@ jobs:
         run: pwsh -NoProfile -File Tooling/x-cli/scripts/pack-cli.ps1 -Version ${{ steps.version.outputs.version }}
 
       - name: Checksums
-        run: pwsh -NoProfile -Command "Get-ChildItem -Path dist,package -Recurse -File | ForEach-Object { $hash = Get-FileHash $_.FullName -Algorithm SHA256; \"$($hash.Hash)  $($_.FullName)\" } | Out-File -Encoding ascii dist/checksums.sha256"
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $outDir = "dist"
+          if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
+          $items = Get-ChildItem -Path dist,package -Recurse -File -ErrorAction Stop
+          $items | ForEach-Object {
+            $hash = Get-FileHash $_.FullName -Algorithm SHA256
+            "{0}  {1}" -f $hash.Hash, $_.FullName
+          } | Out-File -Encoding ascii (Join-Path $outDir 'checksums.sha256')
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

@@ -144,10 +144,83 @@ $setDevScript    = Join-Path -Path $actionRoot -ChildPath 'set-development-mode/
 $revertDevScript = Join-Path -Path $actionRoot -ChildPath 'revert-development-mode/RevertDevelopmentMode.ps1'
 $helperScript    = Join-Path -Path $actionRoot -ChildPath 'add-token-to-labview/LocalhostLibraryPaths.ps1'
 
-if (-not (Test-Path -LiteralPath $helperScript)) {
-    throw "Missing helper script: $helperScript"
+$hasCustomResolver = Get-Command -Name Resolve-LVIniPath -CommandType Function -ErrorAction SilentlyContinue
+if ($hasCustomResolver) {
+    # Tests can inject Resolve-LVIniPath; keep it and only backfill missing helpers.
+    if (-not (Get-Command -Name Clear-StaleLibraryPaths -CommandType Function -ErrorAction SilentlyContinue)) {
+        function Clear-StaleLibraryPaths {
+            param(
+                [Parameter(Mandatory)][string]$LvVersion,
+                [Parameter(Mandatory)][ValidateSet('32','64')][string]$Arch,
+                [AllowEmptyString()][string]$RepositoryRoot,
+                [AllowEmptyString()][string]$TargetPath,
+                [switch]$Force
+            )
+
+            $iniPath = Resolve-LVIniPath -LvVersion $LvVersion -Arch $Arch
+            $lines = @(Get-Content -LiteralPath $iniPath -ErrorAction Stop)
+            $pattern = 'LocalHost\.LibraryPaths\d*\s*=\s*(?<val>.*)'
+
+            $targetNorm = if ([string]::IsNullOrWhiteSpace($TargetPath)) { $null } else { ([System.IO.Path]::GetFullPath($TargetPath)).ToLowerInvariant() }
+            $filtered = New-Object System.Collections.Generic.List[string]
+            foreach ($line in $lines) {
+                $m = [regex]::Match($line, $pattern, 'IgnoreCase')
+                if (-not $m.Success) { $filtered.Add($line); continue }
+
+                $val = $m.Groups['val'].Value.Trim()
+                $norm = if ([string]::IsNullOrWhiteSpace($val)) { $null } else { ([System.IO.Path]::GetFullPath($val)).ToLowerInvariant() }
+
+                $keep = $false
+                if ($Force) {
+                    $keep = $false
+                }
+                elseif ($targetNorm -and $norm -eq $targetNorm) {
+                    $keep = $true
+                }
+
+                if ($keep) { $filtered.Add($line) }
+            }
+
+            $filtered | Set-Content -LiteralPath $iniPath -Encoding utf8
+            return $true
+        }
+    }
+
+    if (-not (Get-Command -Name Add-LibraryPathToken -CommandType Function -ErrorAction SilentlyContinue)) {
+        function Add-LibraryPathToken {
+            param(
+                [Parameter(Mandatory)][string]$LvVersion,
+                [Parameter(Mandatory)][ValidateSet('32','64')][string]$Arch,
+                [Parameter(Mandatory)][string]$TokenPath,
+                [AllowEmptyString()][string]$RepositoryRoot
+            )
+
+            if ([string]::IsNullOrWhiteSpace($TokenPath)) {
+                throw "TokenPath cannot be empty when adding LocalHost.LibraryPaths."
+            }
+
+            $iniPath = Resolve-LVIniPath -LvVersion $LvVersion -Arch $Arch
+            $resolved = [System.IO.Path]::GetFullPath($TokenPath)
+
+            $lines = @()
+            $pattern = 'LocalHost\.LibraryPaths\d*\s*=\s*(?<val>.*)'
+            if (Test-Path -LiteralPath $iniPath) {
+                $existing = Get-Content -LiteralPath $iniPath -ErrorAction Stop
+                $lines = $existing | Where-Object { $_ -notmatch $pattern }
+            }
+
+            $lines += "LocalHost.LibraryPaths=$resolved"
+            $lines | Set-Content -LiteralPath $iniPath -Encoding utf8
+            return $true
+        }
+    }
 }
-. $helperScript
+else {
+    if (-not (Test-Path -LiteralPath $helperScript)) {
+        throw "Missing helper script: $helperScript"
+    }
+    . $helperScript
+}
 
 function Remove-LibraryPathsEntries {
     param(

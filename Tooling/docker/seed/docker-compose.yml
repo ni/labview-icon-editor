@@ -10,4 +10,3 @@ services:
     volumes:
       - ${WORKSPACE_HOST_PATH:-../../..}:/workspace
     working_dir: /workspace
-    command: ["seed", "--help"]

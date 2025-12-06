@@ -1223,9 +1223,28 @@
       "group": "test",
       "problemMatcher": [],
       "detail": "Runs probe-helper-smoke to cover worktree/source/cache/publish/clear/provenance scenarios."
+    },
+    {
+      "label": "Clean: SD temp artifacts",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/source-distribution/clean-sd-temp.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "group": "none",
+      "problemMatcher": [],
+      "detail": "Removes sd-bundle extract/tmp folders and temp sd-bundle-* (pass -ListOnly to preview)."
     }
-  ]
-,
+  ],
   "inputs": [
     {
       "id": "labviewBitness",

@@ -24,6 +24,10 @@ internal static class Program
         public bool DryRun { get; init; }
         public string? JsonOutput { get; init; }
         public bool ForceOverwrite { get; init; }
+        public int LogDownloadRetries { get; init; } = 6;
+        public int LogDownloadBackoffSeconds { get; init; } = 10;
+        public int LogDownloadMaxWaitSeconds { get; init; } = 200;
+        public int RunListLimit { get; init; } = 25;
     }
 
     private sealed record RunListItem(
@@ -40,8 +44,12 @@ internal static class Program
         [property: JsonPropertyName("id")] long Id,
         [property: JsonPropertyName("name")] string Name,
         [property: JsonPropertyName("status")] string Status,
-        [property: JsonPropertyName("conclusion")] string? Conclusion
+        [property: JsonPropertyName("conclusion")] string? Conclusion,
+        [property: JsonPropertyName("runner_name")] string? RunnerName,
+        [property: JsonPropertyName("runner_group_name")] string? RunnerGroupName
     );
+
+    private sealed record JobList([property: JsonPropertyName("jobs")] JobSummary[] Jobs);
 
     private sealed record RunView(
         [property: JsonPropertyName("url")] string Url,
@@ -107,7 +115,7 @@ internal static class Program
 
         var run = opts.RunId.HasValue
             ? GetRunById(repoSlug, opts.RunId.Value)
-            : SelectRun(repoSlug, branch, headSha, opts.WaitForHeadRun, opts.WaitTimeoutSeconds, opts.WaitIntervalSeconds, opts.StatusFilter);
+            : SelectRun(repoSlug, branch, headSha, opts.WaitForHeadRun, opts.WaitTimeoutSeconds, opts.WaitIntervalSeconds, opts.StatusFilter, opts.RunListLimit);
         if (run == null)
         {
             Console.Error.WriteLine("No workflow run found to summarize.");
@@ -121,13 +129,19 @@ internal static class Program
             return 1;
         }
 
+        var jobs = GetRunJobs(repoSlug, run.DatabaseId);
+        if (jobs.Length == 0 && view.Jobs is { Length: > 0 })
+        {
+            jobs = view.Jobs;
+        }
+
         WithColor(ConsoleColor.Cyan, () =>
         {
             Console.WriteLine($"Run: {view.Name} | Status={view.Status} | Conclusion={view.Conclusion ?? "n/a"} | Branch={view.HeadBranch} | SHA={view.HeadSha}");
             Console.WriteLine($"URL: {view.Url}");
         });
 
-        var failing = view.Jobs.Where(j => !string.Equals(j.Conclusion, "success", StringComparison.OrdinalIgnoreCase)).ToArray();
+        var failing = jobs.Where(j => !string.Equals(j.Conclusion, "success", StringComparison.OrdinalIgnoreCase)).ToArray();
         if (failing.Length == 0)
         {
             WithColor(ConsoleColor.Green, () => Console.WriteLine("All jobs succeeded; nothing to refine."));
@@ -138,7 +152,9 @@ internal static class Program
         WithColor(ConsoleColor.Yellow, () => Console.WriteLine($"Failing jobs (count={failing.Length}):"));
         foreach (var job in failing)
         {
-            Console.WriteLine($"- {job.Name} | id={job.Id} | status={job.Status} | conclusion={job.Conclusion}");
+            var runner = string.IsNullOrWhiteSpace(job.RunnerName) ? "n/a" : job.RunnerName;
+            var runnerGroup = string.IsNullOrWhiteSpace(job.RunnerGroupName) ? "n/a" : job.RunnerGroupName;
+            Console.WriteLine($"- {job.Name} | id={job.Id} | status={job.Status} | conclusion={job.Conclusion} | runner={runner} | group={runnerGroup}");
         }
 
         if (opts.DownloadLogs)
@@ -148,6 +164,11 @@ internal static class Program
             var saved = new List<string>();
             foreach (var job in failing)
             {
+                if (job.Id == 0)
+                {
+                    Console.Error.WriteLine($"Skipping log download for job with missing id: {job.Name}");
+                    continue;
+                }
                 var logPath = Path.Combine(outDir, $"run-{run.DatabaseId}-job-{job.Id}.log");
                 if (File.Exists(logPath) && !opts.ForceOverwrite)
                 {
@@ -155,15 +176,31 @@ internal static class Program
                     saved.Add(logPath);
                     continue;
                 }
-                Console.WriteLine($"Downloading log for job {job.Name} to {logPath}");
-                var (code, stdout, stderr) = Exec("gh", $"run view -R {repoSlug} {run.DatabaseId} --job {job.Id} --log");
-                if (code != 0)
+                var attempt = 0;
+                var delay = opts.LogDownloadBackoffSeconds;
+                var start = DateTime.UtcNow;
+                while (true)
                 {
-                    Console.Error.WriteLine($"Failed to download log for job {job.Id}: {stderr}");
-                    continue;
+                    attempt++;
+                    Console.WriteLine($"Downloading log for job {job.Name} (attempt {attempt}) to {logPath}");
+                    var (code, stdout, stderr) = Exec("gh", $"run view -R {repoSlug} {run.DatabaseId} --job {job.Id} --log");
+                    if (code == 0 && !string.IsNullOrWhiteSpace(stdout))
+                    {
+                        File.WriteAllText(logPath, stdout);
+                        saved.Add(logPath);
+                        break;
+                    }
+
+                    var elapsed = (int)(DateTime.UtcNow - start).TotalSeconds;
+                    if (elapsed >= opts.LogDownloadMaxWaitSeconds || attempt >= opts.LogDownloadRetries)
+                    {
+                        Console.Error.WriteLine($"Failed to download log for job {job.Id} after {attempt} attempts: {stderr}");
+                        break;
+                    }
+                    Console.WriteLine($"Retrying in {delay}s...");
+                    Thread.Sleep(TimeSpan.FromSeconds(delay));
+                    delay += opts.LogDownloadBackoffSeconds;
                 }
-                File.WriteAllText(logPath, stdout);
-                saved.Add(logPath);
             }
             WithColor(ConsoleColor.Green, () => Console.WriteLine($"Logs saved under {opts.LogOutputDir}"));
             EmitJsonSummary(opts.JsonOutput, repoSlug, view, failing, saved, testResult: null, null);
@@ -258,6 +295,18 @@ internal static class Program
                     if (i + 1 >= args.Length) return (null, "--log-dir requires a value");
                     opts = opts with { LogOutputDir = args[++i] };
                     break;
+                case "--log-retries":
+                    if (!TryReadInt(args, ref i, out var retries)) return (null, "--log-retries requires an integer");
+                    opts = opts with { LogDownloadRetries = retries };
+                    break;
+                case "--log-retry-delay":
+                    if (!TryReadInt(args, ref i, out var backoff)) return (null, "--log-retry-delay requires an integer");
+                    opts = opts with { LogDownloadBackoffSeconds = backoff };
+                    break;
+                case "--log-max-wait":
+                    if (!TryReadInt(args, ref i, out var maxWait)) return (null, "--log-max-wait requires an integer");
+                    opts = opts with { LogDownloadMaxWaitSeconds = maxWait };
+                    break;
                 case "--test-cmd":
                     if (i + 1 >= args.Length) return (null, "--test-cmd requires a command string");
                     opts = opts with { TestCommand = args[++i] };
@@ -265,6 +314,10 @@ internal static class Program
                 case "--test-cmd-file":
                     if (i + 1 >= args.Length) return (null, "--test-cmd-file requires a path");
                     opts = opts with { TestCommandFile = args[++i] };
+                    break;
+                case "--run-list-limit":
+                    if (!TryReadInt(args, ref i, out var limit)) return (null, "--run-list-limit requires an integer");
+                    opts = opts with { RunListLimit = limit };
                     break;
                 case "--dry-run":
                     opts = opts with { DryRun = true };
@@ -344,9 +397,13 @@ internal static class Program
         Console.WriteLine("  --wait-for-head-run       Wait for a run matching HEAD to appear");
         Console.WriteLine("  --wait-timeout <sec>      Timeout while waiting (default 60)");
         Console.WriteLine("  --wait-interval <sec>     Poll interval while waiting (default 5)");
+        Console.WriteLine("  --run-list-limit <n>      Max runs to fetch during selection (default 25)");
         Console.WriteLine("  --status-filter <list>    Optional status filter (comma-separated, e.g., completed,queued,in_progress)");
         Console.WriteLine("  --download-logs           Download failing job logs to artifacts/ci-logs");
         Console.WriteLine("  --log-dir <path>          Override log output directory");
+        Console.WriteLine("  --log-retries <n>         Log download retry attempts (default 6)");
+        Console.WriteLine("  --log-retry-delay <sec>   Delay/backoff between log retries (default 10)");
+        Console.WriteLine("  --log-max-wait <sec>      Maximum cumulative wait for logs (default 200)");
         Console.WriteLine("  --test-cmd <command>      Optional local test command (executed via pwsh -NoProfile -Command)");
         Console.WriteLine("  --test-cmd-file <path>    Read test command text from file");
         Console.WriteLine("  --dry-run                 Skip executing the test command (still report failing jobs)");
@@ -440,13 +497,13 @@ internal static class Program
         return new RunListItem(runId, view.HeadSha, view.Status, view.Conclusion, view.HeadBranch, null, view.Url);
     }
 
-    private static RunListItem? SelectRun(string repoSlug, string branch, string headSha, bool waitForHead, int timeoutSeconds, int intervalSeconds, string statusFilter)
+    private static RunListItem? SelectRun(string repoSlug, string branch, string headSha, bool waitForHead, int timeoutSeconds, int intervalSeconds, string statusFilter, int runListLimit)
     {
         var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
         var statuses = ParseStatusFilter(statusFilter);
         while (true)
         {
-            var runs = GetRuns(repoSlug, branch, statuses);
+            var runs = GetRuns(repoSlug, branch, statuses, runListLimit);
             var run = runs.FirstOrDefault(r => string.Equals(r.HeadSha, headSha, StringComparison.OrdinalIgnoreCase) && string.Equals(r.HeadBranch, branch, StringComparison.OrdinalIgnoreCase));
             if (run != null)
             {
@@ -460,9 +517,9 @@ internal static class Program
         }
     }
 
-    private static RunListItem[] GetRuns(string repoSlug, string branch, HashSet<string> statusFilter)
+    private static RunListItem[] GetRuns(string repoSlug, string branch, HashSet<string> statusFilter, int runListLimit)
     {
-        var (code, stdout, stderr) = Exec("gh", $"run list -R {repoSlug} --branch {branch} --limit 10 --json databaseId,headSha,status,conclusion,headBranch,updatedAt,url");
+        var (code, stdout, stderr) = Exec("gh", $"run list -R {repoSlug} --branch {branch} --limit {runListLimit} --json databaseId,headSha,status,conclusion,headBranch,updatedAt,url");
         if (code != 0)
         {
             Console.Error.WriteLine($"gh run list failed: {stderr}");
@@ -471,6 +528,33 @@ internal static class Program
         var runs = JsonSerializer.Deserialize<RunListItem[]>(stdout, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? Array.Empty<RunListItem>();
         if (statusFilter.Count == 0) return runs;
         return runs.Where(r => r.Status != null && statusFilter.Contains(r.Status.ToLowerInvariant())).ToArray();
+    }
+
+    private static JobSummary[] GetRunJobs(string repoSlug, long runId)
+    {
+        var all = new List<JobSummary>();
+        var page = 1;
+        while (true)
+        {
+            var (code, stdout, stderr) = Exec("gh", $"api /repos/{repoSlug}/actions/runs/{runId}/jobs?per_page=100&page={page}");
+            if (code != 0)
+            {
+                Console.Error.WriteLine($"Failed to list jobs for run {runId}: {stderr}");
+                break;
+            }
+            var jobList = JsonSerializer.Deserialize<JobList>(stdout, SerializerOptions);
+            if (jobList?.Jobs == null || jobList.Jobs.Length == 0)
+            {
+                break;
+            }
+            all.AddRange(jobList.Jobs);
+            if (jobList.Jobs.Length < 100)
+            {
+                break;
+            }
+            page++;
+        }
+        return all.ToArray();
     }
 
     private static RunView? ViewRun(string repoSlug, long runId)

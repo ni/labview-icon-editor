@@ -126,7 +126,8 @@ $invoker = Join-Path $repoRoot 'scripts/common/invoke-repo-cli.ps1'
 if (-not (Test-Path -LiteralPath $invoker)) { throw "CLI invoker missing at $invoker" }
 
 Write-Host "[orchestration] runKey=$runKey lock=$lockPath ttl=${LockTtlSec}s force=$ForceLock"
-& $invoker -CliName 'OrchestrationCli' -RepoRoot $repoRoot -Args $orchArgs
+# invoke-repo-cli expects -CliArgs; using -Args triggers a parameter bind error in locked runs.
+& $invoker -CliName 'OrchestrationCli' -RepoRoot $repoRoot -CliArgs $orchArgs
 if ($LASTEXITCODE -ne 0) { throw "OrchestrationCli local-sd failed with exit code $LASTEXITCODE" }
 
 $zipPath = Join-Path $repoRoot 'builds/artifacts/labview-icon-api.zip'

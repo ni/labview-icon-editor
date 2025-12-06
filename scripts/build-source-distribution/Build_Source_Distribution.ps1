@@ -37,6 +37,8 @@ param(
 
     [string]$OverrideOutputRoot,
 
+    [switch]$RequireCleanOutput,
+
     [string]$GcliPath = 'g-cli'
 )
 
@@ -55,6 +57,35 @@ if (-not (Test-Path -LiteralPath $tempHelper)) {
 }
 . $tempHelper
 try { Ensure-StandardTempPath -Label 'labview-icon-editor' | Out-Null } catch { throw }
+
+# Serialization lock to avoid concurrent SD builds
+$lockRoot = Join-Path (Split-Path -Parent $RepositoryPath) 'builds/.locks'
+if (-not (Test-Path -LiteralPath $lockRoot)) { New-Item -ItemType Directory -Path $lockRoot -Force | Out-Null }
+$lockFile = Join-Path $lockRoot 'source-distribution.lock'
+if (Test-Path -LiteralPath $lockFile -PathType Leaf) {
+    # Auto-expire stale locks older than 10 minutes, or locks without active owner.
+    try {
+        $info = Get-Item -LiteralPath $lockFile
+        $ageMin = ((Get-Date) - $info.LastWriteTime).TotalMinutes
+        $ownerPid = $null
+        try {
+            $text = Get-Content -LiteralPath $lockFile -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($text -match 'PID=(\d+)') { $ownerPid = [int]$matches[1] }
+        } catch { }
+        $ownerAlive = $false
+        if ($ownerPid -and $ownerPid -gt 0) {
+            try { $proc = Get-Process -Id $ownerPid -ErrorAction SilentlyContinue; if ($proc) { $ownerAlive = $true } } catch { $ownerAlive = $false }
+        }
+        if ($ageMin -ge 10 -or -not $ownerAlive) {
+            Remove-Item -LiteralPath $lockFile -Force -ErrorAction SilentlyContinue
+        }
+    } catch { }
+}
+if (Test-Path -LiteralPath $lockFile -PathType Leaf) {
+    throw "Source Distribution build is already in progress or was not cleaned up (lock: $lockFile)."
+}
+# Write lock with PID and timestamp
+"PID=$PID;TS=$(Get-Date -Format o)" | Set-Content -LiteralPath $lockFile -Encoding ascii
 
 function Get-Elapsed {
     param([datetime]$StartTime = $script:StartTime)
@@ -82,7 +113,7 @@ function New-IconApiPayload {
     }
 
     $entries = foreach ($f in $files) {
-        $rel = [IO.Path]::GetRelativePath($SourcePath, $f.FullName).Replace('\','/')
+        $rel = (Get-RelativePathSafe -Base $SourcePath -Target $f.FullName).Replace('\','/')
         $hash = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash
         [pscustomobject]@{
             path      = $rel
@@ -400,6 +431,18 @@ function Load-CommitIndex {
 }
 
 $repoRoot = (Resolve-Path -LiteralPath $RepositoryPath).Path
+### Guard: prevent overwriting existing artifacts to avoid regressions
+$artifactDirGuard = Join-Path $repoRoot 'builds/artifacts'
+$zipPathGuard = Join-Path $artifactDirGuard 'labview-icon-api.zip'
+$defaultDistRootGuard = if ($OverrideOutputRoot) { $OverrideOutputRoot } else { Join-Path $repoRoot 'builds/LabVIEWIconAPI' }
+if ($RequireCleanOutput.IsPresent) {
+    if (Test-Path -LiteralPath $zipPathGuard -PathType Leaf) {
+        throw "Existing SD artifact found at $zipPathGuard. Delete it before rebuilding to avoid regressions."
+    }
+    if (Test-Path -LiteralPath $defaultDistRootGuard -PathType Container) {
+        throw "Existing SD folder found at $defaultDistRootGuard. Delete it before rebuilding to avoid regressions."
+    }
+}
 if (-not $Package_LabVIEW_Version) {
     $Package_LabVIEW_Version = Resolve-VipbVersion -Repo $repoRoot
 }
@@ -650,7 +693,7 @@ $script:CurrentPhase = "manifest"
 Write-Stamp -Level "STEP" -Message ("Creating manifest for {0} files..." -f $totalFiles)
 foreach ($f in $files) {
     $processed++
-    $relDist = [IO.Path]::GetRelativePath($distRoot, $f.FullName)
+    $relDist = Get-RelativePathSafe -Base $distRoot -Target $f.FullName
     $sourceRel = $relDist.Replace('\','/')
     $mappedRel = Map-RelativePath -RelativePath $relDist -RepoName $repoName
     $pathForManifest = if ($mappedRel) { $mappedRel } else { $sourceRel }
@@ -848,4 +891,7 @@ if (Test-Path -LiteralPath $logStashScript -PathType Leaf) {
 }
 finally {
     Stop-Heartbeat
+    if (Test-Path -LiteralPath $lockFile -PathType Leaf) {
+        Remove-Item -LiteralPath $lockFile -Force -ErrorAction SilentlyContinue
+    }
 }

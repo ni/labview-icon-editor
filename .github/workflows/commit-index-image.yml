@@ -1,0 +1,289 @@
+name: Publish Commit Index image
+
+on:
+  push:
+    branches: [main, develop, release-alpha, release-beta, release-rc]
+    paths:
+      - "Tooling/docker/commit-index/**"
+      - "scripts/build-source-distribution/New-CommitIndex.ps1"
+      - ".github/workflows/commit-index-image.yml"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag suffix (default derives from branch)"
+        required: false
+        default: ""
+      registry:
+        description: "Container registry hostname (default ghcr.io)"
+        required: false
+        default: "ghcr.io"
+      registry_owner:
+        description: "Registry namespace/owner (defaults to repository owner)"
+        required: false
+        default: ""
+      image_name:
+        description: "Image name (defaults to <repo-name>-commit-index)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  build-scan-sign:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      image_repo: ${{ steps.names.outputs.image_repo }}
+      tag_suffix: ${{ steps.tag.outputs.tag_suffix }}
+      image_digest: ${{ steps.build.outputs.digest }}
+      image_ref: ${{ steps.refs.outputs.image_ref }}
+    steps:
+      - name: "Guard: Linux runner"
+        run: |
+          if [ "${RUNNER_OS}" != "Linux" ]; then
+            echo "This workflow publishes Docker images and must run on Linux runners." && exit 1
+          fi
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Resolve tag suffix
+        id: tag
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          sanitize_component() {
+            echo "$1" \
+              | tr '[:upper:]' '[:lower:]' \
+              | sed -e 's/[^a-z0-9_.-]/-/g' \
+                    -e 's/[_.-]\{2,\}/-/g' \
+                    -e 's/^[_.-]*//' \
+                    -e 's/[_.-]*$//'
+          }
+
+          tag="${INPUT_TAG:-}";
+          if [ -z "${tag}" ]; then
+            case "${GITHUB_REF_NAME}" in
+              main) tag="latest" ;;
+              develop) tag="develop" ;;
+              release-alpha) tag="alpha" ;;
+              release-beta) tag="beta" ;;
+              release-rc) tag="rc" ;;
+              *) tag="${GITHUB_REF_NAME}" ;;
+            esac
+          fi
+          tag="$(sanitize_component "${tag//\//-}")"
+          echo "tag_suffix=${tag}" >> "$GITHUB_OUTPUT"
+          echo "TAG_SUFFIX=${tag}" >> "$GITHUB_ENV"
+
+      - name: Compute image name
+        id: names
+        env:
+          INPUT_REGISTRY: ${{ github.event.inputs.registry }}
+          INPUT_OWNER: ${{ github.event.inputs.registry_owner }}
+          INPUT_IMAGE: ${{ github.event.inputs.image_name }}
+        run: |
+          sanitize_component() {
+            echo "$1" \
+              | tr '[:upper:]' '[:lower:]' \
+              | sed -e 's/[^a-z0-9_.-]/-/g' \
+                    -e 's/[_.-]\{2,\}/-/g' \
+                    -e 's/^[_.-]*//' \
+                    -e 's/[_.-]*$//'
+          }
+
+          registry="${INPUT_REGISTRY:-ghcr.io}"
+          owner_raw="${INPUT_OWNER:-${GITHUB_REPOSITORY_OWNER}}"
+          owner_clean="$(sanitize_component "$owner_raw")"
+
+          repo_name="${GITHUB_REPOSITORY##*/}"
+          repo_name_clean="$(sanitize_component "$repo_name")"
+          default_image="${repo_name_clean}-commit-index"
+
+          image_raw="${INPUT_IMAGE:-${default_image}}"
+          image_clean="$(sanitize_component "$image_raw")"
+
+          image_repo="${registry}/${owner_clean}/${image_clean}"
+          echo "registry=${registry}" >> "$GITHUB_OUTPUT"
+          echo "image_repo=${image_repo}" >> "$GITHUB_OUTPUT"
+          echo "IMAGE_REPO=${image_repo}" >> "$GITHUB_ENV"
+          echo "REGISTRY=${registry}" >> "$GITHUB_ENV"
+
+          if [ -z "${registry}" ] || [ -z "${owner_clean}" ] || [ -z "${image_clean}" ]; then
+            echo "Registry, owner, and image name must all resolve to non-empty values." >&2
+            exit 1
+          fi
+
+      - name: Log in to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ steps.names.outputs.registry }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        id: build
+        with:
+          context: .
+          file: Tooling/docker/commit-index/Dockerfile
+          push: true
+          pull: true
+          build-args: |
+            BASE_IMAGE=mcr.microsoft.com/powershell:7.4-ubuntu-22.04@sha256:62300a213a9293916333df2b014cd3a8f22fb0b0b65f2bb446aaf436bcf8c868
+          tags: |
+            ${{ env.IMAGE_REPO }}:commit-index
+            ${{ env.IMAGE_REPO }}:commit-index-${{ env.TAG_SUFFIX }}
+            ${{ env.IMAGE_REPO }}:commit-index-sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.description=Commit index generator (pwsh + git)
+
+      - name: Export image ref
+        id: refs
+        run: |
+          if [ -z "${IMAGE_REPO}" ] || [ -z "${{ steps.build.outputs.digest }}" ]; then
+            echo "Image repo or digest missing." >&2
+            exit 1
+          fi
+          image_ref="${IMAGE_REPO}@${{ steps.build.outputs.digest }}"
+          echo "IMAGE_REF=${image_ref}" >> "$GITHUB_ENV"
+          echo "image_ref=${image_ref}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate SBOM (syft)
+        uses: anchore/sbom-action@v0.16.0
+        with:
+          image: ${{ env.IMAGE_REF }}
+          output-file: sbom.spdx.json
+
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.22.0
+        with:
+          image-ref: ${{ env.IMAGE_REF }}
+          format: table
+          exit-code: 1
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+
+      - name: Grype vulnerability scan
+        uses: anchore/scan-action@v3
+        with:
+          image: ${{ env.IMAGE_REF }}
+          fail-build: true
+          severity-cutoff: high
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: commit-index-sbom
+          path: sbom.spdx.json
+          if-no-files-found: error
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.6.0
+
+      - name: Sign image (keyless)
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+          COSIGN_YES: "true"
+        run: cosign sign --yes "${IMAGE_REF}"
+
+  verify-signature:
+    needs: build-scan-sign
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    steps:
+      - name: "Guard: Linux runner"
+        run: |
+          if [ "${RUNNER_OS}" != "Linux" ]; then
+            echo "This job requires a Linux runner to exercise the Docker image." && exit 1
+          fi
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3.6.0
+
+      - name: Verify signature
+        env:
+          IMAGE_REF: ${{ needs.build-scan-sign.outputs.image_ref }}
+        run: |
+          cosign verify \
+            --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+            --certificate-identity-regexp="^https://github.com/${{ github.repository }}@.*$" \
+            "${IMAGE_REF}"
+
+  smoke-test:
+    name: Smoke test commit-index image
+    needs: build-scan-sign
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: "Guard: Linux runner"
+        run: |
+          if [ "${RUNNER_OS}" != "Linux" ]; then
+            echo "This job requires a Linux runner to exercise the Docker image." && exit 1
+          fi
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Log in to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ needs.build-scan-sign.outputs.image_repo || 'ghcr.io' }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull image by digest
+        env:
+          IMAGE_REF: ${{ needs.build-scan-sign.outputs.image_ref }}
+        run: |
+          if [ -z "${IMAGE_REF}" ]; then
+            echo "Image ref missing from build job outputs." >&2
+            exit 1
+          fi
+          docker pull "${IMAGE_REF}"
+
+      - name: Run commit-index
+        env:
+          IMAGE_REF: ${{ needs.build-scan-sign.outputs.image_ref }}
+        run: |
+          mkdir -p builds/cache
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -w /workspace \
+            "${IMAGE_REF}" \
+            -RepositoryPath /workspace \
+            -OutputPath /workspace/builds/cache/commit-index.json \
+            -CsvOutputPath /workspace/builds/cache/commit-index.csv \
+            -AllowDirty
+
+          if [ ! -s builds/cache/commit-index.json ]; then
+            echo "Commit index JSON was not produced." >&2
+            exit 1
+          fi
+          if [ ! -s builds/cache/commit-index.csv ]; then
+            echo "Commit index CSV was not produced." >&2
+            exit 1
+          fi
+
+      - name: Upload commit-index artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: commit-index-smoke
+          path: |
+            builds/cache/commit-index.json
+            builds/cache/commit-index.csv
+          if-no-files-found: error

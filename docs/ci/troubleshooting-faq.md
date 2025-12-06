@@ -146,18 +146,12 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 
 **Possible Causes**:
 - Strict branch protection rules require approvals or passing checks before merging.
-- The [`issue-status`](../../.github/workflows/ci-composite.yml#issue-status) job determined the branch name or issue status was invalid, so downstream checks were skipped.
+- The legacy `issue-status` gate in the composite CI workflow (replaced by `.github/workflows/ci.yml`) may have flagged branch naming or issue status, so downstream checks were skipped.
 - You’re lacking the required PR reviews or status checks.
 
 **Solution**:
 1. Have the required reviewers approve your Pull Request.
-2. Ensure all required status checks pass:
-   - [`issue-status`](../../.github/workflows/ci-composite.yml#issue-status) – verifies branch naming and issue status. If it fails or is skipped, downstream jobs won’t run.
-   - [`changes`](../../.github/workflows/ci-composite.yml#changes) – detects `.vipc` file changes.
-   - [`apply-deps`](../../.github/workflows/ci-composite.yml#apply-deps) – applies VIPC dependencies when needed.
-   - [`missing-in-project-check`](../../.github/workflows/ci-composite.yml#missing-in-project-check) – validates project file membership.
-   - [`Run Unit Tests`](../../.github/workflows/ci-composite.yml#test) – executes unit tests.
-   - [`Build VI Package`](../../.github/workflows/ci-composite.yml#build-vi-package) – produces the `.vip` artifact.
+2. Ensure the required status checks in `.github/workflows/ci.yml` pass (issue-status, changes, apply-deps, missing-in-project-check, Run Unit Tests, Build VI Package).
 3. Update your `CONTRIBUTING.md` to specify the merging rules so contributors know what’s needed.
 
 ---

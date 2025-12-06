@@ -6,9 +6,12 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-if ($args -and $args.Length -gt 0)
-{
-    $CliArgs += $args
+# Some invocations under strict mode don't populate $args; guard before reading.
+if (Test-Path variable:args) {
+    if ($args -and $args.Length -gt 0)
+    {
+        $CliArgs += $args
+    }
 }
 
 if (-not [string]::IsNullOrWhiteSpace($CliArgsJson))

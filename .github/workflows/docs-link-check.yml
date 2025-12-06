@@ -13,21 +13,25 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           set-safe-directory: true
-      - name: Lychee link checker
-        uses: lycheeverse/lychee-action@v1
+
+      - name: Run lychee
+        uses: lycheeverse/lychee-action@v2.7.0
         with:
-          args: >
+          args: >-
             --verbose
             --no-progress
             --max-concurrency 4
             --accept 200,204,206,429
             --exclude-all-private
+            --format json
             docs/**/*.md README.md
+          output: lychee/report.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Upload lychee report
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: lychee-report
-          path: ./lychee/*.json
+          path: lychee/report.json

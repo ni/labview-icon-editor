@@ -6,13 +6,13 @@ permissions:
   issues: write
 
 concurrency:
-  # Enforce one run at a time per branch/PR to avoid overlapping fixes on the same feature branch.
-  # Deduplicate by commit (PR head SHA when available); cancel older runs for the same commit.
-  group: ${{ github.workflow }}-${{ github.event.pull_request.head.sha || github.sha }}
-  cancel-in-progress: true
+  # Serialize all CI runs to avoid overlapping dev-mode setup/manipulation across workflows.
+  # Queue (do not cancel) so earlier runs complete before later ones start.
+  group: ${{ github.repository }}-ci-devmode
+  cancel-in-progress: false
 
 env:
-  MIN_LABVIEW_POLICY: "2023.0"
+  MIN_LABVIEW_POLICY: "2025.0"
 
 on:
   push:
@@ -856,9 +856,10 @@ jobs:
           set-safe-directory: true
           fetch-depth: 0
       - name: Seed + Analyze
+        shell: bash
         env:
           WORKSPACE_HOST_PATH: ${{ github.workspace }}
-          # Optional overrides:
+          # Optional overrides (used by run-seed-and-analyze.sh):
           # PESTER_VERSION: "5.7.1"
           # PESTER_SHA256: "3c6dad5fb143faf19709dfb28c31c873989944705a087e160e23b7ce462e37a1"
           # PESTER_URL: "https://globalcdn.nuget.org/packages/pester.5.7.1.nupkg"
@@ -868,7 +869,9 @@ jobs:
           # PESTER_GH_TAG: ""
           # PESTER_GH_ASSET: ""
           # GH_TOKEN: ""
-        run: pwsh -NoProfile -File ./scripts/run-seed-runner.ps1
+        run: |
+          set -euo pipefail
+          bash ./scripts/run-seed-and-analyze.sh
 
   resolve-labview-version:
     name: Resolve LabVIEW version from VIPB
@@ -1594,7 +1597,7 @@ jobs:
             }
           }
 
-      - name: Generate missing SD commit index
+      - name: Verify SD commit index downloaded (no regeneration)
         shell: pwsh
         env:
           PUBLISH_SKIP_COMMIT_INDEX: ${{ env.PUBLISH_SKIP_COMMIT_INDEX || '' }}
@@ -1608,17 +1611,14 @@ jobs:
           $csv  = Get-ChildItem -LiteralPath $sdDir -Filter 'commit-index.csv' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
 
           if ($json -and $csv) {
-            Write-Host "SD commit index already present."
+            Write-Host "SD commit index present (downloaded)."
           } elseif ($skip) {
-            Write-Host "SD commit index missing, but PUBLISH_SKIP_COMMIT_INDEX=true -> skipping generation."
+            Write-Host "SD commit index missing, but PUBLISH_SKIP_COMMIT_INDEX=true -> continuing without it."
           } else {
-            Write-Host "SD commit index missing; generating locally..."
-            $sdJsonOut = Join-Path $sdDir 'commit-index.json'
-            $sdCsvOut  = Join-Path $sdDir 'commit-index.csv'
-            & "$repo/scripts/build-source-distribution/New-CommitIndex.ps1" -RepositoryPath $repo -OutputPath $sdJsonOut -CsvOutputPath $sdCsvOut -AllowDirty
+            throw 'SD commit index missing; ensure the producing job uploaded commit-index-sd or set PUBLISH_SKIP_COMMIT_INDEX=true (non-main/tag only).'
           }
 
-      - name: Generate missing Tooling commit index
+      - name: Verify Tooling commit index downloaded (no regeneration)
         shell: pwsh
         env:
           PUBLISH_SKIP_COMMIT_INDEX: ${{ env.PUBLISH_SKIP_COMMIT_INDEX || '' }}
@@ -1632,23 +1632,11 @@ jobs:
           $csv  = Get-ChildItem -LiteralPath $toolDir -Filter 'tooling-commit-index.csv' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
 
           if ($json -and $csv) {
-            Write-Host "Tooling commit index already present."
+            Write-Host "Tooling commit index present (downloaded)."
           } elseif ($skip) {
-            Write-Host "Tooling commit index missing, but PUBLISH_SKIP_COMMIT_INDEX=true -> skipping generation."
+            Write-Host "Tooling commit index missing, but PUBLISH_SKIP_COMMIT_INDEX=true -> continuing without it."
           } else {
-            Write-Host "Tooling commit index missing; generating locally..."
-            $toolJsonOut = Join-Path $toolDir 'tooling-commit-index.json'
-            $toolCsvOut  = Join-Path $toolDir 'tooling-commit-index.csv'
-            $includePaths = @(
-              '.vscode','configs','scenarios','runner_dependencies.vipc',
-              'scripts/run-worktree-task.ps1','scripts/run-requirements-summary-task.ps1','scripts/task-devmode-bind.ps1',
-              'scripts/clear-labview-librarypaths-all.ps1','scripts/run-xcli.ps1','scripts/run-worktree-tests.ps1',
-              'scripts/test/Test.ps1','scripts/vi-compare','scripts/ppl-from-sd/Build_Ppl_From_SourceDistribution.ps1',
-              'scripts/labview/vipb-bump-worktree.ps1','scripts/clear-tooling-cache.ps1',
-              'Tooling/dotnet/OrchestrationCli','Tooling/dotnet/IntegrationEngineCli','Tooling/dotnet/DevModeAgentCli',
-              'Tooling/dotnet/RequirementsSummarizer','Tooling/dotnet/TestsCli','Tooling/x-cli/src/XCli','Tooling/x-cli/src/Telemetry'
-            )
-            & "$repo/scripts/build-source-distribution/New-CommitIndex.ps1" -RepositoryPath $repo -IncludePaths $includePaths -OutputPath $toolJsonOut -CsvOutputPath $toolCsvOut -AllowDirty
+            throw 'Tooling commit index missing; ensure the producing job uploaded commit-index-tooling or set PUBLISH_SKIP_COMMIT_INDEX=true (non-main/tag only).'
           }
 
       - name: Validate commit index artifacts
