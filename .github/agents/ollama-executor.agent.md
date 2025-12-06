@@ -262,6 +262,45 @@ pwsh -NoProfile -File scripts/ollama-executor/Run-CiRefineLoops.ps1 \
 - Patch command receives environment variables for context: `REFINE_LOOP` (loop number), `REFINE_EXIT_CODE` (CiRefineCli exit), `REFINE_SUMMARY_PATH` (JSON summary per loop), and `REFINE_LOG_DIR` (log directory).
 - CiRefineCli now normalizes comma-delimited extra args (e.g., a single quoted blob containing `--repo-slug,...,--run-id,...`), so loops accept both clean arrays and the compact form.
 
+### 9. One-loop fix in an isolated worktree
+Use a temporary worktree to avoid touching the main tree, run one refinement loop, apply a fix, and commit inside the worktree.
+
+Example commands:
+```powershell
+# 1) Create isolated worktree (replace <ref> with branch/sha)
+pwsh -NoProfile -File scripts/run-worktree-task.ps1 `
+  -SourceRepoPath . `
+  -Ref feature/script-level-unit-test `
+  -SupportedBitness both `
+  -LvlibpBitness both `
+  -Major 0 -Minor 1 -Patch 0 -Build 1
+
+# 2) Run a single refinement loop inside the worktree
+pwsh -NoProfile -File scripts/ollama-executor/Run-CiRefineLoops.ps1 `
+  -RepoPath <worktree-path> `
+  -Loops 1 `
+  -DownloadLogs:$true `
+  -LogDir artifacts/ci-logs `
+  -PatchEachLoop:$true `
+  -PatchCommand "pwsh -NoProfile -File scripts/ollama-executor/AgentPatch.ps1" `
+  -ExtraArgs '--repo-slug,svelderrainruiz/labview-icon-editor,--run-id,19983114277,--status-filter,completed,in_progress,queued'
+
+# 3) Commit the fix inside the worktree (if changes exist)
+pushd <worktree-path>
+git status -sb
+git add <changed files>
+git commit -m "Apply fix from refinement loop"
+popd
+```
+
+Verification prompts for the Ollama executor (ask sequentially before running):
+- “Provide the repo slug (owner/repo) and target branch/ref for the worktree.”
+- “Provide the workflow run id to refine against; if none, should I wait for HEAD?”
+- “Confirm status filter and whether to download logs (default yes).”
+- “Provide the patch command to run between loops (or say none).”
+- “Provide the test command (or say none) and confirm sim vs real mode.”
+- “Is it acceptable to commit changes inside the isolated worktree? If yes, supply commit message.”
+
 ## Environment Variables
 
 Set these environment variables for simulation mode (no real LabVIEW required):
