@@ -15,6 +15,7 @@
 .OUTPUTS
   Writes errors to stderr and exits non-zero on failure.
 !>
+#>
 [CmdletBinding()]
 param(
   [string]$Traceability = 'docs/traceability.yaml'

@@ -13,7 +13,10 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..' '..' '..')
 if (-not $BinPath -or [string]::IsNullOrWhiteSpace($BinPath)) {
   $BinPath = Join-Path $repoRoot '.tools\bin'
 }
-$BinPath = (Resolve-Path -LiteralPath $BinPath -ErrorAction SilentlyContinue) ?? $BinPath
+$resolved = Resolve-Path -LiteralPath $BinPath -ErrorAction SilentlyContinue
+if ($null -ne $resolved) {
+  $BinPath = $resolved
+}
 
 New-Item -ItemType Directory -Force -Path $BinPath | Out-Null
 
@@ -38,7 +41,7 @@ $notice = @(
   "if (Test-Path '$abs') {",
   "  if (-not `$env:XCLI_TOOLS_PATH_NOTICE_SHOWN) {",
   "    `$env:XCLI_TOOLS_PATH_NOTICE_SHOWN = '1'",
-  "    Write-Host \"x-cli tools on PATH: $abs\" -ForegroundColor DarkCyan",
+  "    Write-Host 'x-cli tools on PATH: $abs' -ForegroundColor DarkCyan",
   "  }",
   "}",
   $noticeEnd

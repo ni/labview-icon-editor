@@ -1,0 +1,250 @@
+- id: TRW-001
+  section: "9.1 Workflow Triggering & Scope"
+  text: "The workflow shall run only in response to a workflow_run of CI Pipeline."
+  type: "Functional/Performance"
+  priority: "High"
+  verification:
+    methods:
+      - "Inspection"
+      - "Demonstration"
+    primary: "Inspection"
+    detail: "Verify on.workflow_run.workflows == CI Pipeline and types == completed."
+    level: "System"
+  acceptance: "Only workflow_run(CI Pipeline, completed) is declared; no other triggers exist."
+  owner: "Automation QA (Agent)"
+  phase: "CI Integration"
+  status: "Completed"
+  trace:
+    upstream: ["SRS Section 9.1 trigger guard"]
+    downstream: [".github/workflows/draft-release.yml"]
+  evidence:
+    - "Workflow YAML snippet"
+    - "Log of event payload"
+  risk: "Unintended release runs"
+  rationale: "Prevent unintended draft-release runs"
+  version: "1 | 2025-11-26"
+
+- id: TRW-002
+  section: "9.1 Workflow Triggering & Scope"
+  text: "The workflow shall proceed only when workflow_run.conclusion == success."
+  type: "Functional/Performance"
+  priority: "High"
+  verification:
+    methods:
+      - "Test"
+    primary: "Test"
+    detail: "Replay success vs failure workflow_run payloads."
+    level: "System"
+  acceptance: "Runs when conclusion=success; exits early otherwise."
+  owner: "Automation QA (Agent)"
+  phase: "CI Integration"
+  status: "Completed"
+  trace:
+    upstream: ["SRS Section 9.1 success gate"]
+    downstream: [".github/workflows/draft-release.yml"]
+  evidence:
+    - "Logs showing guard evaluation"
+    - "Run URLs with conclusions"
+  risk: "Tag/release from failed upstream"
+  rationale: "Gate downstream release on upstream success"
+  version: "1 | 2025-11-20"
+
+- id: TRW-003
+  section: "9.1 Workflow Triggering & Scope"
+  text: "The workflow shall proceed only when the upstream event is push."
+  type: "Functional/Performance"
+  priority: "High"
+  verification:
+    methods:
+      - "Test"
+    primary: "Test"
+    detail: "workflow_run.event == push guard"
+    level: "System"
+  acceptance: "Push events continue; non-push events skip."
+  owner: "Automation QA (Agent)"
+  phase: "CI Integration"
+  status: "Completed"
+  trace:
+    upstream: ["SRS Section 9.1 event source constraint"]
+    downstream: [".github/workflows/draft-release.yml"]
+  evidence:
+    - "Guard log for push vs pull_request"
+  risk: "Release triggered from PR/replay"
+  rationale: "Restrict release flow to push provenance"
+  version: "1 | 2025-11-20"
+
+- id: TRW-004
+  section: "9.1 Workflow Triggering & Scope"
+  text: "The workflow shall evaluate head_branch against an allow-list (main, develop, release-alpha/*, release-beta/*, release-rc/*) with configurable extensions."
+  type: "Functional/Performance"
+  priority: "High"
+  verification:
+    methods:
+      - "Analysis"
+      - "Test"
+    primary: "Analysis"
+    detail: "Check allow-list expression and simulated branches."
+    level: "System"
+  acceptance: "Allowed branches proceed; blocked branches emit diagnostic."
+  owner: "Automation QA (Agent)"
+  phase: "CI Integration"
+  status: "Completed"
+  trace:
+    upstream: ["SRS Section 9.1 branch allow-list"]
+    downstream: [".github/workflows/draft-release.yml"]
+  evidence:
+    - "Allow-list config snippet"
+    - "Logs for allowed/disallowed branches"
+  risk: "Unintended releases from feature branches"
+  rationale: "Constrain release scope"
+  version: "1 | 2025-11-20"
+
+- id: TRW-005
+  section: "9.1 Workflow Triggering & Scope"
+  text: "For branches outside the allow-list, the workflow shall terminate as a no-op and perform no tag or release."
+  type: "Functional/Performance"
+  priority: "High"
+  verification:
+    methods:
+      - "Test"
+    primary: "Test"
+    detail: "Run from blocked branch and confirm no tag/release."
+    level: "System"
+  acceptance: "No tags/releases created; log shows no-op decision."
+  owner: "Automation QA (Agent)"
+  phase: "CI Integration"
+  status: "Completed"
+  trace:
+    upstream: ["SRS Section 9.1 no-op on disallowed branches"]
+    downstream: [".github/workflows/draft-release.yml"]
+  evidence:
+    - "Run log showing no-op"
+    - "Tag/release list unchanged"
+  risk: "Accidental tag/release on disallowed branch"
+  rationale: "Protect release refs"
+  version: "1 | 2025-11-20"
+
+- id: TRW-006
+  section: "9.1 Workflow Triggering & Scope"
+  text: "The workflow shall ensure at most one run per commit SHA using a concurrency group keyed by the SHA."
+  type: "Process"
+  priority: "High"
+  verification:
+    methods:
+      - "Inspection"
+      - "Demonstration"
+    primary: "Inspection"
+    detail: "Check concurrency block group and cancel-in-progress."
+    level: "System"
+  acceptance: "Overlapping runs on same SHA cancel older run; only one completes."
+  owner: "Automation QA (Agent)"
+  phase: "CI Integration"
+  status: "Completed"
+  trace:
+    upstream: ["SRS Section 9.1 dedupe requirement"]
+    downstream: [".github/workflows/draft-release.yml"]
+  evidence:
+    - "Concurrency block YAML"
+    - "Run history showing cancel"
+  risk: "Conflicting releases from parallel runs"
+  rationale: "Deduplicate by commit"
+  version: "2 | 2025-11-26"
+
+- id: TRW-006B
+  section: "9.1 Workflow Triggering & Scope"
+  text: "When a new run starts for the same commit SHA, cancel any in-progress run (cancel-in-progress policy)."
+  type: "Process"
+  priority: "High"
+  verification:
+    methods:
+      - "Inspection"
+      - "Demonstration"
+    primary: "Inspection"
+    detail: "Observe cancel-in-progress behavior."
+    level: "System"
+  acceptance: "First run cancels; second run succeeds for same SHA."
+  owner: "Automation QA (Agent)"
+  phase: "CI Integration"
+  status: "Completed"
+  trace:
+    upstream: ["SRS Section 9.1 dedupe requirement"]
+    downstream: [".github/workflows/draft-release.yml"]
+  evidence:
+    - "Run history with cancel"
+  risk: "Duplicate releases on same commit"
+  rationale: "Keep single active run"
+  version: "1 | 2025-11-26"
+
+- id: TRW-006C
+  section: "9.1 Workflow Triggering & Scope"
+  text: "The workflow shall log the configured concurrency policy (including group) at start for traceability."
+  type: "Process"
+  priority: "High"
+  verification:
+    methods:
+      - "Inspection"
+      - "Demonstration"
+    primary: "Inspection"
+    detail: "Check log line for concurrency policy/group."
+    level: "System"
+  acceptance: "Startup log contains concurrency_policy and concurrency_group once."
+  owner: "Automation QA (Agent)"
+  phase: "CI Integration"
+  status: "Completed"
+  trace:
+    upstream: ["SRS Section 9.1 dedupe requirement"]
+    downstream: [".github/workflows/draft-release.yml"]
+  evidence:
+    - "Log excerpt with concurrency policy"
+  risk: "Lack of audit trail for dedupe"
+  rationale: "Audit concurrency settings"
+  version: "1 | 2025-11-26"
+
+- id: TRW-010
+  section: "9.2 Versioning & Bump Logic"
+  text: "The workflow shall compute next version from last reachable tag, parsed semver, and commit count as BUILD."
+  type: "Functional/Performance"
+  priority: "High"
+  verification:
+    methods:
+      - "Analysis"
+      - "Test"
+    primary: "Analysis"
+    detail: "Verify fetch-depth 0, tag resolution, commit count."
+    level: "System"
+  acceptance: "Version = last tag semver bumped with build = commit count since tag."
+  owner: "Automation QA (Agent)"
+  phase: "CI Integration"
+  status: "Completed"
+  trace:
+    upstream: ["SRS Section 9.2 version computation"]
+    downstream: [".github/actions/compute-version"]
+  evidence:
+    - "CI logs with last tag and commit count"
+  risk: "Wrong version/tag selection"
+  rationale: "Deterministic versioning"
+  version: "1 | 2025-11-20"
+
+- id: TRW-011
+  section: "9.2 Versioning & Bump Logic"
+  text: "When no previous tag exists, the base version shall default to 0.1.0 before bump rules."
+  type: "Functional/Performance"
+  priority: "Medium"
+  verification:
+    methods:
+      - "Test"
+    primary: "Test"
+    detail: "Simulate no tags and run compute-version."
+    level: "System"
+  acceptance: "Fallback version 0.1.0 is used when no tag is found."
+  owner: "Automation QA (Agent)"
+  phase: "CI Integration"
+  status: "Completed"
+  trace:
+    upstream: ["SRS Section 9.2 base version fallback"]
+    downstream: [".github/actions/compute-version"]
+  evidence:
+    - "Logs showing base version path"
+  risk: "Undefined version on empty history"
+  rationale: "Provide deterministic default"
+  version: "1 | 2025-11-20"

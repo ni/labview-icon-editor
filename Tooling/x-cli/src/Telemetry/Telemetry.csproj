@@ -5,6 +5,6 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="JsonSchema.Net" Version="4.1.2" />
+    <PackageReference Include="JsonSchema.Net" Version="6.0.0" />
   </ItemGroup>
 </Project>

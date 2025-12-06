@@ -1,0 +1,8 @@
+C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\src\XCli\XCli.csproj : warning NU1601: Dependency specified was JsonSchema.Net (>= 5.5.2) but ended up with JsonSchema.Net 6.0.0.
+C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\src\XCli\XCli.csproj : warning NU1601: Dependency specified was JsonSchema.Net (>= 5.5.2) but ended up with JsonSchema.Net 6.0.0.
+[srs] imported 198 requirements -> builds\srs\headless-test\20251205-181354\requirements.json
+{"timestampUtc":"2025-12-06T02:13:57.1812078Z","pid":19444,"os":"Windows","subcommand":"srs","args":["import-csv","--input","docs/requirements/requirements.csv","--output","builds\\srs\\headless-test\\20251205-181354\\requirements.json"],"env":{},"result":"success","exitCode":0,"message":"","durationMs":208}
+C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\src\XCli\XCli.csproj : warning NU1601: Dependency specified was JsonSchema.Net (>= 5.5.2) but ended up with JsonSchema.Net 6.0.0.
+C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\src\XCli\XCli.csproj : warning NU1601: Dependency specified was JsonSchema.Net (>= 5.5.2) but ended up with JsonSchema.Net 6.0.0.
+[srs] validate ok (198 requirements)
+{"timestampUtc":"2025-12-06T02:14:00.6185014Z","pid":28316,"os":"Windows","subcommand":"srs","args":["validate","--input","builds\\srs\\headless-test\\20251205-181354\\requirements.json","--schema-strict","--output-json","builds\\srs\\headless-test\\20251205-181354\\srs-result.json"],"env":{},"result":"success","exitCode":0,"message":"","durationMs":159}

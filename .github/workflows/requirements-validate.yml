@@ -1,0 +1,42 @@
+name: requirements-validate
+
+on:
+  pull_request:
+    paths:
+      - 'docs/requirements/**'
+      - 'Tooling/x-cli/src/XCli/Srs/**'
+      - 'Tooling/x-cli/src/SrsApi/**'
+      - '.github/workflows/requirements-validate.yml'
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'docs/requirements/**'
+      - 'Tooling/x-cli/src/XCli/Srs/**'
+      - 'Tooling/x-cli/src/SrsApi/**'
+      - '.github/workflows/requirements-validate.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: ./global.json
+
+      - name: Restore
+        run: dotnet restore Tooling/x-cli/src/XCli/XCli.csproj
+
+      - name: Validate requirements
+        run: dotnet run --project Tooling/x-cli/src/XCli/XCli.csproj -- srs validate --input docs/requirements/requirements.yaml --schema docs/requirements/schema/requirements.schema.json
+
+      - name: Export CSV (pilot)
+        run: dotnet run --project Tooling/x-cli/src/XCli/XCli.csproj -- srs export-csv --input docs/requirements/requirements.yaml --output reports/requirements-pilot.csv
+
+      - name: Export RTM (pilot)
+        run: dotnet run --project Tooling/x-cli/src/XCli/XCli.csproj -- srs export-rtm --input docs/requirements/requirements.yaml --output reports/requirements-rtm-pilot.md
+
+      - name: Check drift (pilot outputs)
+        run: git diff --exit-code reports/requirements-pilot.csv reports/requirements-rtm-pilot.md

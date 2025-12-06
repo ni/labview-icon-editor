@@ -1,0 +1,12 @@
+{
+  "runId": "20251205-181615",
+  "startedUtc": "2025-12-05T18:16:15.3293439-08:00",
+  "finishedUtc": "2025-12-05T18:16:22.7543611-08:00",
+  "inputCsv": "docs/requirements/requirements.csv",
+  "schema": null,
+  "importJson": "builds\\srs\\headless-test\\20251205-181615\\requirements.json",
+  "validateJson": "builds\\srs\\headless-test\\20251205-181615\\srs-result.json",
+  "log": "builds\\srs\\headless-test\\20251205-181615\\srs.log",
+  "importExitCode": 0,
+  "validateExitCode": 0
+}

@@ -1,0 +1,4 @@
+C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\src\XCli\XCli.csproj : warning NU1601: Dependency specified was JsonSchema.Net (>= 5.5.2) but ended up with JsonSchema.Net 6.0.0.
+C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\src\XCli\XCli.csproj : warning NU1601: Dependency specified was JsonSchema.Net (>= 5.5.2) but ended up with JsonSchema.Net 6.0.0.
+[srs] imported 198 requirements -> builds\srs\headless-test\20251205-181228\requirements.json
+{"timestampUtc":"2025-12-06T02:12:31.4321053Z","pid":42292,"os":"Windows","subcommand":"srs","args":["import-csv","--input","docs/requirements/requirements.csv","--output","builds\\srs\\headless-test\\20251205-181228\\requirements.json"],"env":{},"result":"success","exitCode":0,"message":"","durationMs":188}

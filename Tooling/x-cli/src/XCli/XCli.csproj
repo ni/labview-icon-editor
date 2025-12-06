@@ -13,6 +13,12 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Telemetry\Telemetry.csproj" />
+    <ProjectReference Include="..\SrsApi\SrsApi.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="CsvHelper" Version="30.0.1" />
+    <PackageReference Include="JsonSchema.Net" Version="6.0.0" />
+    <PackageReference Include="YamlDotNet" Version="15.1.2" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.nupkg.md" Pack="true" PackagePath="" Condition="Exists('..\README.nupkg.md')" />

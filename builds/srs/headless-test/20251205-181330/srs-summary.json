@@ -1,0 +1,232 @@
+{
+  "runId": "20251205-181330",
+  "startedUtc": "2025-12-05T18:13:30.8646330-08:00",
+  "finishedUtc": "2025-12-05T18:13:34.2866947-08:00",
+  "inputCsv": "docs/requirements/requirements.csv",
+  "schema": null,
+  "importJson": "builds\\srs\\headless-test\\20251205-181330\\requirements.json",
+  "validateJson": "builds\\srs\\headless-test\\20251205-181330\\srs-result.json",
+  "log": "builds\\srs\\headless-test\\20251205-181330\\srs.log",
+  "importExitCode": [
+    "C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\Tooling\\x-cli\\src\\XCli\\XCli.csproj : warning NU1601: Dependency specified was JsonSchema.Net (>= 5.5.2) but ended up with JsonSchema.Net 6.0.0.",
+    "C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\Tooling\\x-cli\\src\\XCli\\XCli.csproj : warning NU1601: Dependency specified was JsonSchema.Net (>= 5.5.2) but ended up with JsonSchema.Net 6.0.0.",
+    "[srs] imported 198 requirements -> builds\\srs\\headless-test\\20251205-181330\\requirements.json",
+    {
+      "Exception": {
+        "SerializedRemoteException": null,
+        "SerializedRemoteInvocationInfo": null,
+        "ErrorRecord": {
+          "Exception": {
+            "Message": "{\"timestampUtc\":\"2025-12-06T02:13:34.1808449Z\",\"pid\":23200,\"os\":\"Windows\",\"subcommand\":\"srs\",\"args\":[\"import-csv\",\"--input\",\"docs/requirements/requirements.csv\",\"--output\",\"builds\\\\srs\\\\headless-test\\\\20251205-181330\\\\requirements.json\"],\"env\":{},\"result\":\"success\",\"exitCode\":0,\"message\":\"\",\"durationMs\":165}",
+            "TargetSite": null,
+            "Data": {},
+            "InnerException": null,
+            "HelpLink": null,
+            "Source": null,
+            "HResult": -2146233087,
+            "StackTrace": null
+          },
+          "TargetObject": null,
+          "CategoryInfo": {
+            "Category": 0,
+            "Activity": "",
+            "Reason": "ParentContainsErrorRecordException",
+            "TargetName": "",
+            "TargetType": ""
+          },
+          "FullyQualifiedErrorId": "RuntimeException",
+          "ErrorDetails": null,
+          "InvocationInfo": null,
+          "ScriptStackTrace": null,
+          "PipelineIterationInfo": []
+        },
+        "WasThrownFromThrowStatement": false,
+        "TargetSite": null,
+        "Message": "{\"timestampUtc\":\"2025-12-06T02:13:34.1808449Z\",\"pid\":23200,\"os\":\"Windows\",\"subcommand\":\"srs\",\"args\":[\"import-csv\",\"--input\",\"docs/requirements/requirements.csv\",\"--output\",\"builds\\\\srs\\\\headless-test\\\\20251205-181330\\\\requirements.json\"],\"env\":{},\"result\":\"success\",\"exitCode\":0,\"message\":\"\",\"durationMs\":165}",
+        "Data": {},
+        "InnerException": null,
+        "HelpLink": null,
+        "Source": null,
+        "HResult": -2146233087,
+        "StackTrace": null
+      },
+      "TargetObject": "{\"timestampUtc\":\"2025-12-06T02:13:34.1808449Z\",\"pid\":23200,\"os\":\"Windows\",\"subcommand\":\"srs\",\"args\":[\"import-csv\",\"--input\",\"docs/requirements/requirements.csv\",\"--output\",\"builds\\\\srs\\\\headless-test\\\\20251205-181330\\\\requirements.json\"],\"env\":{},\"result\":\"success\",\"exitCode\":0,\"message\":\"\",\"durationMs\":165}",
+      "CategoryInfo": {
+        "Category": 0,
+        "Activity": "",
+        "Reason": "RemoteException",
+        "TargetName": "{\"timestampUtc\":\"2025-12-06T02:13:34.1808449Z\",\"pid\":23200,\"os\":\"Windows\",\"subcommand\":\"srs\",\"args\":[\"import-csv\",\"--input\",\"docs/requirements/requirements.csv\",\"--output\",\"builds\\\\srs\\\\headless-test\\\\20251205-181330\\\\requirements.json\"],\"env\":{},\"result\":\"success\",\"exitCode\":0,\"message\":\"\",\"durationMs\":165}",
+        "TargetType": "String"
+      },
+      "FullyQualifiedErrorId": "NativeCommandError",
+      "ErrorDetails": null,
+      "InvocationInfo": {
+        "MyCommand": {
+          "Path": "C:\\Program Files\\dotnet\\dotnet.exe",
+          "Extension": ".exe",
+          "Definition": "C:\\Program Files\\dotnet\\dotnet.exe",
+          "Source": "C:\\Program Files\\dotnet\\dotnet.exe",
+          "Version": {
+            "Major": 10,
+            "Minor": 0,
+            "Build": 25,
+            "Revision": 27814,
+            "MajorRevision": 0,
+            "MinorRevision": 27814
+          },
+          "Visibility": 0,
+          "OutputType": [
+            {
+              "Name": "System.String",
+              "Type": "string",
+              "TypeDefinitionAst": null
+            }
+          ],
+          "Name": "dotnet.exe",
+          "CommandType": 32,
+          "ModuleName": "",
+          "Module": null,
+          "RemotingCapability": 1,
+          "Parameters": null,
+          "ParameterSets": null
+        },
+        "BoundParameters": {},
+        "UnboundArguments": [],
+        "ScriptLineNumber": 42,
+        "OffsetInLine": 5,
+        "HistoryId": -1,
+        "ScriptName": "C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\scripts\\srs\\run-srs-headless.ps1",
+        "Line": "    & $cmdPath @cmdArgs *>&1 | Tee-Object -FilePath $logPath -Append\r\n",
+        "Statement": "& $cmdPath @cmdArgs *>&1",
+        "PositionMessage": "At C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\scripts\\srs\\run-srs-headless.ps1:42 char:5\r\n+     & $cmdPath @cmdArgs *>&1 | Tee-Object -FilePath $logPath -Append\r\n+     ~~~~~~~~~~~~~~~~~~~~~~~~",
+        "PSScriptRoot": "C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\scripts\\srs",
+        "PSCommandPath": "C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\scripts\\srs\\run-srs-headless.ps1",
+        "InvocationName": "&",
+        "PipelineLength": 0,
+        "PipelinePosition": 0,
+        "ExpectingInput": false,
+        "CommandOrigin": 1,
+        "DisplayScriptPosition": null
+      },
+      "ScriptStackTrace": "at Invoke-Step, C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\scripts\\srs\\run-srs-headless.ps1: line 42\r\nat <ScriptBlock>, C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\scripts\\srs\\run-srs-headless.ps1: line 58",
+      "PipelineIterationInfo": [
+        0,
+        0,
+        3
+      ],
+      "PSMessageDetails": null
+    },
+    0
+  ],
+  "validateExitCode": [
+    "C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\Tooling\\x-cli\\src\\XCli\\XCli.csproj : warning NU1601: Dependency specified was JsonSchema.Net (>= 5.5.2) but ended up with JsonSchema.Net 6.0.0.",
+    "C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\Tooling\\x-cli\\src\\XCli\\XCli.csproj : warning NU1601: Dependency specified was JsonSchema.Net (>= 5.5.2) but ended up with JsonSchema.Net 6.0.0.",
+    "[srs] imported 198 requirements -> builds\\srs\\headless-test\\20251205-181330\\requirements.json",
+    {
+      "Exception": {
+        "SerializedRemoteException": null,
+        "SerializedRemoteInvocationInfo": null,
+        "ErrorRecord": {
+          "Exception": {
+            "Message": "{\"timestampUtc\":\"2025-12-06T02:13:34.1808449Z\",\"pid\":23200,\"os\":\"Windows\",\"subcommand\":\"srs\",\"args\":[\"import-csv\",\"--input\",\"docs/requirements/requirements.csv\",\"--output\",\"builds\\\\srs\\\\headless-test\\\\20251205-181330\\\\requirements.json\"],\"env\":{},\"result\":\"success\",\"exitCode\":0,\"message\":\"\",\"durationMs\":165}",
+            "TargetSite": null,
+            "Data": {},
+            "InnerException": null,
+            "HelpLink": null,
+            "Source": null,
+            "HResult": -2146233087,
+            "StackTrace": null
+          },
+          "TargetObject": null,
+          "CategoryInfo": {
+            "Category": 0,
+            "Activity": "",
+            "Reason": "ParentContainsErrorRecordException",
+            "TargetName": "",
+            "TargetType": ""
+          },
+          "FullyQualifiedErrorId": "RuntimeException",
+          "ErrorDetails": null,
+          "InvocationInfo": null,
+          "ScriptStackTrace": null,
+          "PipelineIterationInfo": []
+        },
+        "WasThrownFromThrowStatement": false,
+        "TargetSite": null,
+        "Message": "{\"timestampUtc\":\"2025-12-06T02:13:34.1808449Z\",\"pid\":23200,\"os\":\"Windows\",\"subcommand\":\"srs\",\"args\":[\"import-csv\",\"--input\",\"docs/requirements/requirements.csv\",\"--output\",\"builds\\\\srs\\\\headless-test\\\\20251205-181330\\\\requirements.json\"],\"env\":{},\"result\":\"success\",\"exitCode\":0,\"message\":\"\",\"durationMs\":165}",
+        "Data": {},
+        "InnerException": null,
+        "HelpLink": null,
+        "Source": null,
+        "HResult": -2146233087,
+        "StackTrace": null
+      },
+      "TargetObject": "{\"timestampUtc\":\"2025-12-06T02:13:34.1808449Z\",\"pid\":23200,\"os\":\"Windows\",\"subcommand\":\"srs\",\"args\":[\"import-csv\",\"--input\",\"docs/requirements/requirements.csv\",\"--output\",\"builds\\\\srs\\\\headless-test\\\\20251205-181330\\\\requirements.json\"],\"env\":{},\"result\":\"success\",\"exitCode\":0,\"message\":\"\",\"durationMs\":165}",
+      "CategoryInfo": {
+        "Category": 0,
+        "Activity": "",
+        "Reason": "RemoteException",
+        "TargetName": "{\"timestampUtc\":\"2025-12-06T02:13:34.1808449Z\",\"pid\":23200,\"os\":\"Windows\",\"subcommand\":\"srs\",\"args\":[\"import-csv\",\"--input\",\"docs/requirements/requirements.csv\",\"--output\",\"builds\\\\srs\\\\headless-test\\\\20251205-181330\\\\requirements.json\"],\"env\":{},\"result\":\"success\",\"exitCode\":0,\"message\":\"\",\"durationMs\":165}",
+        "TargetType": "String"
+      },
+      "FullyQualifiedErrorId": "NativeCommandError",
+      "ErrorDetails": null,
+      "InvocationInfo": {
+        "MyCommand": {
+          "Path": "C:\\Program Files\\dotnet\\dotnet.exe",
+          "Extension": ".exe",
+          "Definition": "C:\\Program Files\\dotnet\\dotnet.exe",
+          "Source": "C:\\Program Files\\dotnet\\dotnet.exe",
+          "Version": {
+            "Major": 10,
+            "Minor": 0,
+            "Build": 25,
+            "Revision": 27814,
+            "MajorRevision": 0,
+            "MinorRevision": 27814
+          },
+          "Visibility": 0,
+          "OutputType": [
+            {
+              "Name": "System.String",
+              "Type": "string",
+              "TypeDefinitionAst": null
+            }
+          ],
+          "Name": "dotnet.exe",
+          "CommandType": 32,
+          "ModuleName": "",
+          "Module": null,
+          "RemotingCapability": 1,
+          "Parameters": null,
+          "ParameterSets": null
+        },
+        "BoundParameters": {},
+        "UnboundArguments": [],
+        "ScriptLineNumber": 42,
+        "OffsetInLine": 5,
+        "HistoryId": -1,
+        "ScriptName": "C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\scripts\\srs\\run-srs-headless.ps1",
+        "Line": "    & $cmdPath @cmdArgs *>&1 | Tee-Object -FilePath $logPath -Append\r\n",
+        "Statement": "& $cmdPath @cmdArgs *>&1",
+        "PositionMessage": "At C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\scripts\\srs\\run-srs-headless.ps1:42 char:5\r\n+     & $cmdPath @cmdArgs *>&1 | Tee-Object -FilePath $logPath -Append\r\n+     ~~~~~~~~~~~~~~~~~~~~~~~~",
+        "PSScriptRoot": "C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\scripts\\srs",
+        "PSCommandPath": "C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\scripts\\srs\\run-srs-headless.ps1",
+        "InvocationName": "&",
+        "PipelineLength": 0,
+        "PipelinePosition": 0,
+        "ExpectingInput": false,
+        "CommandOrigin": 1,
+        "DisplayScriptPosition": null
+      },
+      "ScriptStackTrace": "at Invoke-Step, C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\scripts\\srs\\run-srs-headless.ps1: line 42\r\nat <ScriptBlock>, C:\\codex\\home\\runner\\work\\labview-icon-editor-fork\\labview-icon-editor-fork\\scripts\\srs\\run-srs-headless.ps1: line 58",
+      "PipelineIterationInfo": [
+        0,
+        0,
+        3
+      ],
+      "PSMessageDetails": null
+    },
+    0
+  ]
+}

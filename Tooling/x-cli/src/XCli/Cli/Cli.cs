@@ -27,6 +27,7 @@ public record CliParseResult(bool ShowHelp, bool ShowVersion, string? Subcommand
                  "foo",
                  "labview-devmode-enable",
                  "labview-devmode-disable",
+                 "srs",
                  "vi-compare-verify",
                  "vi-analyzer-verify",
                  "vi-analyzer-run",

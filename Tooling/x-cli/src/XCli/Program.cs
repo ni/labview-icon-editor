@@ -11,6 +11,7 @@ using XCli.Reverse;
 using XCli.Localci;
 using XCli.Upper;
 using XCli.Telemetry;
+using XCli.Srs;
 using XCli.ViCompare;
 using XCli.ViAnalyzer;
 using XCli.Vipm;
@@ -75,7 +76,7 @@ public static class Program
         var isDevmode = subcommand.StartsWith("labview-devmode", StringComparison.Ordinal);
 
         // Always run "real" for fast deterministic commands and logging flows
-        var alwaysReal = subcommand is "echo" or "reverse" or "upper" or "foo";
+        var alwaysReal = subcommand is "echo" or "reverse" or "upper" or "foo" or "srs";
         // Heavy / scenario-driven commands stay simulated unless explicitly requested
         var requiresReal = forceReal || alwaysReal || (isDevmode && hasScenarioArg) || subcommand is "log-replay" or "log-diff" or "telemetry";
 
@@ -142,6 +143,12 @@ public static class Program
         if (subcommand == "telemetry")
         {
             var code = TelemetryCommand.Run(parsed.PayloadArgs);
+            return code;
+        }
+        if (subcommand == "srs")
+        {
+            var code = SrsCommand.Run(parsed.PayloadArgs);
+            logger.Log(subcommand, parsed.PayloadArgs, string.Empty, new SimulationResult(code == 0, code), sw.ElapsedMilliseconds);
             return code;
         }
         if (subcommand == "localci-handshake")

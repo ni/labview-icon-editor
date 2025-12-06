@@ -26,7 +26,7 @@ if ($isPlain) {
     $env:NO_COLOR = '1'
     $env:CLICOLOR = '0'
 }
-$hasStyle = (-not $isPlain) -and ($PSStyle -ne $null)
+$hasStyle = (-not $isPlain) -and ($null -ne $PSStyle)
 
 function Get-EnvOrDefaultBool {
     param(
@@ -181,6 +181,27 @@ function Write-Summary {
     }
 }
 
+function Invoke-RepoHygieneChecks {
+    param([Parameter(Mandatory)][string]$RepoRoot)
+
+    $pester = Get-Module -ListAvailable -Name Pester | Sort-Object Version -Descending | Select-Object -First 1
+    if (-not $pester) {
+        throw "Pester module is required for hygiene checks but is not installed."
+    }
+
+    $testPath = Join-Path $RepoRoot 'Test\NoNetworkOrOutsidePath.Tests.ps1'
+    if (-not (Test-Path -LiteralPath $testPath -PathType Leaf)) {
+        Write-Warning ("Hygiene test not found at {0}; skipping." -f $testPath)
+        return
+    }
+
+    Write-Stage "Repo hygiene checks (no network/out-of-repo commands)"
+    $result = Invoke-Pester -CI -Path $testPath -PassThru -ErrorAction Stop
+    if ($result.Result -ne 'Passed') {
+        throw "Repo hygiene checks failed."
+    }
+}
+
 function New-VIAnalyzerRequestWithVersion {
     param(
         [Parameter(Mandatory)][string]$RequestPath,
@@ -235,7 +256,7 @@ function Test-LabVIEWInstalled {
     return [IO.File]::Exists($exe)
 }
 
-function Ensure-LabVIEWClosed {
+function Stop-LabVIEWProcesses {
     param(
         [string]$Version,
         [string[]]$BitnessList,
@@ -301,7 +322,7 @@ try {
     Test-PathExistence -Path $closeLvScript -Description "Close_LabVIEW script"
     Test-PathExistence -Path $lvprojPath -Description "LabVIEW project"
 
-    function Ensure-DevModeReady {
+    function Set-DevModeReady {
         param(
             [Parameter(Mandatory)][ValidateSet('32','64')][string]$Arch
         )
@@ -394,6 +415,8 @@ try {
         $logFile = $null
     }
 
+    Invoke-RepoHygieneChecks -RepoRoot $repoRoot
+
     # Run VI Analyzer first (uses LabVIEWCLI; avoid g-cli conflicts)
     $viWrapper = Join-Path $repoRoot 'scripts/vi-analyzer/RunWithDevMode.ps1'
     $viReqPath = $null
@@ -447,7 +470,7 @@ try {
         Write-Stage ("{0}-bit test phase" -f $arch)
 
         Write-Step -Step "1.0" -Message "Dev mode set" -Color "Cyan" -Arch $arch -LabVIEWVersion $lvVersion
-        Ensure-DevModeReady -Arch $arch
+        Set-DevModeReady -Arch $arch
 
         Write-Step -Step "2.0" -Message "Detect missing items on LabVIEW project (start)" -Color "Cyan" -Arch $arch -LabVIEWVersion $lvVersion
         Invoke-ScriptSafe -ScriptPath $missingScript -ArgumentMap @{
@@ -481,7 +504,7 @@ try {
 
     # Final safety: ensure no LabVIEW remains running for the arches we touched.
     Write-Step -Step "5.0" -Message "Final LabVIEW cleanup" -LabVIEWVersion $lvVersion
-    Ensure-LabVIEWClosed -Version $lvVersion -BitnessList $arches -CloseScript $closeLvScript
+    Stop-LabVIEWProcesses -Version $lvVersion -BitnessList $arches -CloseScript $closeLvScript
 
     Write-Host "Tests completed."
 }

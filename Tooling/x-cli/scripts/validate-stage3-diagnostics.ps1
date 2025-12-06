@@ -34,14 +34,16 @@ if (Test-Path $SchemaPath) {
   $python = Get-Command python -ErrorAction SilentlyContinue
   if ($null -ne $python) {
     try {
-      & $python.Path - <<'PY'
-import sys, json
+      $jsonSchemaProbe = @'
+import sys
 try:
     import jsonschema
 except ImportError:
     sys.exit(0)
-print('jsonschema available', file=sys.stderr)
-PY
+print("jsonschema available", file=sys.stderr)
+'@
+
+      & $python.Path -c $jsonSchemaProbe
       if ($LASTEXITCODE -eq 0) {
         & $python.Path -m jsonschema -i $DiagnosticsPath $SchemaPath
         if ($LASTEXITCODE -ne 0) { Fail "JSON Schema validation failed" }
@@ -50,10 +52,10 @@ PY
       if ($Strict) { Fail "Python/jsonschema validation failed: $($_.Exception.Message)" } else { Write-Warning "Schema validation skipped: $($_.Exception.Message)" }
     }
   } else {
-    if ($Strict) { Fail "Python not found; cannot run JSON Schema validation" } else { Write-Host "Python not found; minimal validation passed." }
+    if ($Strict) { Fail "Python not found; cannot run JSON Schema validation" } else { Write-Warning "Python not found; minimal validation passed." }
   }
 }
 
-Write-Host "Diagnostics validation OK: $DiagnosticsPath"
+Write-Output "Diagnostics validation OK: $DiagnosticsPath"
 exit 0
 

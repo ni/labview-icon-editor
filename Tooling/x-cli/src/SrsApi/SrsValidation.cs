@@ -6,8 +6,8 @@ namespace SrsApi;
 
 public static class SrsValidation
 {
-    // Allow TEST-REQ-* IDs in tests; production IDs use FGC-REQ-*.
-    private static readonly Regex IdPattern = new("^(?:FGC|TEST)-REQ-[A-Z-]+-\\d{3}$", RegexOptions.Compiled);
+    // IDs follow PREFIX[-SUBPREFIX...]-NNN or PREFIX[-SUBPREFIX...]-NNNX where prefix parts are alphanumeric (e.g., TRW-001, TRW-006C, LOG-001, COMP-005, R-BUILD-ARTIFACTS-001).
+    private static readonly Regex IdPattern = new("^[A-Z0-9]+(?:-[A-Z0-9]+)*-\\d{3}[A-Z]?$", RegexOptions.Compiled);
 
     public static bool IsValidId(string id) => IdPattern.IsMatch(SrsNormalization.NormalizeId(id));
 

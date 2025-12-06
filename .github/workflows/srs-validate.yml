@@ -1,0 +1,34 @@
+name: SRS Headless Validate
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: srs-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Run headless SRS harness
+        shell: pwsh
+        run: pwsh -NoProfile -File scripts/srs/run-srs-headless.ps1 -RepoRoot . -InputCsv docs/requirements/requirements.csv -OutputRoot builds/srs/headless
+
+      - name: Upload SRS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: srs-headless-${{ github.run_id }}
+          path: |
+            builds/srs/headless/**
+          if-no-files-found: error
