@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://labview-community-ci-cd.github.io/x-cli/schemas/v1/ghops.logs.v1.schema.json",
+  "title": "ghops logs v1",
+  "type": "object",
+  "properties": {
+    "schema": { "const": "ghops.logs/v1" },
+    "meta": {
+      "type": "object",
+      "properties": {
+        "runId": { "oneOf": [ { "type": "string" }, { "type": "number" } ] },
+        "sha": { "type": "string" },
+        "repo": { "type": "string" }
+      },
+      "required": ["runId", "sha", "repo"],
+      "additionalProperties": true
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "origin": { "enum": ["bash", "ps"] },
+          "name": { "enum": ["pr-create", "run-watch", "run-rerun", "artifacts-download", "release-tag"] },
+          "dryRun": { "type": "boolean" },
+          "repo": { "type": "string" },
+          "context": {
+            "type": "object",
+            "properties": {
+              "branch": { "type": "string" },
+              "base": { "type": "string" },
+              "labels": { "type": "array", "items": { "type": "string" } },
+              "target": { "type": "string" },
+              "workflow": { "type": "string" },
+              "run": { "type": "string" },
+              "runId": { "type": "string" },
+              "out": { "type": "string" },
+              "tag": { "type": "string" },
+              "failed": { "oneOf": [ { "type": "boolean" }, { "type": "string", "enum": ["true", "false"] } ] }
+            },
+            "additionalProperties": true
+          },
+          "commands": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["origin", "name", "dryRun", "repo", "context", "commands"],
+        "additionalProperties": true
+      }
+    }
+  },
+  "required": ["schema", "meta", "entries"],
+  "additionalProperties": true
+}

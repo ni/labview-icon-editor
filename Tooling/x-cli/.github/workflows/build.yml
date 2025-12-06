@@ -1,0 +1,203 @@
+﻿# SRS: FGC-REQ-CI-001
+name: CI
+on:
+  push:
+    branches:
+      - develop
+      - 'feature/*'
+      - 'release/*'
+      - 'hotfix/*'
+  pull_request:
+    branches:
+      - develop
+      - 'feature/*'
+      - 'release/*'
+      - 'hotfix/*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check PR mergeability (conflicts only)
+        if: github.event_name == 'pull_request'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pwsh ./scripts/check-mergeable.ps1
+      - name: Ensure PowerShell 7 (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $need = $PSVersionTable.PSVersion.Major -lt 7
+          if ($need) {
+            $ver = '7.4.11'
+            $msi = Join-Path $env:TEMP "PowerShell-$ver-win-x64.msi"
+            Invoke-WebRequest -Uri "https://github.com/PowerShell/PowerShell/releases/download/v$ver/PowerShell-$ver-win-x64.msi" -OutFile $msi
+            Start-Process msiexec.exe -Wait -ArgumentList "/i `"$msi`" /qn /norestart"
+            $pwsh = "$env:ProgramFiles\PowerShell\7\pwsh.exe"
+            if (-not (Test-Path $pwsh)) { throw "pwsh not found after install" }
+            "$env:ProgramFiles\PowerShell\7" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          }
+
+                  - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Verify module index (C#)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run --project src/Tools/ModuleIndex/ModuleIndex.csproj --json-out docs/module-index.json --md-out docs/module-index.md
+          git diff --exit-code -- docs/module-index.json
+          if ! git diff --quiet -- docs/module-index.md; then
+            echo "::warning::module-index.md differs from generated output; see diff below"
+            git --no-pager diff -- docs/module-index.md | sed -n '1,200p'
+          fi
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup Python (minimal)
+        if: runner.os == 'Linux'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python tools (inline)
+        if: runner.os == 'Linux'
+        run: |
+          python -m pip install --upgrade pip
+          # minimal tools; add as needed for linux-only steps
+
+      - name: Ensure wget
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command wget.exe -ErrorAction SilentlyContinue)) {
+            choco install wget -y
+          }
+
+      - name: Cache NuGet
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: dotnet --info [linux]
+        if: runner.os == 'Linux'
+        shell: bash
+        run: dotnet --info
+
+      - name: dotnet --info [windows]
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: dotnet --info
+
+      - name: Restore [linux]
+        if: runner.os == 'Linux'
+        shell: bash
+        run: dotnet restore XCli.sln
+
+      - name: Restore [windows]
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: dotnet restore XCli.sln
+
+      - name: Build (Release) [linux]
+        if: runner.os == 'Linux'
+        shell: bash
+        run: dotnet build XCli.sln -c Release --no-restore
+
+      - name: Build (Release) [windows]
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: dotnet build XCli.sln -c Release --no-restore
+
+      - name: Test (Release) [linux]
+        if: runner.os == 'Linux'
+        shell: bash
+        run: dotnet test XCli.sln -c Release --no-build --logger "trx;LogFileName=test_results.trx"
+
+      - name: Test (Release) [windows]
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: dotnet test XCli.sln -c Release --no-build --logger "trx;LogFileName=test_results.trx"
+
+      - name: Run notifications validation
+        if: runner.os == 'Linux'
+        run: ./scripts/validate_notifications.sh || true
+
+      - name: Upload notifications report
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: notifications-validation
+          path: artifacts/notifications-validation.jsonl
+
+      # Publish per-OS with separate steps (no shell mixing)
+      - name: Publish (linux-x64)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p dist/linux-x64
+          dotnet publish src/XCli/XCli.csproj -c Release -r linux-x64 \
+            -p:PublishSingleFile=true -p:SelfContained=true -o dist/linux-x64
+          # Normalize filename to expected contract name
+          if [ -f dist/linux-x64/XCli ]; then cp dist/linux-x64/XCli dist/x-cli-linux-x64; fi
+          chmod +x dist/x-cli-linux-x64
+
+      - name: Publish (win-x64)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist\win-x64 | Out-Null
+          dotnet publish src/XCli/XCli.csproj -c Release -r win-x64 `
+            -p:PublishSingleFile=true -p:SelfContained=true -o dist\win-x64
+          if (Test-Path dist\win-x64\XCli.exe) { Copy-Item dist\win-x64\XCli.exe dist\x-cli-win-x64 }
+
+      - name: Upload artifact (linux)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: x-cli-linux-x64
+          path: dist/x-cli-linux-x64
+
+      - name: Upload artifact (windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: x-cli-win-x64
+          path: dist/x-cli-win-x64
+
+      # Run OS-specific smoke tests to avoid exec format errors
+      - name: Smoke test (linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: ./dist/x-cli-linux-x64 --help
+
+      - name: Smoke test (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .\dist\x-cli-win-x64 --help
+

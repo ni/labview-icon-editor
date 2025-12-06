@@ -1,0 +1,190 @@
+{
+  "schema": "urn:x-cli:srs-baseline:v1",
+  "baseline_id": "R1",
+  "generated_utc": "2025-09-05T01:13:39Z",
+  "source": "docs/srs",
+  "files_total": 36,
+  "total_size_bytes": 35465,
+  "files": [
+    {
+      "path": "srs/FGC-REQ-CI-001.md",
+      "size_bytes": 882,
+      "sha256": "135bb29cfb3e452f1691e42498c0be040a9f56bbb656450bcebfaff36f32c642"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-002.md",
+      "size_bytes": 762,
+      "sha256": "003d0c2ce6765f1b2a00c4e042be9c737d0815241a7045d3444c27eaa29b8988"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-003.md",
+      "size_bytes": 708,
+      "sha256": "6e5631bc68e9e3a87133838148ff955391af17df9eea9df719df18ccb1957edb"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-004.md",
+      "size_bytes": 730,
+      "sha256": "48b26b22b292edfec1f821edf6a2d7930b3df0f8969da634ba02542d807b374a"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-005.md",
+      "size_bytes": 779,
+      "sha256": "e9460de83f5cd5522280f7edae2987ec9d96725922cd4eaa5e709b6c2a660448"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-006.md",
+      "size_bytes": 771,
+      "sha256": "ad0a8c67cd7def0e332367cabac3907b8c036a68648565f2c07a6a939296a9c4"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-007.md",
+      "size_bytes": 743,
+      "sha256": "97ad4dd69ced33c9cca09751c239896269c44cf416d6e54f5965b899fd76753e"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-008.md",
+      "size_bytes": 796,
+      "sha256": "53f9fc6e5506eaf1c02ee8f270fe5242bc6385223888e26cbb2ef2de46094846"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-009.md",
+      "size_bytes": 758,
+      "sha256": "a6039bd2c8ef216924bc7773fc0d67836890dc29ccd57b5fd201989dc31b93b1"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-010.md",
+      "size_bytes": 736,
+      "sha256": "c55cf5dd9a09a0363029015dc9736a5a3bbff852f63d138e4b8de2f3ea60d773"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-011.md",
+      "size_bytes": 738,
+      "sha256": "de5a0050b81440b938bcc0070bb66f3f6a4d3f64c8e8526e6423b33634d9dbe0"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-012.md",
+      "size_bytes": 774,
+      "sha256": "21f37a1815948a526f6cb40d7ebd8bb5325342d70ab0b17f0531b4a1322ce1c6"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-013.md",
+      "size_bytes": 716,
+      "sha256": "c5a1158ac0eb0198c148a6d2158b8a238f50a98958a775581bd0410474bdab2c"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-014.md",
+      "size_bytes": 751,
+      "sha256": "9d879cac9c1a825108396e6e36d8d165287d6fc51aa33914ec43797154312677"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-015.md",
+      "size_bytes": 738,
+      "sha256": "28194b2f2444aa906b65b05a77e445912aa72854d44f8c8859557e1e46230b29"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-016.md",
+      "size_bytes": 728,
+      "sha256": "1b507e7b03321fff43be3e22c0c9a2ea3b1a3a0b6f05843bfdc339385cda70bb"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-017.md",
+      "size_bytes": 773,
+      "sha256": "466c4404df7c2d59d2a8f260c887cdeea6913a6b40f94260b1969adc8f0eb0c7"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-018.md",
+      "size_bytes": 734,
+      "sha256": "d00f3a196c0ff006623980fd1418a18563ece07f9d97d9122223dcaa1efa6a88"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-019.md",
+      "size_bytes": 728,
+      "sha256": "0ce88d309f824aff9927cdb9aee67b6469af7674c136b8d35a50c284a070d217"
+    },
+    {
+      "path": "srs/FGC-REQ-CI-020.md",
+      "size_bytes": 1159,
+      "sha256": "e7c17ae9df741f51e480b09eb43514230d1742655b0b5e272f34df2fd33680e4"
+    },
+    {
+      "path": "srs/FGC-REQ-DEV-001.md",
+      "size_bytes": 772,
+      "sha256": "1831fc32524e5478c4b5a13e4f76da4ed69383697eaeb798f4b1b23a291072b0"
+    },
+    {
+      "path": "srs/FGC-REQ-DEV-002.md",
+      "size_bytes": 760,
+      "sha256": "7cba2befab4675f9d89c93ffec7e5fdceb5f96ca4cf597224e64e3c104ed802d"
+    },
+    {
+      "path": "srs/FGC-REQ-DEV-003.md",
+      "size_bytes": 718,
+      "sha256": "30967201abdc8d627e84add3893bcb53f8d4c4b9231b8361285b1b19776ac878"
+    },
+    {
+      "path": "srs/FGC-REQ-DEV-004.md",
+      "size_bytes": 773,
+      "sha256": "fa61baf4f476c4a6d37c07d749d776c1078d0e983d32d9b8a62acf84bf186ddd"
+    },
+    {
+      "path": "srs/FGC-REQ-DEV-005.md",
+      "size_bytes": 964,
+      "sha256": "910bea6ff79f07cea6dce1b47d2538e817d1f6d3456c195eb58ba5b19b05add4"
+    },
+    {
+      "path": "srs/FGC-REQ-DEV-006.md",
+      "size_bytes": 813,
+      "sha256": "a323c5bae8afeba3fc40e6b5709be2f82776cd45174e241d96a1b0feece663da"
+    },
+    {
+      "path": "srs/FGC-REQ-NOT-001.md",
+      "size_bytes": 656,
+      "sha256": "50833501b5b7d515aa2a9140c02240dc5fcfabb6110bfc648a0158f05b561152"
+    },
+    {
+      "path": "srs/FGC-REQ-NOT-002.md",
+      "size_bytes": 677,
+      "sha256": "6e0c81690c1b3d14c754f4e6e516246e098cb2a9ebf323e783d2c4fd929aff88"
+    },
+    {
+      "path": "srs/FGC-REQ-NOT-003.md",
+      "size_bytes": 705,
+      "sha256": "9f88a3e52896f51230ea50fe1e486b1608e1648824045b2a7e0933541d829efe"
+    },
+    {
+      "path": "srs/FGC-REQ-NOT-004.md",
+      "size_bytes": 662,
+      "sha256": "ea6e40b5b8ed60d1df6850e3f92baa06edfbbe467d684e496e34b0b8e520bede"
+    },
+    {
+      "path": "srs/FGC-REQ-SPEC-001.md",
+      "size_bytes": 850,
+      "sha256": "4b30c501dfc0f782c9a94292c53b0ef87ace28deecefa77249f3d52b016903c0"
+    },
+    {
+      "path": "srs/FGC-REQ-TEL-001.md",
+      "size_bytes": 785,
+      "sha256": "77466bd46a94633152ae9e96a6a712e01ad3c442f3c8ee76fce16263e51e0d02"
+    },
+    {
+      "path": "srs/_template.md",
+      "size_bytes": 615,
+      "sha256": "e4efd9e66703c05b4284465d39d4c69dfc6d993ed3f91a7f7aaad27b6952aa66"
+    },
+    {
+      "path": "srs/attributes.yaml",
+      "size_bytes": 441,
+      "sha256": "3b0f2a533c1add57385067d394874583ea3603d10609d4f2b16a65c212245b13"
+    },
+    {
+      "path": "srs/core.md",
+      "size_bytes": 986,
+      "sha256": "f686f33287cfcd24df840499efe500241b81c2691521aa301257b7ee6814efd0"
+    },
+    {
+      "path": "srs/index.yaml",
+      "size_bytes": 8784,
+      "sha256": "6064e1562e88315082b8f9991fbac58b43c79366025e4751cd323c55026e7826"
+    }
+  ]
+}

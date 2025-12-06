@@ -1,0 +1,73 @@
+name: Orchestrate x-cli (Stage1→2→3)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  stage1:
+    name: Call Stage 1 (Container Telemetry)
+    uses: LabVIEW-Community-CI-CD/x-cli/.github/workflows/stage1-telemetry.yml@develop
+    secrets: inherit
+
+  stage2:
+    name: Call Stage 2 (Ubuntu Artifacts)
+    needs: [stage1]
+    uses: LabVIEW-Community-CI-CD/x-cli/.github/workflows/stage2.yml@develop
+    secrets: inherit
+
+  stage3:
+    name: Call Stage 3 (Windows Validate & Publish)
+    needs: [stage2]
+    uses: LabVIEW-Community-CI-CD/x-cli/.github/workflows/stage3.yml@develop
+    with:
+      stage2_repo: LabVIEW-Community-CI-CD/x-cli
+      stage2_run_id: ${{ needs.stage2.outputs.run_id }}
+    secrets: inherit
+
+  summarize:
+    name: Orchestration Summary
+    runs-on: ubuntu-latest
+    needs: [stage1, stage2, stage3]
+    steps:
+      - name: Emit job summary
+        shell: bash
+        run: |
+          echo "### x-cli Orchestration Outputs" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage1.run_id: ${{ needs.stage1.outputs.run_id }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage1.summary_path: ${{ needs.stage1.outputs.summary_path }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage2.run_id: ${{ needs.stage2.outputs.run_id }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage2.manifest_path: ${{ needs.stage2.outputs.manifest_path }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage2.summary_path: ${{ needs.stage2.outputs.summary_path }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage3.published: ${{ needs.stage3.outputs.published }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage3.summary_path: ${{ needs.stage3.outputs.summary_path }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- stage3.diagnostics_path: ${{ needs.stage3.outputs.diagnostics_path }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Compose orchestration.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          cat > artifacts/orchestration.json <<JSON
+          {
+            "stage1": {
+              "run_id": "${{ needs.stage1.outputs.run_id }}",
+              "summary_path": "${{ needs.stage1.outputs.summary_path }}"
+            },
+            "stage2": {
+              "run_id": "${{ needs.stage2.outputs.run_id }}",
+              "manifest_path": "${{ needs.stage2.outputs.manifest_path }}",
+              "summary_path": "${{ needs.stage2.outputs.summary_path }}"
+            },
+            "stage3": {
+              "published": "${{ needs.stage3.outputs.published }}",
+              "summary_path": "${{ needs.stage3.outputs.summary_path }}",
+              "diagnostics_path": "${{ needs.stage3.outputs.diagnostics_path }}"
+            }
+          }
+          JSON
+
+      - name: Upload orchestration summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: orchestration-summary
+          path: artifacts/orchestration.json

@@ -1,0 +1,37 @@
+name: Conveyor Summary Nightly
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  summarize:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    concurrency:
+      group: conveyor-summary-nightly-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate summaries (UTC)
+        shell: bash
+        run: |
+          pwsh -NoLogo -NoProfile -File scripts/dev/conveyor-summary.ps1 -TimeFmt utc
+
+      - name: Upload conveyor summary artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: conveyor-summary
+          path: |
+            artifacts/conveyor-summary.md
+            artifacts/conveyor-summary.json

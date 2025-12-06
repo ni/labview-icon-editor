@@ -463,13 +463,8 @@ function Restore-LabVIEWAssets {
     }
 }
 
-# Build a manifest/zip of the repo-staged Icon API payload for traceability and to detect drift.
+# Path used for both the g-cli build and copy-based fallback when staging the Icon API payload.
 $iconApiSource   = Join-Path $repoRoot 'vi.lib\LabVIEW Icon API'
-$iconCacheRoot   = Join-Path $repoRoot 'builds/cache/icon-api'
-$iconManifest    = Join-Path $iconCacheRoot 'icon-api-manifest.json'
-$iconZip         = Join-Path $iconCacheRoot 'icon-api.zip'
-$iconPayloadInfo = New-IconApiPayload -SourcePath $iconApiSource -ManifestPath $iconManifest -ZipPath $iconZip
-Write-Stamp -Level "INFO" -Message ("Icon API payload: {0} files, zip SHA256={1}" -f $iconPayloadInfo.entries_count, $iconPayloadInfo.zip_hash)
 
 Start-Heartbeat
 try {
@@ -619,8 +614,6 @@ $headCommitInfo = Get-HeadCommitInfo -Repo $repoRootResolved
 $generatedFiles = @(
     'manifest.json',
     'manifest.csv',
-    'icon-api-manifest.json',
-    'icon-api.zip',
     'configs/vscode/task-schema.sample.json',
     'configs/vi-compare-run-request.sample.json',
     'configs/vi-compare-run-request.failure.json',
@@ -695,8 +688,8 @@ foreach ($f in $files) {
             }
         }
     }
-    # Generated files (manifest/icon-api artifacts) are tagged as generated to avoid repo_head guard.
-    if ($pathForManifest -in @('manifest.json','manifest.csv','icon-api-manifest.json','icon-api.zip')) {
+    # Generated files (manifest) are tagged as generated to avoid repo_head guard.
+    if ($pathForManifest -in @('manifest.json','manifest.csv')) {
         $commitSource = 'generated'
         $commitInfo = $null
     }
@@ -762,14 +755,6 @@ $manifestEndTime = Get-Date
 $manifestDuration = ($manifestEndTime - $manifestStartTime).TotalSeconds
 Write-Stamp -Level "INFO" -Message ("Manifest complete (files={0}, duration={1:N1}s)" -f $totalFiles, $manifestDuration)
 
-# Publish Icon API payload/manifest alongside the SD output for traceability.
-try {
-    Copy-Item -LiteralPath $iconManifest -Destination (Join-Path $distRoot 'icon-api-manifest.json') -Force
-    Copy-Item -LiteralPath $iconZip -Destination (Join-Path $distRoot 'icon-api.zip') -Force
-} catch {
-    Write-Warning ("[icon-api] Failed to copy payload artifacts into Source Distribution: {0}" -f $_.Exception.Message)
-}
-
 # Zip the distribution (including manifest)
 Set-Phase -Name "zip"
 $zipStartTime = Get-Date
@@ -811,25 +796,12 @@ Compress-Archive -Path (Join-Path $distRoot '*') -DestinationPath $zipPath -Forc
     catch {
         Write-Warning ("[info] Failed to copy zip to builds-isolated: {0}" -f $_.Exception.Message)
     }
-    # Mirror Icon API payload artifacts into artifacts folder as well.
-    foreach ($pair in @(@{Src=$iconManifest; Dest='icon-api-manifest.json'}, @{Src=$iconZip; Dest='icon-api.zip'})) {
-        try {
-            Copy-Item -LiteralPath $pair.Src -Destination (Join-Path $artifactDir $pair.Dest) -Force
-            Copy-Item -LiteralPath $pair.Src -Destination (Join-Path $isoArtifacts $pair.Dest) -Force
-        }
-        catch {
-            Write-Warning ("[icon-api] Failed to publish {0}: {1}" -f $pair.Dest, $_.Exception.Message)
-        }
-    }
-
     $relJson = Get-RelativePathSafe -Base $repoRoot -Target $manifestPath
     $relCsv = Get-RelativePathSafe -Base $repoRoot -Target $manifestCsvPath
     $relZip = Get-RelativePathSafe -Base $repoRoot -Target $zipPath
     Write-Host ("[artifact][labview-icon-api] manifest.json: {0}" -f $relJson)
     Write-Host ("[artifact][labview-icon-api] manifest.csv: {0}" -f $relCsv)
 Write-Host ("[artifact][labview-icon-api] zip: {0}" -f $relZip)
-    Write-Host ("[artifact][labview-icon-api] icon-api manifest: {0}" -f (Get-RelativePathSafe -Base $repoRoot -Target (Join-Path $artifactDir 'icon-api-manifest.json')))
-    Write-Host ("[artifact][labview-icon-api] icon-api zip: {0}" -f (Get-RelativePathSafe -Base $repoRoot -Target (Join-Path $artifactDir 'icon-api.zip')))
 Write-Host ("[info] Built with LabVIEW {0} ({1}-bit) based on VIPB." -f $Package_LabVIEW_Version, $SupportedBitness)
 Write-Host ("[info] Next steps: run task 21 (Verify: Source Distribution) to validate the manifest; or task 22 (Build PPL from Source Distribution) to produce the PPL from this zip.")
 Write-Host ("[info] Extracted contents: {0}" -f (Get-RelativePathSafe -Base $repoRoot -Target $distRoot))

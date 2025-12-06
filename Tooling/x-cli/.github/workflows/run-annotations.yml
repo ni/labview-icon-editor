@@ -1,0 +1,39 @@
+name: Run Annotations
+
+on:
+  workflow_run:
+    workflows: ["*"]
+    types: [completed]
+
+permissions:
+  actions: read
+  checks: read
+  contents: read
+
+jobs:
+  upload:
+    name: Upload run annotations
+    # Optional: enabled when repo var is set; skip self to avoid loops
+    if: ${{ (vars.UPLOAD_RUN_ANNOTATIONS == '1' || vars.UPLOAD_RUN_ANNOTATIONS == 'true') && github.event.workflow_run.name != 'Run Annotations' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate annotations JSON
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+        run: |
+          $repo  = '${{ github.repository }}'
+          $runId = ${{ github.event.workflow_run.id }}
+          $out   = 'artifacts/gh-run-annotations.json'
+          pwsh -File scripts/ghops/tools/get-run-annotations.ps1 -Repo $repo -RunId $runId -Out $out -Json
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gh-run-annotations-${{ github.event.workflow_run.id }}
+          path: artifacts/gh-run-annotations.json
+          if-no-files-found: warn

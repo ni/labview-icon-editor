@@ -1,0 +1,155 @@
+name: publish-container
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (no v prefix) used for the image tag. Default uses dev-<sha>."
+        required: false
+      push_latest:
+        description: "Also push the latest tag when running manually."
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE_NAME: ghcr.io/labview-community-ci-cd/x-cli
+
+jobs:
+  determine_version:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+      extra_tags: ${{ steps.meta.outputs.extra_tags }}
+    steps:
+      - name: Determine image tags
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha_tag="${GITHUB_SHA}"
+          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            ver="${GITHUB_REF_NAME#v}"
+            extra_tags="latest v${ver}"
+          else
+            ver="${{ github.event.inputs.version }}"
+            if [[ -z "$ver" ]]; then
+              ver="dev-${GITHUB_SHA::7}"
+            fi
+            extra_tags=""
+            if [[ "${{ github.event.inputs.push_latest }}" == "true" ]]; then
+              extra_tags="latest"
+            fi
+          fi
+          if [[ -n "$sha_tag" ]]; then
+            if [[ -n "$extra_tags" ]]; then
+              extra_tags="$extra_tags $sha_tag"
+            else
+              extra_tags="$sha_tag"
+            fi
+          fi
+          echo "image_tag=$ver" >> "$GITHUB_OUTPUT"
+          echo "extra_tags=$extra_tags" >> "$GITHUB_OUTPUT"
+
+  build_cli:
+    needs: determine_version
+    uses: ./.github/workflows/build-cli.yml
+    with:
+      cli_version: ${{ needs.determine_version.outputs.image_tag }}
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [determine_version, build_cli]
+    env:
+      VERSION: ${{ needs.determine_version.outputs.image_tag }}
+      EXTRA_TAGS: ${{ needs.determine_version.outputs.extra_tags }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download CLI package
+        uses: actions/download-artifact@v4
+        with:
+          name: cli-package
+          path: package
+
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build image (package)
+        run: |
+          set -euo pipefail
+          docker build --target package-image --build-arg XCLI_VERSION="$VERSION" -t "$IMAGE_NAME:$VERSION" .
+
+      - name: Container smoke test (--help)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm "$IMAGE_NAME:$VERSION" --help > /tmp/help.txt
+          grep -q "Usage:" /tmp/help.txt
+          grep -q "Global options:" /tmp/help.txt
+
+      - name: Container smoke test (--version)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm "$IMAGE_NAME:$VERSION" --version > /tmp/version.txt
+          if [[ ! -s /tmp/version.txt ]]; then
+            echo "Empty version output" >&2
+            exit 1
+          fi
+
+      - name: Generate SBOM (SPDX JSON)
+        id: sbom
+        uses: anchore/sbom-action@v0
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+          format: spdx-json
+          output-file: sbom-${{ env.VERSION }}.spdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ env.VERSION }}
+          path: sbom-${{ env.VERSION }}.spdx.json
+
+      - name: Capture image digest
+        id: digest
+        run: |
+          set -euo pipefail
+          ref=$(docker image inspect --format='{{index .RepoDigests 0}}' "$IMAGE_NAME:$VERSION")
+          if [[ -z "$ref" ]]; then
+            echo "Failed to resolve image digest" >&2
+            exit 1
+          fi
+          digest="${ref#*@}"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Push primary image
+        run: |
+          set -euo pipefail
+          docker push "$IMAGE_NAME:$VERSION"
+
+      - name: Push extra tags
+        if: ${{ needs.determine_version.outputs.extra_tags != '' }}
+        run: |
+          set -euo pipefail
+          for tag in $EXTRA_TAGS; do
+            docker tag "$IMAGE_NAME:$VERSION" "$IMAGE_NAME:$tag"
+            docker push "$IMAGE_NAME:$tag"
+          done
+
+      - name: Generate provenance attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: sha256:${{ steps.digest.outputs.digest }}
+          push-to-registry: true

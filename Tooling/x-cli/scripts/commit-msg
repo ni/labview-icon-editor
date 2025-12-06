@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Git commit-msg hook that enriches and validates commit messages
+# against the template in commit-template.snippet.md. Use pre-commit
+# when available so the same checks run locally and in CI.
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+
+# First, opportunistically enrich the summary line with concise context
+# (e.g., run attempt or tags) while preserving the 50-char limit.
+# This step is best-effort and safe to skip if Python is unavailable.
+if command -v python >/dev/null 2>&1; then
+  python "$repo_root/scripts/enrich_commit_summary.py" "$1" || true
+fi
+
+# Then run validation via pre-commit if available, else the local checker
+if command -v pre-commit >/dev/null 2>&1; then
+  pre-commit run --hook-stage commit-msg --commit-msg-filename "$1"
+elif python -m pre_commit --version >/dev/null 2>&1; then
+  python -m pre_commit run --hook-stage commit-msg --commit-msg-filename "$1"
+else
+  "$repo_root/scripts/check-commit-msg.py" "$1"
+fi

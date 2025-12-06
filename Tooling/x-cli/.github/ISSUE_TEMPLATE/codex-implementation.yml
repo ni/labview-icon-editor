@@ -1,0 +1,57 @@
+name: "Codex Request: Implementation Change"
+description: "Machine-authored implementation change request for codex agent."
+title: "impl: <short summary> | SRS: FGC-REQ-…"
+labels: ["codex", "impl", "automation"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please read **[AGENTS.md](../AGENTS.md)** before submitting. This issue will be processed only in **codex** mode.
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Codex Mode
+      description: Must be 'codex' to be processed by automation.
+      options:
+        - codex
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Stage
+      description: Defaults to "implementation" if omitted.
+      options: [implementation]
+    validations:
+      required: false
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One-paragraph description of the change for the codex agent to implement.
+    validations:
+      required: true
+  - type: textarea
+    id: srs
+    attributes:
+      label: SRS IDs
+      description: List impacted FGC‑REQ IDs (one per line).
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: Bullet list of objective criteria the change must satisfy.
+    validations:
+      required: true
+  - type: textarea
+    id: plan
+    attributes:
+      label: Patch Plan
+      description: High‑level, step‑by‑step plan for codex to implement (files to add/edit, tests to update).
+    validations:
+      required: true
+

@@ -1,0 +1,14 @@
+# ISO/IEC/IEEE 42010 Trace — x‑cli
+
+| 42010 Topic | Where addressed | Notes |
+|---|---|---|
+| Stakeholders & Concerns | `docs/architecture/Stakeholders-Concerns.md` | Explicit roles + measurable scenarios |
+| Viewpoints | `docs/architecture/Viewpoints.md` | Definitions & stakeholders per view |
+| Views (Context/Container/Component/Deployment) | `docs/architecture/*.md` | C4-style Mermaid diagrams |
+| Decisions & Rationale | `docs/adr/*` (index from repo) | Cross‑reference from views where relevant |
+| Correspondences | `docs/architecture/Correspondences.md` | Consistency rules across views |
+| Traceability to implementation/tests | RTM + tests (see repo) | Requirements→Code→Tests mapping maintained |
+
+**Review checklist**
+- Views align with scenarios; no drift between Context/Deployment.
+- New decisions recorded as ADRs and linked from views.

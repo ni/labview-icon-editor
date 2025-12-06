@@ -1,0 +1,41 @@
+# Manual Apply Guide — R1 Gates Patch Kit
+
+This kit is designed for **manual copy** into your repository (no remote access required).
+
+## 1) Copy these files into your repo
+- `.github/workflows/coverage-gate.yml`
+- `.github/workflows/release.yml`
+- `docs/compliance/coverage-thresholds.json`
+- `docs/compliance/TestStrategy-Coverage.md`
+- `docs/compliance/TestReport.md`
+- `docs/CM-Tagging-Policy.md`
+
+If folders don’t exist, create them exactly as shown.
+
+## 2) Append the README block
+Open your `README.md` and **append** the content of `README_INSTALL_RUN_BLOCK.md` at the end (or in a suitable section).
+
+## 3) Add Coverlet to test projects (once)
+In each C# test project under `tests/**/` (e.g., `tests/XCli.Tests/*.csproj`), add:
+```
+<ItemGroup>
+  <PackageReference Include="coverlet.collector" Version="6.*">
+    <PrivateAssets>all</PrivateAssets>
+  </PackageReference>
+</ItemGroup>
+```
+Place it after an existing `<ItemGroup>` of package references or create a new one before `</Project>`.
+
+## 4) Ensure Python coverage dependency
+In `tests/requirements.txt`, ensure there is a line:
+```
+pytest-cov>=4.1.0
+```
+
+## 5) After you push to GitHub (when ready)
+1. **Mark PR check required:** Settings → Branches → Protection rules → Require status checks → add **`coverage`**.
+2. **PR smoke:** open a trivial PR; expect `coverage.xml` + `coverage-html.zip` artifacts. Temporarily set `"total": 110.0` in `docs/compliance/coverage-thresholds.json` to see the gate **fail**, then revert to `75.0`.
+3. **Tag release:** `git tag v1.0.0 && git push origin v1.0.0`. Release should include **XCli-linux-x64**, **XCli-win-x64.exe**, **coverage-html.zip**, and **coverage.xml`. `--version` prints `1.0.0`.
+
+## 6) Optional clean-up
+- Add a top comment to any legacy release workflow: `# Superseded by .github/workflows/release.yml (semver + coverage)`.

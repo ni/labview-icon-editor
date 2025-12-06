@@ -1,0 +1,24 @@
+# SRS: FGC-REQ-CI-006
+name: Design Lock
+
+on:
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - "docs/Design.md"
+      - "docs/Review/**"
+      - "docs/traceability.yaml"
+      - ".github/workflows/design-lock.yml"
+  push:
+    branches: [ main, master ]
+    paths:
+      - "docs/Design.md"
+
+jobs:
+  validate-design:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Limited scope: only run codex design validation
+      - name: Validate design document
+        run: python scripts/validate_design.py

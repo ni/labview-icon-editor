@@ -1,0 +1,74 @@
+{
+  "repo": "LabVIEW-Community-CI-CD/x-cli",
+  "branches": [
+    {
+      "name": "main",
+      "strict": true,
+      "expected_required_checks": [
+        "Pre-Commit / run",
+        "SRS Gate / SRS Compliance + Smoke",
+        "SRS Gate / SRS Scripts - Unit Tests",
+        "SRS Gate / Traceability (RTM) Verify",
+        "Tests Gate / Python Tests (serial)",
+        "Tests Gate / Python Tests (parallel)",
+        "PR Coverage Gate / coverage",
+        "Docs Gate / Canonical Sources",
+        "DoD Gate / dod",
+        "YAML Lint / lint",
+        "coverage",
+        "lychee"
+      ]
+    },
+    {
+      "name": "develop",
+      "strict": false,
+      "expected_required_checks": [
+        "coverage"
+      ]
+    }
+  ],
+  "feature_branch_patterns": [
+    "refs/heads/feat/*",
+    "refs/heads/feature/*"
+  ],
+  "feature_expected_required_checks": [
+    "YAML Lint / lint"
+  ],
+  "rulesets": [
+    {
+      "name": "main",
+      "target": "branch",
+      "enforcement": "active",
+      "include": [
+        "~DEFAULT_BRANCH",
+        "refs/heads/main"
+      ],
+      "expected_required_checks": [
+        "coverage"
+      ]
+    },
+    {
+      "name": "coverage",
+      "target": "branch",
+      "enforcement": "active",
+      "include": [
+        "refs/heads/coverage"
+      ],
+      "expected_required_checks": [
+        "coverage"
+      ]
+    },
+    {
+      "name": "features-yaml-lint",
+      "target": "branch",
+      "enforcement": "active",
+      "include": [
+        "refs/heads/feat/*",
+        "refs/heads/feature/*"
+      ],
+      "expected_required_checks": [
+        "YAML Lint / lint"
+      ]
+    }
+  ]
+}

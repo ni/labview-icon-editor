@@ -1,0 +1,111 @@
+name: Token Diagnostics
+description: Determine effective GitHub token source and optionally upload artifact
+inputs:
+  upload-artifact:
+    description: Upload token info JSON as an artifact
+    required: false
+    default: 'true'
+  artifact-name:
+    description: Artifact name when uploading
+    required: false
+    default: token-info
+outputs:
+  found:
+    description: Whether a token was found
+    value: ${{ steps.emit_posix.outputs.found || steps.emit_win.outputs.found }}
+  kind:
+    description: Token kind (user|repo)
+    value: ${{ steps.emit_posix.outputs.kind || steps.emit_win.outputs.kind }}
+  source:
+    description: Where the token was sourced from
+    value: ${{ steps.emit_posix.outputs.source || steps.emit_win.outputs.source }}
+  length:
+    description: Token length
+    value: ${{ steps.emit_posix.outputs.length || steps.emit_win.outputs.length }}
+  token_preview:
+    description: Masked token preview (first 4 chars + ***)
+    value: ${{ steps.emit_posix.outputs.token_preview || steps.emit_win.outputs.token_preview }}
+  json:
+    description: JSON content describing token info
+    value: ${{ steps.emit_posix.outputs.json || steps.emit_win.outputs.json }}
+  path:
+    description: File path to the JSON on runner
+    value: ${{ steps.emit_posix.outputs.path || steps.emit_win.outputs.path }}
+runs:
+  using: composite
+  steps:
+    - id: detect_posix
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        set -euo pipefail
+        out="$RUNNER_TEMP/token_info.json"
+        mkdir -p "$RUNNER_TEMP"
+        bash scripts/print-effective-token.sh > "$out"
+        echo "path=$out" >> "$GITHUB_OUTPUT"
+
+    - id: emit_posix
+      if: runner.os != 'Windows'
+      shell: bash
+      run: |
+        set -euo pipefail
+        out="$RUNNER_TEMP/token_info.json"
+        python -c "
+        import json, os, textwrap
+        code = '''
+            import json, os
+            out = os.path.join(os.environ.get(\"RUNNER_TEMP\",\".\"), \"token_info.json\")
+            try:
+                js = json.loads(open(out, \"r\", encoding=\"utf-8\").read())
+            except Exception:
+                js = {}
+            def write_output(line: str) -> None:
+                with open(os.environ[\"GITHUB_OUTPUT\"], \"a\", encoding=\"utf-8\") as fh:
+                    fh.write(line + \"\\n\")
+            write_output(f\"found={'true' if js.get('found') else 'false'}\")
+            write_output(f\"kind={js.get('kind','')}\")
+            write_output(f\"source={js.get('source','')}\")
+            write_output(f\"length={js.get('length','')}\")
+            write_output(f\"token_preview={js.get('token_preview','')}\")
+            write_output('json<<EOF')
+            write_output(json.dumps(js, ensure_ascii=False))
+            write_output('EOF')
+            write_output(f\"path={out}\")
+        '''
+        exec(textwrap.dedent(code))
+        "
+
+    - id: detect_win
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $out = Join-Path $env:RUNNER_TEMP 'token_info.json'
+        New-Item -ItemType Directory -Force -Path $env:RUNNER_TEMP | Out-Null
+        pwsh -NoLogo -NoProfile -File scripts/print-effective-token.ps1 | Out-File -Encoding utf8NoBOM -FilePath $out
+        "path=$out" | Out-File -Encoding utf8NoBOM -Append -FilePath $env:GITHUB_OUTPUT
+
+    - id: emit_win
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $out = Join-Path $env:RUNNER_TEMP 'token_info.json'
+        $j = Get-Content -LiteralPath $out -Raw | ConvertFrom-Json
+        $found = if ($j.found) { 'true' } else { 'false' }
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "found=$found"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "kind=$($j.kind)"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "source=$($j.source)"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "length=$($j.length)"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "token_preview=$($j.token_preview)"
+        Add-Content -Path $env:GITHUB_OUTPUT -Value 'json<<EOF'
+        # Use compressed to stay single-line
+        Add-Content -Path $env:GITHUB_OUTPUT -Value ($j | ConvertTo-Json -Compress)
+        Add-Content -Path $env:GITHUB_OUTPUT -Value 'EOF'
+        Add-Content -Path $env:GITHUB_OUTPUT -Value "path=$out"
+
+    - name: Upload token info artifact
+      if: inputs.upload-artifact == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ steps.emit_posix.outputs.path || steps.emit_win.outputs.path }}
+

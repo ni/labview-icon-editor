@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Validator (root mode)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/knowledge_validator.py",
+      "args": ["--root", "."],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Validator (ZIP mode)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/knowledge_validator.py",
+      "args": ["--zip", "knowledge/knowledge.zip"],
+      "console": "integratedTerminal"
+    }
+  ]
+}

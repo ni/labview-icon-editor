@@ -1,0 +1,23 @@
+{
+  "template": "C:\\codex\\home\\runner\\work\\x-cli\\x-cli\\docs\\templates\\markdown\\snippets\\cross-agent-reflection.tpl.md",
+  "out": "C:\\codex\\home\\runner\\work\\x-cli\\x-cli\\docs\\templates\\markdown\\snippets\\cross-agent-reflection.example.md",
+  "placeholdersUsed": [],
+  "placeholdersMissing": [],
+  "contextKeys": [
+    "CLI_NAME",
+    "CODE_STYLE",
+    "COV_BRANCH",
+    "COV_LINE",
+    "DOTNET_VERSION",
+    "FEEDBACK_NOTE",
+    "OS_TARGETS",
+    "QA_CMD_POSIX",
+    "QA_CMD_WIN",
+    "REPO_SLUG",
+    "STAGE1_NAME",
+    "STAGE2_NAME",
+    "STAGE3_NAME",
+    "TEST_FRAMEWORK"
+  ],
+  "changed": true
+}

@@ -50,6 +50,7 @@ The Ollama executor supports cross-compilation simulation mode for testing build
 ## Docs & references
 - VS Code tasks: `docs/vscode-tasks.md`
 - CI overview: `docs/ci-workflows.md`
+- x-cli maintenance: `MAINTAINING-x-cli.md`
 - Repo structure: `docs/adr/ADR-2025-011-repo-structure.md`
 - Python env + pyenv: `docs/python-env.md`
 - Ollama decision: `docs/adr/ADR-2025-017-ollama-locked-executor.md`
@@ -59,6 +60,7 @@ The Ollama executor supports cross-compilation simulation mode for testing build
 - Additional ADRs: `docs/adr/adr-index.md`
 
 ## Notes
+
 - VIPM missing? Dependency task will fail and LVAddon build writes `vipm-skipped-placeholder.vip`; install VIPM, remove the placeholder, rerun task 02.
 - Tooling cache is tiered (worktree -> source -> cache -> publish). Use task 18 to clear a specific `<CLI>/<version>/<rid>`; task 19 exercises probe behavior.
 - Devcontainer (Ollama bench): `.devcontainer/` adds Docker CLI, host Docker socket mount, and an Ollama model cache volume; helper scripts fail fast if the socket is missing or Docker Desktop is stopped. LabVIEW/VIPM builds remain Windows-only. Defaults: `OLLAMA_HOST=http://host.docker.internal:11435`, `OLLAMA_IMAGE=ghcr.io/svelderrainruiz/ollama-local:cpu-latest`, `OLLAMA_MODEL_TAG=llama3-8b-local`. Set `OLLAMA_CPUS`/`OLLAMA_MEM` to cap the Ollama container when using task 29.

@@ -1,0 +1,44 @@
+name: Orchestrate x-cli (example)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  stage2:
+    name: Call Stage 2 (Ubuntu Artifacts)
+    uses: LabVIEW-Community-CI-CD/x-cli/.github/workflows/stage2.yml@develop
+    secrets: inherit
+
+  summarize:
+    name: Orchestration Summary
+    runs-on: ubuntu-latest
+    needs: [stage2]
+    steps:
+      - name: Emit job summary
+        shell: bash
+        run: |
+          echo "### x-cli Stage 2 Outputs" >> "$GITHUB_STEP_SUMMARY"
+          echo "- run_id: ${{ needs.stage2.outputs.run_id }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- manifest_path: ${{ needs.stage2.outputs.manifest_path }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- summary_path: ${{ needs.stage2.outputs.summary_path }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Compose orchestration.json
+        id: compose
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          cat > artifacts/orchestration.json <<JSON
+          {
+            "stage": "stage2",
+            "run_id": "${{ needs.stage2.outputs.run_id }}",
+            "manifest_path": "${{ needs.stage2.outputs.manifest_path }}",
+            "summary_path": "${{ needs.stage2.outputs.summary_path }}"
+          }
+          JSON
+
+      - name: Upload orchestration summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: orchestration-summary
+          path: artifacts/orchestration.json

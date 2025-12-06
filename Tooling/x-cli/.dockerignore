@@ -1,0 +1,21 @@
+*
+!Dockerfile
+!action.yml
+!scripts/**
+!src/**
+!XCli.sln
+!package/**
+!.github/**
+!.dockerignore
+!README.md
+!AGENTS.md
+
+# Exclude build outputs and VCS
+bin/
+obj/
+dist/
+.git/
+.gitignore
+.gitattributes
+artifacts/
+*.tar

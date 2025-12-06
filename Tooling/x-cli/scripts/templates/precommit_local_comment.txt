@@ -1,0 +1,3 @@
+# NOTE: When adding/editing hooks here, also update
+# scripts/precommit_hook_links.json so PR comments can
+# hyperlink failing hooks to the right documentation.

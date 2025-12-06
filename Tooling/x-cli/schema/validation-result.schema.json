@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "validation-result.schema.json",
+  "title": "ValidationResult",
+  "version": "1.0.0",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "overallPassed": {
+      "type": "boolean"
+    },
+    "manifestPresent": {
+      "type": "boolean"
+    },
+    "manifestValid": {
+      "type": "boolean"
+    },
+    "manifestTitle": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "manifestVersion": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "glossaryHasDoD": {
+      "type": "boolean"
+    },
+    "appendixFound": {
+      "type": "boolean"
+    },
+    "appendixPath": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "crosswalksValid": {
+      "type": "boolean"
+    },
+    "crosswalkFiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "yaml",
+              "json",
+              "csv"
+            ]
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "path",
+          "type",
+          "rowCount"
+        ]
+      }
+    },
+    "crosswalkErrors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "policiesHavePdf": {
+      "type": "boolean"
+    },
+    "policiesPdfCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "validationTimestampUtc": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "overallPassed",
+    "manifestPresent",
+    "manifestValid",
+    "glossaryHasDoD",
+    "appendixFound",
+    "crosswalksValid",
+    "policiesHavePdf",
+    "policiesPdfCount",
+    "errors",
+    "crosswalkFiles",
+    "crosswalkErrors",
+    "validationTimestampUtc"
+  ]
+}

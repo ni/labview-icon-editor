@@ -1,0 +1,23 @@
+{
+  "name": "rtm-verify-ts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Traceability (RTM) verifier: reads docs/traceability.yaml, checks Req→Code→Tests links, prints a colorized report, and can post a PR comment.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p .",
+    "start": "node dist/index.js",
+    "verify": "node dist/index.js"
+  },
+  "dependencies": {
+    "fast-glob": "^3.3.2",
+    "minimatch": "^9.0.5",
+    "yaml": "^2.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.6",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,4 @@
+defaults:   deterministic: true   freeze_inputs: true   freeze_review: false   no_post: false   no_labels: false   comment_only: false   dry_run: false   http:     retries: 3     backoff_sec: 0.5     jitter_sec: 0.25  branches:   main:     no_post: true     no_labels: true     freeze_review: true   develop:     comment_only: false   "feature/*":     comment_only: true   "hotfix/*":     comment_only: true  labels:   "reviewer:post":     no_post: false     no_labels: false   "reviewer:deterministic-off":     deterministic: false     freeze_review: false  sources:   fork:     no_labels: true     comment_only: true  
+branches:
+  "chore/*":
+    comment_only: true

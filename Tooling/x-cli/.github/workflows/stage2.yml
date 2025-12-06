@@ -1,0 +1,249 @@
+# SRS: FGC-REQ-CI-001
+name: Stage 2 CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      debug_token_info:
+        description: "Upload effective token info artifact (debug)"
+        required: false
+        default: false
+        type: boolean
+      source_repository:
+        description: "Repository to checkout for build/test"
+        required: false
+      source_ref:
+        description: "Ref to checkout in source repository"
+        required: false
+  workflow_call:
+    inputs:
+      debug_token_info:
+        required: false
+        type: boolean
+      source_repository:
+        required: false
+        type: string
+      source_ref:
+        required: false
+        type: string
+    outputs:
+      run_id:
+        description: "GitHub Actions run id for Stage 2"
+        value: ${{ jobs.stage2_ubuntu_ci.outputs.run_id }}
+      manifest_path:
+        description: "Path to telemetry/manifest.json produced by Stage 2"
+        value: ${{ jobs.stage2_ubuntu_ci.outputs.manifest_path }}
+      summary_path:
+        description: "Path to telemetry/summary.json produced by Stage 2"
+        value: ${{ jobs.stage2_ubuntu_ci.outputs.summary_path }}
+      diagnostics_path:
+        description: "Path to telemetry/stage2-diagnostics.json"
+        value: ${{ jobs.stage2_ubuntu_ci.outputs.diagnostics_path }}
+    secrets:
+      DISCORD_WEBHOOK_URL:
+        required: false
+
+jobs:
+  stage2_ubuntu_ci:
+    name: Stage 2 - Ubuntu CI
+    runs-on: ubuntu-latest
+    env:
+      DEBUG_TOKEN_INFO: ${{ inputs.debug_token_info || github.event.inputs.debug_token_info || vars.DEBUG_TOKEN_INFO }}
+      SOURCE_REPOSITORY: ${{ inputs.source_repository || github.event.inputs.source_repository || github.repository }}
+      SOURCE_REF: ${{ inputs.source_ref || github.event.inputs.source_ref || github.ref }}
+    outputs:
+      run_id: ${{ steps.emit_outputs.outputs.run_id }}
+      manifest_path: ${{ steps.emit_outputs.outputs.manifest_path }}
+      summary_path: ${{ steps.emit_outputs.outputs.summary_path }}
+      diagnostics_path: ${{ steps.emit_outputs.outputs.diagnostics_path }}
+      token_found: ${{ steps.token_diag.outputs.found }}
+      token_kind: ${{ steps.token_diag.outputs.kind }}
+      token_source: ${{ steps.token_diag.outputs.source }}
+      token_length: ${{ steps.token_diag.outputs.length }}
+      token_preview: ${{ steps.token_diag.outputs.token_preview }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SOURCE_REPOSITORY }}
+          ref: ${{ env.SOURCE_REF }}
+
+      - name: Setup .NET via global.json
+        if: ${{ hashFiles('global.json') != '' }}
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Setup .NET 8 (fallback)
+        if: ${{ hashFiles('global.json') == '' }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup Python (minimal)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python tools (inline)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ruamel.yaml
+      - name: Ensure PowerShell 7 (Ubuntu)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          if ! command -v pwsh >/dev/null 2>&1; then
+            set -euo pipefail
+            sudo apt-get update -y
+            sudo apt-get install -y wget apt-transport-https software-properties-common
+            wget -q https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb
+            sudo dpkg -i packages-microsoft-prod.deb
+            sudo apt-get update -y
+            sudo apt-get install -y powershell
+          fi
+          pwsh -v
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (Release)
+        run: dotnet build XCli.sln -c Release --no-restore
+
+      - name: Test (Release)
+        run: dotnet test XCli.sln -c Release --no-build
+      - name: Build artifacts
+        run: ./scripts/build.sh
+        shell: bash
+
+      - name: Install Wine for win-x64 smoke test
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y wine64
+
+      - name: Smoke test win-x64 artifact
+        id: win_smoke
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          wine64 dist/x-cli-win-x64 --version >/tmp/win-smoke.log 2>&1
+
+      - name: Record win-x64 smoke result
+        if: always()
+        env:
+          SMOKE_RESULT: ${{ steps.win_smoke.outcome }}
+        run: |
+          python - <<'PY'
+          import json, os
+          path = 'telemetry/summary.json'
+          data = {}
+          if os.path.exists(path):
+              try:
+                  data = json.load(open(path))
+              except Exception:
+                  data = {}
+          else:
+              os.makedirs('telemetry', exist_ok=True)
+          result = os.environ.get('SMOKE_RESULT', 'failure')
+          data['win_x64_smoke'] = result
+          with open(path, 'w') as f:
+              json.dump(data, f, indent=2)
+          PY
+
+      - name: Augment summary with human duration (optional)
+        if: always()
+        run: |
+          python scripts/augment_summary_duration.py || true
+
+      - name: Warn on win-x64 smoke failure
+        if: steps.win_smoke.outcome != 'success'
+        run: echo "::warning::win-x64 smoke test failed; native Windows rebuild may be required."
+
+      - name: Generate telemetry manifest
+        run: ./scripts/generate-manifest.sh
+        shell: bash
+
+      - name: Validate manifest fields (gate)
+        run: |
+          set -euo pipefail
+          ./ci/stage2/validate-manifest.sh
+        shell: bash
+
+      - name: Record Winget traceability
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p telemetry
+          cat > telemetry/winget-info.json <<JSON
+          {
+            "winget_identifier": "LabVIEW-Community-CI-CD.XCli.Portable",
+            "winget_bucket_repo": "LabVIEW-Community-CI-CD/winget-bucket",
+            "winget_bucket_url": "https://github.com/LabVIEW-Community-CI-CD/winget-bucket",
+            "release_url_template": "https://github.com/LabVIEW-Community-CI-CD/x-cli/releases/download/<version>/x-cli-win-x64"
+          }
+          JSON
+          echo "### Winget Traceability" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Identifier: LabVIEW-Community-CI-CD.XCli.Portable" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Bucket: LabVIEW-Community-CI-CD/winget-bucket" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Template URL: https://github.com/LabVIEW-Community-CI-CD/x-cli/releases/download/<version>/x-cli-win-x64" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Compose Stage 2 diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p telemetry
+          summary_bytes=0
+          manifest_bytes=0
+          dist_count=0
+          if [ -f telemetry/summary.json ]; then summary_bytes=$(wc -c < telemetry/summary.json | tr -d ' '); fi
+          if [ -f telemetry/manifest.json ]; then manifest_bytes=$(wc -c < telemetry/manifest.json | tr -d ' '); fi
+          if ls dist/* >/dev/null 2>&1; then dist_count=$(ls -1 dist/* | wc -l | tr -d ' '); fi
+          cat > telemetry/stage2-diagnostics.json <<JSON
+          {
+            "stage": "stage2",
+            "summary_path": "telemetry/summary.json",
+            "manifest_path": "telemetry/manifest.json",
+            "summary_bytes": ${summary_bytes},
+            "manifest_bytes": ${manifest_bytes},
+            "dist_count": ${dist_count}
+          }
+          JSON
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+
+      - name: Upload telemetry bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: telemetry
+          path: telemetry/*
+
+      - name: Token diagnostics (debug)
+        if: ${{ env.DEBUG_TOKEN_INFO == 'true' || env.DEBUG_TOKEN_INFO == '1' }}
+        id: token_diag
+        uses: ./.github/actions/token-diagnostics
+        with:
+          artifact-name: token-info-stage2
+          upload-artifact: true
+
+      - name: Token diagnostics summary (debug)
+        if: ${{ env.DEBUG_TOKEN_INFO == 'true' || env.DEBUG_TOKEN_INFO == '1' }}
+        shell: bash
+        run: |
+          echo "### Token Diagnostics (Stage 2)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- found: ${{ steps.token_diag.outputs.found }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- kind: ${{ steps.token_diag.outputs.kind }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- source: ${{ steps.token_diag.outputs.source }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- length: ${{ steps.token_diag.outputs.length }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- preview: ${{ steps.token_diag.outputs.token_preview }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Emit workflow outputs
+        id: emit_outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "run_id=${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+          echo "manifest_path=telemetry/manifest.json" >> "$GITHUB_OUTPUT"
+          echo "summary_path=telemetry/summary.json" >> "$GITHUB_OUTPUT"
+          echo "diagnostics_path=telemetry/stage2-diagnostics.json" >> "$GITHUB_OUTPUT"

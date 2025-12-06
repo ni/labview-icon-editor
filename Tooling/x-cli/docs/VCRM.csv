@@ -1,0 +1,45 @@
+Requirement ID,SRS file,Title,Suggested Methods,Evidence files (sample),Evidence count
+FGC-REQ-AIC-001,docs/srs/FGC-REQ-AIC-001.md,FGC-REQ-AIC-001 — Two-way Codex↔LLM handshake via ChatOps,,,0
+FGC-REQ-AIC-002,docs/srs/FGC-REQ-AIC-002.md,FGC-REQ-AIC-002 — Session persistence & audit trail,,,0
+FGC-REQ-AIC-003,docs/srs/FGC-REQ-AIC-003.md,FGC-REQ-AIC-003 — Codex proposes changes as unified diffs,,,0
+FGC-REQ-AIC-004,docs/srs/FGC-REQ-AIC-004.md,FGC-REQ-AIC-004 — Safe application of Codex proposals,,,0
+FGC-REQ-AIC-005,docs/srs/FGC-REQ-AIC-005.md,FGC-REQ-AIC-005 — Automated reviewer critique for Codex PRs,Inspection,.github/workflows/codex-reviewer.yml,1
+FGC-REQ-AIC-006,docs/srs/FGC-REQ-AIC-006.md,FGC-REQ-AIC-006 — Persist reviewer artifacts & label PRs,Inspection,.github/workflows/codex-reviewer.yml,1
+FGC-REQ-CI-001,docs/srs/FGC-REQ-CI-001.md,FGC-REQ-CI-001 — Build pipelines,Inspection,.github/workflows/build.yml; .github/workflows/stage2-3-ci.yml; .github/workflows/stage2.yml,3
+FGC-REQ-CI-002,docs/srs/FGC-REQ-CI-002.md,FGC-REQ-CI-002 — Auto-advance on green,Inspection,scripts/waterfall_state.py; .github/workflows/auto-advance-on-green.yml; .github/workflows/validate-waterfall-state.yml,3
+FGC-REQ-CI-003,docs/srs/FGC-REQ-CI-003.md,FGC-REQ-CI-003 — Codex execute,Inspection,.github/workflows/codex-execute.yml,1
+FGC-REQ-CI-004,docs/srs/FGC-REQ-CI-004.md,FGC-REQ-CI-004 — Codex orchestrator,Inspection,.github/workflows/codex-orchestrator.yml,1
+FGC-REQ-CI-005,docs/srs/FGC-REQ-CI-005.md,FGC-REQ-CI-005 — Configure branch protection,,,0
+FGC-REQ-CI-006,docs/srs/FGC-REQ-CI-006.md,FGC-REQ-CI-006 — Design lock,Inspection,.github/workflows/design-lock.yml,1
+FGC-REQ-CI-007,docs/srs/FGC-REQ-CI-007.md,FGC-REQ-CI-007 — Dispatch codex,Inspection,.github/workflows/dispatch-codex.yml,1
+FGC-REQ-CI-008,docs/srs/FGC-REQ-CI-008.md,FGC-REQ-CI-008 — Enforce codex authorship,Inspection,.github/workflows/enforce-codex-authorship.yml,1
+FGC-REQ-CI-009,docs/srs/FGC-REQ-CI-009.md,FGC-REQ-CI-009 — Setup waterfall labels,Inspection,.github/workflows/setup-waterfall-labels.yml,1
+FGC-REQ-CI-010,docs/srs/FGC-REQ-CI-010.md,FGC-REQ-CI-010 — Telemetry aggregate,Inspection,.github/workflows/telemetry-aggregate.yml,1
+FGC-REQ-CI-011,docs/srs/FGC-REQ-CI-011.md,FGC-REQ-CI-011 — Test workflow,Inspection,.github/workflows/test.yml; .github/workflows/tests-parallel-probe.yml,2
+FGC-REQ-CI-012,docs/srs/FGC-REQ-CI-012.md,FGC-REQ-CI-012 — Trigger codex orchestration,Inspection,.github/workflows/trigger-codex-orchestration.yml,1
+FGC-REQ-CI-013,docs/srs/FGC-REQ-CI-013.md,FGC-REQ-CI-013 — Validate codex metadata,Inspection,.github/workflows/validate-codex-metadata.yml,1
+FGC-REQ-CI-014,docs/srs/FGC-REQ-CI-014.md,FGC-REQ-CI-014 — Stage locks & traceability on advance,Inspection,.github/workflows/waterfall-advance.yml,1
+FGC-REQ-CI-015,docs/srs/FGC-REQ-CI-015.md,FGC-REQ-CI-015 — Orchestrate codex agents & artifact hand-off,Inspection,scripts/waterfall_artifacts.py; .github/workflows/waterfall-stuck-alert.yml,2
+FGC-REQ-CI-016,docs/srs/FGC-REQ-CI-016.md,FGC-REQ-CI-016 — Discord canary,Inspection,.github/workflows/discord-canary.yml,1
+FGC-REQ-CI-017,docs/srs/FGC-REQ-CI-017.md,FGC-REQ-CI-017 — Agents contract check,Inspection,.github/workflows/agents-contract-check.yml,1
+FGC-REQ-CI-018,docs/srs/FGC-REQ-CI-018.md,FGC-REQ-CI-018 — Codex mirror sign,Inspection,.github/workflows/codex-mirror-sign.yml,1
+FGC-REQ-CI-019,docs/srs/FGC-REQ-CI-019.md,FGC-REQ-CI-019 — Commit message policy,Inspection,.github/workflows/commit-message-policy.yml,1
+FGC-REQ-CI-020,docs/srs/FGC-REQ-CI-020.md,FGC-REQ-CI-020 — Stage 3 validation,Inspection,.github/workflows/stage3.yml,1
+FGC-REQ-DEV-001,docs/srs/FGC-REQ-DEV-001.md,FGC-REQ-DEV-001 — Traceability updater records commit evidence,Inspection,tests/test_verify_workflow_srs.py,1
+FGC-REQ-DEV-002,docs/srs/FGC-REQ-DEV-002.md,FGC-REQ-DEV-002 — Traceability verification ensures sources and IDs,,,0
+FGC-REQ-DEV-003,docs/srs/FGC-REQ-DEV-003.md,FGC-REQ-DEV-003 — Telemetry modules expose agent feedback,,,0
+FGC-REQ-DEV-004,docs/srs/FGC-REQ-DEV-004.md,FGC-REQ-DEV-004 — Telemetry entries include agent feedback block,Inspection,.github/workflows/stage1-telemetry.yml,1
+FGC-REQ-DEV-005,docs/srs/FGC-REQ-DEV-005.md,FGC-REQ-DEV-005 — Commit messages include SRS metadata,Inspection,tests/test_check_commit_msg.py; docs/adr/0005-metadata-hydration.md,2
+FGC-REQ-DEV-006,docs/srs/FGC-REQ-DEV-006.md,FGC-REQ-DEV-006 — Workflows declare valid SRS IDs,,,0
+FGC-REQ-DEV-007,docs/srs/FGC-REQ-DEV-007.md,FGC-REQ-DEV-007 — Model and dataset version control,,,0
+FGC-REQ-DOC-001,docs/srs/FGC-REQ-DOC-001.md,FGC-REQ-DOC-001 — Single source of truth for process docs,,,0
+FGC-REQ-DOC-008,docs/srs/FGC-REQ-DOC-008.md,FGC-REQ-DOC-008 — Publish SRS as HTML site and PDF,,,0
+FGC-REQ-GOV-010,docs/srs/FGC-REQ-GOV-010.md,FGC-REQ-GOV-010 — Automated SRS maintenance on default branch,Inspection,.github/workflows/srs-pr-gate.yml,1
+FGC-REQ-NOT-001,docs/srs/FGC-REQ-NOT-001.md,FGC-REQ-NOT-001 — GitHub Comment Alerts,Inspection,tests/test_check_commit_msg.py,1
+FGC-REQ-NOT-002,docs/srs/FGC-REQ-NOT-002.md,FGC-REQ-NOT-002 — Slack Alerts,,,0
+FGC-REQ-NOT-003,docs/srs/FGC-REQ-NOT-003.md,FGC-REQ-NOT-003 — Email Alerts,,,0
+FGC-REQ-NOT-004,docs/srs/FGC-REQ-NOT-004.md,FGC-REQ-NOT-004 — Discord Alerts,,,0
+FGC-REQ-QA-002,docs/srs/FGC-REQ-QA-002.md,FGC-REQ-QA-002 — Isolated test environment,,,0
+FGC-REQ-QA-003,docs/srs/FGC-REQ-QA-003.md,FGC-REQ-QA-003 — Reset stateful modules between tests,,,0
+FGC-REQ-SPEC-001,docs/srs/FGC-REQ-SPEC-001.md,FGC-REQ-SPEC-001 - SRS Document Registry,,,0
+FGC-REQ-TEL-001,docs/srs/FGC-REQ-TEL-001.md,FGC-REQ-TEL-001 — Telemetry analyses track SRS omissions and QA regressions,Inspection,.github/workflows/telemetry-aggregate.yml,1

@@ -1,0 +1,23 @@
+{
+  "actionlint": "https://github.com/rhysd/actionlint",
+  "trailing-whitespace": "https://github.com/pre-commit/pre-commit-hooks#trailing-whitespace",
+  "end-of-file-fixer": "https://github.com/pre-commit/pre-commit-hooks#end-of-file-fixer",
+  "yaml-parse-ruamel": "scripts/check_yaml_ruamel.py",
+  "agent-feedback": "scripts/check_agent_feedback.py",
+  "srs-title-ascii": "scripts/check_srs_title_ascii.py",
+  "commit-message": "scripts/check-commit-msg.py"
+  ,
+  "precommit-hook-links": "scripts/check_precommit_hook_links.py",
+  "precommit-hook-links-manual": "scripts/check_precommit_hook_links.py",
+  "precommit-template-sync": "scripts/sync_precommit_templates.py"
+  ,
+  "lint-pwsh-shell": "scripts/lint_powershell_shell.py"
+  ,
+  "validate-stage3-diag": "scripts/validate_stage3_diagnostics.py"
+  ,
+  "lint-codex-rules-usage": "scripts/lint_codex_rules_usage.py"
+  ,
+  "ghops-shim-guard": "docs/workflows-inventory.md"
+  ,
+  "docs-link-check": "docs/ci-helpers.md#lychee-docs-links"
+}

@@ -1,0 +1,9 @@
+{
+  "QA_CMD_POSIX": "./scripts/qa.sh",
+  "QA_CMD_WIN": "pwsh ./scripts/qa.ps1",
+  "DOTNET_VERSION": "8",
+  "COV_LINE": "75%",
+  "COV_BRANCH": "60%",
+  "FEEDBACK_NOTE": "Initial template render — please note any missing sections or confusing phrasing."
+}
+

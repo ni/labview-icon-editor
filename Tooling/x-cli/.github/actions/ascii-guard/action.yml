@@ -1,0 +1,66 @@
+name: ASCII Guard
+description: Validate and optionally sanitize YAML files to ASCII-only
+inputs:
+  path_glob:
+    description: Comma-separated globs to scan (default: workflows YAML)
+    required: false
+    default: ".github/workflows/*.yml,.github/workflows/*.yaml"
+  mode:
+    description: 'check or fix'
+    required: false
+    default: "check"
+runs:
+  using: composite
+  steps:
+    - name: Run ASCII guard
+      shell: bash
+      env:
+        GLOBS: ${{ inputs.path_glob }}
+        MODE: ${{ inputs.mode }}
+      run: |
+        set -euo pipefail
+        python - <<'PY'
+        import os, sys, glob
+
+        globs = [g.strip() for g in (os.environ.get('GLOBS','') or '').split(',') if g.strip()]
+        mode = (os.environ.get('MODE','check') or 'check').strip().lower()
+        files: list[str] = []
+        for g in globs:
+            files.extend(glob.glob(g))
+        files = sorted(set(files))
+
+        def sanitize(s: str) -> str:
+            return (s
+                .replace('\u2192','->')
+                .replace('\u2014','-')
+                .replace('\u2013','-')
+                .replace('\u2011','-')
+                .replace('\u2019','\'')
+                .replace('\u2018','\'')
+                .replace('\u201c','\"')
+                .replace('\u201d','\"')
+                .replace('\u2022','-')
+                .replace('\u00b7','-')
+                .replace('\u2026','...')
+                .replace('\ufffd','?')
+            )
+
+        bad = []
+        for p in files:
+            try:
+                data = open(p, 'r', encoding='utf-8').read()
+            except Exception as exc:
+                print(f"skip {p}: {exc}", file=sys.stderr)
+                continue
+            if any(ord(ch) > 127 for ch in data):
+                bad.append(p)
+                if mode == 'fix':
+                    new = sanitize(data)
+                    open(p,'w',encoding='utf-8',newline='\n').write(new)
+                    print(f"sanitized: {p}")
+                else:
+                    print(f"non-ascii: {p}")
+
+        if bad and mode != 'fix':
+            sys.exit(2)
+        PY

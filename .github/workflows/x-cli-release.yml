@@ -1,0 +1,72 @@
+name: x-cli release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "SemVer to build (e.g., v0.1.0 or v0.1.0-rc.1)"
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RAW_VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Normalize version (strip leading v)
+        id: version
+        shell: pwsh
+        run: |
+          $v = "$env:RAW_VERSION"
+          if ($v.StartsWith('v')) { $v = $v.Substring(1) }
+          if (-not $v) { throw 'Version is empty after normalization' }
+          echo "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Build dist artifacts
+        run: pwsh -NoProfile -File Tooling/x-cli/scripts/build.ps1 -Version ${{ steps.version.outputs.version }}
+
+      - name: Pack NuGet-style package
+        run: pwsh -NoProfile -File Tooling/x-cli/scripts/pack-cli.ps1 -Version ${{ steps.version.outputs.version }}
+
+      - name: Checksums
+        run: pwsh -NoProfile -Command "Get-ChildItem -Path dist,package -Recurse -File | ForEach-Object { $hash = Get-FileHash $_.FullName -Algorithm SHA256; \"$($hash.Hash)  $($_.FullName)\" } | Out-File -Encoding ascii dist/checksums.sha256"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: x-cli-${{ steps.version.outputs.version }}-artifacts
+          path: |
+            dist/**
+            package/**
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: x-cli ${{ steps.version.outputs.version }}
+          body: |
+            x-cli ${{ steps.version.outputs.version }}
+            - dist/x-cli-win-x64, dist/x-cli-linux-x64
+            - package/ (NuGet-style)
+            - checksums: dist/checksums.sha256
+          files: |
+            dist/x-cli-win-x64
+            dist/x-cli-linux-x64
+            dist/checksums.sha256
+            package/*.nupkg

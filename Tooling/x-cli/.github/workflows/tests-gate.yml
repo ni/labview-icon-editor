@@ -1,0 +1,69 @@
+name: Tests Gate
+
+on:
+  pull_request:
+    paths:
+      - "tests/**"
+      - "scripts/**"
+      - "docs/**"
+
+permissions:
+  contents: read
+
+env:
+  ENFORCE_WRITE_GUARD: 1
+
+jobs:
+  hygiene:
+    name: Test Path Hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ripgrep (if missing)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v rg >/dev/null 2>&1; then
+            sudo apt-get update >/dev/null
+            sudo apt-get install -y ripgrep >/dev/null
+          fi
+      - name: Enforce path hygiene via ripgrep
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Fail if tests reference docs/ via CWD instead of deriving repo root
+          if rg -n -g 'tests/**/*.py' -e "Path\(\s*['\"]docs/" -e "open\(\s*(?:Path\(\s*)?['\"]docs/"; then
+            echo "Path hygiene violations found: avoid 'docs/...' relative to CWD; derive repo root via Path(__file__).resolve().parents[1]" >&2
+            exit 1
+          fi
+          echo "Path hygiene OK"
+
+  guidance:
+    name: Guidance Correlation (targeted)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - name: Install test deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest ruamel.yaml
+      - name: Run targeted guidance tests
+    run: |
+      pytest -q tests/test_guidance_analysis.py tests/test_guidance_agents_doc.py
+
+  pester:
+    name: Pester (scripts)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Pester
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -Force -Scope CurrentUser -MinimumVersion 5.5.0
+      - name: Run Pester (scripts/tests)
+        shell: pwsh
+        run: |
+          Invoke-Pester -CI -Output Detailed -Script 'scripts/tests'

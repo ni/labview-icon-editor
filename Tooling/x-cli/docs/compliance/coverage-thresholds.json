@@ -1,0 +1,8 @@
+{
+    "total": 75.0,
+    "branch_total": 60.0,
+    "files": {
+        "src/XCli/Cli/Cli.cs": { "line_min": 60.0, "branch_min": 50.0 },
+        "src/SrsApi/SrsValidation.cs": { "line_min": 60.0 }
+    }
+}

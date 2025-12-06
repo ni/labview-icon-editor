@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "md.templates.suggestions/v1",
+  "type": "object",
+  "required": ["schema", "ts", "inputs", "stats", "suggestions"],
+  "properties": {
+    "schema": { "const": "md.templates.suggestions/v1" },
+    "ts": { "type": "string" },
+    "inputs": {
+      "type": "object",
+      "required": ["include_snippets", "min_count", "defaults_path"],
+      "properties": {
+        "include_snippets": { "type": "boolean" },
+        "min_count": { "type": "integer", "minimum": 1 },
+        "defaults_path": { "type": "string" },
+        "defaults": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "stats": {
+      "type": "object",
+      "required": ["total_items", "unique", "placeholders_total"],
+      "properties": {
+        "total_items": { "type": "integer", "minimum": 0 },
+        "unique": { "type": "integer", "minimum": 0 },
+        "placeholders_total": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["placeholder", "count"],
+        "properties": {
+          "placeholder": { "type": "string" },
+          "count": { "type": "integer", "minimum": 1 }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
+

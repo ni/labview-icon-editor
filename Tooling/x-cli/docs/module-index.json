@@ -1,0 +1,112 @@
+{
+  "$schema": "docs/schemas/v1/module-index.schema.json",
+  "version": "1.0",
+  "generatedAt": "1970-01-01T00:00:00.000Z",
+  "entries": [
+    {
+      "path": "scripts/analyze_srs_telemetry.py",
+      "desc": "builds SRS telemetry aggregates for dashboards.",
+      "lang": "py"
+    },
+    {
+      "path": "scripts/analyze_telemetry.py",
+      "desc": "merges and summarizes telemetry inputs.",
+      "lang": "py"
+    },
+    {
+      "path": "src/SrsApi/FileSrsRegistry.cs",
+      "desc": "file-backed registry scanning `docs/srs/*.md`, normalizes IDs, parses Version, detects duplicates/missing IDs.",
+      "lang": "cs"
+    },
+    {
+      "path": "src/SrsApi/ISrsDocument.cs",
+      "desc": "contract for SRS document metadata (ID, Version, Path).",
+      "lang": "cs"
+    },
+    {
+      "path": "src/SrsApi/ISrsRegistry.cs",
+      "desc": "registry contract for lookup and enumeration.",
+      "lang": "cs"
+    },
+    {
+      "path": "src/SrsApi/ModuleRequirementMap.cs",
+      "desc": "loads `docs/module-srs-map.yaml` and resolves requirement IDs for module path prefixes.",
+      "lang": "cs"
+    },
+    {
+      "path": "src/SrsApi/SrsDocument.cs",
+      "desc": "record implementation of ISrsDocument.",
+      "lang": "cs"
+    },
+    {
+      "path": "src/SrsApi/SrsNormalization.cs",
+      "desc": "normalizes requirement IDs (hyphen variants, case).",
+      "lang": "cs"
+    },
+    {
+      "path": "src/SrsApi/SrsValidation.cs",
+      "desc": "validates IDs and detects normalized ID collisions.",
+      "lang": "cs"
+    },
+    {
+      "path": "src/Telemetry/Models/TelemetryEvent.cs",
+      "desc": "model for telemetry event lines.",
+      "lang": "cs"
+    },
+    {
+      "path": "src/Telemetry/Models/TelemetrySummary.cs",
+      "desc": "model for telemetry summary output.",
+      "lang": "cs"
+    },
+    {
+      "path": "src/Telemetry/Summary/SummaryBuilder.cs",
+      "desc": "builds telemetry summaries from JSONL event streams.",
+      "lang": "cs"
+    },
+    {
+      "path": "src/XCli/Cli/Cli.cs",
+      "desc": "CLI parsing and help text.",
+      "lang": "cs"
+    },
+    {
+      "path": "src/XCli/Logging/InvocationLogger.cs",
+      "desc": "emits JSONL logs for each invocation.",
+      "lang": "cs"
+    },
+    {
+      "path": "src/XCli/Program.cs",
+      "desc": "CLI entry point coordinating parsing, logging, and simulation.",
+      "lang": "cs"
+    },
+    {
+      "path": "src/XCli/Replay/LogDiffCommand.cs",
+      "desc": "compares two JSONL logs and prints timing deltas (text/JSON).",
+      "lang": "cs"
+    },
+    {
+      "path": "src/XCli/Replay/LogReplayCommand.cs",
+      "desc": "replays recorded JSONL logs to stdout/stderr with timing.",
+      "lang": "cs"
+    },
+    {
+      "path": "src/XCli/Security/IsolationGuard.cs",
+      "desc": "guards against network assemblies and Process.Start invocations.",
+      "lang": "cs"
+    },
+    {
+      "path": "src/XCli/Simulation/SimulationPlan.cs",
+      "desc": "loads failure simulation configuration from environment and JSON.",
+      "lang": "cs"
+    },
+    {
+      "path": "src/XCli/Telemetry/TelemetryCommand.cs",
+      "desc": "telemetry subcommands (summarize, write, check, validate).",
+      "lang": "cs"
+    },
+    {
+      "path": "src/XCli/Util/Env.cs",
+      "desc": "centralized helpers for reading environment variables.",
+      "lang": "cs"
+    }
+  ]
+}

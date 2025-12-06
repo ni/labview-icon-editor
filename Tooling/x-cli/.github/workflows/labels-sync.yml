@@ -1,0 +1,159 @@
+name: Labels Sync
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly, Mondays at 06:00 UTC
+  push:
+    paths:
+      - 'docs/labels.json'
+      - 'scripts/sync_labels.py'
+      - 'docs/labels-governance.md'
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Sync labels from file (if present) or defaults
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          LABELS_SUMMARY_PATH: telemetry/labels-sync-summary.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f docs/labels.json ]; then
+            python scripts/sync_labels.py --file docs/labels.json
+          else
+            python scripts/sync_labels.py
+          fi
+
+      - name: Upload labels sync summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labels-sync-summary
+          path: telemetry/labels-sync-summary.json
+          if-no-files-found: warn
+
+      - name: Checkout gh-pages (history)
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Job Summary (Labels Sync)
+        if: always()
+        shell: bash
+        env:
+          DRIFT_WARN_THRESHOLD: ${{ vars.LABELS_DRIFT_WARN }}
+        run: |
+          set -euo pipefail
+          if [ -f telemetry/labels-sync-summary.json ]; then
+            python - <<'PY'
+            import json, os
+            p = 'telemetry/labels-sync-summary.json'
+            try:
+                d = json.load(open(p, encoding='utf-8'))
+            except Exception:
+                d = {}
+            # Try to load previous summary from gh-pages
+            prev_path = 'gh-pages/labels-history/labels-sync-summary-latest.json'
+            try:
+                prev = json.load(open(prev_path, encoding='utf-8'))
+            except Exception:
+                prev = {}
+            # Detect history checkout presence
+            history_present = os.path.isdir('gh-pages/.git')
+            out = os.environ.get('GITHUB_STEP_SUMMARY')
+            lines = []
+            lines.append('### Labels Sync')
+            repo = d.get('repository','?')
+            created = d.get('created',[]) or []
+            updated = d.get('updated',[]) or []
+            ok = d.get('ok',[]) or []
+            extra = d.get('extra',[]) or []
+            prev_extra = prev.get('extra',[]) or []
+            total = d.get('total','?')
+            def head(xs, n=5):
+                return ', '.join(xs[:n]) if xs else '-'
+            # Status: CHANGES if any created/updated; otherwise OK
+            status = 'CHANGES' if (created or updated) else 'OK'
+            lines.append(f"- status: {status}")
+            lines.append(f"- repository: {repo}")
+            lines.append(f"- total: {total}")
+            lines.append(f"- created: {len(created)} -> {head(created)}")
+            lines.append(f"- updated: {len(updated)} -> {head(updated)}")
+            lines.append(f"- ok: {len(ok)}")
+            lines.append(f"- extras (not in source): {len(extra)} -> {head(extra)}")
+            # Extras delta vs previous
+            s_now = set(extra)
+            s_prev = set(prev_extra)
+            added = sorted(list(s_now - s_prev))
+            removed = sorted(list(s_prev - s_now))
+            lines.append(f"- extras added: {len(added)} -> {head(added)}")
+            lines.append(f"- extras removed: {len(removed)} -> {head(removed)}")
+            # Optional informational warning threshold
+            thr_raw = os.environ.get('DRIFT_WARN_THRESHOLD','')
+            try:
+                thr = int(thr_raw) if thr_raw.strip() else 5
+            except Exception:
+                thr = 5
+            if len(extra) > thr:
+                lines.append(f"- warning: extras count {len(extra)} exceeds threshold {thr} (informational)")
+            else:
+                lines.append(f"- drift threshold: {thr} (informational)")
+            if not history_present:
+                lines.append("- note: history not available (gh-pages missing or checkout failed); delta uses empty baseline")
+            if status == 'CHANGES':
+                lines.append(f"- governance: docs/labels-governance.md")
+                lines.append(f"- source: docs/labels.json")
+                base = os.environ.get('GITHUB_SERVER_URL','https://github.com')
+                repo_env = os.environ.get('GITHUB_REPOSITORY','')
+                settings_url = f"{base}/{repo_env}/labels" if repo_env else base
+                lines.append(f"- settings: {settings_url}")
+            if extra:
+                lines.append("- note: Consider adding to docs/labels.json or deleting unused labels in Settings -> Labels")
+            with open(out, 'a', encoding='utf-8') as f:
+                f.write('\n'.join(lines) + '\n')
+            PY
+          else
+            echo "No labels sync summary found" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Persist labels sync history to gh-pages
+        if: always()
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ ! -f telemetry/labels-sync-summary.json ]; then
+            echo "No summary to persist"; exit 0; fi
+          mkdir -p gh-pages/labels-history
+          ts=$(date -u +%Y%m%dT%H%M%SZ)
+          cp telemetry/labels-sync-summary.json gh-pages/labels-history/labels-sync-summary-$ts.json
+          cp telemetry/labels-sync-summary.json gh-pages/labels-history/labels-sync-summary-latest.json
+          cd gh-pages
+          git config user.name "x-cli-bot"
+          git config user.email "actions@github.com"
+          git add labels-history/* || true
+          if git diff --cached --quiet; then
+            echo "No history changes to commit"
+          else
+            git commit -m "chore(labels): update labels sync summary"
+            git push origin gh-pages
+          fi

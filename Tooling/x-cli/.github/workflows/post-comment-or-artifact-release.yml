@@ -1,0 +1,34 @@
+name: Action Release (post-comment-or-artifact)
+
+on:
+  push:
+    tags:
+      - 'v1.*'
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  bump-v1:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Move v1 tag to this commit
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          echo "Current tag: $tag"
+          git tag -fa v1 -m "rolling v1 -> $tag" "$tag"
+          git push origin v1 --force
+      - name: Ensure GitHub Release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+

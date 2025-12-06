@@ -1,0 +1,221 @@
+name: PR Label & Tip (ghops shim)
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  label-and-tip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Detect path changes for ghops tests
+        id: detect
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request.number;
+            let page = 1; const per_page = 100; let any = false;
+            const hits = [];
+            const prefix = 'scripts/ghops/tests/';
+            while (true) {
+              const { data } = await github.rest.pulls.listFiles({ owner, repo, pull_number: pr, per_page, page });
+              if (!data.length) break;
+              for (const f of data) {
+                if (f.filename.startsWith(prefix)) { any = true; hits.push(f.filename); }
+              }
+              if (data.length < per_page) break; else page++;
+            }
+            core.setOutput('touched', any ? 'true' : 'false');
+            core.setOutput('hits', JSON.stringify(hits));
+
+      - name: Add CI label when ghops tests touched
+        if: steps.detect.outputs.touched == 'true'
+        id: add_ci_label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request.number;
+            const label = 'ci:ghops-shim';
+            // Ensure repository label exists
+            try {
+              await github.rest.issues.createLabel({ owner, repo, name: label, color: 'c2e0c6', description: 'PR touches ghops tests; show shim guard tip' });
+            } catch (e) {
+              // ignore if already exists
+            }
+            // Check if label already on PR
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: pr, per_page: 100 });
+            const has = labels.some(l => l.name === label);
+            if (!has) {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: pr, labels: [label] });
+              core.setOutput('added', 'true');
+            } else {
+              core.setOutput('added', 'false');
+            }
+
+      - name: Post/update tip comment
+        if: steps.detect.outputs.touched == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request.number;
+            const marker = '<!-- ghops-shim-tip -->';
+            const body = `${marker}\n` +
+              `Heads-up: this PR touches ghops test wrappers.\n\n` +
+              `If you edited \`scripts/ghops/tests/Ghops.Tests.ps1\`, run the shim guard locally to catch issues early:\n\n` +
+              '```bash\npre-commit run ghops-shim-guard --files scripts/ghops/tests/Ghops.Tests.ps1\n```\n\n' +
+              `Rationale: see \`docs/workflows-inventory.md\` (ghops smoke Windows note).`;
+            // find existing
+            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number: pr, per_page: 100 });
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number: pr, body });
+            }
+
+      - name: Add posted label
+        if: steps.detect.outputs.touched == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request.number;
+            const label = 'docs:ghops-tip-posted';
+            try {
+              await github.rest.issues.addLabels({ owner, repo, issue_number: pr, labels: [label] });
+            } catch (e) {
+              if (e.status === 404) {
+                await github.rest.issues.createLabel({ owner, repo, name: label, color: 'bfdadc', description: 'Shim guard tip posted to PR' }).catch(() => {});
+                await github.rest.issues.addLabels({ owner, repo, issue_number: pr, labels: [label] });
+              } else {
+                throw e;
+              }
+            }
+
+      - name: Job summary
+        shell: bash
+        run: |
+          echo "### ghops shim tip" >> "$GITHUB_STEP_SUMMARY"
+          echo "- touched: ${{ steps.detect.outputs.touched }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- files: ${{ steps.detect.outputs.hits }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- ci_label_added: ${{ steps.add_ci_label.outputs.added }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove posted label if no longer applicable
+        id: remove_label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request.number;
+            const touched = `${{ steps.detect.outputs.touched }}` === 'true';
+            // Check if marker comment exists
+            const marker = '<!-- ghops-shim-tip -->';
+            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number: pr, per_page: 100 });
+            const markerPresent = comments.some(c => c.user.type === 'Bot' && c.body && c.body.includes(marker));
+            // Check if label exists on issue
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: pr, per_page: 100 });
+            const hasLabel = labels.some(l => l.name === 'docs:ghops-tip-posted');
+            if ((!touched || !markerPresent) && hasLabel) {
+              try {
+                await github.rest.issues.removeLabel({ owner, repo, issue_number: pr, name: 'docs:ghops-tip-posted' });
+                core.info('Removed label docs:ghops-tip-posted');
+                core.setOutput('removed', 'true');
+              } catch (e) {
+                core.warning(`Could not remove label: ${e}`);
+                core.setOutput('removed', 'false');
+              }
+            } else {
+              core.info('No label removal needed');
+              core.setOutput('removed', 'false');
+            }
+
+      - name: Append removal status to summary
+        if: always()
+        shell: bash
+        run: |
+          echo "- label_removed: ${{ steps.remove_label.outputs.removed }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove CI label when not touched
+        if: steps.detect.outputs.touched != 'true'
+        id: remove_ci_label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request.number;
+            const label = 'ci:ghops-shim';
+            // Check if label exists on PR
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: pr, per_page: 100 });
+            const has = labels.some(l => l.name === label);
+            if (has) {
+              try {
+                await github.rest.issues.removeLabel({ owner, repo, issue_number: pr, name: label });
+                core.setOutput('removed', 'true');
+              } catch (e) {
+                core.warning(`Could not remove CI label: ${e}`);
+                core.setOutput('removed', 'false');
+              }
+            } else {
+              core.setOutput('removed', 'false');
+            }
+
+      - name: Append CI label removal status
+        if: always()
+        shell: bash
+        run: |
+          echo "- ci_label_removed: ${{ steps.remove_ci_label.outputs.removed }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: List final labels on PR
+        id: list_labels
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request.number;
+            const { data: labels } = await github.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: pr, per_page: 100 });
+            const names = labels.map(l => l.name);
+            const max = parseInt(process.env.LABELS_SUMMARY_MAX || '20', 10);
+            const total = names.length;
+            const truncated = total > max;
+            const shown = truncated ? names.slice(0, max) : names;
+            const csv = shown.join(', ');
+            const remaining = truncated ? (total - shown.length) : 0;
+            core.setOutput('names', names.join(', '));
+            core.setOutput('csv', csv);
+            core.setOutput('json', JSON.stringify(shown));
+            core.setOutput('total', String(total));
+            core.setOutput('truncated', truncated ? 'true' : 'false');
+            core.setOutput('remaining', String(remaining));
+
+      - name: Append labels present to summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ "${{ steps.list_labels.outputs.truncated }}" == "true" ]]; then
+            echo "- labels_present: ${{ steps.list_labels.outputs.csv }} ( +${{ steps.list_labels.outputs.remaining }} more )" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- labels_present: ${{ steps.list_labels.outputs.csv }}" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Append labels JSON (optional)
+        if: ${{ vars.LABELS_SUMMARY_JSON == '1' }}
+        shell: bash
+        env:
+          LABELS_JSON: ${{ steps.list_labels.outputs.json }}
+        run: |
+          echo "- labels_json: ${LABELS_JSON}" >> "$GITHUB_STEP_SUMMARY"

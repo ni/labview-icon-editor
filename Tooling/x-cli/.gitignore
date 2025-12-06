@@ -1,0 +1,45 @@
+﻿bin/
+obj/
+*.user
+*.suo
+*.DS_Store
+/.vs/
+
+# Test outputs
+TestResults/
+
+# Generated telemetry artifacts
+artifacts/test-telemetry.jsonl
+artifacts/telemetry-summary.json
+artifacts/telemetry-dashboard.html
+
+.venv/
+**/__pycache__/
+*.pyc
+/telemetry/
+.codex/
+codex_rules.egg-info/
+
+out/
+.tools/
+
+# Test/CI temp directories
+.pytest_cache/
+.pytest_tmp/
+coverage.xml
+
+dist/
+package/
+
+# CI artifacts (uploaded)
+artifacts/
+
+# Local worktrees / scratch
+/pr_*/
+gh-pages/
+pr_ci_loop/
+pr_dir_guard/
+pr_pester/
+pr_yaml/
+wt_integration/
+artifacts/module-index-generated.md

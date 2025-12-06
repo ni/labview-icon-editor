@@ -1,0 +1,82 @@
+name: PR Mergeability
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to check
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine PR number
+        id: prnum
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.pull_request.number }}" ]; then
+            echo "pr=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          elif [ -n "${{ github.event.inputs.pr_number }}" ]; then
+            echo "pr=${{ github.event.inputs.pr_number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::No PR number available"; exit 1;
+          fi
+
+      - name: Check mergeability (poll)
+        id: mergecheck
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = Number(core.getInput('pr'));
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            // Poll up to ~20s for GitHub to compute mergeability
+            let mergeable = null;
+            let state = 'unknown';
+            for (let i=0; i<10; i++) {
+              const { data } = await github.rest.pulls.get({ owner, repo, pull_number: pr });
+              mergeable = data.mergeable; // boolean|null
+              state = data.mergeable_state; // clean, dirty, blocked, unstable, unknown, draft
+              if (mergeable !== null) break;
+              await new Promise(r => setTimeout(r, 2000));
+            }
+            core.setOutput('mergeable', String(mergeable));
+            core.setOutput('mergeable_state', state);
+            core.setOutput('pr', String(pr));
+            return { pr, mergeable, state };
+          result-encoding: string
+          github-token: ${{ secrets.GH_ORG_TOKEN || secrets.GITHUB_TOKEN }}
+          pr: ${{ steps.prnum.outputs.pr }}
+
+      - name: Job Summary
+        shell: bash
+        run: |
+          echo "### PR Mergeability" >> "$GITHUB_STEP_SUMMARY"
+          echo "- PR: #${{ steps.mergecheck.outputs.pr }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- mergeable: ${{ steps.mergecheck.outputs.mergeable }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- mergeable_state: ${{ steps.mergecheck.outputs.mergeable_state }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment on conflict (optional)
+        if: ${{ steps.mergecheck.outputs.mergeable_state == 'dirty' || steps.mergecheck.outputs.mergeable == 'false' }}
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GH_ORG_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = Number('${{ steps.mergecheck.outputs.pr }}');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const body = `⚠️ Merge conflict detected.\n\n- mergeable: \\`${{ steps.mergecheck.outputs.mergeable }}\\`\n- mergeable_state: \\`${{ steps.mergecheck.outputs.mergeable_state }}\\``;
+            await github.rest.issues.createComment({ owner, repo, issue_number: pr, body });
+
+      - name: Fail on conflict
+        if: ${{ steps.mergecheck.outputs.mergeable_state == 'dirty' || steps.mergecheck.outputs.mergeable == 'false' }}
+        run: |
+          echo "::error::PR has merge conflicts (state=${{ steps.mergecheck.outputs.mergeable_state }})"; exit 2
+

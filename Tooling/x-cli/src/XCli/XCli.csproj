@@ -1,8 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AssemblyName>XCli</AssemblyName>
+    <OutputType>Exe</OutputType>
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>false</PublishTrimmed>
+    <RootNamespace>XCli</RootNamespace>
+    <PackageReadmeFile>README.nupkg.md</PackageReadmeFile>
   </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Telemetry\Telemetry.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\README.nupkg.md" Pack="true" PackagePath="" Condition="Exists('..\README.nupkg.md')" />
+    <None Include="..\..\README.nupkg.md" Pack="true" PackagePath="" Condition="Exists('..\..\README.nupkg.md')" />
+  </ItemGroup>
 </Project>

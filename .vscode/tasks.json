@@ -678,6 +678,52 @@
       "detail": "Runs vi-history/vi-compare replay against an extracted Source Distribution (read-only analysis; no bind/build)."
     },
     {
+      "label": "x-cli: Build (Release)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "${workspaceFolder}/Tooling/x-cli/XCli.sln",
+        "-c",
+        "Release"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Build x-cli solution (Release)."
+    },
+    {
+      "label": "x-cli: Test (Release)",
+      "type": "shell",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "${workspaceFolder}/Tooling/x-cli/XCli.sln",
+        "-c",
+        "Release"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "dependsOn": [
+        "x-cli: Build (Release)"
+      ],
+      "dependsOrder": "sequence",
+      "group": "test",
+      "problemMatcher": [],
+      "detail": "Run x-cli tests (Release)."
+    },
+    {
       "label": "SD: VI History (bundled)",
       "type": "shell",
       "command": "pwsh",

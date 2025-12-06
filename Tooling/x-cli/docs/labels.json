@@ -1,0 +1,17 @@
+[
+  {
+    "name": "coverage:conservative",
+    "color": "fbca04",
+    "description": "Re-enable Python coverage with conservative floors while scripts/lib tests mature"
+  },
+  {
+    "name": "coverage:raise-iteratively",
+    "color": "0e8a16",
+    "description": "Incrementally raise coverage thresholds alongside added tests for scripts/lib"
+  },
+  {
+    "name": "ci:pre-commit",
+    "color": "1f6feb",
+    "description": "Trigger the Pre-Commit workflow on this PR"
+  }
+]

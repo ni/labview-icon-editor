@@ -1,0 +1,18 @@
+# Scan only Markdown; no external HTTP requests (offline).
+exclude = ["^https?://", "^mailto:"]
+include_path = ["**/*.md"]
+exclude_path = [
+  "node_modules",
+  "dist",
+  ".git",
+  "bin",
+  "obj",
+  ".venv",
+  "venv",
+  "artifacts",
+  "gk-cli.README.master.md",
+  "gk-cli.README.md"
+]
+offline = true
+include_fragments = true
+max-concurrency = 8

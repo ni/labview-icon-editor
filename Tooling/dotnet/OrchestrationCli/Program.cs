@@ -73,6 +73,12 @@ public static class Program
         bool ResetEmitSummary,
         string? ResetSummaryJson,
         string[] ResetAdditionalPaths,
+        bool SdPplSkipMassCompile,
+        string? MassCompileDirectory,
+        string? MassCompileLogFile,
+        bool? MassCompileAppend,
+        int? MassCompileCache,
+        bool? MassCompileReloadLvsbs,
         string? ScriptsRoot)
     {
         public Options() : this(
@@ -138,6 +144,12 @@ public static class Program
             ResetEmitSummary: false,
             ResetSummaryJson: null,
             ResetAdditionalPaths: Array.Empty<string>(),
+            SdPplSkipMassCompile: false,
+            MassCompileDirectory: null,
+            MassCompileLogFile: null,
+            MassCompileAppend: null,
+            MassCompileCache: null,
+            MassCompileReloadLvsbs: null,
             ScriptsRoot: null)
         {
         }
@@ -1565,7 +1577,7 @@ public static class Program
             return last!;
         }
 
-        CommandResult RunLabviewCliMassCompile(string directoryToCompile, string workingDir, string logFilePath)
+        CommandResult RunLabviewCliMassCompile(string directoryToCompile, string workingDir, string logFilePath, bool appendLog = false, int? numOfVisToCache = null, bool? reloadLvsbs = null)
         {
             var lvcliTimeout = opts.LabviewCliTimeoutSec.HasValue && opts.LabviewCliTimeoutSec.Value > 0
                 ? opts.LabviewCliTimeoutSec.Value
@@ -1584,6 +1596,15 @@ public static class Program
                 }
                 catch { }
                 args.AddRange(new[] { "-MassCompileLogFile", logFilePath });
+                args.AddRange(new[] { "-AppendToMassCompileLog", appendLog ? "true" : "false" });
+            }
+            if (numOfVisToCache.HasValue)
+            {
+                args.AddRange(new[] { "-NumOfVIsToCache", numOfVisToCache.Value.ToString() });
+            }
+            if (reloadLvsbs.HasValue)
+            {
+                args.AddRange(new[] { "-ReloadLVSBs", reloadLvsbs.Value ? "true" : "false" });
             }
             if (!string.IsNullOrWhiteSpace(labviewPath))
             {
@@ -1620,6 +1641,9 @@ public static class Program
                 labviewPath,
                 portNumber,
                 logFilePath,
+                appendLog,
+                numOfVisToCache,
+                reloadLvsbs,
                 exit = result.ExitCode,
                 stdout = result.StdOut,
                 stderr = result.StdErr
@@ -2180,6 +2204,40 @@ public static class Program
 
             if (pipelineOk && extractedRoot != null)
             {
+                PhaseStart("mass-compile");
+                if (opts.SdPplSkipMassCompile)
+                {
+                    Record(new CommandResult("labviewcli-mass-compile", "skip", 0, 0, new { reason = "skip-mass-compile flag" }), "mass-compile", affectsOutcome: false);
+                }
+                else
+                {
+                    var mcDir = string.IsNullOrWhiteSpace(opts.MassCompileDirectory)
+                        ? extractedRoot
+                        : (Path.IsPathRooted(opts.MassCompileDirectory!)
+                            ? opts.MassCompileDirectory!
+                            : Path.Combine(extractedRoot, opts.MassCompileDirectory!));
+                    if (!Directory.Exists(mcDir))
+                    {
+                        Record(new CommandResult("labviewcli-mass-compile", "fail", 1, 0, new { directory = mcDir, error = "Mass compile directory not found" }), "mass-compile");
+                        pipelineOk = false;
+                    }
+                    else
+                    {
+                        var mcLog = string.IsNullOrWhiteSpace(opts.MassCompileLogFile)
+                            ? Path.Combine(logsDir, $"{SanitizeFileName($"mass-compile-{bitness}")}.log")
+                            : (Path.IsPathRooted(opts.MassCompileLogFile!) ? opts.MassCompileLogFile! : Path.Combine(logsDir, opts.MassCompileLogFile!));
+                        Record(
+                            RunLabviewCliMassCompile(
+                                mcDir,
+                                extractedRoot,
+                                mcLog,
+                                opts.MassCompileAppend ?? false,
+                                opts.MassCompileCache,
+                                opts.MassCompileReloadLvsbs),
+                            "mass-compile");
+                    }
+                }
+
                 pplLogFile = Path.Combine(logsDir, $"{SanitizeFileName($"ppl-{bitness}")}.log");
                 var pplProject = Path.Combine(extractedRoot, "lv_icon_editor.lvproj");
                 PhaseStart("build-ppl");
@@ -3284,6 +3342,12 @@ public static class Program
         string? resetSummaryJson = null;
         var resetAdditionalPaths = new List<string> { "builds/cache" };
         string? scriptsRoot = null;
+        var sdPplSkipMassCompile = false;
+        string? massCompileDirectory = null;
+        string? massCompileLogFile = null;
+        bool? massCompileAppend = null;
+        int? massCompileCache = null;
+        bool? massCompileReloadLvsbs = null;
 
         try
         {
@@ -3432,6 +3496,29 @@ public static class Program
                     case "--log-root":
                         logRoot = RequireNext(args, ref i, "--log-root");
                         break;
+                    case "--skip-mass-compile":
+                        sdPplSkipMassCompile = true;
+                        break;
+                    case "--mass-compile-dir":
+                        massCompileDirectory = RequireNext(args, ref i, "--mass-compile-dir");
+                        break;
+                    case "--mass-compile-log":
+                        massCompileLogFile = RequireNext(args, ref i, "--mass-compile-log");
+                        break;
+                    case "--mass-compile-append":
+                        massCompileAppend = true;
+                        break;
+                    case "--mass-compile-cache":
+                        var cacheText = RequireNext(args, ref i, "--mass-compile-cache");
+                        if (!int.TryParse(cacheText, out var parsedCache) || parsedCache < 0)
+                        {
+                            return (null, "Invalid --mass-compile-cache", false);
+                        }
+                        massCompileCache = parsedCache;
+                        break;
+                    case "--mass-compile-reload-lvsbs":
+                        massCompileReloadLvsbs = true;
+                        break;
                     case "--lvcli-timeout-sec":
                         var lvcliTimeoutText = RequireNext(args, ref i, "--lvcli-timeout-sec");
                         if (!int.TryParse(lvcliTimeoutText, out var parsedLvcliTimeout))
@@ -3554,7 +3641,7 @@ public static class Program
         var runKeyResolved = string.IsNullOrWhiteSpace(runKeyArg) ? $"local-sd-{DateTime.UtcNow:yyyyMMdd-HHmmss}" : runKeyArg!;
         var lockPathResolved = string.IsNullOrWhiteSpace(lockPathArg) ? Path.Combine(repoFull, ".locks", "orchestration.lock") : lockPathArg!;
 
-        return (new Options(sub, repoFull, bitness, pwsh, refName, lvlibpBitness, major, minor, patch, build, company, author, labviewMinor, runBothBitnessSeparately, managed, lv, vipc, requestPath, projectPath, scenarioPath, vipmManifestPath, worktreeRoot, skipWorktree, skipPreflight, requireDevmode, autoBindDevmode, timeoutSec, plain, verbose, sourceDistZip, sourceDistOutput, sourceDistCommitIndex, sourceDistStrict, sourceDistLogStash, gcliPath, labviewCliPath, labviewPath, labviewPort, tempRoot, logRoot, labviewCliTimeoutSec, forceWorktree, copyOnFail, retryBuilds, expectSha, runKeyResolved, lockPathResolved, lockTtlSec, forceLock, skipLocalSdBuild, ollamaEndpoint, ollamaModel, ollamaPrompt, resetArchiveExisting, resetSkipCleanup, resetRunCommitIndex, resetRunFullBuild, resetRunner, resetDryRun, resetEmitSummary, resetSummaryJson, resetAdditionalPaths.ToArray(), scriptsRoot), null, false);
+        return (new Options(sub, repoFull, bitness, pwsh, refName, lvlibpBitness, major, minor, patch, build, company, author, labviewMinor, runBothBitnessSeparately, managed, lv, vipc, requestPath, projectPath, scenarioPath, vipmManifestPath, worktreeRoot, skipWorktree, skipPreflight, requireDevmode, autoBindDevmode, timeoutSec, plain, verbose, sourceDistZip, sourceDistOutput, sourceDistCommitIndex, sourceDistStrict, sourceDistLogStash, gcliPath, labviewCliPath, labviewPath, labviewPort, tempRoot, logRoot, labviewCliTimeoutSec, forceWorktree, copyOnFail, retryBuilds, expectSha, runKeyResolved, lockPathResolved, lockTtlSec, forceLock, skipLocalSdBuild, ollamaEndpoint, ollamaModel, ollamaPrompt, resetArchiveExisting, resetSkipCleanup, resetRunCommitIndex, resetRunFullBuild, resetRunner, resetDryRun, resetEmitSummary, resetSummaryJson, resetAdditionalPaths.ToArray(), sdPplSkipMassCompile, massCompileDirectory, massCompileLogFile, massCompileAppend, massCompileCache, massCompileReloadLvsbs, scriptsRoot), null, false);
     }
 
     private static List<string> ResolveBitness(string value)
@@ -4061,6 +4148,12 @@ public static class Program
         Console.WriteLine("  --lvcli-timeout-sec <n>   LabVIEWCLI process timeout override (sd-ppl-lvcli)");
         Console.WriteLine("  --temp-root <path>        Temp root override for sd-ppl-lvcli (default: user temp)");
         Console.WriteLine("  --log-root <path>         Log root override for sd-ppl-lvcli (default: <temp>/logs)");
+        Console.WriteLine("  --skip-mass-compile      Skip LabVIEWCLI MassCompile on the extracted Source Distribution (sd-ppl-lvcli)");
+        Console.WriteLine("  --mass-compile-dir <path> Directory to mass compile (default: extracted root, sd-ppl-lvcli)");
+        Console.WriteLine("  --mass-compile-log <path> Log file for mass compile (default: <log-root>/mass-compile-<bitness>.log, sd-ppl-lvcli)");
+        Console.WriteLine("  --mass-compile-append     Append to the mass compile log instead of replacing it (sd-ppl-lvcli)");
+        Console.WriteLine("  --mass-compile-cache <n>  NumOfVIsToCache value for mass compile (sd-ppl-lvcli)");
+        Console.WriteLine("  --mass-compile-reload-lvsbs Reload LVSBs during mass compile (sd-ppl-lvcli)");
         Console.WriteLine("  --force-worktree          Allow reusing/removing an existing worktree path (sd-ppl-lvcli)");
         Console.WriteLine("  --copy-on-fail            Copy artifacts back even if the flow fails (sd-ppl-lvcli)");
         Console.WriteLine("  --retry-build <n>         Retry LabVIEWCLI builds up to n times on failure (sd-ppl-lvcli)");

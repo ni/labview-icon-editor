@@ -1,0 +1,46 @@
+name: x-cli build and test
+
+on:
+  push:
+    paths:
+      - 'Tooling/x-cli/**'
+      - 'scripts/telemetry/**'
+      - 'docs/x-cli-playbook.md'
+      - 'MAINTAINING-x-cli.md'
+      - '.github/workflows/x-cli-build-test.yml'
+      - 'global.json'
+  pull_request:
+    paths:
+      - 'Tooling/x-cli/**'
+      - 'scripts/telemetry/**'
+      - 'docs/x-cli-playbook.md'
+      - 'MAINTAINING-x-cli.md'
+      - '.github/workflows/x-cli-build-test.yml'
+      - 'global.json'
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore Tooling/x-cli/XCli.sln
+
+      - name: Build (Release)
+        run: dotnet build Tooling/x-cli/XCli.sln -c Release --no-restore
+
+      - name: Test (Release)
+        run: dotnet test Tooling/x-cli/XCli.sln -c Release --no-build
+
+      - name: Prepare telemetry paths
+        run: pwsh -NoProfile -Command "New-Item -ItemType Directory -Force -Path artifacts,telemetry | Out-Null"
+
+      - name: Telemetry validate/check
+        run: pwsh -NoProfile -File scripts/telemetry/Invoke-TelemetryPipeline.ps1 -Step ci-smoke -Status pass -RepositoryPath . -DurationMs 1 -MaxFailures 0 -Stage ci -Runner github -Producer ci-x-cli -EventsPath artifacts/ci-telemetry.jsonl -SummaryPath telemetry/ci-summary.json -HistoryPath telemetry/ci-history.jsonl -MarkdownPath telemetry/ci-summary.md

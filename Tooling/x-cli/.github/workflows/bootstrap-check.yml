@@ -1,0 +1,23 @@
+name: Agent Bootstrap Check
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  bootstrap-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run bootstrap (dry run)
+        run: |
+          bash scripts/agent_bootstrap_gitflow.sh
+
+  bootstrap-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run bootstrap (dry run)
+        shell: pwsh
+        run: |
+          pwsh scripts/agent_bootstrap_gitflow.ps1

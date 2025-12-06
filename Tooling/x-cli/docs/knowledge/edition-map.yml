@@ -1,0 +1,63 @@
+standards:
+    iso12207:
+        edition: "2017"
+        clauses:
+            Requirements_Definition: ""
+            Verification: ""
+            Validation: ""
+            Configuration_Management: ""
+            Release_Management: ""
+            Test_Process: ""
+            # NEW (technical mgmt + support)
+            Project_Planning: ""
+            Project_Assessment_Control: ""
+            Risk_Management: ""
+            Information_Management: ""
+            Measurement: ""
+            Quality_Assurance: ""
+            Tailoring: ""
+    iso29148:
+        edition: "2018"
+        clauses:
+            Requirements_Process: ""
+            Stakeholder_Requirements: ""
+            System/Software_Requirements_Spec: ""
+            RTM/Traceability: ""
+    iso15289:
+        edition: "2019"
+        clauses:
+            Information_Items: ""
+            Plans: ""
+            Specifications: ""
+            Reports: ""
+    iso10007:
+        edition: "2017"
+        clauses:
+            CM_Planning: ""
+            Configuration_Identification: ""
+            Change_Control: ""
+            Status_Accounting: ""
+            Audit: ""
+    ieee828:
+        edition: "2012"
+        clauses:
+            Scope: ""
+            CM_Plan_Content: ""
+            Roles_Responsibilities: ""
+    eia649c:
+        edition: "2019"
+        clauses:
+            CM_Principles: ""
+            Requirements: ""
+            Implementation: ""
+iso29119_2:
+    edition: "2021"
+    clauses:
+        Test_Management: ""
+        Test_Monitoring_Control: ""
+        Exit_Criteria: ""
+iso29119_3:
+    edition: "2021"
+    clauses:
+        Test_Plan: ""
+        Test_Design_Techniques: ""

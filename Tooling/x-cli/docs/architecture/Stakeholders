@@ -1,0 +1,17 @@
+# Stakeholders & Concerns (42010)
+
+| Stakeholder | Primary concerns (examples) | Measurable fit |
+|---|---|---|
+| CI maintainers | Fast, deterministic runs; no external deps | p95 ≤2s; no network/process exec |
+| Developers | Clear commands; testability; local parity | CLI help accurate; unit/integration coverage |
+| QA/Testing | Verifiability, traceability to SRS | RTM links Req→Test→Code; coverage ≥ policy |
+| Security | No outbound network; sandboxed IO | IsolationGuard active; file writes behind opt-in |
+| Release/CM | Reproducible builds; versioning; baseline | Semver tag builds; artifacts & checks attached |
+| Users (pipeline authors) | Predictable outputs; stable CLI contract | Specified JSON log shape; backward compatibility |
+
+**Quality attribute scenarios (samples)**
+- **Performance:** A single CLI invocation on a GitHub-hosted runner completes within **2s** at p95 for standard commands.
+- **Portability:** Same binary (per OS) runs on Ubuntu/Windows runners with **no additional runtime install**.
+- **Determinism:** Given identical inputs/env, outputs and exit codes are **bit‑for‑bit identical**.
+- **Security/Isolation:** **No network calls**; **no process exec**; file writes only when `XCLI_LOG_PATH` is explicitly set.
+- **Observability:** One JSON line on `stderr` per invocation with required keys; size ≤ **4 KiB**.

@@ -1,0 +1,74 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "x-cli: Pack CLI (nupkg)",
+      "type": "shell",
+      "command": "bash",
+      "args": ["-lc", "./scripts/pack-cli.sh"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "x-cli: Build container (package)",
+      "type": "shell",
+      "command": "bash",
+      "args": ["-lc", "./scripts/build-container.sh x-cli:dev"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "x-cli: Build container (source)",
+      "type": "shell",
+      "command": "bash",
+      "args": ["-lc", "docker build --target source-image -t x-cli:dev ."],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "x-cli: Container smoke",
+      "type": "shell",
+      "command": "bash",
+      "args": ["-lc", "docker run --rm x-cli:dev --help | head -n 1 && docker run --rm x-cli:dev --version"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "problemMatcher": []
+    },
+    
+  ],
+  "inputs": [
+    {
+      "id": "wfPath",
+      "type": "promptString",
+      "description": "Workflow path",
+      "default": ".github/workflows/knowledge-validate.yml"
+    },
+    {
+      "id": "branch",
+      "type": "promptString",
+      "description": "Branch/ref to run on",
+      "default": "cp/14-15-validator-nozips"
+    },
+    {
+      "id": "prNum",
+      "type": "promptString",
+      "description": "PR number (for CP#8 Exec comment)",
+      "default": "718"
+    },
+    {
+      "id": "zipPath",
+      "type": "promptString",
+      "description": "Optional ZIP path (leave blank for root mode)",
+      "default": ""
+    },
+    {
+      "id": "zipToImport",
+      "type": "promptString",
+      "description": "Path to legacy knowledge ZIP to import into knowledge/",
+      "default": ""
+    }
+  ]
+}

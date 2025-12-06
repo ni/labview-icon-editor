@@ -1,0 +1,49 @@
+name: "Codex Request: Spec Change"
+description: "Machine-authored specification change request for codex agent."
+title: "spec: <short summary> | SRS: FGC-REQ-…"
+labels: ["codex", "spec", "automation"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please read **[AGENTS.md](../AGENTS.md)** before submitting. This issue will be processed only in **codex** mode.
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Codex Mode
+      description: Must be 'codex' to be processed by automation.
+      options:
+        - codex
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Stage
+      description: Defaults to "requirements" if omitted.
+      options: [requirements]
+    validations:
+      required: false
+  - type: textarea
+    id: srs_change
+    attributes:
+      label: SRS Delta
+      description: Exact sections/IDs to add/change/remove in docs/SRS.md (use normative SHALL language).
+    validations:
+      required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Rationale
+      description: Why the SRS change is needed (link to CI evidence or user requirement).
+    validations:
+      required: true
+  - type: textarea
+    id: tests_impact
+    attributes:
+      label: Test Impact
+      description: Tests to add/update/remove to keep traceability §6.5 accurate.
+    validations:
+      required: true
+

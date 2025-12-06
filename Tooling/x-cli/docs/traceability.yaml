@@ -1,0 +1,617 @@
+# docs/traceability.yaml
+# Requirement → Implementation → Test mapping
+# Each mapping entry shall declare an `id` matching `<PREFIX>-REQ-<AREA>-NNN`
+# (for example, `FGC-REQ-CLI-001`) and a repo-relative `source` path to the
+# requirement document. If present, `code` and `tests` arrays shall list
+# repo-relative paths that exist.
+requirements:
+  - id: FGC-REQ-CLI-001
+    desc: Subcommands and payload pass-through.
+    source: docs/srs/core.md
+    code:
+      - src/XCli/Cli/*
+      - src/XCli/Program.cs
+    tests:
+      - tests/XCli.Tests/CliTests.cs
+      - tests/XCli.Tests/SpecCompliance/PassThroughFidelityTests.cs
+      - tests/XCli.Tests/EchoCliTests.cs
+  - id: FGC-REQ-CLI-002
+    desc: Help, version, and unknown command behavior.
+    source: docs/srs/core.md
+    code:
+      - src/XCli/Cli/*
+      - src/XCli/Program.cs
+    tests:
+      - tests/XCli.Tests/CliTests.cs
+  - id: FGC-REQ-CLI-003
+    desc: Missing subcommand prints error and exits with code 1.
+    source: docs/srs/core.md
+    code:
+      - src/XCli/Cli/*
+      - src/XCli/Program.cs
+    tests:
+      - tests/XCli.Tests/CliTests.cs
+  - id: FGC-REQ-SIM-001
+    desc: Default success when not configured to fail.
+    source: docs/srs/core.md
+    code:
+      - src/XCli/Simulation/*
+    tests:
+      - tests/XCli.Tests/SimulationTests.cs
+  - id: FGC-REQ-SIM-002
+    desc: Configurable failure via env/JSON with precedence.
+    source: docs/srs/core.md
+    code:
+      - src/XCli/Simulation/*
+      - src/XCli/Util/Env.cs
+    tests:
+      - tests/XCli.Tests/SimulationTests.cs
+      - tests/XCli.Tests/SpecCompliance/FailureSimulationTests.cs
+  - id: FGC-REQ-SIM-003
+    desc: Exit code outside [0,255] is clamped to the nearest bound.
+    source: docs/srs/core.md
+    code:
+      - src/XCli/Simulation/SimulationPlan.cs
+    tests:
+      - tests/XCli.Tests/SimulationTests.cs
+      - tests/XCli.Tests/SpecCompliance/FailureSimulationTests.cs
+  - id: FGC-REQ-SIM-004
+    desc: Configurable delay via env/JSON with precedence and clamping.
+    source: docs/srs/core.md
+    code:
+      - src/XCli/Simulation/SimulationPlan.cs
+    tests:
+      - tests/XCli.Tests/SimulationTests.cs
+      - tests/XCli.Tests/LoggingTests.cs
+  - id: FGC-REQ-LOG-001
+    desc: Emit single-line JSON to stderr with required keys.
+    source: docs/srs/core.md
+    code:
+      - src/XCli/Logging/InvocationLogger.cs
+    tests:
+      - tests/XCli.Tests/LoggingTests.cs
+      - tests/XCli.Tests/SpecCompliance/LoggingShapeTests.cs
+      - tests/XCli.Tests/EchoCliTests.cs
+  - id: FGC-REQ-LOG-002
+    desc: Stdout clean; optional file append concurrency-safe.
+    source: docs/srs/core.md
+    code:
+      - src/XCli/Logging/*
+    tests:
+      - tests/XCli.Tests/LoggingTests.cs
+  - id: FGC-REQ-LOG-003
+    desc: Log replay reproduces captured workflow output.
+    source: docs/srs/FGC-REQ-LOG-003.md
+    code:
+      - src/XCli/Replay/LogReplayCommand.cs
+    tests:
+      - tests/XCli.Tests/LogReplayTests.cs
+  - id: FGC-REQ-LOG-004
+    desc: Log diff reports timing deltas.
+    source: docs/srs/FGC-REQ-LOG-004.md
+    code:
+      - src/XCli/Replay/LogDiffCommand.cs
+    tests:
+      - tests/XCli.Tests/LogDiffTests.cs
+  - id: FGC-REQ-ENV-001
+    desc: No network/process spawn side-effects; environment access centralized
+      through `XCli.Util.Env`.
+    source: docs/srs/core.md
+    code:
+      - src/XCli/Security/IsolationGuard.cs
+      - src/XCli/Util/Env.cs
+    tests:
+      - tests/XCli.Tests/SecurityTests.cs
+      - tests/XCli.Tests/EndToEndTests.cs
+      - tests/XCli.Tests/Analyzers/NoDirectEnvironmentAccessTests.cs
+    commits:
+      - 396c62530e7bdd712e5ba97d76f1617d9a88dd4f
+  - id: FGC-REQ-PERF-001
+    desc: Typical execution completes within latency budget.
+    source: docs/srs/core.md
+    code:
+      - src/XCli/*
+    tests:
+      - tests/XCli.Tests/PerfTests.cs
+  - id: FGC-REQ-DIST-001
+    desc: Single-file, self-contained builds for linux-x64 and win-x64.
+    source: docs/srs/core.md
+    code:
+      - scripts/build.sh
+      - scripts/build.ps1
+      - scripts/qa.sh
+      - scripts/qa.ps1
+      - .github/workflows/build.yml
+    tests:
+      - tests/XCli.Tests/CliTests.cs
+  - id: FGC-REQ-ROB-001
+    desc: Invalid JSON config logs to stderr and exits non-zero
+    source: docs/srs/core.md
+    code:
+      - src/XCli/Simulation/*
+    tests:
+      - tests/XCli.Tests/SimulationTests.cs
+  - id: FGC-REQ-ROB-002
+    desc: Logging write failures reported to stderr when debug set.
+    source: docs/srs/core.md
+    code:
+      - src/XCli/Logging/InvocationLogger.cs
+    tests:
+      - tests/XCli.Tests/LoggingTests.cs
+  - id: FGC-REQ-ROB-003
+    desc: Missing config file causes failure and logs to stderr
+    source: docs/srs/core.md
+    code:
+      - src/XCli/Simulation/SimulationPlan.cs
+    tests:
+      - tests/XCli.Tests/SimulationTests.cs
+      - tests/XCli.Tests/SpecCompliance/FailureSimulationTests.cs
+  - id: FGC-REQ-SPEC-001
+    desc: SRS document registry enables lookup by ID.
+    source: docs/srs/FGC-REQ-SPEC-001.md
+    code:
+      - src/SrsApi/*
+    tests:
+      - tests/XCli.Tests/SrsRegistryTests.cs
+    commits:
+      - cdb195fb9b16b4a7d3ac2ba862c2ce9ea73171bc
+      - 686e69232fb61ac2b0957c58e4ad9aae87e3c74b
+      - 7f00c169e78970e6a82dd803a71a4916e7f87326
+      - f68e429e547177c9e713ae34af820e4064f4d360
+  - id: FGC-REQ-NOT-001
+    desc: CI scripts can post GitHub issue or PR comments.
+    source: docs/srs/FGC-REQ-NOT-001.md
+    code:
+      - scripts/github_comment.py
+    tests:
+      - tests/test_github_comment.py
+  - id: FGC-REQ-NOT-002
+    desc: Send alerts to Slack via incoming webhooks.
+    source: docs/srs/FGC-REQ-NOT-002.md
+    code:
+      - notifications/slack_notifier.py
+      - notifications/channel.py
+      - notifications/manager.py
+      - notifications/utils.py
+    tests:
+      - tests/test_slack_notifier.py
+      - tests/test_manager_discovery.py
+      - tests/test_manager_multichannel.py
+  - id: FGC-REQ-NOT-003
+    desc: Prepare email notifications via SMTP.
+    source: docs/srs/FGC-REQ-NOT-003.md
+    code:
+      - notifications/email_notifier.py
+      - notifications/channel.py
+      - notifications/manager.py
+      - notifications/utils.py
+    tests:
+      - tests/test_email_notifier_send.py
+      - tests/test_email_notifier_failures.py
+      - tests/test_email_notifier_scaffold.py
+      - tests/test_telemetry_email_integration.py
+      - tests/test_manager_discovery.py
+  - id: FGC-REQ-NOT-004
+    desc: Send alerts to Discord via webhooks.
+    source: docs/srs/FGC-REQ-NOT-004.md
+    code:
+      - notifications/discord_notifier.py
+      - notifications/channel.py
+      - notifications/manager.py
+      - notifications/utils.py
+    tests:
+      - tests/test_discord_notifier.py
+      - tests/test_manager_discovery.py
+      - tests/test_manager_multichannel.py
+  - id: FGC-REQ-DEV-001
+    desc: Record commit hashes for requirement IDs from commits and PR body.
+    source: docs/srs/FGC-REQ-DEV-001.md
+    code:
+      - scripts/update_traceability.py
+    tests:
+      - tests/test_ruamel_yaml_roundtrip.py
+      - tests/test_ruamel_yaml_version.py
+      - tests/test_dependency_versions.py
+      - tests/test_update_traceability.py
+    commits:
+      - 64c46b4d4d7b38ff935c2e93481304e65e06223a
+      - 2d9609c90d53f731e972e670a1d04a0f77f4b1ca
+      - 5fe9555a3bb946912a58a10aa7937ce3690b4614
+      - d407ff273b3941c89d74ce8262f0b7c2eee21a36
+      - 6c9d4da21342af1b18a1b9da361ff2fdb7d191c5
+      - 686e69232fb61ac2b0957c58e4ad9aae87e3c74b
+      - 7f00c169e78970e6a82dd803a71a4916e7f87326
+      - f68e429e547177c9e713ae34af820e4064f4d360
+  - id: FGC-REQ-DEV-002
+    desc: Verify traceability entries reference existing sources with IDs.
+    source: docs/srs/FGC-REQ-DEV-002.md
+    code:
+      - scripts/verify-traceability.py
+    tests:
+      - tests/test_traceability.py
+    commits:
+      - 64c46b4d4d7b38ff935c2e93481304e65e06223a
+      - 2d9609c90d53f731e972e670a1d04a0f77f4b1ca
+      - 5fe9555a3bb946912a58a10aa7937ce3690b4614
+      - d407ff273b3941c89d74ce8262f0b7c2eee21a36
+      - 33e6f0aa0bfdcbabc5e4ca6ba79764a6972e8903
+      - 6c9d4da21342af1b18a1b9da361ff2fdb7d191c5
+  - id: FGC-REQ-DEV-003
+    desc: Telemetry modules using record features expose agent feedback.
+    source: docs/srs/FGC-REQ-DEV-003.md
+    code:
+      - scripts/check_agent_feedback.py
+    tests:
+      - tests/test_check_agent_feedback.py
+    commits:
+      - 64c46b4d4d7b38ff935c2e93481304e65e06223a
+      - 2d9609c90d53f731e972e670a1d04a0f77f4b1ca
+      - 5fe9555a3bb946912a58a10aa7937ce3690b4614
+      - d407ff273b3941c89d74ce8262f0b7c2eee21a36
+      - cdb195fb9b16b4a7d3ac2ba862c2ce9ea73171bc
+  - id: FGC-REQ-DEV-004
+    desc: Telemetry entries include agent feedback block sections.
+    source: docs/srs/FGC-REQ-DEV-004.md
+    code:
+      - scripts/check_telemetry_block.py
+      - scripts/check_agent_feedback_block.py
+    tests:
+      - tests/test_check_telemetry_block.py
+      - tests/test_check_agent_feedback_block.py
+    commits:
+      - 64c46b4d4d7b38ff935c2e93481304e65e06223a
+      - 2d9609c90d53f731e972e670a1d04a0f77f4b1ca
+      - 5fe9555a3bb946912a58a10aa7937ce3690b4614
+      - d407ff273b3941c89d74ce8262f0b7c2eee21a36
+      - a23b64c22be895096bea861bce3bdff29c0c99fb
+      - cdb195fb9b16b4a7d3ac2ba862c2ce9ea73171bc
+  - id: FGC-REQ-DEV-005
+    desc: Commit messages include SRS metadata and template structure.
+    source: docs/srs/FGC-REQ-DEV-005.md
+    code:
+      - scripts/check-commit-msg.py
+      - scripts/commit-template.txt
+      - scripts/prepare-commit-msg.py
+    tests:
+      - tests/test_check_commit_msg.py
+      - tests/test_commit_template_example.py
+      - tests/test_prepare_commit_msg.py
+    commits:
+      - cdb195fb9b16b4a7d3ac2ba862c2ce9ea73171bc
+  - id: FGC-REQ-DEV-006
+    desc: Workflows declare known SRS IDs.
+    source: docs/srs/FGC-REQ-DEV-006.md
+    code:
+      - scripts/verify-workflow-srs.py
+    tests:
+      - tests/test_verify_workflow_srs.py
+    commits:
+      - cdb195fb9b16b4a7d3ac2ba862c2ce9ea73171bc
+  - id: FGC-REQ-DEV-007
+    desc: Model and dataset version control.
+    source: docs/srs/FGC-REQ-DEV-007.md
+    code:
+      - docs/model-version-control.md
+    tests:
+      - tests/test_model_version_control_doc.py
+    commits:
+      - f492b501e6ce114b8bba76c683d6afc51d637cbb
+  - id: FGC-REQ-QA-001
+    desc: Automated tests cover critical scenarios.
+    source: docs/srs/core.md
+    code:
+      - tests/XCli.Tests/*
+    tests:
+      - tests/XCli.Tests/CliTests.cs
+      - tests/XCli.Tests/SimulationTests.cs
+      - tests/XCli.Tests/SpecCompliance/FailureSimulationTests.cs
+      - tests/XCli.Tests/SpecCompliance/PassThroughFidelityTests.cs
+      - tests/XCli.Tests/SpecCompliance/LoggingShapeTests.cs
+      - tests/XCli.Tests/LoggingTests.cs
+      - tests/XCli.Tests/SecurityTests.cs
+      - tests/XCli.Tests/PerfTests.cs
+  - id: FGC-REQ-TEL-001
+    desc: Telemetry analyses track SRS omissions and QA regressions.
+    source: docs/srs/FGC-REQ-TEL-001.md
+    code:
+      - scripts/analyze_srs_telemetry.py
+      - scripts/analyze_qa_telemetry.py
+      - scripts/render_telemetry_dashboard.py
+      - scripts/render_qa_telemetry_dashboard.py
+    tests:
+      - tests/test_analyze_srs_telemetry.py
+      - tests/test_analyze_qa_telemetry.py
+      - tests/test_telemetry_dashboard.py
+      - tests/test_qa_telemetry_dashboard.py
+  - id: FGC-REQ-CI-001
+    desc: build workflow
+    source: docs/srs/FGC-REQ-CI-001.md
+    code:
+      - .github/workflows/build.yml
+      - .github/workflows/stage2-3-ci.yml
+    tests:
+      - tests/test_ci_workflows.py
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-002
+    desc: auto-advance and validation workflows (waterfall)
+    source: docs/srs/FGC-REQ-CI-002.md
+    # Legacy waterfall workflows have been removed/archived.
+    # Retain spec-only mapping to keep the requirement indexed without code links.
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-003
+    desc: codex-execute workflow
+    source: docs/srs/FGC-REQ-CI-003.md
+    # Workflow removed; retain spec mapping only
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-004
+    desc: codex-orchestrator workflow
+    source: docs/srs/FGC-REQ-CI-004.md
+    # Workflow removed; retain spec mapping only
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-005
+    desc: representative PR gates (coverage, docs, SRS, ADR lint)
+    source: docs/srs/FGC-REQ-CI-005.md
+    code:
+      - .github/workflows/coverage-gate.yml
+      - .github/workflows/docs-gate.yml
+      - .github/workflows/srs-gate.yml
+      - .github/workflows/adr-lint.yml
+    tests:
+      - tests/test_ci_workflows.py
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-006
+    desc: design validation workflow
+    source: docs/srs/FGC-REQ-CI-006.md
+    code:
+      - .github/workflows/design-lock.yml
+      - scripts/validate_design.py
+    tests:
+      - tests/test_ci_workflows.py
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-007
+    desc: dispatch-codex workflow
+    source: docs/srs/FGC-REQ-CI-007.md
+    # Workflow removed; retain spec mapping only
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-008
+    desc: enforce-codex-authorship workflow
+    source: docs/srs/FGC-REQ-CI-008.md
+    # Workflow removed; retain spec mapping only
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-009
+    desc: waterfall labels and state validation
+    source: docs/srs/FGC-REQ-CI-009.md
+    # Workflow removed; retain spec mapping only
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-010
+    desc: telemetry-aggregate workflow
+    source: docs/srs/FGC-REQ-CI-010.md
+    code:
+      - .github/workflows/telemetry-aggregate.yml
+    tests:
+      - tests/test_ci_workflows.py
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-011
+    desc: tests gate
+    source: docs/srs/FGC-REQ-CI-011.md
+    code:
+      - .github/workflows/tests-gate.yml
+    tests:
+      - tests/test_ci_workflows.py
+      - tests/test_isolation_env.py
+    commits:
+      - 67b93e118f40cef76e43e4ae8e31e48a2b311d31
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+      - cdb195fb9b16b4a7d3ac2ba862c2ce9ea73171bc
+      - 6eb82fa5b047746211c7db87a2ff11e9fecc8b5b
+  - id: FGC-REQ-CI-012
+    desc: trigger-codex-orchestration workflow
+    source: docs/srs/FGC-REQ-CI-012.md
+    # Workflow removed; retain spec mapping only
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-013
+    desc: codex metadata validation (Docs Gate)
+    source: docs/srs/FGC-REQ-CI-013.md
+    code:
+      - .github/workflows/docs-gate.yml
+    tests:
+      - tests/test_ci_workflows.py
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-014
+    desc: validate-waterfall-state workflow
+    source: docs/srs/FGC-REQ-CI-014.md
+    # Workflow removed; retain spec mapping only
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-015
+    desc: waterfall-advance workflow
+    source: docs/srs/FGC-REQ-CI-015.md
+    # Workflow removed; retain spec mapping only
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-016
+    desc: discord-canary workflow
+    source: docs/srs/FGC-REQ-CI-016.md
+    # Workflow removed; retain spec mapping only
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-017
+    desc: agents contract check (Docs Gate)
+    source: docs/srs/FGC-REQ-CI-017.md
+    code:
+      - .github/workflows/docs-gate.yml
+    tests:
+      - tests/test_ci_workflows.py
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-018
+    desc: codex-mirror-sign workflow
+    source: docs/srs/FGC-REQ-CI-018.md
+    # Workflow removed; retain spec mapping only
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-019
+    desc: commit message policy and enforcement
+    source: docs/srs/FGC-REQ-CI-019.md
+    code:
+      - scripts/check-commit-msg.py
+      - scripts/prepare-commit-msg.py
+    tests:
+      - tests/test_ci_workflows.py
+      - tests/test_check_commit_msg.py
+    commits:
+      - 4b7a9810b69617bc993966728a4b0365487edc65
+  - id: FGC-REQ-CI-020
+    desc: Stage 3 verifies Stage 2 artifacts and publishes telemetry diff to
+      Discord.
+    source: docs/srs/FGC-REQ-CI-020.md
+    code:
+      - .github/workflows/stage3.yml
+    tests:
+      - tests/test_ci_workflows.py
+      - tests/test_stage3_requirements.py
+    commits:
+      - 97d2517987611f92f1d8a89e605211c51d1a0ce7
+  - id: AGENT-REQ-DEP-001
+    desc: Stage 3 fails fast when required artifacts or manifest entries are
+      missing.
+    source: AGENTS.md
+    code:
+      - .github/workflows/stage3.yml
+      - scripts/validate-manifest.sh
+    tests:
+      - tests/test_ci_workflows.py
+      - tests/test_stage3_requirements.py
+  - id: AGENT-REQ-ART-002
+    desc: Stage 2 manifest includes repo-relative paths and SHA-256 checksums
+      for required artifacts.
+    source: AGENTS.md
+    code:
+      - scripts/generate-manifest.sh
+      - scripts/validate-manifest.sh
+    tests:
+      - tests/test_stage3_requirements.py
+      - tests/test_ci_workflows.py
+  - id: AGENT-REQ-TEL-003
+    desc: Stage 3 computes/persists telemetry diff or bootstraps a baseline.
+    source: AGENTS.md
+    code:
+      - .github/workflows/stage3.yml
+      - scripts/telemetry-publish.ps1
+    tests:
+      - tests/test_ci_workflows.py
+      - tests/test_stage3_requirements.py
+  - id: AGENT-REQ-NOT-004
+    desc: Stage 3 posts a run summary to a configurable Discord webhook.
+    source: AGENTS.md
+    code:
+      - .github/workflows/stage3.yml
+      - scripts/telemetry-publish.ps1
+    tests:
+      - tests/test_ci_workflows.py
+      - tests/test_stage3_requirements.py
+  - id: FGC-REQ-AIC-001
+    desc: Two-way Codex↔LLM handshake via ChatOps
+    source: docs/srs/FGC-REQ-AIC-001.md
+    code:
+      - scripts/codex_bridge.py
+    tests:
+      - tests/test_codex_policy_command.py
+    commits:
+      - 8eb74ed415cd288048b844ed08ca7cab483caaa2
+  - id: FGC-REQ-AIC-002
+    desc: Session persistence & audit trail
+    source: docs/srs/FGC-REQ-AIC-002.md
+    code:
+      - codex_rules/memory.py
+      - codex_rules/telemetry.py
+    tests:
+      - tests/test_telemetry.py
+      - tests/test_generate_telemetry_stub.py
+      - tests/test_check_telemetry_block.py
+    commits:
+      - 8eb74ed415cd288048b844ed08ca7cab483caaa2
+  - id: FGC-REQ-AIC-003
+    desc: Codex proposes changes as unified diffs
+    source: docs/srs/FGC-REQ-AIC-003.md
+    code:
+      - scripts/codex_bridge.py
+      - .codex/system/codex-bridge.md
+  - id: FGC-REQ-AIC-004
+    desc: Safe application of Codex proposals
+    source: docs/srs/FGC-REQ-AIC-004.md
+    code:
+      - scripts/codex_bridge.py
+      - scripts/lint_srs_29148.py
+  - id: FGC-REQ-AIC-005
+    desc: Automated reviewer critique for Codex PRs
+    source: docs/srs/FGC-REQ-AIC-005.md
+    code:
+      - scripts/reviewer_bridge.py
+  - id: FGC-REQ-AIC-006
+    desc: Persist reviewer artifacts & label PRs
+    source: docs/srs/FGC-REQ-AIC-006.md
+    code:
+      - scripts/reviewer_bridge.py
+  - id: FGC-REQ-DOC-008
+    desc: Publish SRS as HTML site and PDF
+    source: docs/srs/FGC-REQ-DOC-008.md
+    code:
+      - scripts/render_srs_html.py
+      - scripts/render_srs_pdf.py
+      # obsolete workflow removed; release handled by release.yml
+    tests:
+      - tests/test_docs_requirements.py
+  - id: FGC-REQ-DOC-009
+    desc: Cross-Agent Session Reflection practice and PR template prompt
+    source: docs/srs/FGC-REQ-DOC-009.md
+    code:
+      - .github/PULL_REQUEST_TEMPLATE.md
+      - docs/adr/0024-cross-agent-session-reflection.md
+    tests:
+      - tests/test_docs_requirements.py
+  - id: FGC-REQ-GOV-010
+    desc: Automated SRS maintenance on default branch
+    source: docs/srs/FGC-REQ-GOV-010.md
+    code:
+      - .github/workflows/srs-maintenance.yml
+      - scripts/build_srs_index.py
+      - scripts/generate_vcrm.py
+      - scripts/compute_29148_compliance.py
+      - scripts/srs_maintenance_smoke.py
+    tests:
+      - tests/test_docs_requirements.py
+  - id: FGC-REQ-CI-021
+    desc: Reusable workflow contracts (Stage 1 and 3)
+    source: docs/srs/FGC-REQ-CI-021.md
+    code:
+      - .github/workflows/stage1-telemetry.yml
+      - .github/workflows/stage3.yml
+    tests:
+      - scripts/tests/Stage3Diagnostics.Tests.ps1
+
+  - id: FGC-REQ-SDK-001
+    desc: External SDK orchestration (x-sdk)
+    source: docs/srs/FGC-REQ-SDK-001.md
+    code:
+      - docs/integration/x-sdk/README.md
+      - docs/integration/x-sdk/orchestrate-x-cli.yml
+      - docs/integration/x-sdk/orchestrate-x-cli-full.yml
+
+  - id: FGC-REQ-SDK-002
+    desc: x-sdk leverages GitKraken GK-CLI v3.1.37
+    source: docs/srs/FGC-REQ-SDK-002.md
+    code:
+      - docs/integration/x-sdk/GK-CLI.md
