@@ -1,0 +1,13 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  TestUtil -> C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\TestUtil\bin\Debug\net8.0\TestUtil.dll
+  SrsApi -> C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\src\SrsApi\bin\Debug\net8.0\SrsApi.dll
+  Telemetry -> C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\src\Telemetry\bin\Debug\net8.0\Telemetry.dll
+  XCli -> C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\src\XCli\bin\Debug\net8.0\win-x64\XCli.dll
+  XCli.Tests -> C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\XCli.Tests\bin\Debug\net8.0\XCli.Tests.dll
+Test run for C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\XCli.Tests\bin\Debug\net8.0\XCli.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+Attempting to cancel the build...

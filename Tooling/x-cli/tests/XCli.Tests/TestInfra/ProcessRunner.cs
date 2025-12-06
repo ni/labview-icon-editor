@@ -23,6 +23,7 @@ public static class ProcessRunner
         CancellationToken ct = default)
     {
         var projectPath = FindProjectPath();
+        var buildConfig = new DirectoryInfo(AppContext.BaseDirectory).Parent!.Name;
         var psi = new ProcessStartInfo
         {
             FileName = "dotnet",
@@ -37,7 +38,7 @@ public static class ProcessRunner
         // dotnet run -c Release --project <csproj> -- <subcommand> -- <payload...>
         psi.ArgumentList.Add("run");
         psi.ArgumentList.Add("--no-build");
-        psi.ArgumentList.Add("-c"); psi.ArgumentList.Add("Release");
+        psi.ArgumentList.Add("-c"); psi.ArgumentList.Add(buildConfig);
         psi.ArgumentList.Add("--project");
         psi.ArgumentList.Add(projectPath);
         psi.ArgumentList.Add("--");
@@ -45,6 +46,9 @@ public static class ProcessRunner
         psi.ArgumentList.Add("--");
         foreach (var a in payloadArgs)
             psi.ArgumentList.Add(a);
+
+        // Force simulation for specific commands in tests (srs should simulate).
+        psi.Environment["XCLI_FORCE_SIMULATION_SUBCOMMANDS"] = "srs";
 
         if (env is { })
         {

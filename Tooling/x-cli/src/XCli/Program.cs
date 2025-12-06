@@ -72,11 +72,16 @@ public static class Program
         var subcommand = parsed.Subcommand;
         var simulateMode = !Env.GetBool("XCLI_REAL_MODE", false);
         var forceReal = Env.GetBool("XCLI_FORCE_REAL", false);
+        var forceSimulationGlobal = Env.GetBool("XCLI_FORCE_SIMULATION", false);
+        var forceSimulationList = Env.Get("XCLI_FORCE_SIMULATION_SUBCOMMANDS");
+        var forceSimulationTargets = forceSimulationList?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase) ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var forceSimulation = forceSimulationGlobal || forceSimulationTargets.Contains("*") || forceSimulationTargets.Contains(subcommand);
         var hasScenarioArg = parsed.PayloadArgs.Any(a => a.Equals("--scenario", StringComparison.OrdinalIgnoreCase));
         var isDevmode = subcommand.StartsWith("labview-devmode", StringComparison.Ordinal);
 
         // Always run "real" for fast deterministic commands and logging flows
-        var alwaysReal = subcommand is "echo" or "reverse" or "upper" or "foo" or "srs";
+        var alwaysReal = !forceSimulation && subcommand is "echo" or "reverse" or "upper" or "foo" or "srs";
         // Heavy / scenario-driven commands stay simulated unless explicitly requested
         var requiresReal = forceReal || alwaysReal || (isDevmode && hasScenarioArg) || subcommand is "log-replay" or "log-diff" or "telemetry";
 

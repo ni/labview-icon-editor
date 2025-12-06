@@ -1,6 +1,7 @@
 using XCli.Cli;
 using XCli.Util;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -20,7 +21,11 @@ public class CliTests
             (RuntimeInformation.ProcessArchitecture == Architecture.Arm64 ? "osx-arm64" : "osx-x64") :
         "linux-x64";
     private static ProcRunner.Result Run(string args) =>
-        ProcRunner.Run("dotnet", $"run --no-build -c Release -- {args}", null, ProjectDir);
+        ProcRunner.Run(
+            "dotnet",
+            $"run --no-build -c {BuildConfig} -- {args}",
+            new Dictionary<string, string> { { "XCLI_FORCE_SIMULATION_SUBCOMMANDS", "srs" } },
+            ProjectDir);
 
     [Fact]
     public void EnvGetProcessNameMatchesEnvironment()

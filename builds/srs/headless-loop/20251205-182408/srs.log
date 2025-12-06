@@ -1,0 +1,4 @@
+[srs] imported 198 requirements -> builds\srs\headless-loop\20251205-182408\requirements.json
+{"timestampUtc":"2025-12-06T02:24:11.7408462Z","pid":2424,"os":"Windows","subcommand":"srs","args":["import-csv","--input","docs/requirements/requirements.csv","--output","builds\\srs\\headless-loop\\20251205-182408\\requirements.json"],"env":{},"result":"success","exitCode":0,"message":"","durationMs":90}
+[srs] validate ok (198 requirements)
+{"timestampUtc":"2025-12-06T02:24:13.4834165Z","pid":12580,"os":"Windows","subcommand":"srs","args":["validate","--input","builds\\srs\\headless-loop\\20251205-182408\\requirements.json","--schema-strict","--output-json","builds\\srs\\headless-loop\\20251205-182408\\srs-result.json"],"env":{},"result":"success","exitCode":0,"message":"","durationMs":88}

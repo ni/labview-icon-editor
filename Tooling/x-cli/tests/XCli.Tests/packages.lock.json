@@ -53,35 +53,37 @@
         "resolved": "2.5.0",
         "contentHash": "+Gp9vuC2431yPyKB15YrOTxCuEAErBQUTIs6CquumX1F073UaPHGW0VE/XVJLMh9W4sXdz3TBkcHdFWZrRn2Hw=="
       },
-      "JetBrains.Annotations": {
+      "CsvHelper": {
         "type": "Transitive",
-        "resolved": "2021.2.0",
-        "contentHash": "kKSyoVfndMriKHLfYGmr0uzQuI4jcc3TKGyww7buJFCYeHb/X0kodYBPL7n9454q7v6ASiRmDgpPGaDGerg/Hg=="
+        "resolved": "30.0.1",
+        "contentHash": "rcZtgbWR+As4G3Vpgx0AMNmShGuQLFjkHAPIIflzrfkJCx8/AOd4m96ZRmiU1Wi39qS5UVjV0P8qdgqOo5Cwyg=="
+      },
+      "Humanizer.Core": {
+        "type": "Transitive",
+        "resolved": "2.14.1",
+        "contentHash": "lQKvtaTDOXnoVJ20ibTuSIOf2i0uO0MPbDhd1jm238I+U/2ZnRENj0cktKZhtchBMtCUSRQ5v4xBCUbKNmyVMw=="
       },
       "Json.More.Net": {
         "type": "Transitive",
-        "resolved": "1.8.0",
-        "contentHash": "JWxlYwCSYXZIWezmrvRgaxhI/vEEpQlZVm6/lskuS7p/uPrNJzQxbe2CPjzkF3UUz4RI8WkmObs6ycpxoE9T7w==",
-        "dependencies": {
-          "System.Text.Json": "6.0.2"
-        }
+        "resolved": "2.0.0",
+        "contentHash": "U9pOGTOqkxibxCZiBATbTGDc76tqt4KcuC245FU3Bzw6yWuGHp2M8/bMdy4OztmO1ckwp3VvgWQ7sO75mOEI7g=="
       },
       "JsonPointer.Net": {
         "type": "Transitive",
-        "resolved": "3.0.1",
-        "contentHash": "TtUFnAp/0wK4v16quNKAbtAngXV7NrTBe3t70beTxiBU9VRhHFnLqjjU+MKWFMbM3AK++oiI2b4abgK2/7WNJA==",
+        "resolved": "4.0.0",
+        "contentHash": "A2DjDKIdL8b93niaFaysAE9QynQ/U15Tw/MsNfra8NQPmoJZUoj86/ElTeJifGc2U86OTgFH5UdHAhIQRM7QQQ==",
         "dependencies": {
-          "Json.More.Net": "1.8.0"
+          "Humanizer.Core": "2.14.1",
+          "Json.More.Net": "2.0.0"
         }
       },
       "JsonSchema.Net": {
         "type": "Transitive",
-        "resolved": "4.1.2",
-        "contentHash": "5ZyZaw6CYi388dznhmjLq5EtlA+Aiw8xN1vgqgQljgCIw+gofCFNJUWaNQk5eV5NtTEOsc3uF2tI1jxrcjcJeg==",
+        "resolved": "6.0.0",
+        "contentHash": "A5Y4S7ay0v7fPGfRXOEsZD+3otjngWyZ7QWz4Fa4bzAdmZKPcZfbN3J1vn0h1WJ3rg95Yt++W7/0OzLEM0//Rw==",
         "dependencies": {
-          "JetBrains.Annotations": "2021.2.0",
-          "Json.More.Net": "1.8.0",
-          "JsonPointer.Net": "3.0.1"
+          "Json.More.Net": "2.0.0",
+          "JsonPointer.Net": "4.0.0"
         }
       },
       "Microsoft.CodeAnalysis.Analyzers": {
@@ -732,11 +734,6 @@
           "Microsoft.NETCore.Targets": "1.1.0"
         }
       },
-      "System.Runtime.CompilerServices.Unsafe": {
-        "type": "Transitive",
-        "resolved": "6.0.0",
-        "contentHash": "/iUeP3tq1S0XdNNoMz5C9twLSrM/TH+qElHkXWaPvuNOt+99G75NrV0OS2EqHx5wMN7popYjpc8oTjC1y16DLg=="
-      },
       "System.Runtime.Extensions": {
         "type": "Transitive",
         "resolved": "4.3.0",
@@ -960,23 +957,6 @@
           "System.Text.Encoding": "4.3.0"
         }
       },
-      "System.Text.Encodings.Web": {
-        "type": "Transitive",
-        "resolved": "6.0.0",
-        "contentHash": "Vg8eB5Tawm1IFqj4TVK1czJX89rhFxJo9ELqc/Eiq0eXy13RK00eubyU6TJE6y+GQXjyV5gSfiewDUZjQgSE0w==",
-        "dependencies": {
-          "System.Runtime.CompilerServices.Unsafe": "6.0.0"
-        }
-      },
-      "System.Text.Json": {
-        "type": "Transitive",
-        "resolved": "6.0.2",
-        "contentHash": "0nE2gwXLn3PTBOPwORLqwuYvWB+Beomt9ZBX+6LmogMNKUvfD1SoDb/ycB1vBntT94rGaB/SvxEyeLu14H6aEg==",
-        "dependencies": {
-          "System.Runtime.CompilerServices.Unsafe": "6.0.0",
-          "System.Text.Encodings.Web": "6.0.0"
-        }
-      },
       "System.Text.RegularExpressions": {
         "type": "Transitive",
         "resolved": "4.3.0",
@@ -1102,13 +1082,18 @@
           "xunit.extensibility.core": "[2.6.0]"
         }
       },
+      "YamlDotNet": {
+        "type": "Transitive",
+        "resolved": "15.1.2",
+        "contentHash": "qeX0XhzOIcQEvnI5JxnPaIwcINwyY4Qy/LXhSfsdHkFrl9F41AT52UFfy2nIE7kgrhMg+cP7xuS+GtPJhmHmTA=="
+      },
       "srsapi": {
         "type": "Project"
       },
       "telemetry": {
         "type": "Project",
         "dependencies": {
-          "JsonSchema.Net": "[4.1.2, )"
+          "JsonSchema.Net": "[6.0.0, )"
         }
       },
       "testutil": {
@@ -1117,7 +1102,11 @@
       "xcli": {
         "type": "Project",
         "dependencies": {
-          "Telemetry": "[1.0.0, )"
+          "CsvHelper": "[30.0.1, )",
+          "JsonSchema.Net": "[6.0.0, )",
+          "SrsApi": "[1.0.0, )",
+          "Telemetry": "[1.0.0, )",
+          "YamlDotNet": "[15.1.2, )"
         }
       }
     }

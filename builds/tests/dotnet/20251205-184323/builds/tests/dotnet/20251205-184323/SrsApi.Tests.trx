@@ -1,0 +1,142 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="877d6a54-0fbd-4b9b-8125-5cfc137b9cde" name="svelderr@USAUSLT-Z7DLW6G 2025-12-05 18:45:33" runUser="NI\svelderr" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2025-12-05T18:45:33.7523178-08:00" queuing="2025-12-05T18:45:33.7523184-08:00" start="2025-12-05T18:45:32.9809192-08:00" finish="2025-12-05T18:45:33.7755523-08:00" />
+  <TestSettings name="default" id="0d7173aa-6a60-47e5-a5ec-3db0266e0b60">
+    <Deployment runDeploymentRoot="svelderr_USAUSLT-Z7DLW6G_2025-12-05_18_45_33" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="e6a8e0f1-4776-4880-944e-bdfb1bb9c469" testId="295da182-acb7-08b7-e2c4-a033ce1db5d2" testName="SrsRegistryTests.LoadsDocumentsFromDisk" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0263158" startTime="2025-12-05T18:45:33.7201326-08:00" endTime="2025-12-05T18:45:33.7201327-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e6a8e0f1-4776-4880-944e-bdfb1bb9c469" />
+    <UnitTestResult executionId="761edcbd-1eb2-4aba-a64e-357901349ade" testId="124a9afd-30c3-41ed-b9d4-b4b287563b91" testName="SrsNormalizationTests.NormalizesVariousDashes(id: &quot;TEST‒REQ‒ABC‒001&quot;)" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0000020" startTime="2025-12-05T18:45:33.6878093-08:00" endTime="2025-12-05T18:45:33.6878094-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="761edcbd-1eb2-4aba-a64e-357901349ade" />
+    <UnitTestResult executionId="f988c1b1-4af0-4204-ac18-f9065bdebbd9" testId="eb6ff3fe-5a62-d3ae-b09d-997943c7dcc1" testName="SrsRegistryTests.ThrowsOnMissingVersion" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0036600" startTime="2025-12-05T18:45:33.7241545-08:00" endTime="2025-12-05T18:45:33.7241549-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f988c1b1-4af0-4204-ac18-f9065bdebbd9" />
+    <UnitTestResult executionId="88112d5d-ffe1-486b-b480-9eb386e2058e" testId="f42d111c-1fdf-b834-3e31-1f873105ce9f" testName="SrsRegistryTests.ThrowsOnDuplicateIds" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0082728" startTime="2025-12-05T18:45:33.7216615-08:00" endTime="2025-12-05T18:45:33.7216618-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="88112d5d-ffe1-486b-b480-9eb386e2058e" />
+    <UnitTestResult executionId="cecc4850-84f3-4913-9974-5d317f2166b0" testId="6fa5603c-7f08-58be-532f-b5b6bed92b5e" testName="ModuleRequirementMapTests.MatchesNestedPaths" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0157183" startTime="2025-12-05T18:45:33.6907466-08:00" endTime="2025-12-05T18:45:33.6907471-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="cecc4850-84f3-4913-9974-5d317f2166b0" />
+    <UnitTestResult executionId="10eb447f-3cd8-4578-bd2b-edd44e538e31" testId="18e49b15-eb0a-1d18-f5b5-956825ace3b4" testName="ModuleRequirementMapTests.ReturnsEmptyForUnknownModule" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0023883" startTime="2025-12-05T18:45:33.7201140-08:00" endTime="2025-12-05T18:45:33.7201141-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="10eb447f-3cd8-4578-bd2b-edd44e538e31" />
+    <UnitTestResult executionId="1e02e220-52f9-451a-bdee-0e28e0ea3c5a" testId="830b1153-e390-3015-9139-bb6535f60238" testName="ModuleRequirementMapTests.FindsRequirementsForNotifications" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0006830" startTime="2025-12-05T18:45:33.7199881-08:00" endTime="2025-12-05T18:45:33.7199882-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="1e02e220-52f9-451a-bdee-0e28e0ea3c5a" />
+    <UnitTestResult executionId="317e16d1-55e2-4644-a370-fa8be9fa1f42" testId="278f9a72-e8cb-213a-a67a-5f79f1322192" testName="SrsNormalizationTests.NormalizesVariousDashes(id: &quot;TEST‑REQ‑ABC‑001&quot;)" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0000060" startTime="2025-12-05T18:45:33.6877883-08:00" endTime="2025-12-05T18:45:33.6877883-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="317e16d1-55e2-4644-a370-fa8be9fa1f42" />
+    <UnitTestResult executionId="62738222-1015-4646-bb0b-c195f418c496" testId="fec9c36b-da2d-a895-aafe-95ddfbca7d5d" testName="SrsValidationTests.ValidatesIdFormat(id: &quot;TEST-REQ-TEST-1&quot;, expected: False)" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0003160" startTime="2025-12-05T18:45:33.7200232-08:00" endTime="2025-12-05T18:45:33.7200232-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="62738222-1015-4646-bb0b-c195f418c496" />
+    <UnitTestResult executionId="55408d78-900b-4323-9360-9d8273a504f3" testId="d07fffd6-cf25-3299-b938-3c189a09e428" testName="SrsNormalizationTests.NormalizesVariousDashes(id: &quot;TEST—REQ—ABC—001&quot;)" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0001861" startTime="2025-12-05T18:45:33.6877601-08:00" endTime="2025-12-05T18:45:33.6877602-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="55408d78-900b-4323-9360-9d8273a504f3" />
+    <UnitTestResult executionId="dc3c8d6f-62f5-4224-bb4e-ccee868cf0c9" testId="96bfc490-df67-09ea-8549-9789c184b191" testName="SrsValidationTests.ValidatesIdFormat(id: &quot;test-req-test-001&quot;, expected: True)" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0073998" startTime="2025-12-05T18:45:33.7197882-08:00" endTime="2025-12-05T18:45:33.7197882-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="dc3c8d6f-62f5-4224-bb4e-ccee868cf0c9" />
+    <UnitTestResult executionId="0b5d3d95-fa91-4b82-8f32-b95ecc72640d" testId="500cda05-e9aa-93e9-dcb0-131213305bba" testName="ModuleRequirementMapTests.RejectsInvalidRequirementId" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0034085" startTime="2025-12-05T18:45:33.7200880-08:00" endTime="2025-12-05T18:45:33.7200881-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0b5d3d95-fa91-4b82-8f32-b95ecc72640d" />
+    <UnitTestResult executionId="53b6e430-0acd-4e98-b3ea-6aa56c1acfaf" testId="813d969b-847e-48ab-354b-c58d8913d44c" testName="SrsValidationTests.DetectsCollisions" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0077168" startTime="2025-12-05T18:45:33.6866818-08:00" endTime="2025-12-05T18:45:33.6866820-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="53b6e430-0acd-4e98-b3ea-6aa56c1acfaf" />
+    <UnitTestResult executionId="0254276a-ad40-4e02-b966-a300fc7db59c" testId="1acbebca-9e2d-f84f-cd8f-189e26824ec7" testName="SrsRegistryTests.ThrowsOnMissingId" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0040712" startTime="2025-12-05T18:45:33.7217088-08:00" endTime="2025-12-05T18:45:33.7217089-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0254276a-ad40-4e02-b966-a300fc7db59c" />
+    <UnitTestResult executionId="264c2766-cc7c-4113-8a35-cfe678b50b12" testId="fc3d43e1-5f7f-5721-91d0-f265f303b2ab" testName="SrsNormalizationTests.NormalizesVariousDashes(id: &quot;TEST‐REQ‐ABC‐001&quot;)" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0055095" startTime="2025-12-05T18:45:33.6844611-08:00" endTime="2025-12-05T18:45:33.6844762-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="264c2766-cc7c-4113-8a35-cfe678b50b12" />
+    <UnitTestResult executionId="298443d5-683d-4bd9-a702-fa5cf9de0c00" testId="a09cb5ab-888c-8165-cefb-6ac448ff0efe" testName="SrsValidationTests.ValidatesIdFormat(id: &quot;TEST-REQ-TEST-001&quot;, expected: True)" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0000226" startTime="2025-12-05T18:45:33.7200696-08:00" endTime="2025-12-05T18:45:33.7200697-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="298443d5-683d-4bd9-a702-fa5cf9de0c00" />
+    <UnitTestResult executionId="5c13d74d-6fc4-4cb3-bb1f-5f4ffc0e2bd5" testId="bd8c3405-c28e-3330-6af8-824fc8380e22" testName="SrsValidationTests.ValidatesIdFormat(id: &quot;TEST‑REQ‑TEST‑001&quot;, expected: True)" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0000213" startTime="2025-12-05T18:45:33.7200506-08:00" endTime="2025-12-05T18:45:33.7200506-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5c13d74d-6fc4-4cb3-bb1f-5f4ffc0e2bd5" />
+    <UnitTestResult executionId="25e5ca57-7cf9-4287-b0c7-2327f8f4d60d" testId="a2ae7362-0527-a1e4-f5c4-64969e4915aa" testName="SrsRegistryTests.ParsesExplicitVersion" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0063616" startTime="2025-12-05T18:45:33.7201555-08:00" endTime="2025-12-05T18:45:33.7201556-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="25e5ca57-7cf9-4287-b0c7-2327f8f4d60d" />
+    <UnitTestResult executionId="d0623b2a-4bfb-4322-8fd9-90f3fc987452" testId="0f5bb14a-665e-d709-772f-83f3501e5c16" testName="SrsNormalizationTests.NormalizesVariousDashes(id: &quot;TEST–REQ–ABC–001&quot;)" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0000018" startTime="2025-12-05T18:45:33.6878368-08:00" endTime="2025-12-05T18:45:33.6878368-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d0623b2a-4bfb-4322-8fd9-90f3fc987452" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="SrsValidationTests.ValidatesIdFormat(id: &quot;TEST-REQ-TEST-1&quot;, expected: False)" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="fec9c36b-da2d-a895-aafe-95ddfbca7d5d">
+      <Execution id="62738222-1015-4646-bb0b-c195f418c496" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="SrsValidationTests" name="ValidatesIdFormat" />
+    </UnitTest>
+    <UnitTest name="SrsNormalizationTests.NormalizesVariousDashes(id: &quot;TEST‑REQ‑ABC‑001&quot;)" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="278f9a72-e8cb-213a-a67a-5f79f1322192">
+      <Execution id="317e16d1-55e2-4644-a370-fa8be9fa1f42" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="SrsNormalizationTests" name="NormalizesVariousDashes" />
+    </UnitTest>
+    <UnitTest name="SrsRegistryTests.ThrowsOnMissingId" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="1acbebca-9e2d-f84f-cd8f-189e26824ec7">
+      <Execution id="0254276a-ad40-4e02-b966-a300fc7db59c" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="SrsRegistryTests" name="ThrowsOnMissingId" />
+    </UnitTest>
+    <UnitTest name="SrsValidationTests.ValidatesIdFormat(id: &quot;TEST‑REQ‑TEST‑001&quot;, expected: True)" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="bd8c3405-c28e-3330-6af8-824fc8380e22">
+      <Execution id="5c13d74d-6fc4-4cb3-bb1f-5f4ffc0e2bd5" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="SrsValidationTests" name="ValidatesIdFormat" />
+    </UnitTest>
+    <UnitTest name="ModuleRequirementMapTests.FindsRequirementsForNotifications" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="830b1153-e390-3015-9139-bb6535f60238">
+      <Execution id="1e02e220-52f9-451a-bdee-0e28e0ea3c5a" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="ModuleRequirementMapTests" name="FindsRequirementsForNotifications" />
+    </UnitTest>
+    <UnitTest name="SrsRegistryTests.LoadsDocumentsFromDisk" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="295da182-acb7-08b7-e2c4-a033ce1db5d2">
+      <Execution id="e6a8e0f1-4776-4880-944e-bdfb1bb9c469" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="SrsRegistryTests" name="LoadsDocumentsFromDisk" />
+    </UnitTest>
+    <UnitTest name="SrsRegistryTests.ThrowsOnMissingVersion" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="eb6ff3fe-5a62-d3ae-b09d-997943c7dcc1">
+      <Execution id="f988c1b1-4af0-4204-ac18-f9065bdebbd9" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="SrsRegistryTests" name="ThrowsOnMissingVersion" />
+    </UnitTest>
+    <UnitTest name="SrsValidationTests.ValidatesIdFormat(id: &quot;TEST-REQ-TEST-001&quot;, expected: True)" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="a09cb5ab-888c-8165-cefb-6ac448ff0efe">
+      <Execution id="298443d5-683d-4bd9-a702-fa5cf9de0c00" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="SrsValidationTests" name="ValidatesIdFormat" />
+    </UnitTest>
+    <UnitTest name="SrsNormalizationTests.NormalizesVariousDashes(id: &quot;TEST‒REQ‒ABC‒001&quot;)" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="124a9afd-30c3-41ed-b9d4-b4b287563b91">
+      <Execution id="761edcbd-1eb2-4aba-a64e-357901349ade" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="SrsNormalizationTests" name="NormalizesVariousDashes" />
+    </UnitTest>
+    <UnitTest name="ModuleRequirementMapTests.MatchesNestedPaths" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="6fa5603c-7f08-58be-532f-b5b6bed92b5e">
+      <Execution id="cecc4850-84f3-4913-9974-5d317f2166b0" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="ModuleRequirementMapTests" name="MatchesNestedPaths" />
+    </UnitTest>
+    <UnitTest name="SrsRegistryTests.ParsesExplicitVersion" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="a2ae7362-0527-a1e4-f5c4-64969e4915aa">
+      <Execution id="25e5ca57-7cf9-4287-b0c7-2327f8f4d60d" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="SrsRegistryTests" name="ParsesExplicitVersion" />
+    </UnitTest>
+    <UnitTest name="SrsNormalizationTests.NormalizesVariousDashes(id: &quot;TEST–REQ–ABC–001&quot;)" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="0f5bb14a-665e-d709-772f-83f3501e5c16">
+      <Execution id="d0623b2a-4bfb-4322-8fd9-90f3fc987452" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="SrsNormalizationTests" name="NormalizesVariousDashes" />
+    </UnitTest>
+    <UnitTest name="ModuleRequirementMapTests.ReturnsEmptyForUnknownModule" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="18e49b15-eb0a-1d18-f5b5-956825ace3b4">
+      <Execution id="10eb447f-3cd8-4578-bd2b-edd44e538e31" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="ModuleRequirementMapTests" name="ReturnsEmptyForUnknownModule" />
+    </UnitTest>
+    <UnitTest name="SrsValidationTests.DetectsCollisions" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="813d969b-847e-48ab-354b-c58d8913d44c">
+      <Execution id="53b6e430-0acd-4e98-b3ea-6aa56c1acfaf" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="SrsValidationTests" name="DetectsCollisions" />
+    </UnitTest>
+    <UnitTest name="SrsRegistryTests.ThrowsOnDuplicateIds" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="f42d111c-1fdf-b834-3e31-1f873105ce9f">
+      <Execution id="88112d5d-ffe1-486b-b480-9eb386e2058e" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="SrsRegistryTests" name="ThrowsOnDuplicateIds" />
+    </UnitTest>
+    <UnitTest name="SrsNormalizationTests.NormalizesVariousDashes(id: &quot;TEST‐REQ‐ABC‐001&quot;)" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="fc3d43e1-5f7f-5721-91d0-f265f303b2ab">
+      <Execution id="264c2766-cc7c-4113-8a35-cfe678b50b12" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="SrsNormalizationTests" name="NormalizesVariousDashes" />
+    </UnitTest>
+    <UnitTest name="SrsNormalizationTests.NormalizesVariousDashes(id: &quot;TEST—REQ—ABC—001&quot;)" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="d07fffd6-cf25-3299-b938-3c189a09e428">
+      <Execution id="55408d78-900b-4323-9360-9d8273a504f3" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="SrsNormalizationTests" name="NormalizesVariousDashes" />
+    </UnitTest>
+    <UnitTest name="ModuleRequirementMapTests.RejectsInvalidRequirementId" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="500cda05-e9aa-93e9-dcb0-131213305bba">
+      <Execution id="0b5d3d95-fa91-4b82-8f32-b95ecc72640d" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="ModuleRequirementMapTests" name="RejectsInvalidRequirementId" />
+    </UnitTest>
+    <UnitTest name="SrsValidationTests.ValidatesIdFormat(id: &quot;test-req-test-001&quot;, expected: True)" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\srsapi.tests\bin\debug\net8.0\srsapi.tests.dll" id="96bfc490-df67-09ea-8549-9789c184b191">
+      <Execution id="dc3c8d6f-62f5-4224-bb4e-ccee868cf0c9" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="SrsValidationTests" name="ValidatesIdFormat" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="295da182-acb7-08b7-e2c4-a033ce1db5d2" executionId="e6a8e0f1-4776-4880-944e-bdfb1bb9c469" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="124a9afd-30c3-41ed-b9d4-b4b287563b91" executionId="761edcbd-1eb2-4aba-a64e-357901349ade" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="eb6ff3fe-5a62-d3ae-b09d-997943c7dcc1" executionId="f988c1b1-4af0-4204-ac18-f9065bdebbd9" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f42d111c-1fdf-b834-3e31-1f873105ce9f" executionId="88112d5d-ffe1-486b-b480-9eb386e2058e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="6fa5603c-7f08-58be-532f-b5b6bed92b5e" executionId="cecc4850-84f3-4913-9974-5d317f2166b0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="18e49b15-eb0a-1d18-f5b5-956825ace3b4" executionId="10eb447f-3cd8-4578-bd2b-edd44e538e31" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="830b1153-e390-3015-9139-bb6535f60238" executionId="1e02e220-52f9-451a-bdee-0e28e0ea3c5a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="278f9a72-e8cb-213a-a67a-5f79f1322192" executionId="317e16d1-55e2-4644-a370-fa8be9fa1f42" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="fec9c36b-da2d-a895-aafe-95ddfbca7d5d" executionId="62738222-1015-4646-bb0b-c195f418c496" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="d07fffd6-cf25-3299-b938-3c189a09e428" executionId="55408d78-900b-4323-9360-9d8273a504f3" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="96bfc490-df67-09ea-8549-9789c184b191" executionId="dc3c8d6f-62f5-4224-bb4e-ccee868cf0c9" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="500cda05-e9aa-93e9-dcb0-131213305bba" executionId="0b5d3d95-fa91-4b82-8f32-b95ecc72640d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="813d969b-847e-48ab-354b-c58d8913d44c" executionId="53b6e430-0acd-4e98-b3ea-6aa56c1acfaf" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1acbebca-9e2d-f84f-cd8f-189e26824ec7" executionId="0254276a-ad40-4e02-b966-a300fc7db59c" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="fc3d43e1-5f7f-5721-91d0-f265f303b2ab" executionId="264c2766-cc7c-4113-8a35-cfe678b50b12" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a09cb5ab-888c-8165-cefb-6ac448ff0efe" executionId="298443d5-683d-4bd9-a702-fa5cf9de0c00" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="bd8c3405-c28e-3330-6af8-824fc8380e22" executionId="5c13d74d-6fc4-4cb3-bb1f-5f4ffc0e2bd5" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="a2ae7362-0527-a1e4-f5c4-64969e4915aa" executionId="25e5ca57-7cf9-4287-b0c7-2327f8f4d60d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="0f5bb14a-665e-d709-772f-83f3501e5c16" executionId="d0623b2a-4bfb-4322-8fd9-90f3fc987452" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="19" executed="19" passed="19" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.5.0.1+5ebf84cd75 (64-bit .NET 8.0.22)&#xD;
+[xUnit.net 00:00:00.07]   Discovering: SrsApi.Tests&#xD;
+[xUnit.net 00:00:00.11]   Discovered:  SrsApi.Tests&#xD;
+[xUnit.net 00:00:00.11]   Starting:    SrsApi.Tests&#xD;
+[xUnit.net 00:00:00.20]   Finished:    SrsApi.Tests&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

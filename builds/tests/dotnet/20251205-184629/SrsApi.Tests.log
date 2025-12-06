@@ -1,0 +1,12 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  SrsApi -> C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\src\SrsApi\bin\Debug\net8.0\SrsApi.dll
+  SrsApi.Tests -> C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll
+Test run for C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\SrsApi.Tests\bin\Debug\net8.0\SrsApi.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+Results File: C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\builds\tests\dotnet\20251205-184629\SrsApi.Tests.trx
+
+Passed!  - Failed:     0, Passed:    19, Skipped:     0, Total:    19, Duration: 33 ms - SrsApi.Tests.dll (net8.0)

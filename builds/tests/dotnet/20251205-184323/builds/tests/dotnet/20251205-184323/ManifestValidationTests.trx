@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="eb536fa0-6050-40b5-b3e8-cf5c2c8b54d1" name="svelderr@USAUSLT-Z7DLW6G 2025-12-05 18:45:36" runUser="NI\svelderr" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2025-12-05T18:45:36.4082461-08:00" queuing="2025-12-05T18:45:36.4082469-08:00" start="2025-12-05T18:45:35.5466118-08:00" finish="2025-12-05T18:45:36.4137318-08:00" />
+  <TestSettings name="default" id="6bebcd9e-45b0-432a-98e2-6b7e12806a9e">
+    <Deployment runDeploymentRoot="svelderr_USAUSLT-Z7DLW6G_2025-12-05_18_45_36" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="e3add5b8-ce02-49a0-8c38-86c4c205d6c0" testId="11bb1d93-682f-eaa7-8720-1431a69b6412" testName="ValidateManifestTests.Missing_summary_file_fails" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0002942" startTime="2025-12-05T18:45:36.3129929-08:00" endTime="2025-12-05T18:45:36.3129929-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e3add5b8-ce02-49a0-8c38-86c4c205d6c0" />
+    <UnitTestResult executionId="5bd317d6-1397-4cd0-a631-e41aa81c3fd8" testId="73dd60b2-dc3a-9b56-0271-ad9e24f909f5" testName="ValidateManifestTests.Missing_required_entry_fails" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0004268" startTime="2025-12-05T18:45:36.3125569-08:00" endTime="2025-12-05T18:45:36.3125569-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5bd317d6-1397-4cd0-a631-e41aa81c3fd8" />
+    <UnitTestResult executionId="10a993b1-cafc-4f41-a5d3-63a5b33a04ca" testId="ed379af6-884b-15de-ab30-19e5b5a3c6b5" testName="ValidateManifestTests.Checksum_mismatch_fails" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0068860" startTime="2025-12-05T18:45:36.3089206-08:00" endTime="2025-12-05T18:45:36.3089408-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="10a993b1-cafc-4f41-a5d3-63a5b33a04ca" />
+    <UnitTestResult executionId="5cfa21e4-ba25-4386-a575-31b3f421f57b" testId="9ada9c21-dc68-0573-52a7-a2cd420372de" testName="ValidateManifestTests.Valid_manifest_passes" computerName="USAUSLT-Z7DLW6G" duration="00:00:00.0004825" startTime="2025-12-05T18:45:36.3129608-08:00" endTime="2025-12-05T18:45:36.3129609-08:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5cfa21e4-ba25-4386-a575-31b3f421f57b" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="ValidateManifestTests.Missing_summary_file_fails" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\manifestvalidationtests\bin\debug\net8.0\manifestvalidationtests.dll" id="11bb1d93-682f-eaa7-8720-1431a69b6412">
+      <Execution id="e3add5b8-ce02-49a0-8c38-86c4c205d6c0" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\ManifestValidationTests\bin\Debug\net8.0\ManifestValidationTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="ValidateManifestTests" name="Missing_summary_file_fails" />
+    </UnitTest>
+    <UnitTest name="ValidateManifestTests.Valid_manifest_passes" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\manifestvalidationtests\bin\debug\net8.0\manifestvalidationtests.dll" id="9ada9c21-dc68-0573-52a7-a2cd420372de">
+      <Execution id="5cfa21e4-ba25-4386-a575-31b3f421f57b" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\ManifestValidationTests\bin\Debug\net8.0\ManifestValidationTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="ValidateManifestTests" name="Valid_manifest_passes" />
+    </UnitTest>
+    <UnitTest name="ValidateManifestTests.Missing_required_entry_fails" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\manifestvalidationtests\bin\debug\net8.0\manifestvalidationtests.dll" id="73dd60b2-dc3a-9b56-0271-ad9e24f909f5">
+      <Execution id="5bd317d6-1397-4cd0-a631-e41aa81c3fd8" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\ManifestValidationTests\bin\Debug\net8.0\ManifestValidationTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="ValidateManifestTests" name="Missing_required_entry_fails" />
+    </UnitTest>
+    <UnitTest name="ValidateManifestTests.Checksum_mismatch_fails" storage="c:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\tooling\x-cli\tests\manifestvalidationtests\bin\debug\net8.0\manifestvalidationtests.dll" id="ed379af6-884b-15de-ab30-19e5b5a3c6b5">
+      <Execution id="10a993b1-cafc-4f41-a5d3-63a5b33a04ca" />
+      <TestMethod codeBase="C:\codex\home\runner\work\labview-icon-editor-fork\labview-icon-editor-fork\Tooling\x-cli\tests\ManifestValidationTests\bin\Debug\net8.0\ManifestValidationTests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="ValidateManifestTests" name="Checksum_mismatch_fails" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="11bb1d93-682f-eaa7-8720-1431a69b6412" executionId="e3add5b8-ce02-49a0-8c38-86c4c205d6c0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="73dd60b2-dc3a-9b56-0271-ad9e24f909f5" executionId="5bd317d6-1397-4cd0-a631-e41aa81c3fd8" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="ed379af6-884b-15de-ab30-19e5b5a3c6b5" executionId="10a993b1-cafc-4f41-a5d3-63a5b33a04ca" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="9ada9c21-dc68-0573-52a7-a2cd420372de" executionId="5cfa21e4-ba25-4386-a575-31b3f421f57b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="4" executed="4" passed="4" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.5.0.1+5ebf84cd75 (64-bit .NET 8.0.22)&#xD;
+[xUnit.net 00:00:00.15]   Discovering: ManifestValidationTests&#xD;
+[xUnit.net 00:00:00.22]   Discovered:  ManifestValidationTests&#xD;
+[xUnit.net 00:00:00.22]   Starting:    ManifestValidationTests&#xD;
+[xUnit.net 00:00:00.30]   Finished:    ManifestValidationTests&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>
