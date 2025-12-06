@@ -35,6 +35,10 @@ Related workflows
 - Draft release (manual): `.github/workflows/draft-release.yml` (invoke via **Run workflow** in GitHub and supply the CI run ID)
 - Source distribution smoke: `.github/workflows/source-dist-smoke.yml` (nightly/dispatch) runs the mock g-cli build + artifact existence check via `scripts/smoke/Run-SourceDistSmoke.ps1`.
 
+Runner quick-check helper
+
+- `scripts/status/runner-status.ps1` shows runner availability and the latest run summary (defaults to the Ollama Executor Smoke Test). Usage: `pwsh -NoProfile -File scripts/status/runner-status.ps1` or add `-WorkflowName "<workflow>"` / `-Repo owner/name` / `-Json`. Handy to verify `self-hosted-windows-lv` is online before re-running Ollama executor jobs.
+
 ## Release assets: high-effort TODOs
 
 Low-effort release evidence is already planned (requirements snapshot, version report, SD/Tooling manifests and commit-indexes, CI logs, VS Code task manifest, integrity hashes, repro recipe). Higher-effort items to stage as follow-ups:
