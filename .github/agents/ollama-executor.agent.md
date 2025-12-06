@@ -232,6 +232,36 @@ pwsh -NoProfile -File scripts/ollama-executor/Test-SmokeTest.ps1
 pwsh -NoProfile -File scripts/ollama-executor/Run-AllTests.ps1
 ```
 
+### 8. Refinement Loops (CiRefineCli)
+Drive autonomous refinement loops (default 4) against the latest head run while downloading logs and running local tests per iteration:
+```powershell
+pwsh -NoProfile -File scripts/ollama-executor/Run-CiRefineLoops.ps1 `
+  -RepoPath . `
+  -Loops 4 `
+  -WaitForHeadRun `
+  -DownloadLogs:$true `
+  -TestCommand "pwsh -NoProfile -File scripts/test/Test.ps1 -RepositoryPath . -SupportedBitness 64" `
+  -LogDir artifacts/ci-logs
+```
+- Requires `gh auth status` to be authenticated; uses `Tooling/dotnet/CiRefineCli` under the hood.
+- Adjust `-Loops`, `-SleepSeconds`, or `-ExtraArgs` to pass additional CiRefineCli flags (e.g., `--run-id`, `--status-filter`, `--dry-run`).
+- To **create one fix per loop**, provide a patch command and choose when to run it:
+```powershell
+pwsh -NoProfile -File scripts/ollama-executor/Run-CiRefineLoops.ps1 \
+  -RepoPath . \
+  -Loops 4 \
+  -WaitForHeadRun \
+  -DownloadLogs:$true \
+  -TestCommand "pwsh -NoProfile -File scripts/test/Test.ps1 -RepositoryPath . -SupportedBitness 64" \
+  -LogDir artifacts/ci-logs \
+  -PatchCommand "pwsh -NoProfile -File scripts/ollama-executor/AgentPatch.ps1" \
+  -PatchWorkDir . \
+  -PatchEachLoop:$true
+```
+- `-PatchCommand` runs on failures by default; add `-PatchEachLoop:$true` to run after every iteration (success or failure) to ensure one patch attempt per loop.
+- Patch command receives environment variables for context: `REFINE_LOOP` (loop number), `REFINE_EXIT_CODE` (CiRefineCli exit), `REFINE_SUMMARY_PATH` (JSON summary per loop), and `REFINE_LOG_DIR` (log directory).
+- CiRefineCli now normalizes comma-delimited extra args (e.g., a single quoted blob containing `--repo-slug,...,--run-id,...`), so loops accept both clean arrays and the compact form.
+
 ## Environment Variables
 
 Set these environment variables for simulation mode (no real LabVIEW required):
