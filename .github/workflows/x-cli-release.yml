@@ -1,4 +1,4 @@
-name: x-cli release
+name: x-cli publish
 
 on:
   push:
@@ -11,71 +11,348 @@ on:
         required: true
         type: string
 
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_CLI_UI_LANGUAGE: en
+
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build:
+    name: Build for publish (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            rid: linux-x64
+          - os: windows-2022
+            rid: win-x64
+          - os: macos-15-intel
+            rid: osx-x64
+          - os: macos-15
+            rid: osx-arm64
     permissions:
-      contents: write
+      contents: read
     env:
       RAW_VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@4d6c8fcf3c8f7a60068d26b594648e99df24cee3  # v4.0.0
         with:
           dotnet-version: '8.0.x'
+          global-json-file: global.json
 
-      - name: Normalize version (strip leading v)
+      - name: Normalize version with commit count
         id: version
         shell: pwsh
         run: |
-          $v = "$env:RAW_VERSION"
-          if ($v.StartsWith('v')) { $v = $v.Substring(1) }
-          if (-not $v) { throw 'Version is empty after normalization' }
-          echo "version=$v" >> $env:GITHUB_OUTPUT
+          $baseVersion = "$env:RAW_VERSION"
+          if ($baseVersion.StartsWith('v')) { $baseVersion = $baseVersion.Substring(1) }
+          if (-not $baseVersion) { throw 'Version is empty after normalization' }
 
-      - name: Build dist artifacts
-        run: pwsh -NoProfile -File Tooling/x-cli/scripts/build.ps1 -Version ${{ steps.version.outputs.version }}
+          $commitCount = git rev-list --count HEAD
+          if (-not $commitCount) { throw 'Failed to compute commit count' }
 
-      - name: Pack NuGet-style package
-        run: pwsh -NoProfile -File Tooling/x-cli/scripts/pack-cli.ps1 -Version ${{ steps.version.outputs.version }}
+          # If a prerelease suffix is present, append build metadata; otherwise use a 4th numeric part.
+          $versionWithBuild = if ($baseVersion -like "*-*") { "$baseVersion+$commitCount" } else { "$baseVersion.$commitCount" }
 
-      - name: Checksums
+          echo "version_base=$baseVersion" >> $env:GITHUB_OUTPUT
+          echo "build_number=$commitCount" >> $env:GITHUB_OUTPUT
+          echo "version=$versionWithBuild" >> $env:GITHUB_OUTPUT
+
+          Write-Host "Normalized version: $versionWithBuild (base=$baseVersion, build=$commitCount)"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('global.json', 'Tooling/x-cli/src/**/packages.lock.json', 'Tooling/x-cli/src/**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore with lock enforcement
+        working-directory: Tooling/x-cli
+        run: dotnet restore XCli.sln --locked-mode
+        timeout-minutes: 5
+
+      - name: Publish for ${{ matrix.rid }}
+        working-directory: Tooling/x-cli
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $outDir = "dist"
-          if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
-          $items = Get-ChildItem -Path dist,package -Recurse -File -ErrorAction Stop
-          $items | ForEach-Object {
-            $hash = Get-FileHash $_.FullName -Algorithm SHA256
-            "{0}  {1}" -f $hash.Hash, $_.FullName
-          } | Out-File -Encoding ascii (Join-Path $outDir 'checksums.sha256')
+          $version = "${{ steps.version.outputs.version }}"
+          $rid = "${{ matrix.rid }}"
+          $proj = "src/XCli/XCli.csproj"
+          $outDir = "artifacts/publish/$rid"
+          
+          New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+          
+          dotnet publish $proj -c Release -r $rid `
+            -p:PublishSingleFile=true `
+            -p:SelfContained=true `
+            -p:Version=$version `
+            -o $outDir
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Publish failed for $rid"
+            exit $LASTEXITCODE
+          }
+          
+          Write-Host "Published to $outDir"
+          Get-ChildItem -Path $outDir
+        timeout-minutes: 10
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Create distribution archive
+        shell: pwsh
+        working-directory: Tooling/x-cli/artifacts/publish/${{ matrix.rid }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $rid = "${{ matrix.rid }}"
+          $version = "${{ steps.version.outputs.version }}"
+          $archiveName = "x-cli-$version-$rid"
+          
+          # Find the executable
+          $exe = if ($rid -eq 'win-x64') { 'XCli.exe' } else { 'XCli' }
+          if (-not (Test-Path $exe)) {
+            Write-Error "Executable not found: $exe"
+            exit 1
+          }
+          
+          # Create archive
+          $archivePath = "../$archiveName.zip"
+          Compress-Archive -Path * -DestinationPath $archivePath -Force
+          
+          Write-Host "Created archive: $archivePath"
+
+      - name: Generate SHA256 checksums
+        shell: pwsh
+        working-directory: Tooling/x-cli/artifacts/publish
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $rid = "${{ matrix.rid }}"
+          $version = "${{ steps.version.outputs.version }}"
+          $archiveName = "x-cli-$version-$rid.zip"
+          
+          if (-not (Test-Path $archiveName)) {
+            Write-Error "Archive not found: $archiveName"
+            exit 1
+          }
+          
+          $hash = Get-FileHash -Path $archiveName -Algorithm SHA256
+          $checksumFile = "$archiveName.sha256"
+          "$($hash.Hash.ToLower())  $archiveName" | Set-Content -Path $checksumFile -Encoding ASCII -NoNewline
+          
+          Write-Host "Generated checksum for $archiveName"
+          Write-Host "SHA256: $($hash.Hash.ToLower())"
+
+      - name: Upload publish artifacts
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3  # v4.3.1
         with:
-          name: x-cli-${{ steps.version.outputs.version }}-artifacts
+          name: xcli-publish-${{ matrix.rid }}
           path: |
-            dist/**
-            package/**
+            Tooling/x-cli/artifacts/publish/*.zip
+            Tooling/x-cli/artifacts/publish/*.sha256
+          retention-days: 30
+          if-no-files-found: error
+
+  pack:
+    name: Pack NuGet package
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    needs: build
+    permissions:
+      contents: read
+    env:
+      RAW_VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@4d6c8fcf3c8f7a60068d26b594648e99df24cee3  # v4.0.0
+        with:
+          dotnet-version: '8.0.x'
+          global-json-file: global.json
+
+      - name: Normalize version with commit count
+        id: version
+        shell: pwsh
+        run: |
+          $baseVersion = "$env:RAW_VERSION"
+          if ($baseVersion.StartsWith('v')) { $baseVersion = $baseVersion.Substring(1) }
+          if (-not $baseVersion) { throw 'Version is empty after normalization' }
+
+          $commitCount = git rev-list --count HEAD
+          if (-not $commitCount) { throw 'Failed to compute commit count' }
+
+          $versionWithBuild = if ($baseVersion -like "*-*") { "$baseVersion+$commitCount" } else { "$baseVersion.$commitCount" }
+
+          echo "version_base=$baseVersion" >> $env:GITHUB_OUTPUT
+          echo "build_number=$commitCount" >> $env:GITHUB_OUTPUT
+          echo "version=$versionWithBuild" >> $env:GITHUB_OUTPUT
+
+          Write-Host "Normalized version: $versionWithBuild (base=$baseVersion, build=$commitCount)"
+
+      - name: Pack NuGet package
+        working-directory: Tooling/x-cli
+        run: pwsh -NoProfile -File scripts/pack-cli.ps1 -Version ${{ steps.version.outputs.version }}
+        timeout-minutes: 5
+
+      - name: Generate NuGet checksum
+        shell: pwsh
+        working-directory: Tooling/x-cli/package
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $nupkg = Get-ChildItem -Filter "*.nupkg" | Select-Object -First 1
+          if (-not $nupkg) {
+            Write-Error "No .nupkg file found"
+            exit 1
+          }
+          
+          $hash = Get-FileHash -Path $nupkg.FullName -Algorithm SHA256
+          $checksumFile = "$($nupkg.Name).sha256"
+          "$($hash.Hash.ToLower())  $($nupkg.Name)" | Set-Content -Path $checksumFile -Encoding ASCII -NoNewline
+          
+          Write-Host "Generated checksum for $($nupkg.Name)"
+          Write-Host "SHA256: $($hash.Hash.ToLower())"
+
+      - name: Upload NuGet artifacts
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3  # v4.3.1
+        with:
+          name: xcli-nuget
+          path: |
+            Tooling/x-cli/package/*.nupkg
+            Tooling/x-cli/package/*.sha256
+          retention-days: 30
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    needs: [build, pack]
+    # Only publish to GitHub Releases on tag push
+    # For workflow_dispatch, artifacts are available but no release is created
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    env:
+      RAW_VERSION: ${{ github.ref_name }}
+    steps:
+      - name: Normalize version with commit count
+        id: version
+        shell: pwsh
+        run: |
+          $baseVersion = "$env:RAW_VERSION"
+          if ($baseVersion.StartsWith('v')) { $baseVersion = $baseVersion.Substring(1) }
+          if (-not $baseVersion) { throw 'Version is empty after normalization' }
+
+          $commitCount = git rev-list --count HEAD
+          if (-not $commitCount) { throw 'Failed to compute commit count' }
+
+          $versionWithBuild = if ($baseVersion -like "*-*") { "$baseVersion+$commitCount" } else { "$baseVersion.$commitCount" }
+
+          echo "version_base=$baseVersion" >> $env:GITHUB_OUTPUT
+          echo "build_number=$commitCount" >> $env:GITHUB_OUTPUT
+          echo "version=$versionWithBuild" >> $env:GITHUB_OUTPUT
+
+          Write-Host "Normalized version: $versionWithBuild (base=$baseVersion, build=$commitCount)"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427  # v4.1.4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          
+          # Copy all artifacts to release directory
+          Get-ChildItem -Path artifacts -Recurse -File | ForEach-Object {
+            Copy-Item $_.FullName -Destination release -Force
+          }
+          
+          Write-Host "Release assets:"
+          Get-ChildItem -Path release | Format-Table Name, Length
+
+      - name: Generate consolidated checksums
+        shell: pwsh
+        working-directory: release
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $files = Get-ChildItem -File -Exclude "*.sha256"
+          $output = @()
+          
+          foreach ($file in $files) {
+            $hash = Get-FileHash -Path $file.FullName -Algorithm SHA256
+            $output += "$($hash.Hash.ToLower())  $($file.Name)"
+          }
+          
+          $output | Set-Content -Path "checksums-all.sha256" -Encoding ASCII
+          Write-Host "Generated consolidated checksums for $($files.Count) files"
+
+      - name: Create release body
+        id: release_body
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $body = @"
+          ## x-cli $version
+
+          ### Release Artifacts
+
+          **Platform-specific archives:**
+          - ``x-cli-$version-win-x64.zip`` - Windows x64 (self-contained)
+          - ``x-cli-$version-linux-x64.zip`` - Linux x64 (self-contained)
+          - ``x-cli-$version-osx-x64.zip`` - macOS x64 (self-contained)
+          - ``x-cli-$version-osx-arm64.zip`` - macOS arm64 (self-contained)
+
+          **NuGet package:**
+          - ``XCli.$version.nupkg`` - NuGet package
+
+          **Checksums:**
+          - Individual ``.sha256`` files for each artifact
+          - ``checksums-all.sha256`` - Consolidated checksums for all artifacts
+
+          ### Verification
+
+          Verify artifacts using SHA256 checksums:
+          ``````bash
+          # Linux/macOS
+          sha256sum -c checksums-all.sha256
+
+          # Windows (PowerShell)
+          Get-Content checksums-all.sha256 | ForEach-Object {
+            `$hash, `$file = `$_ -split '  '
+            `$actual = (Get-FileHash `$file -Algorithm SHA256).Hash.ToLower()
+            if (`$hash -eq `$actual) { "OK: `$file" } else { "FAIL: `$file" }
+          }
+          ``````
+          "@
+          
+          # Escape for GitHub Actions
+          $body = $body.Replace("`n", "%0A").Replace("`r", "")
+          echo "body=$body" >> $env:GITHUB_OUTPUT
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@9d7c94cfd0a1f3ed45544c887983e9fa900f0564  # v2.0.4
         with:
           tag_name: ${{ github.ref_name }}
           name: x-cli ${{ steps.version.outputs.version }}
-          body: |
-            x-cli ${{ steps.version.outputs.version }}
-            - dist/x-cli-win-x64, dist/x-cli-linux-x64
-            - package/ (NuGet-style)
-            - checksums: dist/checksums.sha256
-          files: |
-            dist/x-cli-win-x64
-            dist/x-cli-linux-x64
-            dist/checksums.sha256
-            package/*.nupkg
+          body: ${{ steps.release_body.outputs.body }}
+          files: release/*
+          draft: false
+          prerelease: false
+          fail_on_unmatched_files: true

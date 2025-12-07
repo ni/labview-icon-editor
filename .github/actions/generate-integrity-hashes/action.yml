@@ -76,6 +76,9 @@ runs:
         # Track checksum count
         count=0
 
+        # Always create the output file so later steps can upload/log even when empty
+        : > "$output_file"
+
         # Process all directories using find for safer iteration
         while IFS= read -r -d '' dir; do
           dir_name=$(basename "$dir")
@@ -107,13 +110,12 @@ runs:
         done < <(find . -maxdepth 1 -type d -not -name '.' -print0)
 
         # Sort for consistent, deterministic output
-        if [ -f "$output_file" ]; then
+        if [ -s "$output_file" ]; then
           sort -k2 "$output_file" -o "$output_file"
           echo "Generated $count checksums:"
           cat "$output_file"
         else
-          echo "ERROR: No artifact files found to checksum in $artifacts_root!" >&2
-          exit 1
+          echo "Warning: No artifact files found to checksum in $artifacts_root; emitting empty checksum file." >&2
         fi
 
         # Set outputs

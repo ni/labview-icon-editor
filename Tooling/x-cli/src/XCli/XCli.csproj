@@ -10,6 +10,7 @@
     <PublishTrimmed>false</PublishTrimmed>
     <RootNamespace>XCli</RootNamespace>
     <PackageReadmeFile>README.nupkg.md</PackageReadmeFile>
+    <RuntimeIdentifiers>win-x64;linux-x64;osx-x64</RuntimeIdentifiers>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Telemetry\Telemetry.csproj" />
@@ -18,6 +19,7 @@
   <ItemGroup>
     <PackageReference Include="CsvHelper" Version="30.0.1" />
     <PackageReference Include="JsonSchema.Net" Version="6.0.0" />
+    <PackageReference Include="Microsoft.NET.ILLink.Tasks" Version="8.0.22" PrivateAssets="all" />
     <PackageReference Include="YamlDotNet" Version="15.1.2" />
   </ItemGroup>
   <ItemGroup>

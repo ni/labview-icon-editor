@@ -7,10 +7,11 @@ This directory collects guides and references for working with the LabVIEW Icon 
 **New agents/developers start here**:
 
 1. **[../README.md](../README.md)** - Main repository overview, VS Code tasks, Ollama setup
-2. **[vscode-tasks.md](vscode-tasks.md)** - Complete VS Code task catalog with descriptions
-3. **[x-cli-overview.md](x-cli-overview.md)** - ⭐ **Comprehensive x-cli guide** (platform support, workflows, troubleshooting)
-4. **[vi-history-suite-overview.md](vi-history-suite-overview.md)** - ⭐ **VI History comparison complete guide**
-5. **[adr/ADR-2025-011-repo-structure.md](adr/ADR-2025-011-repo-structure.md)** - Repository layout rationale
+2. **[auth.md](auth.md)** - Git authentication guidance (SSH-first, GCM for HTTPS, PAT last)
+3. **[vscode-tasks.md](vscode-tasks.md)** - Complete VS Code task catalog with descriptions
+4. **[x-cli-overview.md](x-cli-overview.md)** - ⭐ **Comprehensive x-cli guide** (platform support, workflows, troubleshooting)
+5. **[vi-history-suite-overview.md](vi-history-suite-overview.md)** - ⭐ **VI History comparison complete guide**
+6. **[adr/ADR-2025-011-repo-structure.md](adr/ADR-2025-011-repo-structure.md)** - Repository layout rationale
 
 ## 📦 Build & Release Tools
 

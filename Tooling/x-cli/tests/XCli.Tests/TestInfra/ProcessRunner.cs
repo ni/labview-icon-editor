@@ -138,8 +138,8 @@ public static class ProcessRunner
 
         return new CliResult(
             exitCode,
-            stdout.ToString().TrimEnd(),
-            stderr.ToString().TrimEnd(),
+            StripControlSequences(stdout.ToString().TrimEnd()),
+            StripControlSequences(stderr.ToString().TrimEnd()),
             log,
             envSnapshot);
     }
@@ -155,6 +155,20 @@ public static class ProcessRunner
                 return candidate;
         }
         throw new FileNotFoundException("Could not locate src/XCli/XCli.csproj from test context.");
+    }
+
+    private static string StripControlSequences(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+
+        // Remove ANSI CSI (e.g., \u001B[?2004h) and OSC sequences (e.g., \u001B]9;...\u001B\\)
+        // plus stray ESC/DEL/control chars that can sneak in from host terminals.
+        string s = input;
+        s = System.Text.RegularExpressions.Regex.Replace(s, @"\x1B\[[0-9;?]*[ -/]*[@-~]", string.Empty);
+        s = System.Text.RegularExpressions.Regex.Replace(s, @"\x1B\][^\x07\x1B]*(\x07|\x1B\\)", string.Empty);
+        s = System.Text.RegularExpressions.Regex.Replace(s, "[\u0000-\u001F\u007F]", match =>
+            (match.Value == "\r" || match.Value == "\n" || match.Value == "\t") ? match.Value : string.Empty);
+        return s;
     }
 }
 

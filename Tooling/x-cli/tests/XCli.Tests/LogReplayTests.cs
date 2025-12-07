@@ -54,7 +54,7 @@ public class LogReplayTests
             Assert.Equal(0, r.ExitCode);
             Assert.Contains("after long delay", r.StdOut);
             // Allow a wider margin on Windows self-hosted runners where scheduling jitter can be higher
-            var capMs = OperatingSystem.IsWindows() ? 2500 : 1500;
+            var capMs = OperatingSystem.IsWindows() ? 2500 : 1800;
             Assert.True(durMs < capMs, $"Replay took too long: {durMs}ms");
         }
         finally

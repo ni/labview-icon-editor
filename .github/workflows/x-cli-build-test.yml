@@ -18,29 +18,193 @@ on:
       - '.github/workflows/x-cli-build-test.yml'
       - 'global.json'
 
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_CLI_UI_LANGUAGE: en
+
 jobs:
-  build-test:
-    runs-on: ubuntu-latest
+  build:
+    name: Build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-2022, macos-15-intel]
+    permissions:
+      contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+        with:
+          persist-credentials: false
 
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@4d6c8fcf3c8f7a60068d26b594648e99df24cee3  # v4.0.0
         with:
           dotnet-version: '8.0.x'
+          global-json-file: global.json
 
-      - name: Restore
-        run: dotnet restore Tooling/x-cli/XCli.sln
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('global.json', 'Tooling/x-cli/src/**/packages.lock.json', 'Tooling/x-cli/src/**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore with lock enforcement
+        working-directory: Tooling/x-cli
+        run: dotnet restore XCli.sln --locked-mode
+        timeout-minutes: 5
 
       - name: Build (Release)
-        run: dotnet build Tooling/x-cli/XCli.sln -c Release --no-restore
+        working-directory: Tooling/x-cli
+        run: dotnet build XCli.sln -c Release --no-restore
+        timeout-minutes: 8
+
+      - name: Smoke test (x-cli --help)
+        shell: pwsh
+        working-directory: Tooling/x-cli
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = dotnet run --project src/XCli/XCli.csproj -c Release --no-build -- --help 2>&1 | Out-String
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "x-cli --help failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+          if ($output -notmatch 'Usage: XCli') {
+            Write-Error "x-cli --help output does not contain expected usage text"
+            exit 1
+          }
+          Write-Host "✓ x-cli --help smoke test passed"
+
+      - name: Create build artifact directory
+        shell: pwsh
+        working-directory: Tooling/x-cli
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path artifacts/build | Out-Null
+          
+          # Copy build output
+          $binDir = "src/XCli/bin/Release/net8.0"
+          if (Test-Path $binDir) {
+            Copy-Item -Path $binDir -Destination artifacts/build/xcli-bin -Recurse -Force
+          } else {
+            Write-Error "Build output directory not found: $binDir"
+            exit 1
+          }
+
+      - name: Generate SHA256 manifest
+        shell: pwsh
+        working-directory: Tooling/x-cli/artifacts/build
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $files = Get-ChildItem -Recurse -File
+          $manifest = @()
+          foreach ($file in $files) {
+            $hash = Get-FileHash -Path $file.FullName -Algorithm SHA256
+            $relativePath = $file.FullName.Substring((Get-Location).Path.Length + 1)
+            $manifest += [PSCustomObject]@{
+              Path = $relativePath.Replace('\', '/')
+              SHA256 = $hash.Hash.ToLower()
+            }
+          }
+          $manifest | ConvertTo-Json | Set-Content -Path checksums.json -Encoding UTF8
+          Write-Host "Generated SHA256 manifest with $($manifest.Count) files"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3  # v4.3.1
+        with:
+          name: xcli-build-${{ matrix.os }}
+          path: Tooling/x-cli/artifacts/build/
+          retention-days: 7
+          if-no-files-found: error
+
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    needs: build
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-2022, macos-15-intel]
+    permissions:
+      contents: read
+      checks: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@4d6c8fcf3c8f7a60068d26b594648e99df24cee3  # v4.0.0
+        with:
+          dotnet-version: '8.0.x'
+          global-json-file: global.json
+
+      - name: Download build artifact
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427  # v4.1.4
+        with:
+          name: xcli-build-${{ matrix.os }}
+          path: Tooling/x-cli/artifacts/build
+
+      - name: Verify artifact checksum
+        shell: pwsh
+        working-directory: Tooling/x-cli/artifacts/build
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Test-Path checksums.json)) {
+            Write-Error "Checksum manifest not found"
+            exit 1
+          }
+          
+          $manifest = Get-Content checksums.json | ConvertFrom-Json
+          $errors = 0
+          foreach ($entry in $manifest) {
+            $filePath = $entry.Path
+            if (-not (Test-Path $filePath)) {
+              Write-Warning "File missing: $filePath"
+              $errors++
+              continue
+            }
+            $actualHash = (Get-FileHash -Path $filePath -Algorithm SHA256).Hash.ToLower()
+            if ($actualHash -ne $entry.SHA256) {
+              Write-Warning "Checksum mismatch for $filePath : expected $($entry.SHA256), got $actualHash"
+              $errors++
+            }
+          }
+          if ($errors -gt 0) {
+            Write-Error "Checksum verification failed with $errors error(s)"
+            exit 1
+          }
+          Write-Host "✓ All checksums verified ($($manifest.Count) files)"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('global.json', 'Tooling/x-cli/src/**/packages.lock.json', 'Tooling/x-cli/src/**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore (for test dependencies)
+        working-directory: Tooling/x-cli
+        run: dotnet restore XCli.sln
+        timeout-minutes: 5
 
       - name: Test (Release)
-        run: dotnet test Tooling/x-cli/XCli.sln -c Release --no-build
+        working-directory: Tooling/x-cli
+        run: dotnet test XCli.sln -c Release --logger "trx;LogFileName=test-results.trx" --logger "console;verbosity=normal"
+        timeout-minutes: 12
 
-      - name: Prepare telemetry paths
-        run: pwsh -NoProfile -Command "New-Item -ItemType Directory -Force -Path artifacts,telemetry | Out-Null"
-
-      - name: Telemetry validate/check
-        run: pwsh -NoProfile -File scripts/telemetry/Invoke-TelemetryPipeline.ps1 -Step ci-smoke -Status pass -RepositoryPath . -DurationMs 1 -MaxFailures 0 -Stage ci -Runner github -Producer ci-x-cli -EventsPath artifacts/ci-telemetry.jsonl -SummaryPath telemetry/ci-summary.json -HistoryPath telemetry/ci-history.jsonl -MarkdownPath telemetry/ci-summary.md
+      - name: Publish test results
+        uses: dorny/test-reporter@eaa763f6ffc21c7a37837f56cd5f9737f27fc6c8  # v1.8.0
+        if: always()
+        with:
+          name: Test Results (${{ matrix.os }})
+          path: Tooling/x-cli/**/test-results.trx
+          reporter: dotnet-trx
+          fail-on-error: false

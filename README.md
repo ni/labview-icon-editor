@@ -52,6 +52,7 @@ The Ollama executor supports cross-compilation simulation mode for testing build
 - **x-cli**: `docs/x-cli-overview.md` (comprehensive guide), `MAINTAINING-x-cli.md` (build/release), `docs/x-cli-playbook.md` (workflows)
 - VS Code tasks: `docs/vscode-tasks.md`
 - CI overview: `docs/ci-workflows.md`
+- Auth guidance: `docs/auth.md`
 - Repo structure: `docs/adr/ADR-2025-011-repo-structure.md`
 - Python env + pyenv: `docs/python-env.md`
 - Ollama decision: `docs/adr/ADR-2025-017-ollama-locked-executor.md`

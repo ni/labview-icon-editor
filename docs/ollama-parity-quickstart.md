@@ -1,6 +1,6 @@
 # Ollama Executor Parity Quickstart (Sim Mode)
 
-This quickstart shows how to run the locked Ollama executor flow in simulation mode on Linux/WSL and Windows, without LabVIEW/VIPM. Simulation mode exercises the full path, emits stub artifacts, and writes a handshake JSON with hashes to prove parity.
+This quickstart shows how to run the locked Ollama executor flow in simulation mode on Linux/WSL and Windows, without LabVIEW/VIPM. Simulation mode exercises the full path, emits stub artifacts, and writes a handshake JSON with hashes to prove parity. For git authentication in devcontainers/Codespaces, follow `docs/auth.md` (SSH-first, Git Credential Manager for HTTPS, PAT last; no secrets baked into images).
 
 ## Flags
 - `OLLAMA_EXECUTOR_MODE=sim` — enables simulation/bypass of Windows-only prereqs.

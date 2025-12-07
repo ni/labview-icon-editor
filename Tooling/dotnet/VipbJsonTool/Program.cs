@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Xml;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace VipbJsonTool
 {
@@ -26,7 +27,7 @@ namespace VipbJsonTool
             {
                 switch (mode)
                 {
-                    case "vipb2json":      ConvertXmlToJson(inputPath, outputPath, new[] { "Package", "VI_Package_Builder_Settings" }); break;
+                    case "vipb2json":      ConvertXmlToJson(inputPath, outputPath, new[] { "Package", "VI_Package_Builder_Settings" }, stripVipc: true); break;
                     case "json2vipb":      ConvertJsonToXml(inputPath, outputPath, new[] { "Package", "VI_Package_Builder_Settings" }); break;
                     case "lvproj2json":    ConvertXmlToJson(inputPath, outputPath, new[] { "Project" }); break;
                     case "json2lvproj":    ConvertJsonToXml(inputPath, outputPath, new[] { "Project" }); break;
@@ -51,7 +52,7 @@ namespace VipbJsonTool
         // XML ➜ JSON
         //----------------------------------------------------------------------
 
-        private static void ConvertXmlToJson(string xmlPath, string jsonPath, string[] allowedRootNames)
+        private static void ConvertXmlToJson(string xmlPath, string jsonPath, string[] allowedRootNames, bool stripVipc = false)
         {
             if (!File.Exists(xmlPath))
                 throw new FileNotFoundException($"Input file not found: {xmlPath}");
@@ -67,6 +68,12 @@ namespace VipbJsonTool
                 doc,
                 Newtonsoft.Json.Formatting.Indented,  // specify the JSON Formatting
                 /* omitRootObject: */ false);
+
+            if (stripVipc)
+            {
+                json = StripVipc(json);
+            }
+
             File.WriteAllText(jsonPath, json);
         }
 
@@ -97,7 +104,7 @@ namespace VipbJsonTool
         private static void ConvertBuildSpecToJson(string inputPath, string outputPath)
         {
             string ext = Path.GetExtension(inputPath).ToLowerInvariant();
-            if (ext == ".vipb")        ConvertXmlToJson(inputPath, outputPath, new[] { "Package", "VI_Package_Builder_Settings" });
+            if (ext == ".vipb")        ConvertXmlToJson(inputPath, outputPath, new[] { "Package", "VI_Package_Builder_Settings" }, stripVipc: true);
             else if (ext == ".lvproj") ConvertXmlToJson(inputPath, outputPath, new[] { "Project" });
             else throw new InvalidOperationException("Unsupported input file type for buildspec2json. Must be .vipb or .lvproj");
         }
@@ -108,6 +115,18 @@ namespace VipbJsonTool
             if (ext == ".vipb")        ConvertJsonToXml(inputPath, outputPath, new[] { "Package", "VI_Package_Builder_Settings" });
             else if (ext == ".lvproj") ConvertJsonToXml(inputPath, outputPath, new[] { "Project" });
             else throw new InvalidOperationException("Unsupported output file type for json2buildspec. Must be .vipb or .lvproj");
+        }
+
+        //----------------------------------------------------------------------
+        // Helpers
+        //----------------------------------------------------------------------
+
+        private static string StripVipc(string json)
+        {
+            var root = JObject.Parse(json);
+            var vipcNode = root.SelectToken("VI_Package_Builder_Settings.Advanced_Settings.VI_Package_Configuration_File");
+            vipcNode?.Parent?.Remove();
+            return root.ToString(Newtonsoft.Json.Formatting.Indented);
         }
     }
 }

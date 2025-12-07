@@ -112,58 +112,72 @@ public class InvocationLogger
             {
                 using var fs = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
                 var locked = false;
-                if (OperatingSystem.IsWindows() || OperatingSystem.IsLinux())
+                var lockSupported = true;
+                var lockAttempts = 0;
+                var lockSpin = new SpinWait();
+
+                while (lockSupported && !locked)
                 {
-                    var lockAttempts = 0;
-                    var lockSpin = new SpinWait();
-                    while (!locked)
+                    // Honor the overall timeout while attempting to acquire the file lock
+                    if (watch.ElapsedMilliseconds >= timeoutMs)
                     {
-                        // Honor the overall timeout while attempting to acquire the file lock
-                        if (watch.ElapsedMilliseconds >= timeoutMs)
+                        timedOut = true;
+                        debugLines?.Add($"[x-cli] lock loop timed out after {watch.ElapsedMilliseconds}ms");
+                        break;
+                    }
+#pragma warning disable CA1416 // File locking can be unsupported on some platforms; runtime check and catch handle fallbacks
+                    try
+                    {
+                        fs.Lock(0, long.MaxValue);
+                        locked = true;
+                    }
+                    catch (PlatformNotSupportedException)
+                    {
+                        // macOS used to skip locking; when unsupported we fallback to unlocked writes.
+                        lockSupported = false;
+                        debugLines?.Add("[x-cli] file locking not supported on this platform; proceeding without lock");
+                        break;
+                    }
+                    catch (NotSupportedException)
+                    {
+                        lockSupported = false;
+                        debugLines?.Add("[x-cli] file locking not supported for this file; proceeding without lock");
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        debugLines?.Add(ex.ToString());
+                        lockAttempts++;
+                        if (lockAttempts >= _maxFileWriteAttempts)
                         {
-                            timedOut = true;
-                            debugLines?.Add($"[x-cli] lock loop timed out after {watch.ElapsedMilliseconds}ms");
+                            debugLines?.Add($"[x-cli] lock retry limit hit for log file: {path}");
                             break;
                         }
-                        try
-                        {
-                            fs.Lock(0, long.MaxValue);
-                            locked = true;
-                        }
-                        catch (Exception ex)
-                        {
-                            debugLines?.Add(ex.ToString());
-                            lockAttempts++;
-                            if (lockAttempts >= _maxFileWriteAttempts)
-                            {
-                                debugLines?.Add($"[x-cli] lock retry limit hit for log file: {path}");
-                                break;
-                            }
-                            if (lockAttempts % 100 == 0)
-                                debugLines?.Add($"[x-cli] retrying lock for log file: {path}");
-                            AdaptiveDelay(ref lockSpin, lockAttempts);
-                        }
+                        if (lockAttempts % 100 == 0)
+                            debugLines?.Add($"[x-cli] retrying lock for log file: {path}");
+                        AdaptiveDelay(ref lockSpin, lockAttempts);
                     }
+                }
 
-                    if (!locked)
+                if (lockSupported && !locked)
+                {
+                    if (timedOut)
                     {
-                        if (timedOut)
-                        {
-                            // Respect timeout immediately
-                            return (false, true);
-                        }
-                        // Lock retry limit hit; fall through to outer attempt handling
-                        throw new IOException($"failed to acquire lock for log file: {path}");
+                        // Respect timeout immediately
+                        return (false, true);
                     }
+                    // Lock retry limit hit; fall through to outer attempt handling
+                    throw new IOException($"failed to acquire lock for log file: {path}");
                 }
 
                 fs.Seek(0, SeekOrigin.End);
                 fs.Write(bytes);
                 fs.Flush(true);
-                if (locked && (OperatingSystem.IsWindows() || OperatingSystem.IsLinux()))
+                if (locked)
                 {
                     try { fs.Unlock(0, long.MaxValue); } catch { }
                 }
+#pragma warning restore CA1416
                 return (true, false);
             }
             catch (Exception ex)

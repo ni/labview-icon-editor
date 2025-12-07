@@ -19,6 +19,7 @@ RUN apt-get update \
         git \
         curl \
         unzip \
+        jq \
         ca-certificates \
         less \
         docker.io; \

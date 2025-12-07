@@ -43,8 +43,11 @@ function Get-GitMeta {
 }
 
 function Invoke-XCli([string[]]$CliArgs) {
-    $procArgs = @('-NoProfile','-File',$wrapper,'-CliName','XCli','-RepoRoot',$repoRoot,'-CliArgs') + $CliArgs
-    & pwsh @procArgs
+    # Use -CliArgsJson to pass arguments to avoid PowerShell parameter binding issues
+    # with x-cli arguments like --output being misinterpreted as wrapper script parameters.
+    # JSON serialization ensures arguments with dashes are passed correctly.
+    $cliArgsJson = ($CliArgs | ConvertTo-Json -Compress -Depth 10)
+    & pwsh -NoProfile -File $wrapper -CliName XCli -RepoRoot $repoRoot -CliArgsJson $cliArgsJson
     if ($LASTEXITCODE -ne 0) {
         throw "x-cli exited with code $LASTEXITCODE for args: $($CliArgs -join ' ')"
     }

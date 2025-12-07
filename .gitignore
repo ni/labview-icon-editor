@@ -21,6 +21,13 @@
 builds/source-distribution/*.zip
 builds/ppl/*.lvlibp
 
+# Test temporary files
+Test/tmp/
+
+# Telemetry output artifacts
+artifacts/ci-telemetry.jsonl
+telemetry/
+
 # .NET build output
 Tooling/dotnet/**/bin/
 Tooling/dotnet/**/obj/
@@ -30,6 +37,7 @@ Tooling/x-cli/.pytest_tmp/
 Tooling/x-cli/artifacts/
 Tooling/x-cli/temp_hist/
 Tooling/x-cli/temp_telemetry/
+Tooling/x-cli/src/XCli/temp_telemetry/
 Tooling/x-cli/**/node_modules/
 .tmp-tests/
 tests/results/_agent/

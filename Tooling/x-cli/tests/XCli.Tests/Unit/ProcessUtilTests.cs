@@ -73,18 +73,30 @@ public class ProcessUtilTests
     public void Start_WaitForExit_TimesOutForLongProcess()
     {
         if (!IsWindows) return; // shell command is Windows-specific
-        var comSpec = Environment.GetEnvironmentVariable("ComSpec");
-        var exe = string.IsNullOrWhiteSpace(comSpec) ? "cmd.exe" : comSpec!;
-        // Sleep 3 seconds; we wait only 200ms.
-        var psi = new ProcessStartInfo(exe, "/c timeout /t 3 >nul")
+        const string args = "-NoProfile -Command \"Start-Sleep -Seconds 3\"";
+        var candidates = new[]
         {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true
+            Environment.GetEnvironmentVariable("PWSH_EXE"),
+            "pwsh",
+            "powershell"
         };
 
-        using var process = ProcessUtil.Start(psi);
+        Process? process = null;
+        foreach (var candidate in candidates)
+        {
+            if (string.IsNullOrWhiteSpace(candidate)) continue;
+
+            var psi = new ProcessStartInfo(candidate, args)
+            {
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            process = ProcessUtil.Start(psi);
+            if (process != null) break;
+        }
 
         Assert.NotNull(process);
         // Should not exit within 200ms.

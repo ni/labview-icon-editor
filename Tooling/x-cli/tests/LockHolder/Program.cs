@@ -4,7 +4,16 @@ using System.Threading;
 
 if (args.Length == 0) return;
 var path = args[0];
-if (OperatingSystem.IsWindows() || OperatingSystem.IsLinux())
+
+if (OperatingSystem.IsMacOS())
+{
+    // macOS doesn't support FileStream.Lock, so use FileShare.None for exclusive access
+    using var fs = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+    Console.WriteLine("locked");
+    Console.Out.Flush();
+    Console.ReadLine();
+}
+else if (OperatingSystem.IsWindows() || OperatingSystem.IsLinux())
 {
     using var fs = new FileStream(path, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
     fs.Lock(0, long.MaxValue);

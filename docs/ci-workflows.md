@@ -1,5 +1,7 @@
 # CI Workflows (summary)
 
+Git auth defaults: `docs/auth.md` (SSH-first, Git Credential Manager for HTTPS, PAT last; never bake secrets into images or workflows).
+
 Main pipeline: `.github/workflows/ci.yml`
 
 Triggers

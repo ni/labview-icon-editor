@@ -80,6 +80,17 @@ public static class ProcRunner
             catch { /* ignore */ }
         }
 
-        return new Result(proc.ExitCode, stdout.ToString(), stderr.ToString(), snapshot);
+        return new Result(proc.ExitCode, StripControlSequences(stdout.ToString()), StripControlSequences(stderr.ToString()), snapshot);
+    }
+
+    private static string StripControlSequences(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+        string s = input;
+        s = System.Text.RegularExpressions.Regex.Replace(s, @"\x1B\[[0-9;?]*[ -/]*[@-~]", string.Empty);
+        s = System.Text.RegularExpressions.Regex.Replace(s, @"\x1B\][^\x07\x1B]*(\x07|\x1B\\)", string.Empty);
+        s = System.Text.RegularExpressions.Regex.Replace(s, "[\u0000-\u001F\u007F]", match =>
+            (match.Value == "\r" || match.Value == "\n" || match.Value == "\t") ? match.Value : string.Empty);
+        return s;
     }
 }

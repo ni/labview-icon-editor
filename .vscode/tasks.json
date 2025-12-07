@@ -1,5 +1,6 @@
 {
   "version": "2.0.0",
+  // Git auth: see docs/auth.md (SSH-first, GCM for HTTPS, PAT last; no secrets baked into devcontainers/Codespaces)
   "tasks": [
     {
       "label": "Containers: Docker",

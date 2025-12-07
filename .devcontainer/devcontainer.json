@@ -5,8 +5,9 @@
     "context": ".."
   },
   "remoteUser": "root",
-  "workspaceFolder": "/workspaces/labview-icon-editor-sandbox",
-  "postCreateCommand": "dotnet restore Tooling/dotnet/RequirementsSummarizer/RequirementsSummarizer.csproj && dotnet build Tooling/dotnet/RequirementsSummarizer/RequirementsSummarizer.csproj",
+  "workspaceFolder": "/workspaces/labview-icon-editor",
+  "postCreateCommand": "dotnet restore Tooling/dotnet/RequirementsSummarizer/RequirementsSummarizer.csproj && dotnet build Tooling/dotnet/RequirementsSummarizer/RequirementsSummarizer.csproj && dotnet restore Tooling/x-cli/XCli.sln",
+  "postStartCommand": "cd /workspaces/labview-icon-editor && dotnet restore Tooling/x-cli/XCli.sln",
   "mounts": [
     "source=nuget-cache,target=/root/.nuget/packages,type=volume",
     "source=ollama-cache,target=/root/.ollama,type=volume",
@@ -17,7 +18,11 @@
       "extensions": [
         "ms-dotnettools.csharp",
         "ms-vscode.powershell"
-      ]
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "pwsh",
+        "task.allowAutomaticTasks": "on"
+      }
     },
     "codespaces": {
       "extensions": [
@@ -35,6 +40,7 @@
     "OLLAMA_MODEL_TAG": "llama3-8b-local:latest",
     "OLLAMA_HOST": "http://host.docker.internal:11435"
   },
+  // Git auth guidance: docs/auth.md (SSH-first, Git Credential Manager for HTTPS, PAT last; no secrets baked into the image)
   "runArgs": [
     "--add-host=host.docker.internal:host-gateway"
   ]

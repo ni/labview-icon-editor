@@ -7,6 +7,7 @@ obj/
 
 # Test outputs
 TestResults/
+**/test-results.trx
 
 # Generated telemetry artifacts
 artifacts/test-telemetry.jsonl

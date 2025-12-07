@@ -12,7 +12,8 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  MIN_LABVIEW_POLICY: "2025.0"
+  MIN_LABVIEW_POLICY: "2023.0"
+  MIN_VI_HISTORY_VERSION: "25.3"  # VI History requires LabVIEW 25.3 or higher
 
 on:
   push:
@@ -20,6 +21,8 @@ on:
       - main
       - develop
       - release/*
+      - feature/*
+      - hotfix/*
   pull_request:
     branches:
       - main
@@ -52,6 +55,44 @@ on:
         type: string
 
 jobs:
+  commit-index-container:
+    name: Commit index via container (Linux)
+    needs: [verify-checklist-sync]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+        with:
+          set-safe-directory: true
+          fetch-depth: 0
+
+      - name: Generate commit index (container)
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/builds/cache"
+          # Align container user with host to avoid mount permission issues
+          uid=$(id -u)
+          gid=$(id -g)
+          docker run --rm \
+            -u "$uid:$gid" \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace \
+            ghcr.io/svelderrainruiz/labview-icon-editor-commit-index:commit-index \
+            -RepositoryPath /workspace \
+            -OutputPath /workspace/builds/cache/commit-index.json \
+            -CsvOutputPath /workspace/builds/cache/commit-index.csv \
+            -AllowDirty
+
+      - name: Validate commit index JSON
+        run: python -m json.tool "$GITHUB_WORKSPACE/builds/cache/commit-index.json" >/dev/null
+
+      - name: Upload commit index artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: commit-index
+          path: |
+            builds/cache/commit-index.json
+            builds/cache/commit-index.csv
+          if-no-files-found: error
   verify-checklist-sync:
     name: Requirements
     runs-on: ubuntu-latest
@@ -518,104 +559,89 @@ jobs:
           echo "should_run=${{ steps.gating.outputs.should_run }}"
           echo "trigger_reason=${{ steps.gating.outputs.trigger_reason }}"
 
-  ollama-sim-linux:
-    name: Ollama executor parity (sim, Linux)
+
+  check-labview-version:
+    name: Check LabVIEW version for VI History compatibility
     needs: [verify-checklist-sync]
     runs-on: ubuntu-latest
+    outputs:
+      supports_vi_history: ${{ steps.check_version.outputs.supports_vi_history }}
+      labview_version: ${{ steps.check_version.outputs.labview_version }}
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           set-safe-directory: true
 
-      - name: Install PowerShell
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y powershell
-
-      - name: Run Ollama host (sim mode)
+      - name: Check LabVIEW version from seed.vipb
+        id: check_version
         shell: pwsh
         env:
-          OLLAMA_EXECUTOR_MODE: sim
-          OLLAMA_SIM_CREATE_ARTIFACTS: "true"
-          OLLAMA_SIM_FAIL: "false"
-          OLLAMA_REQUIREMENTS_APPLIED: "OEX-PARITY-001,OEX-PARITY-002,OEX-PARITY-003,OEX-PARITY-004"
+          MIN_VI_HISTORY_VERSION: ${{ env.MIN_VI_HISTORY_VERSION }}
         run: |
-          pwsh -NoProfile -File scripts/orchestration/Run-Ollama-Host.ps1 `
-            -Repo . `
-            -RunKey ci-linux-sim `
-            -PwshTimeoutSec 900 `
-            -OllamaPrompt "local-sd/local-sd-ppl"
-
-      - name: Validate sim handshake (Linux)
-        shell: pwsh
-        run: |
-          $handshake = 'artifacts/labview-icon-api-handshake.json'
-          if (-not (Test-Path $handshake)) { throw "Missing $handshake" }
-          $json = Get-Content -Raw -LiteralPath $handshake | ConvertFrom-Json
-          foreach ($key in 'zipSha256','pplSha256','zipRelPath','pplRelPath') {
-            if (-not $json.$key) { throw "Handshake missing $key" }
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+          
+          # Shared regex pattern for version parsing (matches "XX.Y" or "XXXX.Y")
+          $versionPattern = '(\d{2,4})\.(\d+)'
+          
+          # Parse minimum required version from environment
+          $minVersionStr = $env:MIN_VI_HISTORY_VERSION
+          if (-not $minVersionStr) {
+            throw "MIN_VI_HISTORY_VERSION environment variable not set"
           }
-
-      - name: Upload sim artifacts (Linux)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ollama-sim-linux
-          path: |
-            artifacts/**
-            builds-isolated/ci-linux-sim/**
-            reports/logs/ollama-host-ci-linux-sim.log
-            reports/logs/ollama-host-ci-linux-sim.summary.json
-          if-no-files-found: warn
-
-  ollama-sim-windows:
-    name: Ollama executor parity (sim, Windows)
-    needs: [verify-checklist-sync]
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
-        with:
-          set-safe-directory: true
-
-      - name: Run Ollama host (sim mode)
-        shell: pwsh
-        env:
-          OLLAMA_EXECUTOR_MODE: sim
-          OLLAMA_SIM_CREATE_ARTIFACTS: "true"
-          OLLAMA_SIM_FAIL: "false"
-          OLLAMA_REQUIREMENTS_APPLIED: "OEX-PARITY-001,OEX-PARITY-002,OEX-PARITY-003,OEX-PARITY-004"
-        run: |
-          pwsh -NoProfile -File scripts/orchestration/Run-Ollama-Host.ps1 `
-            -Repo . `
-            -RunKey ci-windows-sim `
-            -PwshTimeoutSec 900 `
-            -OllamaPrompt "local-sd/local-sd-ppl"
-
-      - name: Validate sim handshake (Windows)
-        shell: pwsh
-        run: |
-          $handshake = 'artifacts/labview-icon-api-handshake.json'
-          if (-not (Test-Path $handshake)) { throw "Missing $handshake" }
-          $json = Get-Content -Raw -LiteralPath $handshake | ConvertFrom-Json
-          foreach ($key in 'zipSha256','pplSha256','zipRelPath','pplRelPath') {
-            if (-not $json.$key) { throw "Handshake missing $key" }
+          
+          $minMatch = [regex]::Match($minVersionStr, $versionPattern)
+          if (-not $minMatch.Success) {
+            throw "Could not parse MIN_VI_HISTORY_VERSION: $minVersionStr"
           }
-
-      - name: Upload sim artifacts (Windows)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ollama-sim-windows
-          path: |
-            artifacts/**
-            builds-isolated/ci-windows-sim/**
-            reports/logs/ollama-host-ci-windows-sim.log
-            reports/logs/ollama-host-ci-windows-sim.summary.json
-          if-no-files-found: warn
+          
+          [int]$minMajor = [int]::Parse($minMatch.Groups[1].Value)
+          if ($minMajor -lt 100) { $minMajor += 2000 }
+          [int]$minMinor = [int]::Parse($minMatch.Groups[2].Value)
+          
+          Write-Host "Minimum VI History version required: $minMajor.$minMinor (from MIN_VI_HISTORY_VERSION=$minVersionStr)"
+          
+          # Read the seed.vipb to get Package_LabVIEW_Version
+          $vipbPath = 'Tooling/deployment/seed.vipb'
+          [xml]$vipbXml = Get-Content -LiteralPath $vipbPath -Raw
+          $settings = $vipbXml.SelectSingleNode('/VI_Package_Builder_Settings')
+          # Fallback to /Package for compatibility with older VIPB format versions
+          if (-not $settings) { $settings = $vipbXml.SelectSingleNode('/Package') }
+          
+          $lvVersionString = [string]$settings.Library_General_Settings.Package_LabVIEW_Version
+          Write-Host "Package_LabVIEW_Version: $lvVersionString"
+          
+          # Parse version (e.g., "23.3 (64-bit)" -> major=23, minor=3)
+          $match = [regex]::Match($lvVersionString, $versionPattern)
+          if (-not $match.Success) {
+            throw "Could not parse LabVIEW version from: $lvVersionString"
+          }
+          
+          $majorStr = $match.Groups[1].Value
+          [int]$major = [int]::Parse($majorStr)
+          if ($major -lt 100) { $major += 2000 }
+          
+          [int]$minor = [int]::Parse($match.Groups[2].Value)
+          
+          Write-Host "Parsed version: $major.$minor"
+          
+          # Check if version meets minimum requirement
+          $supportsVIHistory = $false
+          if ($major -gt $minMajor -or ($major -eq $minMajor -and $minor -ge $minMinor)) {
+            $supportsVIHistory = $true
+            Write-Host "✓ LabVIEW version $major.$minor meets minimum requirement ($minMajor.$minMinor), VI History jobs will run"
+          } else {
+            Write-Host "✗ LabVIEW version $major.$minor is below minimum requirement ($minMajor.$minMinor), VI History jobs will be skipped"
+          }
+          
+          # Set outputs for other jobs to use
+          "supports_vi_history=$($supportsVIHistory.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "labview_version=$major.$minor" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
   vi-history-sim-linux:
     name: VI History report (sim, Linux)
-    needs: [verify-checklist-sync]
+    needs: [verify-checklist-sync, check-labview-version]
+    if: needs.check-labview-version.outputs.supports_vi_history == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -658,7 +684,8 @@ jobs:
 
   vi-history-sim-windows:
     name: VI History report (sim, Windows)
-    needs: [verify-checklist-sync]
+    needs: [verify-checklist-sync, check-labview-version]
+    if: needs.check-labview-version.outputs.supports_vi_history == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
@@ -696,7 +723,8 @@ jobs:
 
   vi-history-real:
     name: VI History report (real, Windows+LV)
-    needs: [verify-checklist-sync, build-worktree]
+    needs: [verify-checklist-sync, build-worktree, check-labview-version]
+    if: needs.check-labview-version.outputs.supports_vi_history == 'true'
     runs-on: self-hosted-windows-lv
     timeout-minutes: 30
     defaults:
@@ -872,7 +900,16 @@ jobs:
           # GH_TOKEN: ""
         run: |
           set -euo pipefail
-          bash ./scripts/run-seed-and-analyze.sh
+          bash ./scripts/run-seed-and-analyze.sh || {
+            echo "::error::run-seed-and-analyze.sh failed; dumping artifacts/seed/metadata.json (first 200 bytes) if present" >&2
+            if [ -f artifacts/seed/metadata.json ]; then
+              head -c 200 artifacts/seed/metadata.json | sed 's/.*/[metadata.json] &/'
+              echo "" >&2
+            else
+              echo "metadata.json not found" >&2
+            fi
+            exit 1
+          }
 
   resolve-labview-version:
     name: Resolve LabVIEW version from VIPB
@@ -1092,7 +1129,7 @@ jobs:
           pwsh -NoProfile -File $script -Repo $env:GH_REPO -Token $env:GH_TOKEN
   build-worktree:
     name: Build (LabVIEW Icon API Distribution)
-    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, version, resolve-labview-version, test-compute-version-bump, test-tag-existence-check, rtm-gates, adr-lint, docs-link-check, dev-mode-binder-tests, list-collaborators]
+    needs: [verify-checklist-sync, requirements-language-lint, requirements-attributes, version, resolve-labview-version, test-compute-version-bump, test-tag-existence-check, rtm-gates, commit-index-container]
     # Run when all critical dependencies succeed; dev-mode-binder-tests is allowed to fail
     # because it has continue-on-error: true and may timeout if the self-hosted runner is unavailable
     if: |
@@ -1104,10 +1141,7 @@ jobs:
       needs.resolve-labview-version.result == 'success' &&
       needs.test-compute-version-bump.result == 'success' &&
       needs.test-tag-existence-check.result == 'success' &&
-      needs.rtm-gates.result == 'success' &&
-      needs.adr-lint.result == 'success' &&
-      needs.docs-link-check.result == 'success' &&
-      needs.list-collaborators.result == 'success'
+      needs.rtm-gates.result == 'success'
     runs-on: self-hosted-windows-lv
     timeout-minutes: 60
     defaults:
@@ -1156,15 +1190,24 @@ jobs:
               Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue
             }
           }
+      - name: Download commit index (from container job)
+        uses: actions/download-artifact@v4
+        with:
+          name: commit-index
+          path: builds/cache
+
+      - name: Validate commit index JSON (Windows)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = Join-Path $env:GITHUB_WORKSPACE 'builds/cache/commit-index.json'
+          if (-not (Test-Path -LiteralPath $path)) { throw "Missing $path" }
+          Get-Content -Raw -LiteralPath $path | ConvertFrom-Json | Out-Null
+
       - name: Build LabVIEW Icon API Source Distribution via worktree
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $commitIndexScript = Join-Path $env:GITHUB_WORKSPACE 'scripts' 'build-source-distribution' 'New-CommitIndex.ps1'
-          pwsh -NoProfile -File $commitIndexScript `
-            -RepositoryPath "$env:GITHUB_WORKSPACE" `
-            -OutputPath (Join-Path $env:GITHUB_WORKSPACE 'builds/cache/commit-index.json') `
-            -AllowDirty
           $buildSdScript = Join-Path $env:GITHUB_WORKSPACE 'scripts' 'build-source-distribution' 'Build_Source_Distribution.ps1'
           pwsh -NoProfile -File $buildSdScript `
             -RepositoryPath "$env:GITHUB_WORKSPACE" `

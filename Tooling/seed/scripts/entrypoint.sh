@@ -165,12 +165,6 @@ case "$MODE" in
     ;;
  esac
 
-# Normalize vipb2json output by removing embedded VIPC payloads; avoids tests failing when
-# a configuration file is present in the advanced section.
-if [[ "$MODE" == "vipb2json" && -n "$OUTPUT_PATH" && -f "$OUTPUT_PATH" ]]; then
-  yq eval 'del(.VI_Package_Builder_Settings.Advanced_Settings.VI_Package_Configuration_File)' -o=json -i "$OUTPUT_PATH" || { echo "::error ::Failed to strip VI_Package_Configuration_File" >&2; exit 1; }
-fi
-
 # Apply a plaintext patch file if provided
 if [[ -n "$PATCH_FILE" ]]; then
   patch "$OUTPUT_PATH" "$PATCH_FILE" || { echo "::error ::Failed to apply patch file." >&2; exit 1; }

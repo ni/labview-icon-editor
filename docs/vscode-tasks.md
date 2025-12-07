@@ -1,6 +1,6 @@
 # VS Code task shortlist
 
-See also: `docs/x-cli-playbook.md` for a concise map of how x-cli is used in this repo.
+See also: `docs/x-cli-playbook.md` for a concise map of how x-cli is used in this repo. For git auth defaults (SSH-first, GCM for HTTPS, PAT as last resort), see `docs/auth.md`. In devcontainers/Codespaces, no secrets are baked into the image—use SSH agent forwarding or GCM when prompted.
 
 Two VS Code tasks are provided for local builds of the LabVIEW Icon Editor, driven by the Integration Engine build tooling. Run them from **Terminal → Run Task…** (or `Ctrl/Cmd+Shift+B`).
 
