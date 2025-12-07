@@ -1,6 +1,12 @@
 # x-cli Playbook (LabVIEW Icon Editor)
 
-Purpose: this repo is the upstream for x-cli. Use this guide to run x-cli here, and for consumers to vendor/pin binaries from this source.
+> **For comprehensive x-cli documentation**, see `docs/x-cli-overview.md` which covers:
+> - Platform support (Windows + Linux binaries)
+> - Building from source
+> - Release process
+> - Architecture and troubleshooting
+
+**Purpose**: This repo is the upstream for x-cli. Use this guide for running x-cli workflows in this repository, and for consuming published binaries in other projects.
 
 ## Quick entry points
 
@@ -48,12 +54,63 @@ Purpose: this repo is the upstream for x-cli. Use this guide to run x-cli here, 
 - Prefer task 06/06b devmode bind/unbind to manage LocalHost.LibraryPaths; unbind when switching worktrees.
 - Keep TMP/TEMP writable (wrapper sets them). Avoid editing tasks to run x-cli directly unless you reproduce those env settings.
 
-## Packaging x-cli itself (if pinning a version)
+## Packaging x-cli itself (for pinning a version to other projects)
 
-- Build/test: `dotnet build XCli.sln -c Release` + `dotnet test XCli.sln -c Release`.
-- Normalize artifacts: `scripts/build.ps1` → `dist/x-cli-win-x64`, `dist/x-cli-linux-x64`.
-- Pack: `scripts/pack-cli.ps1` → `package/` (NuGet-style) if you need to distribute a fixed revision.
-- Consumers: download the dist outputs or NuGet package from releases/tags in this repo and pin to that version; no vendored copy is tracked elsewhere.
+> **Note**: Release binaries for **both Windows and Linux** are published with every tag.
+
+### Build from Source
+
+```powershell
+# Navigate to x-cli directory
+cd Tooling/x-cli
+
+# Build and test
+dotnet build XCli.sln -c Release
+dotnet test XCli.sln -c Release
+
+# Create platform-specific binaries (both Windows AND Linux)
+pwsh scripts/build.ps1 -Version 1.0.0
+# Outputs:
+#   dist/x-cli-win-x64          (Windows executable)
+#   dist/x-cli-linux-x64        (Linux executable)
+
+# (Optional) Create NuGet package containing both binaries
+pwsh scripts/pack-cli.ps1 -Version 1.0.0
+# Outputs:
+#   package/*.nupkg
+```
+
+### Download Pre-built Binaries
+
+**Recommended for consumers**: Download from [GitHub Releases](https://github.com/svelderrainruiz/labview-icon-editor/releases)
+
+Each release includes:
+- `x-cli-win-x64` - Windows 64-bit executable (no .NET Runtime required)
+- `x-cli-linux-x64` - Linux 64-bit executable (no .NET Runtime required)
+- `checksums.sha256` - SHA256 hashes for verification
+- `*.nupkg` - NuGet package (optional, contains both binaries)
+
+**Usage**:
+```bash
+# Download and verify checksum
+curl -LO https://github.com/svelderrainruiz/labview-icon-editor/releases/download/v1.0.0/x-cli-linux-x64
+curl -LO https://github.com/svelderrainruiz/labview-icon-editor/releases/download/v1.0.0/checksums.sha256
+sha256sum -c checksums.sha256 --ignore-missing
+
+# Make executable (Linux only)
+chmod +x x-cli-linux-x64
+
+# Run
+./x-cli-linux-x64 --help
+```
+
+**Pinning strategy**:
+- Download specific version binaries from releases
+- Commit to your project's `tools/` or `.local/bin/` directory
+- Add to `.gitignore` and document download process, OR
+- Commit binaries and use Git LFS for large files
+
+No vendored copy is tracked in this repository - download from releases or build from tagged source.
 
 ## Helpful paths
 

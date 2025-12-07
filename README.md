@@ -40,7 +40,8 @@ The Ollama executor supports cross-compilation simulation mode for testing build
 - See `docs/adr/ADR-2025-018-ollama-cross-compilation-simulation.md` for details
 
 ## CLIs and scripts
-- IntegrationEngineCli, OrchestrationCli, DevModeAgentCli, XCli: run via `scripts/common/invoke-repo-cli.ps1` or tasks.
+- **x-cli** (upstream here): Multi-platform .NET CLI for SD builds, VI Analyzer, VI History, telemetry. See `docs/x-cli-overview.md` for comprehensive documentation.
+- **IntegrationEngineCli, OrchestrationCli, DevModeAgentCli**: Run via `scripts/common/invoke-repo-cli.ps1` or VS Code tasks.
 - Source distribution: `scripts/build-source-distribution/Build_Source_Distribution.ps1`.
 - PPL from SD: `scripts/ppl-from-sd/Build_Ppl_From_SourceDistribution.ps1`.
 - Dev mode bind/unbind: `scripts/task-devmode-bind.ps1`, `scripts/clear-labview-librarypaths-all.ps1`.
@@ -48,9 +49,9 @@ The Ollama executor supports cross-compilation simulation mode for testing build
   `pwsh -NoProfile -File scripts/analyze-vi-package/run-workflow-local.ps1 -VipArtifactPath "<vip or dir>" -MinLabVIEW "23.0"`
 
 ## Docs & references
+- **x-cli**: `docs/x-cli-overview.md` (comprehensive guide), `MAINTAINING-x-cli.md` (build/release), `docs/x-cli-playbook.md` (workflows)
 - VS Code tasks: `docs/vscode-tasks.md`
 - CI overview: `docs/ci-workflows.md`
-- x-cli maintenance: `MAINTAINING-x-cli.md`
 - Repo structure: `docs/adr/ADR-2025-011-repo-structure.md`
 - Python env + pyenv: `docs/python-env.md`
 - Ollama decision: `docs/adr/ADR-2025-017-ollama-locked-executor.md`
