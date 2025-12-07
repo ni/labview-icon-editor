@@ -727,7 +727,8 @@ jobs:
           $ErrorActionPreference = 'Stop'
           # Run in dry-run mode for CI - this validates the infrastructure without requiring actual VI comparison
           # The sample config references LabVIEW 2025 which may not be available on all runners
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/vi-compare/run-vi-history-suite.ps1"
+          $scriptPath = Join-Path $env:GITHUB_WORKSPACE 'scripts' 'vi-compare' 'run-vi-history-suite.ps1'
+          pwsh -NoProfile -File $scriptPath
           
       - name: Generate VI History comparison report
         run: |
@@ -920,7 +921,7 @@ jobs:
             return ('{0}.{1}' -f $maj, $minor)
           }
 
-          $derivedRaw = & "$env:GITHUB_WORKSPACE/scripts/get-package-lv-version.ps1" -RepositoryPath "$env:GITHUB_WORKSPACE"
+          $derivedRaw = & (Join-Path $env:GITHUB_WORKSPACE 'scripts' 'get-package-lv-version.ps1') -RepositoryPath "$env:GITHUB_WORKSPACE"
           $derived = Normalize-LVVersion $derivedRaw
           $expected = Normalize-LVVersion $env:EXPECTED_MIN_LV
 
@@ -1039,7 +1040,8 @@ jobs:
           New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 
           $manifestPath = Join-Path $outDir 'vscode-tasks-manifest.json'
-          & "$env:GITHUB_WORKSPACE/.github/scripts/generate-vscode-tasks-manifest.ps1" `
+          $scriptPath = Join-Path $env:GITHUB_WORKSPACE '.github' 'scripts' 'generate-vscode-tasks-manifest.ps1'
+          & $scriptPath `
             -RepositoryPath $env:GITHUB_WORKSPACE `
             -OutputPath $manifestPath `
             -Commit '${{ github.sha }}' `
@@ -1158,11 +1160,13 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/build-source-distribution/New-CommitIndex.ps1" `
+          $commitIndexScript = Join-Path $env:GITHUB_WORKSPACE 'scripts' 'build-source-distribution' 'New-CommitIndex.ps1'
+          pwsh -NoProfile -File $commitIndexScript `
             -RepositoryPath "$env:GITHUB_WORKSPACE" `
             -OutputPath (Join-Path $env:GITHUB_WORKSPACE 'builds/cache/commit-index.json') `
             -AllowDirty
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/build-source-distribution/Build_Source_Distribution.ps1" `
+          $buildSdScript = Join-Path $env:GITHUB_WORKSPACE 'scripts' 'build-source-distribution' 'Build_Source_Distribution.ps1'
+          pwsh -NoProfile -File $buildSdScript `
             -RepositoryPath "$env:GITHUB_WORKSPACE" `
             -CommitIndexPath (Join-Path $env:GITHUB_WORKSPACE 'builds/cache/commit-index.json')
       - name: Stage LabVIEW Icon API SD under run-scoped builds/builds-isolated
@@ -1292,7 +1296,8 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/scripts/tooling-distribution/Build_Tooling_Distribution.ps1" `
+          $buildToolingScript = Join-Path $env:GITHUB_WORKSPACE 'scripts' 'tooling-distribution' 'Build_Tooling_Distribution.ps1'
+          pwsh -NoProfile -File $buildToolingScript `
             -RepositoryPath "$env:GITHUB_WORKSPACE"
       - name: Stage Tooling Distribution under run-scoped builds/builds-isolated
         shell: pwsh

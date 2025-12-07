@@ -126,7 +126,7 @@ namespace XCli.Telemetry;
         for (int i = 0; i < args.Length; i++)
         {
             var a = args[i];
-            if (a == "--out" && i + 1 < args.Length) { outPath = args[++i]; continue; }
+            if (a == "--output" && i + 1 < args.Length) { outPath = args[++i]; continue; }
             if (a == "--step" && i + 1 < args.Length) { step = args[++i]; continue; }
             if (a == "--status" && i + 1 < args.Length) { status = args[++i]; continue; }
             if (a == "--duration-ms" && i + 1 < args.Length && long.TryParse(args[i+1], out var d)) { durationMs = d; i++; continue; }
@@ -147,7 +147,7 @@ namespace XCli.Telemetry;
         }
         if (string.IsNullOrWhiteSpace(outPath) || string.IsNullOrWhiteSpace(step) || string.IsNullOrWhiteSpace(status))
         {
-            Console.Error.WriteLine("telemetry write: --out PATH, --step NAME, and --status (pass|fail) are required");
+            Console.Error.WriteLine("telemetry write: --output PATH, --step NAME, and --status (pass|fail) are required");
             return 2;
         }
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -273,12 +273,12 @@ namespace XCli.Telemetry;
         {
             var a = args[i];
             if (a == "--in" && i + 1 < args.Length) { input = args[++i]; continue; }
-            if (a == "--out" && i + 1 < args.Length) { output = args[++i]; continue; }
+            if (a == "--output" && i + 1 < args.Length) { output = args[++i]; continue; }
             if (a == "--history" && i + 1 < args.Length) { history = args[++i]; continue; }
         }
         if (string.IsNullOrWhiteSpace(input) || string.IsNullOrWhiteSpace(output))
         {
-            Console.Error.WriteLine("telemetry summarize: --in PATH and --out PATH are required");
+            Console.Error.WriteLine("telemetry summarize: --in PATH and --output PATH are required");
             return 2;
         }
         var summary = SummaryBuilder.BuildFromJsonl(input!);
