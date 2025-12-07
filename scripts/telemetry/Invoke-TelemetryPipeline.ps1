@@ -71,7 +71,7 @@ if ($IncludeGitMeta) {
     }
 }
 
-$writeArgs = @('telemetry','write','--out',$EventsPath,'--step',$Step,'--status',$Status)
+$writeArgs = @('telemetry','write','--output',$EventsPath,'--step',$Step,'--status',$Status)
 if ($DurationMs -gt 0) { $writeArgs += @('--duration-ms',[string]$DurationMs) }
 foreach ($k in $metaBag.Keys) {
     $v = [string]$metaBag[$k]
@@ -79,7 +79,7 @@ foreach ($k in $metaBag.Keys) {
 }
 Invoke-XCli -CliArgs $writeArgs
 
-$summarizeArgs = @('telemetry','summarize','--in',$EventsPath,'--out',$SummaryPath)
+$summarizeArgs = @('telemetry','summarize','--in',$EventsPath,'--output',$SummaryPath)
 if (-not [string]::IsNullOrWhiteSpace($HistoryPath)) {
     $summarizeArgs += @('--history',$HistoryPath)
 }

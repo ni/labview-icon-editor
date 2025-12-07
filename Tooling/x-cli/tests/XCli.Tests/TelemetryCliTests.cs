@@ -19,7 +19,7 @@ public class TelemetryCliTests
         var tmp = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("n") + ".jsonl");
         try
         {
-            var r = Run($"telemetry write --out {tmp} --step build --status pass --duration-ms 123");
+            var r = Run($"telemetry write --output {tmp} --step build --status pass --duration-ms 123");
             Assert.Equal(0, r.ExitCode);
             var text = File.ReadAllText(tmp).Trim();
             Assert.NotEmpty(text);
@@ -47,7 +47,7 @@ public class TelemetryCliTests
                 "{\"step\":\"build\",\"status\":\"pass\",\"duration_ms\":10}",
                 "{\"step\":\"test\",\"status\":\"fail\",\"duration_ms\":20}"
             });
-            var r = Run($"telemetry summarize --in {events} --out {summary} --history {history}");
+            var r = Run($"telemetry summarize --in {events} --output {summary} --history {history}");
             Assert.Equal(0, r.ExitCode);
             Assert.True(File.Exists(summary));
             using (var doc = JsonDocument.Parse(File.ReadAllText(summary)))
@@ -95,7 +95,7 @@ public class TelemetryCliTests
                 "not-json",
                 "{\"step\":\"b\",\"status\":\"fail\"}"
             });
-            var r = Run($"telemetry summarize --in {events} --out {summary}");
+            var r = Run($"telemetry summarize --in {events} --output {summary}");
             Assert.Equal(0, r.ExitCode);
             using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(summary));
             var root = doc.RootElement;
