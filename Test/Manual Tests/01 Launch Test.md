@@ -1,11 +1,13 @@
 # Scope
+This procedure is used to verify the Icon Editor properly launches from the various entry points in the LabVIEW IDE.
 
-
-# Notes
 This procedure was dirived from NI test 1692477: Launch Test.
 
+# Setup
+Open the Icon Editor Manual Tests project.
+
 # Tests
-## Launching from a VI
+## 1. Launching from a VI
 1. Open Pyramid Icon Template.vi.
 2. From the Front Panel, double-click on the VI Icon.
 3. Verify the Icon Editor opens.
@@ -23,13 +25,16 @@ This procedure was dirived from NI test 1692477: Launch Test.
 15. Verify the Icon Edior opens.
 16. Use the Pencil tool to draw on the icon and verify proper operation.
 17. Press the OK button to close the Icon Editor.
-- **Should the icon in the VI Properties update when the editor closes?**
+
+**NOTE:** Should the icon in the VI Properties update when the editor closes? It does not since at least 8.2
+
 18. Close the VI Properties window.
 19. Verify the VI Icon was updated to match the updates.
 20. Close Pyramid Icon Template.vi, do not save the edits.
-- **Consider adding launching from Block Diagram as well**
 
-## Launching from a Control
+**NOTE:** Consider adding launching from Block Diagram as well
+
+## 2. Launching from a Control
 1. Open Control Template.ctl.
 2. From the Front Panel, double-click on the Control Icon.
 3. Verify the Icon Editor opens.
@@ -47,33 +52,58 @@ This procedure was dirived from NI test 1692477: Launch Test.
 15. Verify the Icon Edior opens.
 16. Use the Pencil tool to draw on the icon and verify proper operation.
 17. Press the OK button to close the Icon Editor.
-- **Should the icon in the Control Properties update when the editor closes?**
+
+**NOTE:** Should the icon in the Control Properties update when the editor closes? It does not since at least 8.2
+
 18. Close the Control Properties window.
 19. Verify the Control Icon was updated to match the updates.
 20. Close Control Template.ctl, do not save the edits.
 
-## Launching from a Library
+## 3. Launching from a Polymorphic VI
+1. Open Polymorphic Template.vi.
+2. Click the "Edit Icon..." button.
+3. Verify the Icon Editor opens.
+4. Use the Pencil tool to draw on the icon and verify proper operation.
+5. Press the OK button to close the Icon Editor.
+6. Verify the VI Icon was updated to match the updates.
+7. Double-Click the VI Icon.
+8. Verify the Icon Editor opens.
+9. Use the Pencil tool to draw on the icon and verify proper operation.
+10. Press the OK button to close the Icon Editor.
+11. Verify the VI Icon was updated to match the updates.
 
+**NOTE:** Double-clicking on the icon will cause the Icon Editor to open twice in a serial fashion
 
-## Launching from a Class
+12. Close Polymorphic Template.vi, do not save the edits.
 
+## 4. Launching from a Library
+1. Open the properties of Library Template.lvlib.
+2. In the General Settings category, click "Edit Icon...".
+3. Verify the Icon Editor opens.
+4. Use the Pencil tool to draw on the icon and verify proper operation.
+5. Press the OK button to close the Icon Editor.
+6. Verify the VI Icon Template was updated to match the updates.
+7. Click "Cancel" to close the Library Properties window without saving the changes.
 
-## Launching from a Polymorphic VI
+## 5. Launching from a Class
+1. Open the properties of Class Template.lvclass.
+2. In the General Settings category, click "Edit Icon...".
+3. Verify the Icon Editor opens.
+4. Use the Pencil tool to draw on the icon and verify proper operation.
+5. Press the OK button to close the Icon Editor.
+6. Verify the VI Icon Template was updated to match the updates.
+7. Click "Cancel" to close the Class Properties window without saving the changes.
 
+## 6. Palette Icon
+**Note:** This also verifies a partially transparent icon can be created.
+1. In the project window menu bar, choose to Tools->Advanced->Edit Palette Set...
+2. In the Functions palette window, right-click on the User Libraries palette and choose "Edit Subpalette Icon".
+6. Verify the Icon Editor opens.
+7. Select all layers and delete them.
+8. Add the library.png glyph to the middle of the icon.
+9. Press the OK button to close the Icon Editor.
+10. Verify the subpalette Icon was updated to match the updates.
+11. Click Cancel on the Edit Controls and Functions Palette Set dialog to discard the changes made.
 
-## Palette Icon
-
-
-Launch the IE from the following locations and make sure that it works properly (drop some glyphs, write some text and press OK).
-    - VI by double clicking on the icon
-    - VI by right clicking on the icon - Edit Icon
-    - VI by launching the preferences dialog and pressing - Edit Icon
-    - Control by double clicking on the icon
-    - Control by right clicking on the icon - Edit Icon
-    - Control by launching the preferences dialog and pressing - Edit Icon
-    - Library
-    - Class
-    - Polymorphic VI
-    - Palette icon (Tools - Options - Advanced - Edit palette set).
-        Additionally to the default test make sure that it's possible to create a partially transparent icon.
-            Use the clear tool to clear everything, afterwards drop only one glyph right in the center. Press enter. Ensure that everything looks fine and that nothing but the before dropped glyph is visible on the palette icon.
+# Close Up
+Close the Icon Editor Manual Tests project, discarding any changes.

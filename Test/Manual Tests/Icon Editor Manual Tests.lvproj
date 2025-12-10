@@ -15,6 +15,7 @@
 		<Item Name="Class Template.lvclass" Type="LVClass" URL="../../Templates/Class Template/Class Template.lvclass"/>
 		<Item Name="Control Template.ctl" Type="VI" URL="../../Templates/Control Template.ctl"/>
 		<Item Name="Library Template.lvlib" Type="Library" URL="../../Templates/Library Template/Library Template.lvlib"/>
+		<Item Name="Polymorphic Template.vi" Type="VI" URL="../../Templates/Polymorphic Template.vi"/>
 		<Item Name="Pyramid Icon Template.vi" Type="VI" URL="../../Templates/Pyramid Icon Template.vi"/>
 		<Item Name="Dependencies" Type="Dependencies"/>
 		<Item Name="Build Specifications" Type="Build"/>
