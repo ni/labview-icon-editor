@@ -1,7 +1,9 @@
 # Scope
 This procedure is used to verify the Icon Editor properly launches from the various entry points in the LabVIEW IDE.
 
-This procedure was dirived from NI test 1692477: Launch Test.
+This procedure was dirived from the following NI tests:
+- 1692477: Launch Test.
+- 1692478: Launch Stress Test
 
 # Setup
 Open the Icon Editor Manual Tests project.
@@ -19,18 +21,19 @@ Open the Icon Editor Manual Tests project.
 9. Use the Pencil tool to draw on the icon and verify proper operation.
 10. Press the OK button to close the Icon Editor.
 11. Verify the VI Icon was updated to match the updates.
-12. Open the VI Properties dialog (Ctrl+I or File->VI Properties).
-13. Set the Category to "General".
-14. Click Edit Icon.
-15. Verify the Icon Edior opens.
-16. Use the Pencil tool to draw on the icon and verify proper operation.
-17. Press the OK button to close the Icon Editor.
+12. Repeat step 2 through step 11 15 times to stress test launching the Icon Editor.
+13. Open the VI Properties dialog (Ctrl+I or File->VI Properties).
+14. Set the Category to "General".
+15. Click Edit Icon.
+16. Verify the Icon Edior opens.
+17. Use the Pencil tool to draw on the icon and verify proper operation.
+18. Press the OK button to close the Icon Editor.
 
 **NOTE:** Should the icon in the VI Properties update when the editor closes? It does not since at least 8.2
 
-18. Close the VI Properties window.
-19. Verify the VI Icon was updated to match the updates.
-20. Close Pyramid Icon Template.vi, do not save the edits.
+19. Close the VI Properties window.
+20. Verify the VI Icon was updated to match the updates.
+21. Close Pyramid Icon Template.vi, do not save the edits.
 
 **NOTE:** Consider adding launching from Block Diagram as well
 
