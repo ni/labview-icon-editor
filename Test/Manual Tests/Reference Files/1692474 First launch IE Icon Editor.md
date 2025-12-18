@@ -7,4 +7,6 @@ At the very first launch of the IE, make sure that:
         b) That Merger layers on commit is disabled
         c) That save 3rd party Templates is enabled and that the folder name is '3rd Party'
         d) That the fonts pull-down list is populated accordingly the installed fonts on the system. That the size is set to 9 and the alignment is left
-        e) Close the IE and relaunch it. During the first launch everything is initialized and therefore it takes longer than every consecutive launch. Make sure that the launch time on the 2nd and every following launch is little compared to the first launch.**On Windows, you can find the installed fonts here - C:\Windows\Fonts
+        e) Close the IE and relaunch it. During the first launch everything is initialized and therefore it takes longer than every consecutive launch. Make sure that the launch time on the 2nd and every following launch is little compared to the first launch.
+        
+**On Windows, you can find the installed fonts here - C:\Windows\Fonts
