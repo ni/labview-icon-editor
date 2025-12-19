@@ -317,6 +317,7 @@
 			<Item Name="Post Build Icon Editor PPL.vi" Type="VI" URL="../Tooling/Post Build Icon Editor PPL.vi"/>
 			<Item Name="Pre Build Icon Editor PPL.vi" Type="VI" URL="../Tooling/Pre Build Icon Editor PPL.vi"/>
 			<Item Name="Prepare LV to Use Icon Editor Source.vi" Type="VI" URL="../Tooling/Prepare LV to Use Icon Editor Source.vi"/>
+			<Item Name="Remove Icon Editor Settings.vi" Type="VI" URL="../Tooling/Remove Icon Editor Settings.vi"/>
 		</Item>
 		<Item Name="vi.lib/LabVIEW Icon API" Type="Folder">
 			<Item Name="lv_icon" Type="Folder">
