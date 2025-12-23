@@ -1,7 +1,7 @@
 # Scope
 This procedure is used to verify the Icon Editor properly launches from a fresh install with no saved settings.
 
-This procedure was dirived from the following NI tests:
+This procedure was derived from the following NI tests:
 - 1692474: First launch IE Icon Editor
 
 # Setup
@@ -12,7 +12,7 @@ This procedure was dirived from the following NI tests:
 3. Open and run Remove Icon Editor Settings.vi. This ensures there are no Icon Editor keys in the LabVIEW.ini file. All of the key names start with "IconEditor."
 4. Close the VI and project.
 
-# Test
+# Main
 1. Open a new VI from the Getting Started Window.
 2. From the Front Panel, double-click on the VI Icon.
 3. Verify the Icon Editor opens without seeing the loading dialog.
@@ -40,6 +40,6 @@ This procedure was dirived from the following NI tests:
 16. Verify the Icon Editor launched at least as fast as the first time opening it.
 **NOTE:** Because the Icon Editor is left in memory, it should load faster than the first run.
 
-# Close Up
+# Cleanup
 1. Close the Icon Editor.
 2. Close the VI.

@@ -1,14 +1,14 @@
 # Scope
 This procedure is used to verify the Icon Editor properly launches from the various entry points in the LabVIEW IDE.
 
-This procedure was dirived from the following NI tests:
+This procedure was derived from the following NI tests:
 - 1692477: Launch Test.
 - 1692478: Launch Stress Test
 
 # Setup
 Open the Icon Editor Manual Tests project.
 
-# Tests
+# Main
 ## 1. Launching from a VI
 1. Open Pyramid Icon Template.vi.
 2. From the Front Panel, double-click on the VI Icon.
@@ -29,13 +29,13 @@ Open the Icon Editor Manual Tests project.
 17. Use the Pencil tool to draw on the icon and verify proper operation.
 18. Press the OK button to close the Icon Editor.
 
-**NOTE:** Should the icon in the VI Properties update when the editor closes? It does not since at least 8.2
+    **NOTE:** Should the icon in the VI Properties update when the editor closes? It does not since at least 8.2
 
 19. Close the VI Properties window.
 20. Verify the VI Icon was updated to match the updates.
 21. Close Pyramid Icon Template.vi, do not save the edits.
 
-**NOTE:** Consider adding launching from Block Diagram as well
+    **NOTE:** Consider adding launching from Block Diagram as well
 
 ## 2. Launching from a Control
 1. Open Control Template.ctl.
@@ -56,7 +56,7 @@ Open the Icon Editor Manual Tests project.
 16. Use the Pencil tool to draw on the icon and verify proper operation.
 17. Press the OK button to close the Icon Editor.
 
-**NOTE:** Should the icon in the Control Properties update when the editor closes? It does not since at least 8.2
+    **NOTE:** Should the icon in the Control Properties update when the editor closes? It does not since at least 8.2
 
 18. Close the Control Properties window.
 19. Verify the Control Icon was updated to match the updates.
@@ -75,7 +75,7 @@ Open the Icon Editor Manual Tests project.
 10. Press the OK button to close the Icon Editor.
 11. Verify the VI Icon was updated to match the updates.
 
-**NOTE:** Double-clicking on the icon will cause the Icon Editor to open twice in a serial fashion
+    **NOTE:** Double-clicking on the icon will cause the Icon Editor to open twice in a serial fashion
 
 12. Close Polymorphic Template.vi, do not save the edits.
 
@@ -108,5 +108,5 @@ Open the Icon Editor Manual Tests project.
 10. Verify the subpalette Icon was updated to match the updates.
 11. Click Cancel on the Edit Controls and Functions Palette Set dialog to discard the changes made.
 
-# Close Up
+# Cleanup
 Close the Icon Editor Manual Tests project, discarding any changes.
