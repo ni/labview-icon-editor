@@ -41,7 +41,22 @@ This procedure was derived from the following NI tests:
 22. Verify the file \<LabVIEW Data\>\\Icon Templates\\Templates.\<LabVIEW Version\>.bin file was created. 
 23. Verify the Pyramid.png was saved to \<LabVIEW Data\>\\Icon Templates\\VI\\3rd party\\Pyramid.png.
 24. On the Icon Editor, click the Refresh button in the Templates tab.
-25. Verify the Pyramid.png template is when VI->3rd party is selected in teh Category tree.
+25. Verify the Pyramid.png template is when VI->3rd party is selected in the Category tree.
+26. Click "OK" to close the Icon Editor.
+27. Close Pyramid Icon Template.vi, discarding changes.
+28. From the project window, right-click on Library Template.lvlib and select "Properties".
+29. Click "Edit Icon..." to open the Icon Editor.
+30. Save the current icon as a template using the File->Save As...->Template menu item. Save the template in the Library subdirectory and name it Library.png.
+31. Select the new Library.png template from the template list.
+32. Click "OK" to close the Icon Editor.
+33. Remove the Library.png file and the Templates.bin file from the Icon Templates folder.
+34. Click "Edit Icon..." to open the Icon Editor.
+35. Verify the file \<LabVIEW Data\>\\Icon Templates\\Templates.\<LabVIEW Version\>.bin file was created. 
+36. Verify the Library.png was saved to \<LabVIEW Data\>\\Icon Templates\\Library\\3rd party\\Library.png.
+37. On the Icon Editor, click the Refresh button in the Templates tab.
+38. Verify the Pyramid.png template is when Library->3rd party is selected in the Category tree.
+39. Click "OK" to close the Icon Editor.
+40. Click "Cancel" to close the Library Properties window.
 
 # Cleanup
 1. Close the Icon Editor Manual Tests project and any associated files, discarding any changes.
