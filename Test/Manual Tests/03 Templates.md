@@ -11,7 +11,7 @@ This procedure was derived from the following NI tests:
 2. Remove all Templates.\<LabVIEW Version\>.bin files from the \<LabVIEW Data\>\\Icon Templates folder.
 
     **NOTE:** \<LabVIEW Data\> is an option in LabVIEW. By default, it is located at:
-- Windows: \<My Documents\>\\LabVIEW Data\\Icon Templates
+- Windows: \<My Documents\>\\LabVIEW Data
 - **To Do:** Add other OS versions to this note
 
 3. Open the Icon Editor Manual Tests project.
