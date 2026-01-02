@@ -3,8 +3,11 @@ This procedure is used to verify the functionality of the Glyphs tab on the Icon
 
 This procedure was derived from the following NI tests:
 - 1692479: Population of Glyphs and Templates
+- 1692481: Drop glyphs - Glyph in icon editor
 - 1692483: Template and Glyph Names
+- 1692490: List Glyphs and Icon Templates
 - 1692493: Keywords
+- 1692503: Synchronize with ni.com Icon Library
 
 # Setup
 1. Remove all glyphs from the \<LabVIEW Data\>\\Glyphs folder and subfolders.
@@ -23,9 +26,9 @@ This procedure was derived from the following NI tests:
 3. In the Glyphs tab, verify the available glyphs is empty.
 4. Save the current icon as a glyph using the File->Save As...->Glyph menu item. Save the glyph in the _test subdirectory and name it Pyramid.png.
 5. Verify the image was created at \<LabVIEW Data\>\\Glyphs\\_test\\Pyramid.png.
-6. Verify the Pyramid.png image is in the list of templates.
+6. Verify the Pyramid.png image is in the list of glyphs.
 7. Verify there is a "_test" in the Category tree.
-8. In the tool menu, choose Tools->List Glyphs and Icon Templates.
+8. In the menu, choose Tools->List Glyphs and Icon Templates.
 9. Verify an HTML report is displayed in the system's default web browser.
 10. Verify the Icon Templates section displays the currently installed templates.
 11. Verify the Glyphs section displays the Glyphs\\_test\\Pyramid.png.
@@ -45,21 +48,26 @@ This procedure was derived from the following NI tests:
 25. Go into the Layers tab and verify there is a Pyramid layer matching the image.
 26. Delete the Pyramid layer.
 27. Go into the Glyphs tab.
-28. Click on the Pyramid glyph.
-29. Verify the path listed below the Glyph list is "...bVIEW DAta\\Glyphs\\_test\\Pyramid.png".
-30. Hover over the preview section and verify the Pyramid glyph is moving with the mouse.
-31. Press Escape to cancel placing the glyph.
-32. Change the glyph filter to arrow and click on the Right_Arrow.png.
-33. Hover over the preview section.
-34. Press "f" and verify the arrow flips across the vertical axis.
-35. Press "r" and verify the arrow rotates clockwise.
-36. Click to set the glyph in the icon.
-37. Go into the Layers tab and verify there is a Arrow_Right layer with the glyph as you placed it.
-38. Remove the \<LabVIEW Data\>\\Glyphs\\_test folder.
-39. In the Glyphs tab, click the Refresh button.
-40. Verify the _test category was removed.
-41. Type "py" in the filter and verify the Pyramid.png glyph is not listed.
-42. Click "Cancel" to close the Icon Editor. Discard any changes.
+28. Drag the Pyramid glyph over the preview section and verify the Pyramid glyph is moving with the mouse.
+29. Release the mouse to drop the glyph.
+30. Verify the path listed below the Glyph list is "...bVIEW Data\\Glyphs\\_test\\Pyramid.png".
+31. Go into the Layers tab and verify there is a Pyramid layer matching the image.
+32. Delete the Pyramid layer.
+33. Go back into the Glyphs tab.
+34. Change the glyph filter to arrow and click on the Right_Arrow.png.
+35. Hover over the preview section.
+36. Press "f" and verify the arrow flips across the vertical axis.
+37. Press "r" and verify the arrow rotates clockwise.
+38. Click to set the glyph in the icon.
+39. Go into the Layers tab and verify there is a Arrow_Right layer with the glyph as you placed it.
+40. Remove the \<LabVIEW Data\>\\Glyphs\\_test folder.
+41. In the Glyphs tab, click the Refresh button.
+42. Verify the _test category was removed.
+43. Type "py" in the filter and verify the Pyramid.png glyph is not listed.
+44. In the menu, choose Edit->Import Glyph From File.
+45. Browse to the \<repo folder\>\\Test folder and select Pyramid.png
+46. Go into the Layers tab and verify there is a Pyramid layer matching the image.
+47. Click "Cancel" to close the Icon Editor. Discard any changes.
 
 # Cleanup
 1. Close the Icon Editor Manual Tests project and any associated files, discarding any changes.
