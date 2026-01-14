@@ -19,7 +19,8 @@ Run the following instructions on ALL of the above mentioned invokers!
 13. Reopen the IE on the same invokerMake sure that all layers, the icon text and the icon template are updated appropriately
 14. Hit CancelMake sure that the icon has not changed
 15. Close LabVIEW
-16. Reopen LabVIEW17. Reopen the previously saved invoker
+16. Reopen LabVIEW
+17. Reopen the previously saved invoker
 18. Launch the IE and make sure that all layers, the icon text and the icon template are updated appropriately
 
 Link to NITest TPS: http://force.natinst.com:8000/pls/nic3/ni_swt_general.show_test?p_test_id=120005
