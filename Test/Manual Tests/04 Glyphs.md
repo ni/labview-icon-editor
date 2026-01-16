@@ -7,6 +7,7 @@ This procedure was derived from the following NI tests:
 - 1692483: Template and Glyph Names
 - 1692490: List Glyphs and Icon Templates
 - 1692493: Keywords
+- 1692496 Layers Tab
 - 1692503: Synchronize with ni.com Icon Library
 
 # Setup
