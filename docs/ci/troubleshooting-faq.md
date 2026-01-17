@@ -20,6 +20,7 @@ This document provides a collection of common **troubleshooting** scenarios (wit
    11. [No. 11: Company/Author Fields Not Populating](#no-11-companyauthor-fields-not-populating)
    12. [No. 12: JSON Fields Overwritten Incorrectly](#no-12-json-fields-overwritten-incorrectly)
    13. [No. 13: Repository Forks Not Displaying Correct Metadata](#no-13-repository-forks-not-displaying-correct-metadata)
+   14. [No. 14: Runner Pauses Before Job Starts](#no-14-runner-pauses-before-job-starts)
 
 
 2. [FAQ](#faq)
@@ -42,7 +43,7 @@ This document provides a collection of common **troubleshooting** scenarios (wit
 
 ## Troubleshooting
 
-Below are 13 possible issues you might encounter, along with suggested steps to resolve them.
+Below are 14 possible issues you might encounter, along with suggested steps to resolve them.
 
 ### No. 1: LabVIEW Not Found on Runner
 
@@ -253,7 +254,22 @@ Below are 13 possible issues you might encounter, along with suggested steps to 
 **Solution**:
 1. In the new fork, update the workflow to pass `-CompanyName "${{ github.repository_owner }}"` and `-AuthorName "${{ github.repository }}"`.  
 2. Check that the script logic references those parameters for the final JSON.  
-3. Review environment variables in GitHub Actions for the fork to ensure they’re set correctly.
+3. Review environment variables in GitHub Actions for the fork to ensure they're set correctly.
+
+---
+
+### No. 14: Runner Pauses Before Job Starts
+
+**Symptoms**:
+- A workflow job appears idle until Enter or Esc is pressed in the runner terminal.
+- Job logs show a gap before the first "Set up job" line.
+
+**Possible Causes**:
+- The self-hosted runner is started in an interactive console with QuickEdit/selection mode active.
+
+**Solution**:
+1. Run the runner as a Windows service, or disable QuickEdit for the runner console.
+2. See [Runner Console Pause Troubleshooting](../runner-setup.md) for the exact steps.
 
 ---
 

@@ -116,7 +116,11 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
    - **Settings → Actions → Runners** → **New self-hosted runner**  
    - Follow GitHub’s CLI instructions.
 
-4. **Labels** (optional)
+4. **Avoid console pauses (recommended)**
+   - Run the runner as a Windows service, or disable QuickEdit if you must run interactively.
+   - See [Runner Console Pause Troubleshooting](../../runner-setup.md) for the exact steps.
+
+5. **Labels** (optional)
    - The workflow uses the `self-hosted-windows-lv` label. Its `runs-on` expression also references `self-hosted-linux-lv` for potential Linux jobs, though the default matrix runs only on Windows. Label your runner accordingly, and prepare a Linux runner with `self-hosted-linux-lv` if you expand the matrix.
 
 
