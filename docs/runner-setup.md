@@ -21,6 +21,39 @@ The runner is launched in an interactive console with QuickEdit/selection mode a
    ```
 4. Confirm the service is running and re-run the workflow.
 
+## Headless VM note: use a dedicated service account for PPL performance
+When the runner is a Windows service under `NetworkService` or `LocalSystem`, LabVIEW
+PPL builds can be much slower because LabVIEW caches are per-user. On a headless VM
+you still need a service, so run the service under a real user account with a
+persistent profile.
+
+### Steps (admin)
+1. Create a local user (example: `lvsvc`) and add it to Administrators:
+   ```
+   net user lvsvc <password> /add
+   net localgroup Administrators lvsvc /add
+   ```
+2. Grant **Log on as a service**:
+   - Open `secpol.msc`
+   - Local Policies -> User Rights Assignment -> Log on as a service
+   - Add `.\lvsvc`
+3. Switch the runner service to that account:
+   ```
+   Get-Service | Where-Object { $_.Name -like 'actions.runner*' }
+   Stop-Service <runner-service-name>
+   sc.exe config <runner-service-name> obj= ".\lvsvc" password= "<password>"
+   Start-Service <runner-service-name>
+   ```
+4. Initialize the profile once (creates `C:\Users\lvsvc`) and ensure the LabVIEW data folder exists:
+   ```
+   runas /user:.\lvsvc "cmd /c mkdir \"C:\Users\lvsvc\Documents\LabVIEW Data\""
+   ```
+5. Re-run the workflow and compare the 64-bit PPL build time.
+
+### Notes
+- If you cannot use a dedicated service account, expect slower PPL builds.
+- Interactive `run.cmd` can be fast but requires a logged-in session.
+
 ## Alternative: disable QuickEdit for the runner console
 If you must run interactively, disable QuickEdit:
 
