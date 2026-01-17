@@ -11,6 +11,7 @@ Notice: a left mouse click action always uses the edge and the fill color as the
     5. Right mouse click -> fill color selection
     6. Release the CTRL key. Make sure that the previous tool is selected again
     7. Press the CTRL+Shift key
-    8. Left mouse click -> fill color selection9. Right mouse click -> fill color selection
+    8. Left mouse click -> fill color selection
+    9. Right mouse click -> edge color selection
 
 Link to NITest TPS: http://force.natinst.com:8000/pls/nic3/ni_swt_general.show_test?p_test_id=120008
