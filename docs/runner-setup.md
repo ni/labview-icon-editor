@@ -11,12 +11,15 @@ The runner is launched in an interactive console with QuickEdit/selection mode a
 
 ## Fix (recommended): run the runner as a service
 1. Stop the interactive runner (`run.cmd`) if it is running.
-2. From an elevated PowerShell in the runner root:
+2. If the runner is already configured, remove it first:
    ```
-   .\svc install
-   .\svc start
+   .\config.cmd remove
    ```
-3. Confirm the service is running and re-run the workflow.
+3. Configure the runner as a Windows service (requires a fresh registration token):
+   ```
+   .\config.cmd --unattended --url https://github.com/<owner>/<repo> --token <token> --runasservice --replace
+   ```
+4. Confirm the service is running and re-run the workflow.
 
 ## Alternative: disable QuickEdit for the runner console
 If you must run interactively, disable QuickEdit:
