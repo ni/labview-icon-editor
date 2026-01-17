@@ -2,6 +2,8 @@
 
 This document explains how to locally set up and run the **LabVIEW Icon Editor** workflows on a **self-hosted runner** using **GitHub Actions**.
 
+If your runner appears to wait for Enter before jobs start, see [Runner Console Pause Troubleshooting](../../runner-setup.md).
+
 ## Table of Contents
 
 1. [Introduction](#introduction)  

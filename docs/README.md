@@ -21,4 +21,5 @@ This directory collects guides and references for working with the LabVIEW Icon 
   - [Maintainer's Guide](ci/actions/maintainers-guide.md)
   - [Multichannel Release Workflow](ci/actions/multichannel-release-workflow.md)
   - [Runner Setup Guide](ci/actions/runner-setup-guide.md)
+  - [Runner Console Pause Troubleshooting](runner-setup.md)
   - [Troubleshooting Experiments](ci/actions/troubleshooting-experiments.md)
