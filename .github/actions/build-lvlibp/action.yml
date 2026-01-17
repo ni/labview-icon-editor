@@ -8,6 +8,31 @@ runs:
       with:
         fetch-depth: 0
 
+    - name: LabVIEW cache diagnostics (pre)
+      shell: pwsh
+      run: |
+        Write-Host "User: $(whoami)"
+        $userProfile = [Environment]::GetFolderPath('UserProfile')
+        Write-Host "UserProfile: $userProfile"
+        $lvData = Join-Path $userProfile 'Documents\LabVIEW Data'
+        Write-Host "LabVIEW Data: $lvData"
+        if (Test-Path $lvData) {
+          Get-ChildItem -Path $lvData -Directory |
+            Select-Object Name, LastWriteTime |
+            Sort-Object Name |
+            Format-Table -AutoSize
+          foreach ($cacheName in @('VIObjCache', 'AppBuilderCache')) {
+            $cachePath = Join-Path $lvData $cacheName
+            if (Test-Path $cachePath) {
+              Get-Item -Path $cachePath | Select-Object FullName, LastWriteTime | Format-Table -AutoSize
+            } else {
+              Write-Host "Cache not found: $cachePath"
+            }
+          }
+        } else {
+          Write-Host "LabVIEW Data folder not found."
+        }
+
     - name: Run Build_lvlibp.ps1
       shell: pwsh
       run: |
@@ -20,6 +45,31 @@ runs:
           -Patch ${{ inputs.patch }} `
           -Build ${{ inputs.build }} `
           -Commit "${{ inputs.commit }}"
+
+    - name: LabVIEW cache diagnostics (post)
+      shell: pwsh
+      run: |
+        Write-Host "User: $(whoami)"
+        $userProfile = [Environment]::GetFolderPath('UserProfile')
+        Write-Host "UserProfile: $userProfile"
+        $lvData = Join-Path $userProfile 'Documents\LabVIEW Data'
+        Write-Host "LabVIEW Data: $lvData"
+        if (Test-Path $lvData) {
+          Get-ChildItem -Path $lvData -Directory |
+            Select-Object Name, LastWriteTime |
+            Sort-Object Name |
+            Format-Table -AutoSize
+          foreach ($cacheName in @('VIObjCache', 'AppBuilderCache')) {
+            $cachePath = Join-Path $lvData $cacheName
+            if (Test-Path $cachePath) {
+              Get-Item -Path $cachePath | Select-Object FullName, LastWriteTime | Format-Table -AutoSize
+            } else {
+              Write-Host "Cache not found: $cachePath"
+            }
+          }
+        } else {
+          Write-Host "LabVIEW Data folder not found."
+        }
 inputs:
   minimum_supported_lv_version:
     description: 'LabVIEW major version'
