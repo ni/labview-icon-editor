@@ -15,9 +15,14 @@ $Script:ParsingFailed    = $false
 
 $HelperPath      = Join-Path $PSScriptRoot 'RunMissingCheckWithGCLI.ps1'
 $MissingFilePath = Join-Path $PSScriptRoot 'missing_files.txt'
+$CloseScript     = Join-Path $PSScriptRoot '..\close-labview\Close_LabVIEW.ps1'
 
 if (-not (Test-Path $HelperPath)) {
     Write-Error "Helper script not found: $HelperPath"
+    exit 100
+}
+if (-not (Test-Path $CloseScript)) {
+    Write-Error "Close LabVIEW script not found: $CloseScript"
     exit 100
 }
 
@@ -97,16 +102,6 @@ function Cleanup {
     }
 }
 
-# Close LabVIEW but do not fail the job if it is already closed/missing
-function SafeQuitLabVIEW {
-    try {
-        & g-cli --lv-ver $LVVersion --arch $Arch QuitLabVIEW | Out-Null
-    }
-    catch {
-        Write-Warning ("Failed to close LabVIEW: {0}" -f $_.Exception.Message)
-    }
-}
-
 # ====================  EXECUTION FLOW  =====================
 try {
     Setup
@@ -117,13 +112,13 @@ catch {
     Write-Warning ("Execution failed before cleanup: {0}" -f $_.Exception.Message)
 }
 finally {
-    SafeQuitLabVIEW
     try {
         Cleanup
     }
     catch {
         Write-Warning ("Cleanup failed: {0}" -f $_.Exception.Message)
     }
+    & $CloseScript -MinimumSupportedLVVersion $LVVersion -SupportedBitness $Arch
 }
 
 # ====================  GH-ACTION OUTPUTS ===================
