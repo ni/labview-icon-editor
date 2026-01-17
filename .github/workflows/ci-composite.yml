@@ -5,13 +5,6 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  push:
-    branches:
-      - main
-      - develop
-      - release/*
-      - feature/*
-      - hotfix/*
   pull_request:
     branches:
       - main
@@ -24,12 +17,6 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-  workflow_dispatch:
-    inputs:
-      dispatch_tag:
-        description: "Expected tag for this run (optional, for dispatched builds)"
-        required: false
-        type: string
 
 jobs:
   changes:
