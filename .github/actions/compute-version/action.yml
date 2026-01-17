@@ -31,6 +31,16 @@ runs:
       with:
         fetch-depth: 0
 
+    - name: Trust workspace for git
+      shell: pwsh
+      run: |
+        $repo = $Env:GITHUB_WORKSPACE
+        if ([string]::IsNullOrWhiteSpace($repo)) {
+          $repo = (Get-Location).Path
+        }
+        $repo = $repo -replace '\\', '/'
+        git config --global --add safe.directory "$repo"
+
     - name: Determine bump type
       id: bump_type
       uses: actions/github-script@v7
