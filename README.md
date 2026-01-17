@@ -117,7 +117,8 @@ In-depth documentation and reference guides are located in the `/docs` directory
 - **Composite Actions:** Summary of the repository's reusable GitHub Actions is available in [Composite Actions](docs/ci/actions/README.md).
 - **Advanced Workflows:** Details on complex release processes and branching strategies. For example, the [Multichannel Release Workflow](docs/ci/actions/multichannel-release-workflow.md) explains alpha/beta/RC release branches, and [EXPERIMENTS.md](docs/ci/experiments.md) covers long-running feature branches. Maintainers can refer to the [Maintainer's Guide](docs/ci/actions/maintainers-guide.md) for internal release duties.
 - **Troubleshooting:** If you encounter issues, see the [Troubleshooting & FAQ](docs/ci/troubleshooting-faq.md) for common problems (environment setup, build failures, etc.). There is also a specialized [Experiments Troubleshooting](docs/ci/actions/troubleshooting-experiments.md) guide for experimental branch issues.
-- **Project Governance:** This project adheres to NI’s open-source governance model. See [GOVERNANCE.md](GOVERNANCE.md) for roles and decision-making processes, and refer to our [Code of Conduct](CODE_OF_CONDUCT.md) for community interaction guidelines.
+- **CI Runner Troubleshooting:** For self-hosted runner startup pauses (interactive console waiting for Enter), see [Runner Setup and Console Pause Issues](docs/runner-setup.md).
+- **Project Governance:** This project adheres to NI's open-source governance model. See [GOVERNANCE.md](GOVERNANCE.md) for roles and decision-making processes, and refer to our [Code of Conduct](CODE_OF_CONDUCT.md) for community interaction guidelines.
 
 ---
 
