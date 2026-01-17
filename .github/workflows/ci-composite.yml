@@ -10,14 +10,12 @@ on:
       - main
       - develop
       - release/*
-      - feature/*
       - hotfix/*
   pull_request:
     branches:
       - main
       - develop
       - release/*
-      - feature/*
       - hotfix/*
     types:
       - opened
