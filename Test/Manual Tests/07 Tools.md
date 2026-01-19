@@ -34,15 +34,21 @@ This procedure was derived from the following NI tests:
 17. Right click and drag to the bottom-right corner of the icon preview. Release the mouse button.
 18. Verify a blue line, following the path you used, was drawn.
 19. Verify the blue line was added to the Tool layer.
-20. Set the Line Color to black (text) and the Fill Color to red (Thermometer Fill).
-21. Delete the Tool layer.
-22. Move the cursor to the top-left corner of the icon preview.
-23. Left click and drag to the bottom-right corner of the icon preview. Do NOT release the mouse button.
-24. Verify a black line, following the path you used, is being drawn.
-25. Press the ESC button to cancel the operation.
-26. Release the mouse button.
-27. Verify the line was cleared.
-28. Verify a new layer was not created.
+20. Move the cursor to the top-left corner of the icon preview.
+21. Left click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+22. Verify a blue line, following the path you used, was drawn.
+23. Move the cursor to the top-right corner of the icon preview.
+24. Right click and drag to the bottom-left corner of the icon preview. Release the mouse button.
+25. Verify a green line, following the path you used, was drawn.
+26. Set the Line Color to black (text) and the Fill Color to red (Thermometer Fill).
+27. Delete the Tool layer.
+28. Move the cursor to the top-left corner of the icon preview.
+29. Left click and drag to the bottom-right corner of the icon preview. Do NOT release the mouse button.
+30. Verify a black line, following the path you used, is being drawn.
+31. Press the ESC button to cancel the operation.
+32. Release the mouse button.
+33. Verify the line was cleared.
+34. Verify a new layer was not created.
 
 ## 2. Line
 1. Click on the Line tool.
@@ -76,7 +82,9 @@ This procedure was derived from the following NI tests:
 
 ## 3. Fill
 1. Using the Line tool, draw a black line from the top-left corner to the bottom-right corner and a second line from the top-right corner to the bottom-left corner.
+
 **NOTE:** This is used to create four areas that can be filled and create a Tool layer.
+
 2. Click on the Fill tool.
 3. Move the mouse into the top area of the icon preview.
 4. Verify the cursor is the fill icon.
@@ -130,6 +138,41 @@ This procedure was derived from the following NI tests:
 30. Delete the Fill layer.
 
 ## 5. Rectangle
+1. Click on the Rectangle tool.
+2. Move the cursor to the top-left corner of the icon preview.
+3. Verify the cursor is a crosshair.
+4. Left click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+5. Verify a black rectangle was drawn outlining the icon.
+6. Verify a new User Layer was created named "Tool" and showing the line drawn.
+7. Move the cursor to the top-left corner of the icon preview inside of the previously drawn rectangle.
+8. Right click and drag to the bottom-right corner of the icon preview inside of the black rectangle. Release the mouse button.
+9. Verify a red rectangle was drawn.
+10. Verify the red rectangle was added to the Tool layer.
+11. Set the Line Color to green (LED On) and the Fill Color to blue (Slide Fill).
+12. Move the cursor to the top-left corner of the icon preview inside of the red rectangle.
+13. Left click and drag to the bottom-right corner of the icon preview inside of the red rectangle. Release the mouse button.
+14. Verify a green rectangle was drawn.
+15. Verify the green rectangle was added to the Tool layer.
+16. Move the cursor to the top-left corner of the icon preview inside of the green rectangle.
+17. Right click and drag to the bottom-right corner of the icon preview inside of the green rectangle. Release the mouse button.
+18. Verify a blue rectangle was drawn.
+19. Verify the blue rectangle was added to the Tool layer.
+20. Set the Line Color to black (text) and the Fill Color to red (Thermometer Fill).
+21. Delete the Tool layer.
+22. Move the cursor to the top-left corner of the icon preview.
+23. Left click and drag to the bottom-right corner of the icon preview. Do NOT release the mouse button.
+24. Verify a rectangle black is being drawn.
+25. Press the ESC button to cancel the operation.
+26. Release the mouse button.
+27. Verify the rectangle was cleared.
+28. Verify a new layer was not created.
+29. Double-click on the rectangle tool.
+30. Verify a black rectangle outlining the icon preview was created.
+31. Verify a new layer named "Border" was created.
+32. Delete the Border layer.
+
+## 6. Filled Rectangle
+1. 
 
 
 # Cleanup
