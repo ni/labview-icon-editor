@@ -5,6 +5,7 @@ This procedure was derived from the following NI tests:
 - 1692480: Tools test
 - 1692488: CTRL and CTRL-Shift actions
 
+Unless otherwise stated, each section of the Main may be ran independently of the other sections. The Setup and Cleanup must be performed.
 
 # Setup
 1. Open a new VI.
@@ -143,37 +144,156 @@ This procedure was derived from the following NI tests:
 3. Verify the cursor is a crosshair.
 4. Left click and drag to the bottom-right corner of the icon preview. Release the mouse button.
 5. Verify a black rectangle was drawn outlining the icon.
-6. Verify a new User Layer was created named "Tool" and showing the line drawn.
-7. Move the cursor to the top-left corner of the icon preview inside of the previously drawn rectangle.
-8. Right click and drag to the bottom-right corner of the icon preview inside of the black rectangle. Release the mouse button.
-9. Verify a red rectangle was drawn.
-10. Verify the red rectangle was added to the Tool layer.
-11. Set the Line Color to green (LED On) and the Fill Color to blue (Slide Fill).
-12. Move the cursor to the top-left corner of the icon preview inside of the red rectangle.
-13. Left click and drag to the bottom-right corner of the icon preview inside of the red rectangle. Release the mouse button.
-14. Verify a green rectangle was drawn.
-15. Verify the green rectangle was added to the Tool layer.
-16. Move the cursor to the top-left corner of the icon preview inside of the green rectangle.
-17. Right click and drag to the bottom-right corner of the icon preview inside of the green rectangle. Release the mouse button.
-18. Verify a blue rectangle was drawn.
-19. Verify the blue rectangle was added to the Tool layer.
-20. Set the Line Color to black (text) and the Fill Color to red (Thermometer Fill).
-21. Delete the Tool layer.
-22. Move the cursor to the top-left corner of the icon preview.
-23. Left click and drag to the bottom-right corner of the icon preview. Do NOT release the mouse button.
-24. Verify a rectangle black is being drawn.
-25. Press the ESC button to cancel the operation.
-26. Release the mouse button.
-27. Verify the rectangle was cleared.
-28. Verify a new layer was not created.
-29. Double-click on the rectangle tool.
-30. Verify a black rectangle outlining the icon preview was created.
-31. Verify a new layer named "Border" was created.
-32. Delete the Border layer.
+6. Verify a new User Layer was created named "Tool" and showing the rectangle drawn.
+7. Delete the Tool layer.
+8. Move the cursor to the top-left corner of the icon preview.
+9. Right click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+10. Verify a red rectangle was drawn outlining the icon.
+11. Verify a new User Layer was created named "Tool" and showing the rectangle drawn.
+12. Delete the Tool layer.
+13. Set the Line Color to green (LED On) and the Fill Color to blue (Slide Fill).
+14. Move the cursor to the top-left corner of the icon preview inside of the red rectangle.
+15. Left click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+16. Verify a green rectangle was drawn outlining the icon.
+17. Verify a new User Layer was created named "Tool" and showing the rectangle drawn.
+18. Delete the Tool layer.
+19. Move the cursor to the top-left corner of the icon preview.
+20. Right click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+21. Verify a blue rectangle was drawn outlining the icon.
+22. Verify a new User Layer was created named "Tool" and showing the rectangle drawn.
+23. Delete the Tool layer.
+24. Set the Line Color to black (text) and the Fill Color to red (Thermometer Fill).
+25. Move the cursor to the top-left corner of the icon preview.
+26. Left click and drag to the bottom-right corner of the icon preview. Do NOT release the mouse button.
+27. Verify a black rectangle is being drawn.
+28. Press the ESC button to cancel the operation.
+29. Release the mouse button.
+30. Verify the rectangle was cleared.
+31. Verify a new layer was not created.
+32. Double-click on the Rectangle tool.
+33. Verify a black rectangle outlining the icon preview was created.
+34. Verify a new layer named "Border" was created.
+35. Delete the Border layer.
 
 ## 6. Filled Rectangle
-1. 
+1. Click on the Filled Rectangle tool.
+2. Move the cursor to the top-left corner of the icon preview.
+3. Verify the cursor is a crosshair.
+4. Left click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+5. Verify a black rectangle outline with a red fill was drawn.
+6. Verify a new User Layer was created named "Tool" and showing the rectangle drawn.
+7. Delete the Tool layer.
+8. Move the cursor to the top-left corner of the icon preview.
+9. Right click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+10. Verify a red rectangle outline with a black fill was drawn.
+11. Verify a new User Layer was created named "Tool" and showing the rectangle drawn.
+12. Delete the Tool layer.
+13. Set the Line Color to green (LED On) and the Fill Color to blue (Slide Fill).
+14. Move the cursor to the top-left corner of the icon preview.
+15. Left click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+16. Verify a green rectangle with a blue fill was drawn.
+17. Verify a new User Layer was created named "Tool" and showing the rectangle drawn.
+18. Delete the Tool layer.
+19. Move the cursor to the top-left corner of the icon preview.
+20. Right click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+21. Verify a blue rectangle with a green fill was drawn.
+22. Verify a new User Layer was created named "Tool" and showing the rectangle drawn.
+23. Delete the Tool layer.
+24. Set the Line Color to black (text) and the Fill Color to red (Thermometer Fill).
+25. Move the cursor to the top-left corner of the icon preview.
+26. Left click and drag to the bottom-right corner of the icon preview. Do NOT release the mouse button.
+27. Verify a black rectangle with a red fill is being drawn.
+28. Press the ESC button to cancel the operation.
+29. Release the mouse button.
+30. Verify the rectangle was cleared.
+31. Verify a new layer was not created.
+32. Double-click on the Filled Rectangle tool.
+33. Verify a black rectangle filled with red outlining the icon preview was created.
+34. Verify a new layer named "Filled" was created.
+35. Delete the Filled layer.
 
+## 7. Ellipse
+1. Click on the Ellipse tool.
+2. Move the cursor to the top-left corner of the icon preview.
+3. Verify the cursor is a crosshair.
+4. Left click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+5. Verify a black circle was drawn inscribing the icon.
+6. Verify a new User Layer was created named "Tool" and showing the ellipse drawn.
+7. Delete the Tool layer.
+8. Move the cursor to the top-left corner of the icon preview.
+9. Right click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+10. Verify a red circle was drawn inscribing the icon.
+11. Verify a new User Layer was created named "Tool" and showing the ellipse drawn.
+12. Delete the Tool layer.
+13. Set the Line Color to green (LED On) and the Fill Color to blue (Slide Fill).
+14. Move the cursor to the top-left corner of the icon preview.
+15. Left click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+16. Verify a green circle was drawn inscribing the icon.
+17. Verify a new User Layer was created named "Tool" and showing the ellipse drawn.
+18. Delete the Tool layer.
+19. Move the cursor to the top-left corner of the icon preview.
+20. Right click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+21. Verify a blue circle was drawn inscribing the icon.
+22. Verify a new User Layer was created named "Tool" and showing the ellipse drawn.
+23. Delete the Tool layer.
+24. Set the Line Color to black (text) and the Fill Color to red (Thermometer Fill).
+25. Move the cursor to the top-left corner of the icon preview.
+26. Left click and drag to the bottom-right corner of the icon preview. Do NOT release the mouse button.
+27. Verify a black circle is being drawn.
+28. Press the ESC button to cancel the operation.
+29. Release the mouse button.
+30. Verify the ellipse was cleared.
+31. Verify a new layer was not created.
+
+## 8. Filled Ellipse
+1. Click on the Filled Ellipse tool.
+2. Move the cursor to the top-left corner of the icon preview.
+3. Verify the cursor is a crosshair.
+4. Left click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+5. Verify a black circle outline with a red fill was drawn.
+6. Verify a new User Layer was created named "Tool" and showing the ellipse drawn.
+7. Delete the Tool layer.
+8. Move the cursor to the top-left corner of the icon preview.
+9. Right click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+10. Verify a red circle outline with a black fill was drawn.
+11. Verify a new User Layer was created named "Tool" and showing the ellipse drawn.
+12. Delete the Tool layer.
+13. Set the Line Color to green (LED On) and the Fill Color to blue (Slide Fill).
+14. Move the cursor to the top-left corner of the icon preview.
+15. Left click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+16. Verify a green circle with a blue fill was drawn.
+17. Verify a new User Layer was created named "Tool" and showing the ellipse drawn.
+18. Delete the Tool layer.
+19. Move the cursor to the top-left corner of the icon preview.
+20. Right click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+21. Verify a blue circle with a green fill was drawn.
+22. Verify a new User Layer was created named "Tool" and showing the ellipse drawn.
+23. Delete the Tool layer.
+24. Set the Line Color to black (text) and the Fill Color to red (Thermometer Fill).
+25. Move the cursor to the top-left corner of the icon preview.
+26. Left click and drag to the bottom-right corner of the icon preview. Do NOT release the mouse button.
+27. Verify a black circle with a red fill is being drawn.
+28. Press the ESC button to cancel the operation.
+29. Release the mouse button.
+30. Verify the ellipse was cleared.
+31. Verify a new layer was not created.
+
+## 9. Eraser
+1. Double-click the Filled Rectangle tool to fill the icon.
+2. Click on the Eraser tool.
+3. Move the cursor to near the middle of the icon preview.
+4. Left click.
+5. Verify the pixel the cursor was over is erased.
+6. Move the cursor to another pixel in the icon preview.
+7. Right click.
+8. Verify the pixel the cursor was over is erased.
+9. Move the cursor to the top-left corner of the icon preview.
+10. Left click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+11. Verify the pixels the cursor passed over were erased.
+12. Delete the Filled layer.
+
+## 10. Text
+1. 
 
 # Cleanup
 1. Click "Cancel" to close the Icon Editor, discarding any changes.
