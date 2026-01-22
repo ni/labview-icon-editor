@@ -136,7 +136,18 @@ Unless otherwise stated, each section of the Main may be ran independently of th
 27. Release the CTRL and Shift keys.
 28. Verify the Fill Color is now red.
 29. Set the Line Color to black (text).
-30. Delete the Fill layer.
+30. Repeat steps 9 through 29 for each of the following tools:
+- Line
+- Paint
+- Rectangle
+- Filled Rectangle
+- Ellipse
+- Filled Ellipse
+- Eraser
+- Text
+- Select
+- Move
+31. Delete the Fill layer.
 
 ## 5. Rectangle
 1. Click on the Rectangle tool.
@@ -282,18 +293,76 @@ Unless otherwise stated, each section of the Main may be ran independently of th
 1. Double-click the Filled Rectangle tool to fill the icon.
 2. Click on the Eraser tool.
 3. Move the cursor to near the middle of the icon preview.
-4. Left click.
-5. Verify the pixel the cursor was over is erased.
-6. Move the cursor to another pixel in the icon preview.
-7. Right click.
-8. Verify the pixel the cursor was over is erased.
-9. Move the cursor to the top-left corner of the icon preview.
-10. Left click and drag to the bottom-right corner of the icon preview. Release the mouse button.
-11. Verify the pixels the cursor passed over were erased.
-12. Delete the Filled layer.
+4. Verify the cursor is a circle.
+5. Left click.
+6. Verify the pixel the cursor was over is erased.
+7. Move the cursor to another pixel in the icon preview.
+8. Right click.
+9. Verify the pixel the cursor was over is erased.
+10. Move the cursor to the top-left corner of the icon preview.
+11. Left click and drag to the bottom-right corner of the icon preview. Release the mouse button.
+12. Verify the pixels the cursor passed over were erased.
+13. Delete the Filled layer.
 
 ## 10. Text
-1. 
+1. Double-click the Text tool.
+2. Verify the Icon Editor Properties window is opened up with the Text Tool category selected.
+3. Ensure the following settings:
+- Font = Small Fonts
+- Alignment = center
+- Size = 9
+4. Click OK to save the settings and close the dialog.
+5. Click on the Text tool.
+6. Move the cursor to near the middle of the icon preview.
+7. Verify the cursor is I shaped.
+8. Left click.
+9. Verify a small carrot was placed in the icon preview where you clicked.
+10. Type "asdf".
+11. Verify "asdf" was placed in the icon preview.
+12. Verify the text is black and centered around where you clicked.
+13. Verify the small carrot is at the end of the text.
+14. Left click to finalize the text entry.
+15. Verify a new User Layer was created named "Tool" and showing the text entered.
+16. Remove the Tool layer.
+17. Set the Line Color to green (LED On).
+18. Move the cursor to near the middle of the icon preview.
+19. Left click.
+20. Verify a small carrot was placed in the icon preview where you clicked.
+21. Type "asdf".
+22. Verify "asdf" was placed in the icon preview.
+23. Verify the text is green and centered around where you clicked.
+24. Verify the small carrot is at the end of the text.
+25. Left click to finalize the text entry.
+26. Verify a new User Layer was created named "Tool" and showing the text entered.
+27. Remove the Tool layer.
+28. Set the Line Color to black (text).
+29. Move the cursor to near the middle of the icon preview.
+30. Left click.
+31. Type "asdf".
+32. Press the ESC button to cancel the operation.
+33. Verify the text was cleared.
+34. Verify a new layer was not created.
+35. Double-click the Text tool to open the Icon Editor Properties.
+36. Change the Font to LabVIEW Application and click OK.
+37. Click in the icon preview and type "asdf".
+38. Verify the font of the typed characters has changed.
+39. Double-click the Text tool to open the Icon Editor Properties.
+40. Change the Font to Small Fonts and the size to 15. Click OK.
+41. Click in the icon preview and type "asdf".
+42. Verify the font of the typed characters is larger than before.
+43. Double-click the Text tool to open the Icon Editor Properties.
+44. Change the size to 9 and the alignment to left. Click OK.
+45. Click in the icon preview and type "asdf".
+46. Verify the typed characters is left aligned to where the mouse was clicked.
+47. Double-click the Text tool to open the Icon Editor Properties.
+48. Change the alignment to right. Click OK.
+49. Click in the icon preview and type "asdf".
+50. Verify the typed characters is right aligned to where the mouse was clicked.
+51. Double-click the Text tool to open the Icon Editor Properties.
+52. Change the alignment to center. Click OK.
+53. Remove any created User Layers.
+
+##
 
 # Cleanup
 1. Click "Cancel" to close the Icon Editor, discarding any changes.
