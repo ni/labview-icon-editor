@@ -26,7 +26,7 @@ This document lists the PowerShell scripts used to build, test, and distribute t
 Adds a custom `LocalHost.LibraryPaths` token to the LabVIEW INI file so LabVIEW can find project libraries during development or builds. This script depends on `Tooling/deployment/Create_LV_INI_Token.vi`, which is not present in this repository, so it is not used by the development-mode automation.
 
 ## ApplyVIPC.ps1
-Applies a `.vipc` container to a specific LabVIEW version and bitness using g-cli. Ensures that all required LabVIEW dependencies are installed before building.
+Applies a `.vipc` **VI Package Configuration** to a specific LabVIEW version and bitness using g-cli. The `.vipc` is applied via VIPM and ensures required LabVIEW dependencies (including the G-CLI VIPM package) are installed before building.
 
 ## Build.ps1
 Top-level script that orchestrates the full build. Cleans previous outputs, builds packed libraries for 32-bit and 64-bit, updates metadata, and produces the final `.vip` package. Depends on many of the other scripts listed here.
@@ -65,5 +65,5 @@ Undoes development mode by invoking `RestoreSetupLVSource.ps1` for both bitnesse
 Locates the `.lvproj`, runs unit tests through g-cli, and outputs a table of results. Used in CI workflows.
 
 ## Run-CICompositeLocal.ps1
-Runs a local CI parity sequence based on `ci-composite.yml`. This script validates Verify IE Paths, applies VIPC dependencies, runs missing-in-project checks and unit tests for LabVIEW 2021 (32- and 64-bit), builds packed libraries, and produces the VI package using LabVIEW 2023 (64-bit). The script always runs both 64-bit and 32-bit steps for LabVIEW 2021, and most steps can be skipped via switches. Outputs are stored under `TestResults/ci-local`. Use `-ConnectTimeoutMs`, `-ProcessTimeoutMs`, and `-StatusFileTimeoutMs` to tune g-cli and status-file timing for your machine.
+Runs a local CI parity sequence based on `ci-composite.yml`. This script validates Verify IE Paths, applies VIPC dependencies, runs missing-in-project checks and unit tests for LabVIEW 2021 (21.0), 32- and 64-bit, builds packed libraries, and produces the VI package using LabVIEW 2021 (21.0) 64-bit. The script always runs both 64-bit and 32-bit steps for LabVIEW 2021 (21.0), and most steps can be skipped via switches. Outputs are stored under `TestResults/ci-local`. Use `-ConnectTimeoutMs`, `-ProcessTimeoutMs`, and `-StatusFileTimeoutMs` to tune g-cli and status-file timing for your machine.
 

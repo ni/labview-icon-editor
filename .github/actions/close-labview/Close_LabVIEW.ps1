@@ -7,7 +7,7 @@
     version and bitness, ensuring the application exits cleanly.
 
 .PARAMETER MinimumSupportedLVVersion
-    LabVIEW version to close (e.g., "2021").
+    LabVIEW 2021 (21.0) only.
 
 .PARAMETER SupportedBitness
     Bitness of the LabVIEW instance ("32" or "64").
@@ -16,7 +16,8 @@
     .\Close_LabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64"
 #>
 param(
-    [string]$MinimumSupportedLVVersion,
+    [ValidateSet('2021')]
+    [string]$MinimumSupportedLVVersion = '2021',
     [string]$SupportedBitness,
     [ValidateRange(5, 600)]
     [int]$TimeoutSeconds = 120

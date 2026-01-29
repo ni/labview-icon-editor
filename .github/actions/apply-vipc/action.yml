@@ -19,10 +19,10 @@ runs:
           -VIPCPath "${{ inputs.vipc_path }}"
 inputs:
   minimum_supported_lv_version:
-    description: 'LabVIEW major version (e.g. 2021)'
+    description: 'LabVIEW 2021 (21.0)'
     required: true
   vip_lv_version:
-    description: 'VIPC LV version (usually same as minimum supported)'
+    description: 'VIPC LabVIEW version (2021 / 21.0)'
     required: true
   supported_bitness:
     description: '32 or 64'

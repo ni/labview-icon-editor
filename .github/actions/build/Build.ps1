@@ -39,9 +39,10 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Commit,
 
-    # LabVIEW "minor" revision (0 or 3)
+    # LabVIEW "minor" revision (0 for 21.0)
     [Parameter(Mandatory = $false)]
-    [int]$LabVIEWMinorRevision = 3,
+    [ValidateSet(0)]
+    [int]$LabVIEWMinorRevision = 0,
 
     # New parameters that will populate the JSON fields
     [Parameter(Mandatory = $true)]
@@ -228,7 +229,7 @@ try {
             "-SupportedBitness 64 " +
             "-RelativePath `"$RelativePath`" " +
             "-VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" " +
-            "-MinimumSupportedLVVersion 2023 " +
+            "-MinimumSupportedLVVersion 2021 " +
             "-LabVIEWMinorRevision $LabVIEWMinorRevision " +
             "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
             "-Commit `"$Commit`" " +
@@ -238,7 +239,7 @@ try {
             "-Verbose"
         )   
 
-    # 11) Build VI Package (64-bit) 2023
+    # 11) Build VI Package (64-bit) 2021
     Write-Verbose "Building VI Package (64-bit)..."
     $BuildVip = Join-Path $ActionsPath "build-vip/build_vip.ps1"
     Execute-Script $BuildVip `
@@ -247,7 +248,7 @@ try {
             "-SupportedBitness 64 " +
             "-RelativePath `"$RelativePath`" " +
             "-VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" " +
-            "-MinimumSupportedLVVersion 2023 " +
+            "-MinimumSupportedLVVersion 2021 " +
             "-LabVIEWMinorRevision $LabVIEWMinorRevision " +
             "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
             "-Commit `"$Commit`" " +
@@ -260,7 +261,7 @@ try {
     # 12) Close LabVIEW (64-bit)
     Write-Verbose "Closing LabVIEW (64-bit)..."
     Execute-Script $CloseLabVIEW `
-        "-MinimumSupportedLVVersion 2023 -SupportedBitness 64"
+        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64"
 
     Write-Host "All scripts executed successfully!" -ForegroundColor Green
     Write-Verbose "Script: Build.ps1 completed without errors."

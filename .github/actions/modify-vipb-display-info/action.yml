@@ -40,12 +40,12 @@ inputs:
     description: 'Path to the VIPB file (relative to workspace)'
     required: true
   minimum_supported_lv_version:
-    description: 'LabVIEW major version'
+    description: 'LabVIEW 2021 (21.0)'
     required: true
   labview_minor_revision:
-    description: 'LabVIEW minor revision (0 or 3)'
+    description: 'LabVIEW minor revision (0 for 21.0)'
     required: false
-    default: '3'
+    default: '0'
   major:
     description: 'Major version component'
     required: true

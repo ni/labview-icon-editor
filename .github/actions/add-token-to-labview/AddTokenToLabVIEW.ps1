@@ -8,7 +8,7 @@
     LabVIEW to locate local project libraries during development or builds.
 
 .PARAMETER MinimumSupportedLVVersion
-    LabVIEW version used by g-cli (e.g., "2021").
+    LabVIEW 2021 (21.0) only.
 
 .PARAMETER SupportedBitness
     Target bitness of the LabVIEW environment ("32" or "64").
@@ -21,7 +21,8 @@
 #>
 
 param(
-    [string]$MinimumSupportedLVVersion,
+    [ValidateSet('2021')]
+    [string]$MinimumSupportedLVVersion = '2021',
     [string]$SupportedBitness,
     [string]$RelativePath
 )

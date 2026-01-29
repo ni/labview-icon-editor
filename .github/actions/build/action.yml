@@ -41,9 +41,9 @@ inputs:
     description: 'Commit identifier'
     required: true
   labview_minor_revision:
-    description: 'LabVIEW minor revision (0 or 3)'
+    description: 'LabVIEW minor revision (0 for 21.0)'
     required: false
-    default: '3'
+    default: '0'
   company_name:
     description: 'Company name for metadata'
     required: true

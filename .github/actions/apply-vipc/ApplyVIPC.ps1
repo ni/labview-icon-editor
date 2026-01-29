@@ -9,8 +9,11 @@
 
 [CmdletBinding()]  # Enables -Verbose and other common parameters
 Param (
-    [string]$MinimumSupportedLVVersion,
-    [string]$VIP_LVVersion,
+    [ValidateSet('2021')]
+    [string]$MinimumSupportedLVVersion = '2021',
+    [ValidateSet('2021')]
+    [string]$VIP_LVVersion = '2021',
+    [ValidateSet('32', '64')]
     [string]$SupportedBitness,
     [string]$RelativePath,
     [string]$VIPCPath
@@ -63,16 +66,8 @@ Write-Verbose "Determining LabVIEW version strings..."
 switch ("$VIP_LVVersion-$SupportedBitness") {
     "2021-64" { $VIP_LVVersion_A = "21.0 (64-bit)" }
     "2021-32" { $VIP_LVVersion_A = "21.0" }
-    "2022-64" { $VIP_LVVersion_A = "22.3 (64-bit)" }
-    "2022-32" { $VIP_LVVersion_A = "22.3" }
-    "2023-64" { $VIP_LVVersion_A = "23.3 (64-bit)" }
-    "2023-32" { $VIP_LVVersion_A = "23.3" }
-    "2024-64" { $VIP_LVVersion_A = "24.3 (64-bit)" }
-    "2024-32" { $VIP_LVVersion_A = "24.3" }
-    "2025-64" { $VIP_LVVersion_A = "25.3 (64-bit)" }
-    "2025-32" { $VIP_LVVersion_A = "25.3" }
     default {
-        Write-Error "Unsupported VIP_LVVersion or SupportedBitness for VIP_LVVersion_A."
+        Write-Error "Only LabVIEW 2021 (21.0) is supported for VIPC application."
         exit 1
     }
 }
@@ -80,16 +75,8 @@ switch ("$VIP_LVVersion-$SupportedBitness") {
 switch ("$MinimumSupportedLVVersion-$SupportedBitness") {
     "2021-64" { $VIP_LVVersion_B = "21.0 (64-bit)" }
     "2021-32" { $VIP_LVVersion_B = "21.0" }
-    "2022-64" { $VIP_LVVersion_B = "22.3 (64-bit)" }
-    "2022-32" { $VIP_LVVersion_B = "22.3" }
-    "2023-64" { $VIP_LVVersion_B = "23.3 (64-bit)" }
-    "2023-32" { $VIP_LVVersion_B = "23.3" }
-    "2024-64" { $VIP_LVVersion_B = "24.3 (64-bit)" }
-    "2024-32" { $VIP_LVVersion_B = "24.3" }
-    "2025-64" { $VIP_LVVersion_B = "25.3 (64-bit)" }
-    "2025-32" { $VIP_LVVersion_B = "25.3" }
     default {
-        Write-Error "Unsupported MinimumSupportedLVVersion or SupportedBitness for VIP_LVVersion_B."
+        Write-Error "Only LabVIEW 2021 (21.0) is supported for VIPC application."
         exit 1
     }
 }

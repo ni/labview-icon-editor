@@ -43,8 +43,8 @@ Describe "ModifyVIPBDisplayInfo.ps1" {
             -SupportedBitness 64 `
             -RelativePath $repoRoot `
             -VIPBPath $relativeVipbPath `
-            -MinimumSupportedLVVersion 2023 `
-            -LabVIEWMinorRevision 3 `
+            -MinimumSupportedLVVersion 2021 `
+            -LabVIEWMinorRevision 0 `
             -Major 1 `
             -Minor 4 `
             -Patch 1 `

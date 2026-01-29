@@ -11,7 +11,7 @@
         until just before the drive root.
 
 .PARAMETER MinimumSupportedLVVersion
-    LabVIEW minimum supported version (e.g., "2021").
+    LabVIEW 2021 (21.0) only.
 
 .PARAMETER SupportedBitness
     Bitness for LabVIEW (e.g., "64").
@@ -23,6 +23,7 @@
 
 param(
     [Parameter(Mandatory=$true)]
+    [ValidateSet('2021')]
     [string]
     $MinimumSupportedLVVersion,
 

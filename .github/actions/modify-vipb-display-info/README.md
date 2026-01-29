@@ -8,8 +8,8 @@ Execute **`ModifyVIPBDisplayInfo.ps1`** to merge metadata into a `.vipb` file be
 | `supported_bitness` | **Yes** | `64` | Target LabVIEW bitness. |
 | `relative_path` | **Yes** | `${{ github.workspace }}` | Repository root path. |
 | `vipb_path` | **Yes** | `Tooling/deployment/NI Icon editor.vipb` | Path to the VIPB file. |
-| `minimum_supported_lv_version` | **Yes** | `2021` | LabVIEW major version. |
-| `labview_minor_revision` | No (defaults to `3`) | `3` | LabVIEW minor revision. |
+| `minimum_supported_lv_version` | **Yes** | `2021` | LabVIEW 2021 (21.0). |
+| `labview_minor_revision` | No (defaults to `0`) | `0` | LabVIEW minor revision. |
 | `major` | **Yes** | `1` | Major version component. |
 | `minor` | **Yes** | `0` | Minor version component. |
 | `patch` | **Yes** | `0` | Patch version component. |
@@ -25,7 +25,7 @@ Execute **`ModifyVIPBDisplayInfo.ps1`** to merge metadata into a `.vipb` file be
     supported_bitness: 64
     relative_path: ${{ github.workspace }}
     vipb_path: Tooling/deployment/NI Icon editor.vipb
-    minimum_supported_lv_version: 2024
+    minimum_supported_lv_version: 2021
     major: 1
     minor: 0
     patch: 0
@@ -37,3 +37,4 @@ Execute **`ModifyVIPBDisplayInfo.ps1`** to merge metadata into a `.vipb` file be
 
 ## License
 This directory inherits the root repository’s license (MIT, unless otherwise noted).
+

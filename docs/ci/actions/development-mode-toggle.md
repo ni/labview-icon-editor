@@ -23,7 +23,7 @@ You do **not** need to copy/paste the entire workflow snippet here, as it’s al
    - Go to the "Actions" tab on your (or your fork's) GitHub repository.
    - Select the **"Toggle Development Mode"** workflow.
    - Click "Run workflow" and choose either `enable` or `disable` from the dropdown.
-   - (Optional) Choose a LabVIEW version (`minimum_supported_lv_version`, default `2021`).
+   - LabVIEW version is fixed to **2021** (`minimum_supported_lv_version` remains for compatibility; keep it set to `2021`).
    - (Optional) Choose a bitness (`bitness`, default `64`).
    - This will execute the PowerShell scripts ([`Set_Development_Mode.ps1`](../../../.github/actions/set-development-mode/Set_Development_Mode.ps1) or [`RevertDevelopmentMode.ps1`](../../../.github/actions/revert-development-mode/RevertDevelopmentMode.ps1)) on the **target self-hosted runner** (your personal machine or a shared machine).
 
@@ -34,7 +34,7 @@ You do **not** need to copy/paste the entire workflow snippet here, as it’s al
 3. **Triggering from Another Workflow**
    - Use a `workflow_call` reference (detailed examples below).
    - Pass the input parameter `mode` set to `enable` or `disable`.
-   - Optionally pass `minimum_supported_lv_version` to control which LabVIEW version g-cli targets.
+   - Pass `minimum_supported_lv_version: 2021` if you include the input (other values are not supported).
    - Optionally pass `bitness` (`32` or `64`) to select the LabVIEW bitness.
    - The runner that calls it will be the one switched into (or out of) dev mode.
 
@@ -139,16 +139,16 @@ When development mode fails, the VI error source string prints a **comma-separat
 **To change** how "dev mode" behaves, **edit those scripts** directly. 
 
 ### Integration Tests
-You can run the integration tests locally on a runner that has LabVIEW 2025 (64-bit) installed:
+You can run the integration tests locally on a runner that has LabVIEW 2021 (21.0) 64-bit installed:
 
 ```powershell
-pwsh -NoProfile -File .\Test\Pester\Run-Pester.ps1 -LabVIEWVersion 2025 -LabVIEWBitness 64 -ConnectTimeoutMs 180000 -ProcessTimeoutMs 300000
+pwsh -NoProfile -File .\Test\Pester\Run-Pester.ps1 -LabVIEWVersion 2021 -LabVIEWBitness 64 -ConnectTimeoutMs 180000 -ProcessTimeoutMs 300000
 ```
 
 To include the dev-mode integration tests (enable/disable dev mode and VerifyIEPaths checks):
 
 ```powershell
-pwsh -NoProfile -File .\Test\Pester\Run-Pester.ps1 -RunDevModeTests -LabVIEWVersion 2025 -LabVIEWBitness 64 -ConnectTimeoutMs 180000 -ProcessTimeoutMs 300000
+pwsh -NoProfile -File .\Test\Pester\Run-Pester.ps1 -RunDevModeTests -LabVIEWVersion 2021 -LabVIEWBitness 64 -ConnectTimeoutMs 180000 -ProcessTimeoutMs 300000
 ```
 
 ### Pull Requests with Script Updates

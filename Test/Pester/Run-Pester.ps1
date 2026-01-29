@@ -1,6 +1,6 @@
 param(
-    [ValidateSet('2021', '2025')]
-    [string]$LabVIEWVersion = '2025',
+    [ValidateSet('2021')]
+    [string]$LabVIEWVersion = '2021',
 
     [ValidateSet('32', '64', 'both', 'all', 'auto')]
     [string]$LabVIEWBitness = '64',

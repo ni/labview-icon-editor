@@ -26,7 +26,7 @@ runs:
         & "${{ github.action_path }}/RevertDevelopmentMode.ps1" @scriptArgs
 inputs:
   minimum_supported_lv_version:
-    description: 'LabVIEW major version (2020-2025)'
+    description: 'LabVIEW 2021 (21.0) only'
     required: false
     default: '2021'
   supported_bitness:

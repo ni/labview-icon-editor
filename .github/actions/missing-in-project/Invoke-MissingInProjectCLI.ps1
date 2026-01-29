@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][string]$LVVersion,
+    [Parameter(Mandatory)][ValidateSet('2021')][string]$LVVersion,
     [Parameter(Mandatory)][ValidateSet('32','64')][string]$Arch,
     [Parameter(Mandatory)][string]$ProjectFile
 )

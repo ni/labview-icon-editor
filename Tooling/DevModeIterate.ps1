@@ -8,7 +8,7 @@
     scripts parse g-cli output for dev-mode error codes.
 
 .PARAMETER MinimumSupportedLVVersion
-    LabVIEW version used by g-cli (e.g., "2021").
+    LabVIEW 2021 (21.0) only.
 
 .PARAMETER SupportedBitness
     LabVIEW bitness to target ("32" or "64"). Defaults to "64".
@@ -45,7 +45,7 @@
 
 param(
     [Parameter(Mandatory = $false)]
-    [ValidateSet('2020', '2021', '2022', '2023', '2024', '2025')]
+    [ValidateSet('2021')]
     [string]$MinimumSupportedLVVersion = '2021',
 
     [Parameter(Mandatory = $false)]

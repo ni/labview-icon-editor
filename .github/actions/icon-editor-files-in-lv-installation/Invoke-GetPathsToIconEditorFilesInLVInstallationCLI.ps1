@@ -2,6 +2,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)]
+    [ValidateSet('2021')]
     [string]$LVVersion,
 
     [Parameter(Mandatory)]

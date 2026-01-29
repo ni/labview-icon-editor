@@ -5,8 +5,7 @@ This repository uses LabVIEW, g-cli, and PowerShell tooling. Follow the steps be
 ## Prerequisites
 - Windows with PowerShell 7+ available as `pwsh`.
 - `g-cli` available on PATH.
-- LabVIEW 2021 SP1 32-bit and 64-bit installed.
-- LabVIEW 2023 64-bit installed (for VIP build parity).
+- LabVIEW 2021 (21.0) 32-bit and 64-bit installed.
 - VIPM/VIPC installed (required for dependency application).
 
 ## Repo Setup
@@ -19,13 +18,12 @@ Run the local parity script that mirrors `ci-composite.yml`:
 ```
 pwsh -NoProfile -File .\Tooling\Run-CICompositeLocal.ps1 `
   -LabVIEWVersion 2021 `
-  -LabVIEWBuildVersion 2023 `
   -EnsureCleanState
 ```
 
 Notes:
 - Outputs go to `TestResults\ci-local`.
-- The script always runs both 64-bit and 32-bit steps for LabVIEW 2021.
+- The script always runs both 64-bit and 32-bit steps for LabVIEW 2021 (21.0).
 - The script handles Verify IE Paths, VIPC, missing-in-project, unit tests, PPL builds, and VIP build.
 - If LabVIEW or g-cli is already running, the script waits for them to exit before starting.
 - You can skip steps with switches like `-SkipBuildVip` or `-SkipUnitTests`.
@@ -53,7 +51,7 @@ New-Item -Path $logRoot -ItemType Directory -Force | Out-Null
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $logFile = Join-Path $logRoot "run-$timestamp.log"
 $csv = Join-Path $logRoot 'run-history.csv'
-$command = 'pwsh -NoProfile -File .\Tooling\Run-CICompositeLocal.ps1 -LabVIEWVersion 2021 -LabVIEWBuildVersion 2023 -EnsureCleanState'
+$command = 'pwsh -NoProfile -File .\Tooling\Run-CICompositeLocal.ps1 -LabVIEWVersion 2021 -EnsureCleanState'
 
 $start = Get-Date
 Start-Transcript -Path $logFile -Append | Out-Null
@@ -104,7 +102,7 @@ for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
     continue
   }
 
-  $command = "pwsh -NoProfile -File .\\Tooling\\Run-CICompositeLocal.ps1 -LabVIEWVersion 2021 -LabVIEWBuildVersion 2023 -EnsureCleanState -ConnectTimeoutMs $connectTimeout -ProcessTimeoutMs $processTimeout"
+  $command = "pwsh -NoProfile -File .\\Tooling\\Run-CICompositeLocal.ps1 -LabVIEWVersion 2021 -EnsureCleanState -ConnectTimeoutMs $connectTimeout -ProcessTimeoutMs $processTimeout"
 
   Start-Transcript -Path $logFile -Append | Out-Null
   try {

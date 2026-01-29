@@ -17,7 +17,7 @@ runs:
           -RelativePath "${{ inputs.relative_path }}"
 inputs:
   minimum_supported_lv_version:
-    description: 'LabVIEW major version'
+    description: 'LabVIEW 2021 (21.0)'
     required: true
   supported_bitness:
     description: '32 or 64'

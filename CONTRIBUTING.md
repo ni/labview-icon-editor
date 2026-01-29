@@ -17,7 +17,7 @@ All interactions should be respectful and follow our [Code of Conduct](CODE_OF_C
 
 ## Getting Started
 
-1. **Development Setup:** To build or test the project locally, you will need **LabVIEW 2021 SP1** (32-bit and 64-bit). This is the version the source is saved in for development purposes. *(The released VI Package requires LabVIEW 2023 SP1 or later.)* You’ll also need **NI’s G-CLI** tool and the **VIPM API**:
+1. **Development Setup:** To build or test the project locally, you will need **LabVIEW 2021 (21.0)** (32-bit and 64-bit). This is the version the source is saved in for development purposes. *(The released VI Package targets LabVIEW 2021 (21.0) or later.)* You’ll also need **NI’s G-CLI** tool and the **VIPM API**:
    - **G-CLI (Command Line Interface Toolkit)** – *Provides the ability to run LabVIEW VIs from the command line.* This is distributed via VI Package; the version used in this project is included in our dependency file (see below).
    - **VI Package Manager (VIPM) API** – *Enables automation of VIPM for building and applying packages.* This is also included as a VI Package dependency.
    
@@ -69,7 +69,7 @@ When opening an issue (bug report or documentation issue), please provide as muc
 - **Title:** A clear, concise title that summarizes the issue.
 - **Description:** Explain the issue in detail. For a bug, describe what happens and what you expected to happen instead.
 - **Steps to Reproduce:** List the steps or include a VI (or sequence of actions in LabVIEW) that reproduces the issue.
-- **Environment:** Include your OS, LabVIEW version (e.g., 2023 64-bit), and any other relevant system info.
+- **Environment:** Include your OS, LabVIEW version (e.g., 2021 64-bit), and any other relevant system info.
 - **Screenshots:** If applicable, add screenshots or error messages to illustrate the problem.
 
 Well-written issues help us resolve problems faster. And if you’re up for it, after reporting a bug you might try to fix it and submit a PR!

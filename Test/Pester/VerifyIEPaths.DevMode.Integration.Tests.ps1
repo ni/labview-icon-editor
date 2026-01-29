@@ -4,7 +4,7 @@ Describe 'Verify IE Paths (dev mode) integration' {
     BeforeAll {
         $script:skipAll = $false
         $script:skipReason = ''
-        $script:labviewVersion = if ([string]::IsNullOrWhiteSpace($env:LABVIEW_VERSION)) { '2025' } else { $env:LABVIEW_VERSION }
+        $script:labviewVersion = if ([string]::IsNullOrWhiteSpace($env:LABVIEW_VERSION)) { '2021' } else { $env:LABVIEW_VERSION }
         $script:labviewBitness = if ([string]::IsNullOrWhiteSpace($env:LABVIEW_BITNESS)) { '64' } else { $env:LABVIEW_BITNESS }
         $script:connectTimeoutMs = if ([string]::IsNullOrWhiteSpace($env:LABVIEW_CONNECT_TIMEOUT_MS)) { '120000' } else { $env:LABVIEW_CONNECT_TIMEOUT_MS }
         $script:processTimeoutMs = if ([string]::IsNullOrWhiteSpace($env:LABVIEW_PROCESS_TIMEOUT_MS)) { '300000' } else { $env:LABVIEW_PROCESS_TIMEOUT_MS }
@@ -113,9 +113,9 @@ Describe 'Verify IE Paths (dev mode) integration' {
             return
         }
 
-        if (@('2021', '2025') -notcontains $script:labviewVersion) {
+        if ($script:labviewVersion -ne '2021') {
             $script:skipAll = $true
-            $script:skipReason = 'Only LabVIEW 2021 and 2025 are supported by this test suite.'
+            $script:skipReason = 'Only LabVIEW 2021 (21.0) is supported by this test suite.'
             return
         }
 

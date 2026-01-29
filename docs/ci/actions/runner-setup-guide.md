@@ -27,7 +27,7 @@ This document details how to automate **building**, **testing**, and **packaging
 Additionally, **you can pass metadata fields** (like **organization** or **repository name**) to the **build script**. These fields are embedded into the **VI Package** display information, effectively **branding** the Icon Editor package with a unique identifier. This is especially useful when multiple forks or organizations produce their own versions of the Icon Editor—ensuring each `.vip` is clearly labeled with the correct “author” or “company.”
 
 > **Prerequisites**:
-> - **LabVIEW 2021 SP1 (32-bit and 64-bit)** – and **LabVIEW 2023 (64-bit) for building the package**.
+> - **LabVIEW 2021 (21.0), 32-bit and 64-bit**.
 > - The relevant **VIPC** file is now at `.github/actions/apply-vipc/runner_dependencies.vipc`.
 > - [PowerShell 7+](https://github.com/PowerShell/PowerShell/releases/latest)
 > - [Git for Windows](https://github.com/git-for-windows/git/releases/latest)
@@ -38,12 +38,12 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 **For experienced users**, a brief overview:
 
 1. **Install Required Software**
-   - Ensure **LabVIEW 2021 SP1 32-bit and 64-bit** are installed. If you plan to build the package, install **LabVIEW 2023 (64-bit)** as well.
+   - Ensure **LabVIEW 2021 (21.0) 32-bit and 64-bit** are installed.
    - [PowerShell 7+](https://github.com/PowerShell/PowerShell/releases/latest)
    - [Git for Windows](https://github.com/git-for-windows/git/releases/latest)
 
 2. **Apply the VIPC**
-  - Apply `.github/actions/apply-vipc/runner_dependencies.vipc` with VIPM in **LabVIEW 2021 (32-bit)**; repeat for **LabVIEW 2021 (64-bit)**. If using **LabVIEW 2023 (64-bit)** for builds, apply the same VIPC there as well.
+  - Apply `.github/actions/apply-vipc/runner_dependencies.vipc` with VIPM in **LabVIEW 2021 (21.0) 32-bit**; repeat for **LabVIEW 2021 (21.0) 64-bit**.
    - This is required on new runners because the workflow's `apply-deps` job in `.github/workflows/ci-composite.yml` runs only when `.vipc` files change (`if: needs.changes.outputs.vipc == 'true'`). When no `.vipc` updates exist, dependencies aren't installed automatically, so apply the VIPC manually.
 
 3. **Configure a Self-Hosted Runner**  
@@ -85,7 +85,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 1. **Development Mode Toggle**  
    - `mode: enable` → calls `Set_Development_Mode.ps1`.  
    - `mode: disable` → calls `RevertDevelopmentMode.ps1`.  
-   - Optional `minimum_supported_lv_version` (default `2021`, supports `2020`-`2025`).
+   - Optional `minimum_supported_lv_version` (default `2021`, only `2021` is supported).
    - Great for reconfiguring LabVIEW for local dev vs. distribution builds.
 
 2. **CI Pipeline (Composite)**
@@ -104,7 +104,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 
 **Steps**:
 
-1. **Install LabVIEW 2021 SP1 (32-bit and 64-bit)**  
+1. **Install LabVIEW 2021 (21.0), 32-bit and 64-bit**  
    - Confirm both are present on your Windows machine.  
    - Apply `.github/actions/apply-vipc/runner_dependencies.vipc` to each if needed.
 
@@ -138,7 +138,7 @@ With your runner online:
 
 1. **Enable Dev Mode** (if needed)
    - **Actions → Development Mode Toggle**, set `mode: enable`.
-   - Optionally set `minimum_supported_lv_version` (default `2021`).
+   - `minimum_supported_lv_version` is fixed to `2021` if provided.
 
 2. **Run Tests via CI Pipeline (Composite)**
    - Execute the workflow and review the **test** job logs to confirm all unit tests pass.
@@ -150,7 +150,7 @@ With your runner online:
 
 4. **Disable Dev Mode** (if used)  
    - `mode: disable` reverts your LabVIEW environment.
-   - Optionally set `minimum_supported_lv_version` to match the version you toggled.
+   - Keep `minimum_supported_lv_version` set to `2021` if you include it.
 
 5. **Review the `.vip`**
    - Download from **Artifacts**. Publishing to a GitHub release requires a separate workflow.

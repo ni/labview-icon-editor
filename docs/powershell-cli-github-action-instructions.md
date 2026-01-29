@@ -104,7 +104,7 @@ For a visual reference, you may consult a **Gitflow diagram** that includes alph
 For **detailed runner configuration**, see **`runner-setup-guide.md`**. Below is a short summary:
 
 1. **Install Prerequisites**
-   - **LabVIEW 2021 SP1** (32-bit and 64-bit) plus **LabVIEW 2023** (as needed for packaging)
+   - **LabVIEW 2021 (21.0), 32-bit and 64-bit**
    - **PowerShell 7+**
    - **Git for Windows**
 2. **Add a Self-Hosted Runner**  
@@ -142,7 +142,7 @@ You’ll typically name the workflow file **`development-mode-toggle.yml`**. Its
 1. **Trigger Manually**  
    - Go to the **Actions** tab, select the "Development Mode Toggle" workflow, click "Run workflow."  
    - Choose `enable` or `disable` to run the corresponding PowerShell script (`Set_Development_Mode.ps1` or `RevertDevelopmentMode.ps1`).  
-   - (Optional) Choose a LabVIEW version (`minimum_supported_lv_version`, default `2021`).  
+   - LabVIEW version is fixed to **2021** (`minimum_supported_lv_version` remains for compatibility; keep it set to `2021`).  
    - (Optional) Choose a bitness (`bitness`, default `64`).  
    - The workflow runs on your self-hosted runner (e.g., labeled `self-hosted-windows-lv`).  
 
@@ -152,7 +152,7 @@ You’ll typically name the workflow file **`development-mode-toggle.yml`**. Its
 
 3. **Trigger from Another Workflow**  
    - You can call this workflow using `workflow_call`. Pass the input parameter `mode` = `enable` or `disable`.  
-   - Optionally pass `minimum_supported_lv_version` to control which LabVIEW version g-cli targets.  
+   - Pass `minimum_supported_lv_version: 2021` if you include the input (other values are not supported).  
    - Optionally pass `bitness` (`32` or `64`) to select the LabVIEW bitness.  
    - The same runner used by the calling job is toggled accordingly.
 

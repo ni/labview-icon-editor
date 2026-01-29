@@ -9,7 +9,7 @@
     VI executes so subsequent steps load the changes.
 
 .PARAMETER MinimumSupportedLVVersion
-    LabVIEW version used by g-cli (e.g., "2021").
+    LabVIEW 2021 (21.0) only.
 
 .PARAMETER SupportedBitness
     Target bitness of the LabVIEW environment ("32" or "64").
@@ -30,7 +30,7 @@
 
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('2020', '2021', '2022', '2023', '2024', '2025')]
+    [ValidateSet('2021')]
     [string]$MinimumSupportedLVVersion,
 
     [Parameter(Mandatory = $true)]

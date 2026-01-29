@@ -26,8 +26,8 @@ Results are returned as standard GitHub Action outputs so downstream jobs can d
 | Requirement            | Notes |
 |------------------------|-------|
 | **Windows runner**     | LabVIEW and g‑cli are only available on Windows. |
-| **LabVIEW** `>= 2020`  | Must match the *numeric* version you pass in **`lv-ver`**. |
-| **g‑cli** in `PATH`    | The action calls `g-cli --lv-ver …`. Install from NI Package Manager or copy the executable into the runner image. |
+| **LabVIEW 2021 (21.0)**  | Must match the *numeric* version you pass in **`lv-ver`**. |
+| **g‑cli** in `PATH`    | The action calls `g-cli --lv-ver …`. Install via **VIPM (JKI)** or copy the executable into the runner image. |
 | **PowerShell 7**       | Composite steps use PowerShell Core (`pwsh`). |
 
 ---
@@ -84,7 +84,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/missing-in-project
         with:
-          lv-ver: 2024
+          lv-ver: 2021
           arch: 64
 
   build-package:
@@ -127,7 +127,7 @@ jobs:
 ## Developing & testing locally
 ```powershell
 pwsh -File .github/actions/missing-in-project/Invoke-MissingInProjectCLI.ps1 `
-      -LVVersion 2024 `
+      -LVVersion 2021 `
       -Arch 64 `
       -ProjectFile 'C:\path	o\MyProj.lvproj'
 

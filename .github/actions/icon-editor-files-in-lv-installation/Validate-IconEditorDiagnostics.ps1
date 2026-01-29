@@ -12,7 +12,7 @@ param(
     [ValidateSet('32', '64')]
     [string]$Bitness,
 
-    [ValidateSet('2020', '2021', '2022', '2023', '2024', '2025')]
+    [ValidateSet('2021')]
     [string]$LabVIEWVersion = '2021',
 
     [string]$RepoRoot

@@ -10,7 +10,7 @@ on:
         required: true
         default: "enable"
       minimum_supported_lv_version:
-        description: "LabVIEW major version (2020-2025)."
+        description: "LabVIEW major version (2021 only)."
         type: string
         required: false
         default: "2021"
@@ -42,12 +42,7 @@ on:
         default: "2021"
         type: choice
         options:
-          - "2020"
           - "2021"
-          - "2022"
-          - "2023"
-          - "2024"
-          - "2025"
       bitness:
         description: "LabVIEW bitness."
         required: false

@@ -30,10 +30,10 @@
 
 The **LabVIEW Icon Editor** is an open-source, MIT-licensed tool for creating and editing VI icons, delivered as a VI Package. Each official **LabVIEW** release automatically includes the latest Icon Editor from this repository’s `main` branch (the next integration is targeting **LabVIEW 2026 Q1**).
 
-In practice, **your contributions** – whether new features, fixes, or improvements – can become part of the Icon Editor shipped with LabVIEW itself. The source code is maintained in **LabVIEW 2021 SP1** format for broad compatibility (allowing contributors using LabVIEW 2021–2025 to build the editor), while the released VI Package requires **LabVIEW 2023 SP1 or newer** to run.
+In practice, **your contributions** – whether new features, fixes, or improvements – can become part of the Icon Editor shipped with LabVIEW itself. The source code is maintained in **LabVIEW 2021 (21.0)** format for broad compatibility, and the released VI Package is built and validated against **LabVIEW 2021 (21.0)**.
 
 - 🛠 **Built in LabVIEW (“G” code)** – All editor functionality is implemented as LabVIEW VIs (graphical code).
-- 📁 **Broad Compatibility** – Source is stored in LabVIEW 2021 SP1 format for development, but the distributed packages target LabVIEW 2023 SP1 through 2025.
+- 📁 **Compatibility Target** – Source is stored in LabVIEW 2021 (21.0) format for development, and the distributed packages target LabVIEW 2021 (21.0).
 - ⚙️ **CI Pipeline** – **GitHub Actions** orchestrate PowerShell-based workflows for testing, building, and publishing the `.vip` package.
 - 🔄 **Modern Development Practices** – This project helped pioneer NI’s open-source CI/CD patterns, and its infrastructure will migrate to a centralized toolkit for future LabVIEW projects.
 
@@ -44,9 +44,9 @@ NI’s open-source initiative encourages **community collaboration** on this pro
 ## 📦 Installation
 
 > **Prerequisites:**
-> • LabVIEW 2023 SP1 (or newer)
+> • LabVIEW 2021 (21.0)
 > • VI Package Manager (VIPM) installed
-> • *(Development note: Source code is saved in LabVIEW 2021 SP1 for building and backward compatibility.)*
+> • *(Development note: Source code is saved in LabVIEW 2021 (21.0) for building and backward compatibility.)*
 
 1. **Download** the latest `.vip` installer from the [Releases page](https://github.com/ni/labview-icon-editor/releases/latest).
 2. **Open VIPM** (VI Package Manager) in Administrator mode.
@@ -60,7 +60,7 @@ For additional details and troubleshooting tips, see [INSTALL.md](INSTALL.md).
 ## 🧩 Key Components
 
 1. **Source Code (VIs)** – The editor’s functionality is implemented entirely in LabVIEW, as a collection of VIs organized into a project. This includes the UI and logic for icon editing.
-2. **PowerShell Automation** – A suite of PowerShell scripts (built on the [G-CLI toolkit](https://github.com/G-CLI/G-CLI)) supports repeatable build and test tasks. These scripts allow running LabVIEW build steps and packaging from the command line, ensuring consistent results between local development and CI.
+2. **PowerShell Automation** – A suite of PowerShell scripts (built on the [G-CLI package](https://github.com/G-CLI/G-CLI), a VIPM dependency included in `runner_dependencies.vipc`) supports repeatable build and test tasks. These scripts allow running LabVIEW build steps and packaging from the command line, ensuring consistent results between local development and CI. G-CLI is a third-party dependency and is not affiliated with NI.
 3. **CI/CD Workflows** – GitHub Actions workflows are provided for common tasks:
    - **Build VI Package** – Compiles the source and produces a `.vip` artifact (VI Package).
    - **Development Mode Toggle** – Enables or disables a mode where LabVIEW loads the Icon Editor from source (for debugging vs. using the installed package). If dev mode fails, the VI error source prints an 8-bit diagnostics code; see [Development Mode Toggle](docs/ci/actions/development-mode-toggle.md) for the bit mapping.
@@ -88,7 +88,7 @@ For detailed contribution guidelines (branching strategy, coding style, etc.), p
 
 1. **Propose & Discuss** – Start by proposing your idea via [GitHub Discussions](https://github.com/ni/labview-icon-editor/discussions) or by opening an issue. Discussing first helps refine the idea and get feedback.
 2. **Issue Approval & Assignment** – Once the idea is approved, maintainers label the issue `Workflow: Open to contribution`. After you volunteer, a maintainer assigns the issue and sets up a branch such as `issue-123-short-description`, ensuring the issue is marked `In Progress`. The workflow defined in [ci-composite.yml](.github/workflows/ci-composite.yml) triggers, but its jobs run only when the `issue-status` gate passes (branch pattern `issue-<number>` and issue Status `In Progress`). Runs failing this gate appear in GitHub Actions but skip subsequent jobs.
-3. **Development Setup** – Fork the repository and clone your fork. Check out the feature branch. Prepare your LabVIEW environment (LabVIEW 2021 SP1 with required dependencies applied). You can develop in two ways:
+3. **Development Setup** – Fork the repository and clone your fork. Check out the feature branch. Prepare your LabVIEW environment (LabVIEW 2021 (21.0) with required dependencies applied). You can develop in two ways:
    - *Manual mode:* Follow the [manual-instructions.md](docs/manual-instructions.md) guide to configure LabVIEW to use the editor’s VIs directly (replacing the built-in editor).
     - *Automated (CLI) mode:* Use the [automated-setup.md](docs/automated-setup.md) guide for PowerShell-based scripts to build the pack and run tests.
 4. **Implement & Test** – Develop your changes using LabVIEW. Test the editor manually in LabVIEW (in development mode) to ensure your changes work. Run any available unit tests. Make sure to apply the `runner_dependencies.vipc` file (located at `.github/actions/apply-vipc/runner_dependencies.vipc`) via VIPM or the scripts so that all required libraries (G-CLI, etc.) are present.
@@ -136,4 +136,5 @@ This project is distributed under the **MIT License** – see the [LICENSE](LICE
 
 ### 🙏 Thanks for Contributing!
 
-Your ideas, testing, and code contributions directly shape the Icon Editor experience across **LabVIEW 2023–2026** and beyond. Thank you for helping improve this tool for the entire LabVIEW community!
+Your ideas, testing, and code contributions directly shape the Icon Editor experience across the LabVIEW community. Thank you for helping improve this tool for the entire LabVIEW community!
+

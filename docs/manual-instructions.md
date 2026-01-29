@@ -16,8 +16,8 @@ This document provides **manual** steps to configure, edit, and distribute the L
 <a name="compatible-labview-versions"></a>
 ## 1. Compatible LabVIEW Versions
 
-- Source is saved in **LabVIEW 2021 SP1** format.  
-- Both **LabVIEW 2021 SP1 (32-bit and 64-bit)** are typically required if you plan to build or distribute for both architectures.
+- Source is saved in **LabVIEW 2021 (21.0)** format.  
+- Both **LabVIEW 2021 (21.0), 32-bit and 64-bit** are typically required if you plan to build or distribute for both architectures.
 - Editing can be done on any LabVIEW version that can preserve the **2021** file format.
 
 ---

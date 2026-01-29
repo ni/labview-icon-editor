@@ -11,7 +11,7 @@ Runs **`Build.ps1`** to clean, compile, and package the LabVIEW Icon Editor.
 | `patch` | **Yes** | `0` | Patch version number. |
 | `build` | **Yes** | `1` | Build number. |
 | `commit` | **Yes** | `abcdef` | Commit identifier embedded in metadata. |
-| `labview_minor_revision` | No (defaults to `3`) | `3` | LabVIEW minor revision. |
+| `labview_minor_revision` | No (defaults to `0`) | `0` | LabVIEW minor revision. |
 | `company_name` | **Yes** | `Acme Corp` | Company for display info. |
 | `author_name` | **Yes** | `Jane Doe` | Author for display info. |
 

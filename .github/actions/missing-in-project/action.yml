@@ -12,7 +12,7 @@ branding:
 
 inputs:
   lv-ver:
-    description: "LabVIEW version (e.g. '2021')."
+    description: "LabVIEW version (2021/21.0 only)."
     required: true
   arch:
     description: "Bitness (32 or 64)."

@@ -6,19 +6,16 @@
 .DESCRIPTION
     Executes the key LabVIEW steps from ci-composite.yml locally:
     - Verify IE Paths gate (2021 32/64)
-    - Apply VIPC dependencies (2021 32/64, 2023 64)
+    - Apply VIPC dependencies (2021 32/64)
     - Missing-in-project checks (2021 32/64)
     - Unit tests (2021 32/64)
     - Build PPLs (2021 32/64) + rename
-    - Build VIP (2023 64)
+    - Build VIP (2021 64)
 
     GitHub-only gates (issue-status, labels, artifact upload) are not included.
 
 .PARAMETER LabVIEWVersion
-    LabVIEW major version for 2021 steps (default: 2021).
-
-.PARAMETER LabVIEWBuildVersion
-    LabVIEW major version for VIP build steps (default: 2023).
+    LabVIEW 2021 (21.0) only.
 
 .PARAMETER SkipVerifyIEPaths
     Skip the Verify IE Paths gate.
@@ -84,12 +81,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $false)]
-    [ValidateSet('2020', '2021', '2022', '2023', '2024', '2025')]
+    [ValidateSet('2021')]
     [string]$LabVIEWVersion = '2021',
-
-    [Parameter(Mandatory = $false)]
-    [ValidateSet('2021', '2023', '2024', '2025')]
-    [string]$LabVIEWBuildVersion = '2023',
 
     [switch]$SkipVerifyIEPaths,
     [switch]$EnsureCleanState,
@@ -428,7 +421,7 @@ $script:StepHistoryPath = Join-Path $logRoot 'step-history.csv'
 Ensure-CsvHeader -Path $script:RunHistoryPath -Header 'timestamp,status,duration_seconds,command'
 Ensure-CsvHeader -Path $script:StepHistoryPath -Header 'timestamp,step,status,duration_seconds'
 $runLog = Join-Path $logRoot "ci-local-$runTimestamp.log"
-$commandLine = "Run-CICompositeLocal.ps1 -LabVIEWVersion $LabVIEWVersion -LabVIEWBuildVersion $LabVIEWBuildVersion -EnsureCleanState:$EnsureCleanState -SkipVerifyIEPaths:$SkipVerifyIEPaths -SkipVipc:$SkipVipc -SkipMissingInProject:$SkipMissingInProject -SkipUnitTests:$SkipUnitTests -SkipBuildPpl:$SkipBuildPpl -SkipBuildVip:$SkipBuildVip -BumpType $BumpType -ConnectTimeoutMs $ConnectTimeoutMs -ProcessTimeoutMs $ProcessTimeoutMs -StatusFileTimeoutMs $StatusFileTimeoutMs -VipmTimeoutSeconds $VipmTimeoutSeconds"
+$commandLine = "Run-CICompositeLocal.ps1 -LabVIEWVersion $LabVIEWVersion -EnsureCleanState:$EnsureCleanState -SkipVerifyIEPaths:$SkipVerifyIEPaths -SkipVipc:$SkipVipc -SkipMissingInProject:$SkipMissingInProject -SkipUnitTests:$SkipUnitTests -SkipBuildPpl:$SkipBuildPpl -SkipBuildVip:$SkipBuildVip -BumpType $BumpType -ConnectTimeoutMs $ConnectTimeoutMs -ProcessTimeoutMs $ProcessTimeoutMs -StatusFileTimeoutMs $StatusFileTimeoutMs -VipmTimeoutSeconds $VipmTimeoutSeconds"
 $script:TranscriptStarted = $false
 try {
     Start-Transcript -Path $runLog -Append | Out-Null
@@ -449,7 +442,7 @@ try {
     foreach ($bitness in $bitnessList) {
         Assert-LabVIEWInstalled -Version $LabVIEWVersion -Bitness $bitness
     }
-    Assert-LabVIEWInstalled -Version $LabVIEWBuildVersion -Bitness '64'
+    $vipLabVIEWMinorRevision = "0"
 
     $versionInfo = Get-LocalVersionInfo -RepoRoot $repoRoot -BumpType $BumpType
     if ($PSBoundParameters.ContainsKey('Major')) { $versionInfo.Major = $Major }
@@ -502,24 +495,6 @@ try {
             }
         }
 
-        Invoke-Checked -Label "Close LabVIEW $LabVIEWVersion before $LabVIEWBuildVersion" -Action {
-            foreach ($bitness in $bitnessList) {
-                & (Join-Path $repoRoot '.github/actions/close-labview/Close_LabVIEW.ps1') `
-                    -MinimumSupportedLVVersion $LabVIEWVersion `
-                    -SupportedBitness $bitness
-            }
-        }
-
-        if (-not $SkipBuildVip) {
-            Invoke-Checked -Label "Apply VIPC (LV$LabVIEWBuildVersion 64-bit)" -Action {
-                & (Join-Path $repoRoot '.github/actions/apply-vipc/ApplyVIPC.ps1') `
-                    -MinimumSupportedLVVersion $LabVIEWBuildVersion `
-                    -VIP_LVVersion $LabVIEWBuildVersion `
-                    -SupportedBitness 64 `
-                    -RelativePath $repoRoot `
-                    -VIPCPath $VipcPath
-            }
-        }
     }
 
     if (-not $SkipMissingInProject) {
@@ -665,13 +640,13 @@ try {
 
         $displayInfo = Get-DisplayInformationJson -RepoRoot $repoRoot -ReleaseNotesPath (Join-Path $repoRoot $ReleaseNotesPath) -Major $versionInfo.Major -Minor $versionInfo.Minor -Patch $versionInfo.Patch -Build $versionInfo.Build
 
-        Invoke-Checked -Label "Modify VIPB display info (LV$LabVIEWBuildVersion 64-bit)" -Action {
+        Invoke-Checked -Label "Modify VIPB display info (LV$LabVIEWVersion 64-bit)" -Action {
             & (Join-Path $repoRoot '.github/actions/modify-vipb-display-info/ModifyVIPBDisplayInfo.ps1') `
                 -SupportedBitness 64 `
                 -RelativePath $repoRoot `
                 -VIPBPath $VipbPath `
-                -MinimumSupportedLVVersion $LabVIEWBuildVersion `
-                -LabVIEWMinorRevision 3 `
+                -MinimumSupportedLVVersion $LabVIEWVersion `
+                -LabVIEWMinorRevision $vipLabVIEWMinorRevision `
                 -Major $versionInfo.Major `
                 -Minor $versionInfo.Minor `
                 -Patch $versionInfo.Patch `
@@ -682,13 +657,13 @@ try {
         }
 
         try {
-            Invoke-Checked -Label "Build VIP (LV$LabVIEWBuildVersion 64-bit)" -Action {
+            Invoke-Checked -Label "Build VIP (LV$LabVIEWVersion 64-bit)" -Action {
                 & (Join-Path $repoRoot '.github/actions/build-vip/build_vip.ps1') `
                     -SupportedBitness 64 `
                     -RelativePath $repoRoot `
                     -VIPBPath $VipbPath `
-                    -MinimumSupportedLVVersion $LabVIEWBuildVersion `
-                    -LabVIEWMinorRevision 3 `
+                    -MinimumSupportedLVVersion $LabVIEWVersion `
+                    -LabVIEWMinorRevision $vipLabVIEWMinorRevision `
                     -Major $versionInfo.Major `
                     -Minor $versionInfo.Minor `
                     -Patch $versionInfo.Patch `
@@ -710,9 +685,9 @@ try {
             throw "VIP build did not produce a .vip after $($vipBuildStart.ToString('yyyy-MM-dd HH:mm:ss'))."
         }
 
-        Invoke-Checked -Label "Close LabVIEW $LabVIEWBuildVersion (64-bit)" -Action {
+        Invoke-Checked -Label "Close LabVIEW $LabVIEWVersion (64-bit)" -Action {
             & (Join-Path $repoRoot '.github/actions/close-labview/Close_LabVIEW.ps1') `
-                -MinimumSupportedLVVersion $LabVIEWBuildVersion `
+                -MinimumSupportedLVVersion $LabVIEWVersion `
                 -SupportedBitness 64
         }
     }

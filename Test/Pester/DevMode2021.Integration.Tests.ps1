@@ -1,13 +1,13 @@
 $ErrorActionPreference = 'Stop'
 
-Describe 'Development Mode integration (LabVIEW 2025)' {
+Describe 'Development Mode integration (LabVIEW 2021 (21.0))' {
     BeforeAll {
         $script:skipAll = $false
         $script:skipReason = ''
         $script:installRoots = @{}
         $script:bitnessesToTest = @()
         $script:missingPathsHelperLoaded = $false
-        $script:labviewVersion = if ([string]::IsNullOrWhiteSpace($env:LABVIEW_VERSION)) { '2025' } else { $env:LABVIEW_VERSION }
+        $script:labviewVersion = if ([string]::IsNullOrWhiteSpace($env:LABVIEW_VERSION)) { '2021' } else { $env:LABVIEW_VERSION }
         $script:labviewBitness = if ([string]::IsNullOrWhiteSpace($env:LABVIEW_BITNESS)) { '64' } else { $env:LABVIEW_BITNESS }
         $script:connectTimeoutMs = if ([string]::IsNullOrWhiteSpace($env:LABVIEW_CONNECT_TIMEOUT_MS)) { '120000' } else { $env:LABVIEW_CONNECT_TIMEOUT_MS }
         $script:processTimeoutMs = if ([string]::IsNullOrWhiteSpace($env:LABVIEW_PROCESS_TIMEOUT_MS)) { '300000' } else { $env:LABVIEW_PROCESS_TIMEOUT_MS }
@@ -132,9 +132,9 @@ Describe 'Development Mode integration (LabVIEW 2025)' {
         }
 
 
-        if ($script:labviewVersion -ne '2025') {
+        if ($script:labviewVersion -ne '2021') {
             $script:skipAll = $true
-            $script:skipReason = 'Only LabVIEW 2025 is supported by this test suite.'
+            $script:skipReason = 'Only LabVIEW 2021 (21.0) is supported by this test suite.'
             return
         }
 

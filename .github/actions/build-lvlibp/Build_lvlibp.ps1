@@ -7,7 +7,7 @@
     g-cli, embedding the provided version information and commit identifier.
 
 .PARAMETER MinimumSupportedLVVersion
-    LabVIEW version used for the build.
+    LabVIEW 2021 (21.0) only.
 
 .PARAMETER SupportedBitness
     Bitness of the LabVIEW environment ("32" or "64").
@@ -34,7 +34,8 @@
     .\Build_lvlibp.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "C:\labview-icon-editor" -Major 1 -Minor 0 -Patch 0 -Build 0 -Commit "Placeholder"
 #>
 param(
-    [string]$MinimumSupportedLVVersion,
+    [ValidateSet('2021')]
+    [string]$MinimumSupportedLVVersion = '2021',
     [string]$SupportedBitness,
     [string]$RelativePath,
     [Int32]$Major,
