@@ -75,7 +75,10 @@ if (Test-Path -Path $targetPath) {
 }
 
 Write-Host ("Creating worktree at {0} (ref: {1})" -f $targetPath, $Ref)
-& git -C $repoRoot worktree add $targetPath $Ref
+$gitOutput = & git -C $repoRoot worktree add $targetPath $Ref 2>&1
+if ($gitOutput) {
+    $gitOutput | ForEach-Object { Write-Host $_ }
+}
 if ($LASTEXITCODE -ne 0) {
     throw "git worktree add failed with exit code $LASTEXITCODE."
 }
