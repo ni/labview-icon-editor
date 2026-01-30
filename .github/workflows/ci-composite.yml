@@ -167,6 +167,13 @@ jobs:
           & "${{ github.workspace }}/.github/actions/run-unit-tests/RunUnitTests.ps1" `
             -MinimumSupportedLVVersion 2021 `
             -SupportedBitness ${{ matrix.bitness }}
+      - name: Upload unit test report (2021 ${{ matrix.bitness }}-bit)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-tests-${{ matrix.bitness }}-bit-report
+          path: .github/actions/run-unit-tests/UnitTestReport.xml
+          if-no-files-found: warn
       - if: always()
         name: Revert Development Mode (2021 ${{ matrix.bitness }}-bit)
         shell: pwsh
@@ -174,7 +181,7 @@ jobs:
           & "${{ github.workspace }}/.github/actions/revert-development-mode/RevertDevelopmentMode.ps1" `
             -MinimumSupportedLVVersion 2021 `
             -SupportedBitness ${{ matrix.bitness }} `
-            -RelativePath "${{ github.workspace }}"
+            -RepoRoot "${{ github.workspace }}"
       - if: always()
         name: Close LabVIEW 2021 ${{ matrix.bitness }}-bit after unit tests
         uses: ./.github/actions/close-labview
