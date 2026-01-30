@@ -113,8 +113,29 @@ Notes:
 - Logs to `TestResults\agent-logs` (see `auto-run-history.csv` plus parity logs).
 - Timeouts grow on each failed attempt; caps are configurable in the script parameters.
 - The script waits for existing `g-cli`/`LabVIEW` processes and never terminates them.
-- By default, the loop creates a worktree under the configured worktree root (`C:\dev` unless `LVIE_WORKTREE_ROOT` is set).
+- By default, the loop creates a *new* worktree under the configured worktree root (`C:\dev` unless `LVIE_WORKTREE_ROOT` is set).
+  - Naming: `<repo>-ci-parity-auto-<yyyyMMdd-HHmmss>`
+  - This is intentional so each run uses a short path and prints `C:\dev\...` in logs (e.g. missing-in-project).
+  - Old worktrees accumulate over time; see **Worktree cleanup** below.
 - Set `-UseWorktree:$false` to run directly from the current repo path.
+
+## Worktree cleanup
+To keep `C:\dev` tidy, remove old worktrees after you’re done with them.
+
+List worktrees:
+```
+git worktree list
+```
+
+Remove a specific worktree directory:
+```
+git worktree remove C:\dev\<worktree-folder>
+```
+
+Prune stale worktree metadata (after deleting folders manually):
+```
+git worktree prune
+```
 
 ## Background automation safety
 Some automation may be running in the background and must not be killed. Do not terminate `g-cli` or `LabVIEW` processes unless you have explicit confirmation it is safe.
