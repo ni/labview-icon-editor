@@ -27,6 +27,8 @@ if ([string]::IsNullOrWhiteSpace($root)) {
 if ([string]::IsNullOrWhiteSpace($root)) {
     if (Test-Path -Path 'C:\dev') {
         $root = 'C:\dev'
+    } elseif (Test-Path -Path 'C:\w') {
+        $root = 'C:\w'
     } else {
         $runnerRoot = $env:RUNNER_WORKSPACE
         if ([string]::IsNullOrWhiteSpace($runnerRoot) -and -not [string]::IsNullOrWhiteSpace($env:GITHUB_WORKSPACE)) {
