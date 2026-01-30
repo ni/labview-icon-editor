@@ -20,84 +20,117 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Enable Development Mode (LV${{ matrix.lv-version }} ${{ matrix.bitness }}-bit)
-        uses: ./.github/actions/set-development-mode
-        with:
-          minimum_supported_lv_version: ${{ matrix.lv-version }}
-          supported_bitness: ${{ matrix.bitness }}
-          repo_root: ${{ github.workspace }}
-
-      # 1️⃣  Detect the first *.lvproj and expose its **absolute path**
-      - name: Find .lvproj file
-        id: find_proj
+      - name: Create short-path worktree (C:\dev)
+        id: worktree
         shell: pwsh
         run: |
-          $proj = Get-ChildItem -Path $PWD -Filter *.lvproj |
-                  Select-Object -First 1 -ExpandProperty FullName
-          if (-not $proj) {
-            Write-Error 'No .lvproj file found in repo root'
-            exit 1
+          $name = "ci-$env:GITHUB_JOB-${{ matrix.lv-version }}-${{ matrix.bitness }}-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          $worktree = & "$env:GITHUB_WORKSPACE\\Tooling\\New-CIWorktree.ps1" -Ref $env:GITHUB_SHA -Name $name
+          "REPO_ROOT=$worktree" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
+          "PROJECT_PATH=$worktree\\lv_icon_editor.lvproj" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
+
+      - name: Enable Development Mode (LV${{ matrix.lv-version }} ${{ matrix.bitness }}-bit)
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          & ".github\\actions\\set-development-mode\\Set_Development_Mode.ps1" `
+            -MinimumSupportedLVVersion ${{ matrix.lv-version }} `
+            -SupportedBitness ${{ matrix.bitness }} `
+            -RepoRoot "$env:REPO_ROOT"
+
+      - name: Resolve LabVIEW project path
+        id: proj
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:PROJECT_PATH)) {
+            throw "PROJECT_PATH was not set."
           }
-          Write-Host "🔍 Found project file: $proj"
-          "project_file=$proj" >> $env:GITHUB_OUTPUT
+          if (-not (Test-Path -Path $env:PROJECT_PATH)) {
+            throw "Project file not found: $env:PROJECT_PATH"
+          }
+          Write-Host "Using project file: $env:PROJECT_PATH"
+          "project_file=$env:PROJECT_PATH" >> $env:GITHUB_OUTPUT
 
-      # 2️⃣  Pass that exact file path to the composite action
-      - name: Missing In Project
+      - name: Missing‑In‑Project (LV${{ matrix.lv-version }} ${{ matrix.bitness }}-bit)
         id: mip
-        uses: ./.github/actions/missing-in-project
-        with:
-          lv-ver:       ${{ matrix.lv-version }}
-          arch:         ${{ matrix.bitness }}
-          project-file: ${{ steps.find_proj.outputs.project_file }}
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          & ".github\\actions\\missing-in-project\\Invoke-MissingInProjectCLI.ps1" `
+            -LVVersion   "${{ matrix.lv-version }}" `
+            -Arch        "${{ matrix.bitness }}" `
+            -ProjectFile "${{ steps.proj.outputs.project_file }}"
 
-      # 3️⃣  Surface results in the “Summary” tab
+          $missingFile = Join-Path $env:REPO_ROOT ''.github\actions\missing-in-project\missing_files.txt''
+          $missingCsv = ''''
+          if (Test-Path $missingFile) {
+            $missingCsv = Get-Content -Path $missingFile -Raw
+          }
+          $passed = [string]::IsNullOrWhiteSpace($missingCsv)
+          "passed=$($passed.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          "missing-files=$missingCsv" >> $env:GITHUB_OUTPUT
       - name: Summarize to run “Summary” tab
         if: always()
         shell: pwsh
         env:
-          PROJ_FILE: ${{ steps.find_proj.outputs.project_file }}
+          PROJ_FILE: ${{ steps.proj.outputs.project_file }}
+          MISSING_CSV: ${{ steps.mip.outputs.missing-files }}
         run: |
           echo "ℹ️  Using project file: $env:PROJ_FILE" >> $GITHUB_STEP_SUMMARY
 
-          $artifact = 'missing-files.txt'
+          if ("${{ steps.mip.outputs.passed }}" -eq "true") {
+            echo "✅ Nothing missing for ${{ matrix.lv-version }}‑${{ matrix.bitness }}" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          }
+
+          echo "### ❌ Missing files for ${{ matrix.lv-version }}‑${{ matrix.bitness }}" >> $GITHUB_STEP_SUMMARY
+          if (-not [string]::IsNullOrWhiteSpace($env:MISSING_CSV)) {
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Missing files (CSV):" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo $env:MISSING_CSV >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          }
+
+          $artifact = Join-Path $env:REPO_ROOT '.github\\actions\\missing-in-project\\missing_files.txt'
           if (Test-Path $artifact) {
-            echo "### ❌ Missing files for ${{ matrix.lv-version }}‑${{ matrix.bitness }}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Missing files (from missing_files.txt):" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             Get-Content $artifact -Raw | ForEach-Object { echo $_ } >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
-          } else {
-            echo "✅ Nothing missing for ${{ matrix.lv-version }}‑${{ matrix.bitness }}" >> $GITHUB_STEP_SUMMARY
           }
 
-      # 4️⃣  Keep the binary‑generated list as a downloadable artifact
-      - name: Upload missing-files artifact
-        if: always() && steps.mip.outputs.passed != 'True'
+      - name: Upload missing_files artifact
+        if: always() && steps.mip.outputs.passed != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: missing-files-${{ matrix.lv-version }}-${{ matrix.bitness }}
-          path: missing-files.txt
+          path: ${{ env.REPO_ROOT }}/.github/actions/missing-in-project/missing_files.txt
           if-no-files-found: ignore
       # Cleanup
       - name: Revert Development Mode (LV${{ matrix.lv-version }} ${{ matrix.bitness }}-bit)
         if: always()
-        uses: ./.github/actions/revert-development-mode
-        with:
-          minimum_supported_lv_version: ${{ matrix.lv-version }}
-          supported_bitness: ${{ matrix.bitness }}
-          repo_root: ${{ github.workspace }}
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          & ".github\\actions\\revert-development-mode\\RevertDevelopmentMode.ps1" `
+            -MinimumSupportedLVVersion ${{ matrix.lv-version }} `
+            -SupportedBitness ${{ matrix.bitness }} `
+            -RepoRoot "$env:REPO_ROOT"
       - name: Close LabVIEW (LV${{ matrix.lv-version }} ${{ matrix.bitness }}-bit)
         if: always()
-        uses: ./.github/actions/close-labview
-        with:
-          minimum_supported_lv_version: ${{ matrix.lv-version }}
-          supported_bitness: ${{ matrix.bitness }}
+        shell: pwsh
+        run: |
+          & "$env:REPO_ROOT\\.github\\actions\\close-labview\\Close_LabVIEW.ps1" `
+            -MinimumSupportedLVVersion ${{ matrix.lv-version }} `
+            -SupportedBitness ${{ matrix.bitness }}
       - name: Cleanup temp files (LV${{ matrix.lv-version }} ${{ matrix.bitness }}-bit)
         if: always()
         shell: pwsh
         run: |
           $paths = @(
-            (Join-Path $env:GITHUB_WORKSPACE 'missing-files.txt'),
-            (Join-Path $env:GITHUB_WORKSPACE '.github\\actions\\missing-in-project\\missing_files.txt'),
+            (Join-Path $env:REPO_ROOT '.github\\actions\\missing-in-project\\missing_files.txt'),
             (Join-Path $env:TEMP 'labview-icon-editor-missing-in-project'),
             (Join-Path $env:TEMP 'missing-in-project')
           )
@@ -107,3 +140,13 @@ jobs:
               Remove-Item -Path $path -Recurse -Force -ErrorAction SilentlyContinue
             }
           }
+      - name: Cleanup worktree
+        if: always()
+        shell: pwsh
+        run: |
+          if (-not [string]::IsNullOrWhiteSpace($env:REPO_ROOT)) {
+            git -C "$env:GITHUB_WORKSPACE" worktree remove --force "$env:REPO_ROOT" 2>$null
+            git -C "$env:GITHUB_WORKSPACE" worktree prune
+          }
+
+
