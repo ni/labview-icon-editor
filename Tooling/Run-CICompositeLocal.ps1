@@ -627,7 +627,8 @@ try {
                 Invoke-Checked -Label "Run unit tests ($bitness-bit)" -Action {
                     & (Join-Path $repoRoot '.github/actions/run-unit-tests/RunUnitTests.ps1') `
                         -MinimumSupportedLVVersion $LabVIEWVersion `
-                        -SupportedBitness $bitness
+                        -SupportedBitness $bitness `
+                        -ProjectPath (Join-Path $repoRoot 'lv_icon_editor.lvproj')
                 }
             }
             finally {

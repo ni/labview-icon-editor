@@ -7,14 +7,27 @@
       - Table-based test results
       - Color-coded pass/fail
       - Non-zero exit if g-cli fails or if any test fails
-      - Automatic search for exactly one *.lvproj file by moving up the folder hierarchy 
-        until just before the drive root.
+      - Automatic search for exactly one *.lvproj file in the repo root
+        (or use -ProjectPath to specify it explicitly).
 
 .PARAMETER MinimumSupportedLVVersion
     LabVIEW 2021 (21.0) only.
 
 .PARAMETER SupportedBitness
     Bitness for LabVIEW (e.g., "64").
+
+.PARAMETER RepoRoot
+    Optional path to the repository root used to discover the project file.
+
+.PARAMETER ProjectPath
+    Optional path to a LabVIEW project file to use instead of discovery.
+
+.PARAMETER ReportPath
+    Optional path to an existing UnitTestReport.xml. When provided with -SkipGcli,
+    parsing runs without invoking g-cli.
+
+.PARAMETER SkipGcli
+    Skip running g-cli and only parse an existing report (useful for local testing).
 
 .NOTES
     PowerShell 7.5+ assumed for cross-platform support.
@@ -30,68 +43,117 @@ param(
     [Parameter(Mandatory=$true)]
     [ValidateSet("32","64")]
     [string]
-    $SupportedBitness
+    $SupportedBitness,
+
+    [Parameter(Mandatory=$false)]
+    [string]
+    $RepoRoot,
+
+    [Parameter(Mandatory=$false)]
+    [string]
+    $ProjectPath,
+
+    [Parameter(Mandatory=$false)]
+    [string]
+    $ReportPath,
+
+    [Parameter(Mandatory=$false)]
+    [switch]
+    $SkipGcli
 )
 
-# --------------------------------------------------------------------
-# 1) Locate exactly one .lvproj file by searching upward from $PSScriptRoot
-# --------------------------------------------------------------------
-Write-Host "Starting directory for .lvproj search: $PSScriptRoot"
+# Script-level variables to track exit states and results
+$Script:OriginalExitCode = 0
+$Script:TestsHadFailures = $false
+$Script:Results = @()
+$Script:FailedResults = @()
+$Script:ReportMissing = $false
+$Script:ParseError = $null
 
-function Get-SingleLvproj {
-    param(
-        [string] $StartFolder
-    )
-
-    $currentDir = $StartFolder
-
-    while ($true) {
-        Write-Host "Searching '$currentDir' for *.lvproj files..."
-        $lvprojFiles = Get-ChildItem -Path $currentDir -Filter '*.lvproj' -File -ErrorAction SilentlyContinue
-
-        if ($lvprojFiles.Count -eq 1) {
-            # Found exactly one .lvproj
-            return $lvprojFiles[0].FullName
-        }
-        elseif ($lvprojFiles.Count -gt 1) {
-            # Found multiple .lvproj files
-            Write-Error "Error: Multiple .lvproj files found in '$currentDir'. Please ensure only one .lvproj is present."
-            $lvprojFiles | ForEach-Object { Write-Host " - $_.FullName" }
-            return $null
-        }
-        
-        # If none found, move one level up
-        $parentDir = Split-Path -Path $currentDir -Parent
-        
-        # If we've reached or are about to reach the drive root, stop searching
-        $driveRoot = [System.IO.Path]::GetPathRoot($currentDir)
-        if ($parentDir -eq $currentDir -or $parentDir -eq $driveRoot) {
-            Write-Error "Error: Reached the level before root without finding exactly one .lvproj."
-            return $null
-        }
-
-        $currentDir = $parentDir
+$RepoRootResolved = $null
+if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
+    if (Test-Path $RepoRoot) {
+        $RepoRootResolved = (Resolve-Path -Path $RepoRoot).Path
+    } else {
+        Write-Warning "Provided RepoRoot does not exist: $RepoRoot"
     }
 }
 
-$AbsoluteProjectPath = Get-SingleLvproj -StartFolder $PSScriptRoot
-
-if (-not $AbsoluteProjectPath) {
-    # We failed to find exactly one .lvproj in any ancestor up to the level before root
-    exit 3
+if (-not $RepoRootResolved -and -not [string]::IsNullOrWhiteSpace($env:GITHUB_WORKSPACE)) {
+    $RepoRootResolved = $env:GITHUB_WORKSPACE
 }
-Write-Host "Using LabVIEW project file: $AbsoluteProjectPath"
 
-# Script-level variables to track exit states
-$Script:OriginalExitCode = 0
-$Script:TestsHadFailures = $false
+if (-not $RepoRootResolved) {
+    $RepoRootResolved = (Resolve-Path -Path (Join-Path $PSScriptRoot '..\..\..')).Path
+}
 
-# Path to UnitTestReport.xml in the same directory as this script
-$ReportPath = Join-Path -Path $PSScriptRoot -ChildPath "UnitTestReport.xml"
+Write-Host "Repo root: $RepoRootResolved"
+
+if ([string]::IsNullOrWhiteSpace($ReportPath)) {
+    $ReportPath = Join-Path -Path $PSScriptRoot -ChildPath "UnitTestReport.xml"
+} else {
+    Write-Host "Using report path override: $ReportPath"
+}
+
+# --------------------------------------------------------------------
+# 1) Locate exactly one .lvproj file in the repo root
+# --------------------------------------------------------------------
+function Get-LvprojInRoot {
+    param(
+        [string] $RootFolder
+    )
+
+    Write-Host "Searching '$RootFolder' for *.lvproj files..."
+    $lvprojFiles = Get-ChildItem -Path $RootFolder -Filter '*.lvproj' -File -ErrorAction SilentlyContinue
+
+    if ($lvprojFiles.Count -eq 1) {
+        return $lvprojFiles[0].FullName
+    }
+    elseif ($lvprojFiles.Count -gt 1) {
+        Write-Error "Error: Multiple .lvproj files found in '$RootFolder'. Please specify -ProjectPath."
+        $lvprojFiles | ForEach-Object { Write-Host " - $_.FullName" }
+        return $null
+    }
+
+    return $null
+}
+
+$AbsoluteProjectPath = $null
+
+if (-not [string]::IsNullOrWhiteSpace($ProjectPath)) {
+    if (Test-Path $ProjectPath) {
+        $AbsoluteProjectPath = (Resolve-Path -Path $ProjectPath).Path
+    } else {
+        Write-Warning "Provided ProjectPath does not exist: $ProjectPath"
+    }
+}
+
+if (-not $AbsoluteProjectPath -and -not $SkipGcli) {
+    $AbsoluteProjectPath = Get-LvprojInRoot -RootFolder $RepoRootResolved
+}
+
+$Script:SkipRun = $SkipGcli
+if (-not $AbsoluteProjectPath -and -not $SkipGcli) {
+    # We failed to find exactly one .lvproj in any ancestor up to the level before root
+    $Script:OriginalExitCode = 3
+    $Script:TestsHadFailures = $true
+    $Script:ParseError = "No .lvproj file found in repo root '$RepoRootResolved'. Provide -ProjectPath."
+    $Script:SkipRun = $true
+}
+
+if ($AbsoluteProjectPath) {
+    Write-Host "Using LabVIEW project file: $AbsoluteProjectPath"
+} else {
+    Write-Host "Project path not set; running in report-only mode."
+}
 
 # --------------------------  SETUP  --------------------------
 function Setup {
     Write-Host "=== Setup ==="
+    if ($Script:SkipRun) {
+        Write-Host "Skipping g-cli run; report-only mode."
+        return
+    }
     $reportDir = Split-Path -Parent $ReportPath
     if (-not (Test-Path $reportDir)) {
         try {
@@ -116,60 +178,33 @@ function Setup {
     }
 }
 
-# ------------------------  MAIN SEQUENCE  ----------------------
-function MainSequence {
-    Write-Host "`n=== MainSequence ==="
-    Write-Host "Running unit tests for LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)"
-    Write-Host "Project Path: $AbsoluteProjectPath"
-    Write-Host "Report will be saved at: $ReportPath"
+function Parse-Report {
+    $Script:Results = @()
+    $Script:FailedResults = @()
+    $Script:ReportMissing = $false
+    $Script:ParseError = $null
 
-    Write-Host "`nExecuting g-cli command..."
-    & g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness lunit -- -r "$ReportPath" "$AbsoluteProjectPath"
-
-    $script:OriginalExitCode = $LASTEXITCODE
-    if ($script:OriginalExitCode -ne 0) {
-        Write-Error "g-cli test execution failed (exit code $script:OriginalExitCode)."
-    }
-
-    # If g-cli failed and no report was produced, we can't parse anything
-    if ($script:OriginalExitCode -ne 0 -and -not (Test-Path $ReportPath)) {
-        $script:TestsHadFailures = $true
-        Write-Warning "No test report found, and g-cli returned an error."
+    if (-not (Test-Path $ReportPath)) {
+        $Script:ReportMissing = $true
+        $Script:TestsHadFailures = $true
         return
     }
 
-    # Parse UnitTestReport.xml if it exists
-    if (Test-Path $ReportPath) {
-        try {
-            [xml]$xmlDoc = Get-Content $ReportPath -ErrorAction Stop
-        }
-        catch {
-            Write-Error "UnitTestReport.xml is invalid or malformed: $($_.Exception.Message)"
-            $script:TestsHadFailures = $true
-            return
-        }
+    try {
+        [xml]$xmlDoc = Get-Content $ReportPath -ErrorAction Stop
     }
-    else {
-        Write-Error "UnitTestReport.xml not found; cannot parse results."
-        $script:TestsHadFailures = $true
+    catch {
+        $Script:ParseError = $_.Exception.Message
+        $Script:TestsHadFailures = $true
         return
     }
 
-    # Retrieve all <testcase> nodes
     $testCases = $xmlDoc.SelectNodes("//testcase")
     if (!$testCases -or $testCases.Count -eq 0) {
-        Write-Error "No <testcase> entries found in UnitTestReport.xml."
-        $script:TestsHadFailures = $true
+        $Script:ParseError = "No <testcase> entries found in UnitTestReport.xml."
+        $Script:TestsHadFailures = $true
         return
     }
-
-    # Prepare for tabular output
-    $col1 = "TestCaseName"; $col2 = "ClassName"; $col3 = "Status"; $col4 = "Time(s)"; $col5 = "Assertions"
-    $maxName   = $col1.Length
-    $maxClass  = $col2.Length
-    $maxStatus = $col3.Length
-    $maxTime   = $col4.Length
-    $maxAssert = $col5.Length
 
     $results = @()
     foreach ($case in $testCases) {
@@ -189,36 +224,78 @@ function MainSequence {
             $failureText = ($failureNode.InnerText | Out-String).Trim()
         }
 
-        # If status is empty, treat as "Skipped" so it doesn't cause a false fail
         if ([string]::IsNullOrWhiteSpace($status)) {
             $status = "Skipped"
         }
 
-        # Update max lengths for formatting
-        if ($name.Length       -gt $maxName)   { $maxName   = $name.Length }
-        if ($className.Length  -gt $maxClass)  { $maxClass  = $className.Length }
-        if ($status.Length     -gt $maxStatus) { $maxStatus = $status.Length }
-        if ($time.Length       -gt $maxTime)   { $maxTime   = $time.Length }
-        if ($assertions.Length -gt $maxAssert) { $maxAssert = $assertions.Length }
-
-        # Store data
         $results += [PSCustomObject]@{
-            TestCaseName = $name
-            ClassName    = $className
-            Status       = $status
-            Time         = $time
-            Assertions   = $assertions
+            TestCaseName   = $name
+            ClassName      = $className
+            Status         = $status
+            Time           = $time
+            Assertions     = $assertions
             FailureMessage = $failureMessage
             FailureText    = $failureText
         }
-
-        # Mark any test that isn't Passed or Skipped as a failure
-        if ($status -notmatch "^Passed$" -and $status -notmatch "^Skipped$") {
-            $script:TestsHadFailures = $true
-        }
     }
 
-    # Print table header
+    $Script:Results = $results
+    $Script:FailedResults = $results | Where-Object { $_.Status -ne "Passed" -and $_.Status -ne "Skipped" }
+    if ($Script:FailedResults.Count -gt 0) {
+        $Script:TestsHadFailures = $true
+    }
+}
+
+function Emit-Results {
+    if ($Script:Results.Count -eq 0) {
+        if ($Script:ReportMissing) {
+            Write-Warning "UnitTestReport.xml not found at $ReportPath."
+            if ($env:GITHUB_ACTIONS -eq "true") {
+                Write-Host "::error::Unit test report missing. g-cli exit code $Script:OriginalExitCode."
+            }
+        } elseif ($Script:ParseError) {
+            Write-Warning "UnitTestReport.xml parse error: $Script:ParseError"
+            if ($env:GITHUB_ACTIONS -eq "true") {
+                Write-Host ("::error::Unit test report parse error: {0}" -f ($Script:ParseError -replace "\r?\n", " ").Trim())
+            }
+        }
+
+        if ($env:GITHUB_STEP_SUMMARY) {
+            $summary = @()
+            $summary += "### Unit Test Results (LabVIEW $MinimumSupportedLVVersion $SupportedBitness-bit)"
+            $summary += ""
+            $summary += "- Total: 0"
+            $summary += "- Failed: 1"
+            $summary += "- Skipped: 0"
+            $summary += "- Report: $ReportPath"
+            if ($Script:ReportMissing) {
+                $summary += "- Note: UnitTestReport.xml not found."
+            } elseif ($Script:ParseError) {
+                $summary += "- Note: UnitTestReport.xml parse error."
+            } else {
+                $summary += "- Note: No test cases reported."
+            }
+            ($summary -join "`n") | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+        }
+
+        return
+    }
+
+    $col1 = "TestCaseName"; $col2 = "ClassName"; $col3 = "Status"; $col4 = "Time(s)"; $col5 = "Assertions"
+    $maxName   = $col1.Length
+    $maxClass  = $col2.Length
+    $maxStatus = $col3.Length
+    $maxTime   = $col4.Length
+    $maxAssert = $col5.Length
+
+    foreach ($res in $Script:Results) {
+        if ($res.TestCaseName.Length -gt $maxName)   { $maxName   = $res.TestCaseName.Length }
+        if ($res.ClassName.Length -gt $maxClass)     { $maxClass  = $res.ClassName.Length }
+        if ($res.Status.Length -gt $maxStatus)       { $maxStatus = $res.Status.Length }
+        if ($res.Time.Length -gt $maxTime)           { $maxTime   = $res.Time.Length }
+        if ($res.Assertions.Length -gt $maxAssert)   { $maxAssert = $res.Assertions.Length }
+    }
+
     $header = ($col1.PadRight($maxName) + "  " +
                $col2.PadRight($maxClass) + "  " +
                $col3.PadRight($maxStatus) + "  " +
@@ -226,8 +303,7 @@ function MainSequence {
                $col5.PadRight($maxAssert))
     Write-Host $header
 
-    # Output test results in color
-    foreach ($res in $results) {
+    foreach ($res in $Script:Results) {
         $line = ($res.TestCaseName.PadRight($maxName) + "  " +
                  $res.ClassName.PadRight($maxClass)   + "  " +
                  $res.Status.PadRight($maxStatus)     + "  " +
@@ -245,10 +321,9 @@ function MainSequence {
         }
     }
 
-    $failedResults = $results | Where-Object { $_.Status -ne "Passed" -and $_.Status -ne "Skipped" }
-    if ($failedResults.Count -gt 0) {
-        Write-Host "`n=== Unit Test Failures ($($failedResults.Count)) ==="
-        foreach ($res in $failedResults) {
+    if ($Script:FailedResults.Count -gt 0) {
+        Write-Host "`n=== Unit Test Failures ($($Script:FailedResults.Count)) ==="
+        foreach ($res in $Script:FailedResults) {
             Write-Host ("- {0} :: {1} [{2}, {3}s]" -f $res.ClassName, $res.TestCaseName, $res.Status, $res.Time)
 
             $reason = $res.FailureMessage
@@ -271,19 +346,20 @@ function MainSequence {
     }
 
     if ($env:GITHUB_STEP_SUMMARY) {
-        $skippedCount = ($results | Where-Object { $_.Status -eq "Skipped" }).Count
+        $skippedCount = ($Script:Results | Where-Object { $_.Status -eq "Skipped" }).Count
+        $passedResults = $Script:Results | Where-Object { $_.Status -eq "Passed" }
         $summary = @()
         $summary += "### Unit Test Results (LabVIEW $MinimumSupportedLVVersion $SupportedBitness-bit)"
         $summary += ""
-        $summary += "- Total: $($results.Count)"
-        $summary += "- Failed: $($failedResults.Count)"
+        $summary += "- Total: $($Script:Results.Count)"
+        $summary += "- Failed: $($Script:FailedResults.Count)"
         $summary += "- Skipped: $skippedCount"
         $summary += "- Report: $ReportPath"
-        if ($failedResults.Count -gt 0) {
+        if ($Script:FailedResults.Count -gt 0) {
             $summary += ""
             $summary += "| Class | Test | Status | Time (s) | Message |"
             $summary += "| --- | --- | --- | --- | --- |"
-            foreach ($res in $failedResults) {
+            foreach ($res in $Script:FailedResults) {
                 $message = $res.FailureMessage
                 if ([string]::IsNullOrWhiteSpace($message)) {
                     $message = $res.FailureText
@@ -298,8 +374,49 @@ function MainSequence {
                 $summary += ("| {0} | {1} | {2} | {3} | {4} |" -f $res.ClassName, $res.TestCaseName, $res.Status, $res.Time, $message)
             }
         }
-        $summaryText = ($summary -join "`n")
-        $summaryText | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+        $summary += ""
+        $summary += "#### Passed Tests"
+        if ($passedResults.Count -gt 0) {
+            $summary += ""
+            $summary += "| Class | Test | Status | Time (s) | Assertions |"
+            $summary += "| --- | --- | --- | --- | --- |"
+            foreach ($res in $passedResults) {
+                $summary += ("| {0} | {1} | {2} | {3} | {4} |" -f $res.ClassName, $res.TestCaseName, $res.Status, $res.Time, $res.Assertions)
+            }
+        } else {
+            $summary += ""
+            $summary += "No passing tests reported."
+        }
+        ($summary -join "`n") | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+    }
+}
+
+# ------------------------  MAIN SEQUENCE  ----------------------
+function MainSequence {
+    Write-Host "`n=== MainSequence ==="
+    Write-Host "Running unit tests for LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit)"
+    Write-Host "Project Path: $AbsoluteProjectPath"
+    Write-Host "Report will be saved at: $ReportPath"
+
+    if ($Script:SkipRun) {
+        Write-Host "Skipping g-cli run."
+        return
+    }
+
+    Write-Host "`nExecuting g-cli command..."
+    $previousNativePreference = $PSNativeCommandUseErrorActionPreference
+    $PSNativeCommandUseErrorActionPreference = $false
+    try {
+        & g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness lunit -- -r "$ReportPath" "$AbsoluteProjectPath"
+    }
+    finally {
+        $PSNativeCommandUseErrorActionPreference = $previousNativePreference
+    }
+
+    $script:OriginalExitCode = $LASTEXITCODE
+    if ($script:OriginalExitCode -ne 0) {
+        $script:TestsHadFailures = $true
+        Write-Warning "g-cli test execution failed (exit code $script:OriginalExitCode)."
     }
 }
 
@@ -331,6 +448,22 @@ catch {
     Write-Warning ("Unhandled exception during test run: {0}" -f $_.Exception.Message)
 }
 finally {
+    try {
+        Parse-Report
+    }
+    catch {
+        $Script:ParseError = $_.Exception.Message
+        $Script:TestsHadFailures = $true
+        Write-Warning ("Parsing failed: {0}" -f $_.Exception.Message)
+    }
+
+    try {
+        Emit-Results
+    }
+    catch {
+        Write-Warning ("Summary emission failed: {0}" -f $_.Exception.Message)
+    }
+
     try {
         Cleanup
     }
