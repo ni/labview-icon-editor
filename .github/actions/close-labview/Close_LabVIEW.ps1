@@ -20,10 +20,49 @@ param(
     [string]$MinimumSupportedLVVersion = '2021',
     [string]$SupportedBitness,
     [ValidateRange(5, 600)]
-    [int]$TimeoutSeconds = 120
+    [int]$TimeoutSeconds = 120,
+    [string]$MetricsPath
 )
 
 $ErrorActionPreference = 'Stop'
+$scriptStart = Get-Date
+$metricsPathResolved = if ($MetricsPath) { $MetricsPath } elseif ($env:LABVIEW_CLOSE_METRICS_PATH) { $env:LABVIEW_CLOSE_METRICS_PATH } else { $null }
+
+function Ensure-CsvHeader {
+    param(
+        [string]$Path,
+        [string]$Header
+    )
+
+    if (-not $Path) {
+        return
+    }
+
+    $dir = Split-Path -Parent -Path $Path
+    if (-not [string]::IsNullOrWhiteSpace($dir) -and -not (Test-Path -Path $dir)) {
+        New-Item -Path $dir -ItemType Directory -Force | Out-Null
+    }
+
+    if (-not (Test-Path -Path $Path)) {
+        $Header | Set-Content -Path $Path
+    }
+}
+
+function Write-CloseMetric {
+    param(
+        [string]$Outcome,
+        [bool]$HadProcess
+    )
+
+    if (-not $metricsPathResolved) {
+        return
+    }
+
+    Ensure-CsvHeader -Path $metricsPathResolved -Header 'timestamp,version,bitness,had_process_before,outcome,duration_seconds'
+    $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    $duration = [Math]::Round(((Get-Date) - $scriptStart).TotalSeconds, 2)
+    "{0},{1},{2},{3},{4},{5}" -f $timestamp, $MinimumSupportedLVVersion, $SupportedBitness, $HadProcess, $Outcome, $duration | Add-Content -Path $metricsPathResolved
+}
 
 function Get-LabVIEWInstallRoot {
     param(
@@ -155,14 +194,17 @@ if (-not $targetBefore -or $targetBefore.Count -eq 0) {
     else {
         Write-Host "LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit) closed or not running."
     }
+    Write-CloseMetric -Outcome 'skipped' -HadProcess $false
     exit 0
 }
 
+$closeOutcome = 'quit'
 try {
     Invoke-SafeQuitLabVIEW -Version $MinimumSupportedLVVersion -Bitness $SupportedBitness
 }
 catch {
     Write-Warning ("QuitLabVIEW failed: {0}" -f $_.Exception.Message)
+    $closeOutcome = 'error'
 }
 
 if (-not (Wait-ForLabVIEWExit -Version $MinimumSupportedLVVersion -Bitness $SupportedBitness -TimeoutSeconds $TimeoutSeconds)) {
@@ -180,9 +222,12 @@ if (-not (Wait-ForLabVIEWExit -Version $MinimumSupportedLVVersion -Bitness $Supp
 
         if (-not (Wait-ForLabVIEWExit -Version $MinimumSupportedLVVersion -Bitness $SupportedBitness -TimeoutSeconds 15)) {
             Write-Error "LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit) did not exit after forced close."
+            Write-CloseMetric -Outcome 'error' -HadProcess $true
             exit 1
         }
+        $closeOutcome = 'forced'
     }
 }
 
 Write-Host "LabVIEW $MinimumSupportedLVVersion ($SupportedBitness-bit) closed or not running."
+Write-CloseMetric -Outcome $closeOutcome -HadProcess $true

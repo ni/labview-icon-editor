@@ -1,8 +1,8 @@
 name: CI Pipeline (Composite)
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.sha }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && 'manual' || github.sha }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 on:
   push:
@@ -115,20 +115,6 @@ jobs:
       - run: echo "No .vipc changes detected; skipping dependency application."
         if: needs.changes.outputs.vipc != 'true'
 
-  close-lv-2021-before-tests:
-    name: Close LabVIEW 2021 before tests
-    needs: apply-deps-2021-x86
-    runs-on: self-hosted-windows-lv
-    steps:
-      - uses: ./.github/actions/close-labview
-        with:
-          minimum_supported_lv_version: 2021
-          supported_bitness: 64
-      - uses: ./.github/actions/close-labview
-        with:
-          minimum_supported_lv_version: 2021
-          supported_bitness: 32
-
   version:
     name: Compute Version
     needs: dev-mode-gate
@@ -151,7 +137,7 @@ jobs:
 
   missing-in-project:
     name: Test Missing-In-Project (2021)
-    needs: close-lv-2021-before-tests
+    needs: apply-deps-2021-x86
     uses: ./.github/workflows/test-missing-in-project-windows.yml
 
   test-2021:
@@ -277,8 +263,8 @@ jobs:
 
   build-vip:
     name: Build VI Package
-    # Chain after close-lv-2021-before-vip, which depends on 32-bit (and thus 64-bit) PPL builds.
-    needs: [close-lv-2021-before-vip, version]
+    # Chain after 32-bit PPL build (which depends on 64-bit PPL build).
+    needs: [build-ppl-x86, version]
     runs-on: self-hosted-windows-lv
     steps:
       - uses: actions/checkout@v4
@@ -401,16 +387,3 @@ jobs:
             Write-Host ("Tag validation ok: {0}" -f $provided)
           }
 
-  close-lv-2021-before-vip:
-    name: Close LabVIEW 2021 before VI Package
-    needs: build-ppl-x86
-    runs-on: self-hosted-windows-lv
-    steps:
-      - uses: ./.github/actions/close-labview
-        with:
-          minimum_supported_lv_version: 2021
-          supported_bitness: 64
-      - uses: ./.github/actions/close-labview
-        with:
-          minimum_supported_lv_version: 2021
-          supported_bitness: 32
