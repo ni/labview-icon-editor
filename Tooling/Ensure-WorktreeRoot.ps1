@@ -4,8 +4,9 @@
     Resolves and validates the worktree root used for local CI parity.
 
 .DESCRIPTION
-    Uses LVIE_WORKTREE_ROOT when set, otherwise defaults to C:\dev.
-    Fails fast if the directory does not exist.
+    Uses LVIE_WORKTREE_ROOT when set, otherwise defaults to C:\dev (if it exists),
+    and falls back to a runner-scoped path under RUNNER_WORKSPACE (if available).
+    Fails fast if the resolved directory does not exist.
 
 .PARAMETER WorktreeRoot
     Optional override for the worktree root.
@@ -24,7 +25,21 @@ if ([string]::IsNullOrWhiteSpace($root)) {
     $root = $env:LVIE_WORKTREE_ROOT
 }
 if ([string]::IsNullOrWhiteSpace($root)) {
-    $root = 'C:\dev'
+    if (Test-Path -Path 'C:\dev') {
+        $root = 'C:\dev'
+    } else {
+        $runnerRoot = $env:RUNNER_WORKSPACE
+        if ([string]::IsNullOrWhiteSpace($runnerRoot) -and -not [string]::IsNullOrWhiteSpace($env:GITHUB_WORKSPACE)) {
+            $runnerRoot = Split-Path -Path $env:GITHUB_WORKSPACE -Parent
+        }
+        if (-not [string]::IsNullOrWhiteSpace($runnerRoot)) {
+            $root = Join-Path $runnerRoot 'lvie-worktrees'
+        }
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($root)) {
+    throw "Worktree root could not be resolved. Create C:\\dev or set LVIE_WORKTREE_ROOT."
 }
 
 $fullRoot = [System.IO.Path]::GetFullPath($root)

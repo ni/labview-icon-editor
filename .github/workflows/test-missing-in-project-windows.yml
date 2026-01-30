@@ -20,6 +20,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Set worktree root (runner-scoped)
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:LVIE_WORKTREE_ROOT)) {
+            $runnerRoot = if (-not [string]::IsNullOrWhiteSpace($env:RUNNER_WORKSPACE)) { $env:RUNNER_WORKSPACE } else { Split-Path -Path $env:GITHUB_WORKSPACE -Parent }
+            $root = Join-Path $runnerRoot 'lvie-worktrees'
+            New-Item -Path $root -ItemType Directory -Force | Out-Null
+            "LVIE_WORKTREE_ROOT=$root" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
+          }
       - name: Create short-path worktree (C:\dev)
         id: worktree
         shell: pwsh
@@ -61,8 +70,8 @@ jobs:
             -Arch        "${{ matrix.bitness }}" `
             -ProjectFile "${{ steps.proj.outputs.project_file }}"
 
-          $missingFile = Join-Path $env:REPO_ROOT ''.github\actions\missing-in-project\missing_files.txt''
-          $missingCsv = ''''
+          $missingFile = Join-Path $env:REPO_ROOT '.github\actions\missing-in-project\missing_files.txt'
+          $missingCsv = ''
           if (Test-Path $missingFile) {
             $missingCsv = Get-Content -Path $missingFile -Raw
           }
@@ -148,5 +157,6 @@ jobs:
             git -C "$env:GITHUB_WORKSPACE" worktree remove --force "$env:REPO_ROOT" 2>$null
             git -C "$env:GITHUB_WORKSPACE" worktree prune
           }
+
 
 
