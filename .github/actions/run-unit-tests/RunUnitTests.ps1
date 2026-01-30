@@ -178,6 +178,16 @@ function MainSequence {
         $status     = $case.GetAttribute("status")
         $time       = $case.GetAttribute("time")
         $assertions = $case.GetAttribute("assertions")
+        $failureNode = $case.SelectSingleNode("failure")
+        if (-not $failureNode) {
+            $failureNode = $case.SelectSingleNode("error")
+        }
+        $failureMessage = $null
+        $failureText = $null
+        if ($failureNode) {
+            $failureMessage = $failureNode.GetAttribute("message")
+            $failureText = ($failureNode.InnerText | Out-String).Trim()
+        }
 
         # If status is empty, treat as "Skipped" so it doesn't cause a false fail
         if ([string]::IsNullOrWhiteSpace($status)) {
@@ -198,6 +208,8 @@ function MainSequence {
             Status       = $status
             Time         = $time
             Assertions   = $assertions
+            FailureMessage = $failureMessage
+            FailureText    = $failureText
         }
 
         # Mark any test that isn't Passed or Skipped as a failure
@@ -231,6 +243,63 @@ function MainSequence {
         else {
             Write-Host $line -ForegroundColor Red
         }
+    }
+
+    $failedResults = $results | Where-Object { $_.Status -ne "Passed" -and $_.Status -ne "Skipped" }
+    if ($failedResults.Count -gt 0) {
+        Write-Host "`n=== Unit Test Failures ($($failedResults.Count)) ==="
+        foreach ($res in $failedResults) {
+            Write-Host ("- {0} :: {1} [{2}, {3}s]" -f $res.ClassName, $res.TestCaseName, $res.Status, $res.Time)
+
+            $reason = $res.FailureMessage
+            if ([string]::IsNullOrWhiteSpace($reason)) {
+                $reason = $res.FailureText
+            }
+            if (-not [string]::IsNullOrWhiteSpace($reason)) {
+                Write-Host ("  {0}" -f $reason)
+            }
+
+            if ($env:GITHUB_ACTIONS -eq "true") {
+                $annotation = if (-not [string]::IsNullOrWhiteSpace($reason)) { $reason } else { "Test failed." }
+                $annotation = ($annotation -replace "\r?\n", " ").Trim()
+                if ($annotation.Length -gt 300) {
+                    $annotation = $annotation.Substring(0, 300) + "..."
+                }
+                Write-Host ("::error::{0} / {1} - {2}" -f $res.ClassName, $res.TestCaseName, $annotation)
+            }
+        }
+    }
+
+    if ($env:GITHUB_STEP_SUMMARY) {
+        $skippedCount = ($results | Where-Object { $_.Status -eq "Skipped" }).Count
+        $summary = @()
+        $summary += "### Unit Test Results (LabVIEW $MinimumSupportedLVVersion $SupportedBitness-bit)"
+        $summary += ""
+        $summary += "- Total: $($results.Count)"
+        $summary += "- Failed: $($failedResults.Count)"
+        $summary += "- Skipped: $skippedCount"
+        $summary += "- Report: $ReportPath"
+        if ($failedResults.Count -gt 0) {
+            $summary += ""
+            $summary += "| Class | Test | Status | Time (s) | Message |"
+            $summary += "| --- | --- | --- | --- | --- |"
+            foreach ($res in $failedResults) {
+                $message = $res.FailureMessage
+                if ([string]::IsNullOrWhiteSpace($message)) {
+                    $message = $res.FailureText
+                }
+                if ([string]::IsNullOrWhiteSpace($message)) {
+                    $message = "No details in report."
+                }
+                $message = ($message -replace "\r?\n", " ").Trim()
+                if ($message.Length -gt 300) {
+                    $message = $message.Substring(0, 300) + "..."
+                }
+                $summary += ("| {0} | {1} | {2} | {3} | {4} |" -f $res.ClassName, $res.TestCaseName, $res.Status, $res.Time, $message)
+            }
+        }
+        $summaryText = ($summary -join "`n")
+        $summaryText | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
     }
 }
 
