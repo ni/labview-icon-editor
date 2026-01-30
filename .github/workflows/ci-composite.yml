@@ -150,24 +150,31 @@ jobs:
       matrix:
         bitness: ["64", "32"]
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Enable Development Mode (2021 ${{ matrix.bitness }}-bit)
-        uses: ./.github/actions/set-development-mode
-        with:
-          minimum_supported_lv_version: "2021"
-          supported_bitness: ${{ matrix.bitness }}
-          repo_root: ${{ github.workspace }}
+        shell: pwsh
+        run: |
+          & "${{ github.workspace }}/.github/actions/set-development-mode/Set_Development_Mode.ps1" `
+            -MinimumSupportedLVVersion 2021 `
+            -SupportedBitness ${{ matrix.bitness }} `
+            -RepoRoot "${{ github.workspace }}"
       - name: Run Unit Tests (2021 ${{ matrix.bitness }}-bit)
-        uses: ./.github/actions/run-unit-tests
-        with:
-          minimum_supported_lv_version: "2021"
-          supported_bitness: ${{ matrix.bitness }}
+        shell: pwsh
+        run: |
+          & "${{ github.workspace }}/.github/actions/run-unit-tests/RunUnitTests.ps1" `
+            -MinimumSupportedLVVersion 2021 `
+            -SupportedBitness ${{ matrix.bitness }}
       - if: always()
         name: Revert Development Mode (2021 ${{ matrix.bitness }}-bit)
-        uses: ./.github/actions/revert-development-mode
-        with:
-          minimum_supported_lv_version: "2021"
-          supported_bitness: ${{ matrix.bitness }}
-          repo_root: ${{ github.workspace }}
+        shell: pwsh
+        run: |
+          & "${{ github.workspace }}/.github/actions/revert-development-mode/RevertDevelopmentMode.ps1" `
+            -MinimumSupportedLVVersion 2021 `
+            -SupportedBitness ${{ matrix.bitness }} `
+            -RelativePath "${{ github.workspace }}"
       - if: always()
         name: Close LabVIEW 2021 ${{ matrix.bitness }}-bit after unit tests
         uses: ./.github/actions/close-labview
