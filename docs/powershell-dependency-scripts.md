@@ -62,7 +62,7 @@ Configures the repository for development by invoking `Prepare_LabVIEW_source.ps
 Undoes development mode by invoking `RestoreSetupLVSource.ps1` for both bitnesses. Helpful when leaving development or before distributing a build. Accepts `-ConnectTimeoutMs` and `-ProcessTimeoutMs` to pass through to g-cli.
 
 ## RunUnitTests.ps1
-Locates the `.lvproj`, runs unit tests through g-cli, and outputs a table of results. Used in CI workflows.
+Runs unit tests through g-cli and outputs a table of results. Requires an explicit `.lvproj` path via `-ProjectPath`. Used in CI workflows.
 
 ## Run-CICompositeLocal.ps1
 Runs a local CI parity sequence based on `ci-composite.yml`. This script validates Verify IE Paths, applies VIPC dependencies, runs missing-in-project checks and unit tests for LabVIEW 2021 (21.0), 32- and 64-bit, builds packed libraries, and produces the VI package using LabVIEW 2021 (21.0) 64-bit. The script always runs both 64-bit and 32-bit steps for LabVIEW 2021 (21.0), and most steps can be skipped via switches. Outputs are stored under `TestResults/ci-local`. Use `-ConnectTimeoutMs`, `-ProcessTimeoutMs`, and `-StatusFileTimeoutMs` to tune g-cli and status-file timing for your machine.

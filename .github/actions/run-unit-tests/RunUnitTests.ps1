@@ -7,8 +7,7 @@
       - Table-based test results
       - Color-coded pass/fail
       - Non-zero exit if g-cli fails or if any test fails
-      - Automatic search for exactly one *.lvproj file in the repo root
-        (or use -ProjectPath to specify it explicitly).
+      - Requires an explicit LabVIEW project path (-ProjectPath).
 
 .PARAMETER MinimumSupportedLVVersion
     LabVIEW 2021 (21.0) only.
@@ -16,11 +15,8 @@
 .PARAMETER SupportedBitness
     Bitness for LabVIEW (e.g., "64").
 
-.PARAMETER RepoRoot
-    Optional path to the repository root used to discover the project file.
-
 .PARAMETER ProjectPath
-    Optional path to a LabVIEW project file to use instead of discovery.
+    Required path to the LabVIEW project file to execute tests against.
 
 .PARAMETER ReportPath
     Optional path to an existing UnitTestReport.xml. When provided with -SkipGcli,
@@ -34,32 +30,32 @@
     This script *requires* that g-cli and LabVIEW be compatible with the OS.
 #>
 
+[CmdletBinding(DefaultParameterSetName = 'Run')]
 param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true, ParameterSetName = 'Run')]
+    [Parameter(Mandatory = $true, ParameterSetName = 'ReportOnly')]
     [ValidateSet('2021')]
     [string]
     $MinimumSupportedLVVersion,
 
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true, ParameterSetName = 'Run')]
+    [Parameter(Mandatory = $true, ParameterSetName = 'ReportOnly')]
     [ValidateSet("32","64")]
     [string]
     $SupportedBitness,
 
-    [Parameter(Mandatory=$false)]
-    [string]
-    $RepoRoot,
-
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $true, ParameterSetName = 'Run')]
     [string]
     $ProjectPath,
 
-    [Parameter(Mandatory=$false)]
-    [string]
-    $ReportPath,
-
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $true, ParameterSetName = 'ReportOnly')]
     [switch]
-    $SkipGcli
+    $SkipGcli,
+
+    [Parameter(Mandatory = $false, ParameterSetName = 'Run')]
+    [Parameter(Mandatory = $false, ParameterSetName = 'ReportOnly')]
+    [string]
+    $ReportPath
 )
 
 # Script-level variables to track exit states and results
@@ -70,25 +66,6 @@ $Script:FailedResults = @()
 $Script:ReportMissing = $false
 $Script:ParseError = $null
 
-$RepoRootResolved = $null
-if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
-    if (Test-Path $RepoRoot) {
-        $RepoRootResolved = (Resolve-Path -Path $RepoRoot).Path
-    } else {
-        Write-Warning "Provided RepoRoot does not exist: $RepoRoot"
-    }
-}
-
-if (-not $RepoRootResolved -and -not [string]::IsNullOrWhiteSpace($env:GITHUB_WORKSPACE)) {
-    $RepoRootResolved = $env:GITHUB_WORKSPACE
-}
-
-if (-not $RepoRootResolved) {
-    $RepoRootResolved = (Resolve-Path -Path (Join-Path $PSScriptRoot '..\..\..')).Path
-}
-
-Write-Host "Repo root: $RepoRootResolved"
-
 if ([string]::IsNullOrWhiteSpace($ReportPath)) {
     $ReportPath = Join-Path -Path $PSScriptRoot -ChildPath "UnitTestReport.xml"
 } else {
@@ -96,55 +73,32 @@ if ([string]::IsNullOrWhiteSpace($ReportPath)) {
 }
 
 # --------------------------------------------------------------------
-# 1) Locate exactly one .lvproj file in the repo root
+# 1) Resolve the LabVIEW project path
 # --------------------------------------------------------------------
-function Get-LvprojInRoot {
-    param(
-        [string] $RootFolder
-    )
-
-    Write-Host "Searching '$RootFolder' for *.lvproj files..."
-    $lvprojFiles = Get-ChildItem -Path $RootFolder -Filter '*.lvproj' -File -ErrorAction SilentlyContinue
-
-    if ($lvprojFiles.Count -eq 1) {
-        return $lvprojFiles[0].FullName
-    }
-    elseif ($lvprojFiles.Count -gt 1) {
-        Write-Error "Error: Multiple .lvproj files found in '$RootFolder'. Please specify -ProjectPath."
-        $lvprojFiles | ForEach-Object { Write-Host " - $_.FullName" }
-        return $null
-    }
-
-    return $null
-}
 
 $AbsoluteProjectPath = $null
 
-if (-not [string]::IsNullOrWhiteSpace($ProjectPath)) {
+if ($PSCmdlet.ParameterSetName -eq 'Run') {
     if (Test-Path $ProjectPath) {
         $AbsoluteProjectPath = (Resolve-Path -Path $ProjectPath).Path
     } else {
         Write-Warning "Provided ProjectPath does not exist: $ProjectPath"
+        $Script:OriginalExitCode = 3
+        $Script:TestsHadFailures = $true
+        $Script:ParseError = "ProjectPath does not exist: $ProjectPath"
     }
 }
 
-if (-not $AbsoluteProjectPath -and -not $SkipGcli) {
-    $AbsoluteProjectPath = Get-LvprojInRoot -RootFolder $RepoRootResolved
-}
-
-$Script:SkipRun = $SkipGcli
-if (-not $AbsoluteProjectPath -and -not $SkipGcli) {
-    # We failed to find exactly one .lvproj in any ancestor up to the level before root
-    $Script:OriginalExitCode = 3
-    $Script:TestsHadFailures = $true
-    $Script:ParseError = "No .lvproj file found in repo root '$RepoRootResolved'. Provide -ProjectPath."
-    $Script:SkipRun = $true
-}
+$Script:SkipRun = ($PSCmdlet.ParameterSetName -eq 'ReportOnly') -or ($null -eq $AbsoluteProjectPath)
 
 if ($AbsoluteProjectPath) {
     Write-Host "Using LabVIEW project file: $AbsoluteProjectPath"
 } else {
-    Write-Host "Project path not set; running in report-only mode."
+    if ($PSCmdlet.ParameterSetName -eq 'ReportOnly') {
+        Write-Host "Project path not set; running in report-only mode."
+    } else {
+        Write-Warning "Project path not set; skipping g-cli run."
+    }
 }
 
 # --------------------------  SETUP  --------------------------

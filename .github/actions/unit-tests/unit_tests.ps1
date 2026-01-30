@@ -83,8 +83,9 @@ try {
     
     # Run Unit Tests
     $RunUnitTests = Join-Path $ActionsPath "run-unit-tests/RunUnitTests.ps1"
+    $ProjectPath = Join-Path $RepoRoot 'lv_icon_editor.lvproj'
     Execute-Script $RunUnitTests `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -RepoRoot `"$RepoRoot`""
+        "-MinimumSupportedLVVersion 2021 -SupportedBitness 32 -ProjectPath `"$ProjectPath`""
 
     # Close LabVIEW
     $CloseLabVIEW = Join-Path $ActionsPath "close-labview/Close_LabVIEW.ps1"
@@ -93,7 +94,7 @@ try {
 
     # Run Unit Tests
     Execute-Script $RunUnitTests `
-        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -RepoRoot `"$RepoRoot`""
+        "-MinimumSupportedLVVersion 2021 -SupportedBitness 64 -ProjectPath `"$ProjectPath`""
 
 	# Close LabVIEW
     Execute-Script $CloseLabVIEW `

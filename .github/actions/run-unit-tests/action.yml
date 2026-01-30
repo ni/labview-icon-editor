@@ -13,11 +13,15 @@ runs:
       run: |
         & "${{ github.action_path }}/RunUnitTests.ps1" `
           -MinimumSupportedLVVersion ${{ inputs.minimum_supported_lv_version }} `
-          -SupportedBitness ${{ inputs.supported_bitness }}
+          -SupportedBitness ${{ inputs.supported_bitness }} `
+          -ProjectPath "${{ inputs.project_path }}"
 inputs:
   minimum_supported_lv_version:
     description: 'LabVIEW 2021 (21.0)'
     required: true
   supported_bitness:
     description: '32 or 64'
+    required: true
+  project_path:
+    description: 'Path to the LabVIEW project (.lvproj)'
     required: true
