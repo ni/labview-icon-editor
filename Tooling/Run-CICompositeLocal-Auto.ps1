@@ -34,6 +34,15 @@
 .PARAMETER EnsureCleanState
     Revert dev mode before Verify IE Paths.
 
+.PARAMETER UseWorktree
+    Create a worktree under the configured root and run parity from there.
+
+.PARAMETER WorktreeRoot
+    Optional override for the worktree root (defaults to C:\dev or LVIE_WORKTREE_ROOT).
+
+.PARAMETER WorktreeName
+    Optional suffix used to name the worktree directory.
+
 .PARAMETER RepoRoot
     Optional repository root override.
 #>
@@ -74,6 +83,15 @@ param(
 
     [Parameter(Mandatory = $false)]
     [switch]$EnsureCleanState,
+
+    [Parameter(Mandatory = $false)]
+    [bool]$UseWorktree = $true,
+
+    [Parameter(Mandatory = $false)]
+    [string]$WorktreeRoot,
+
+    [Parameter(Mandatory = $false)]
+    [string]$WorktreeName,
 
     [Parameter(Mandatory = $false)]
     [string]$RepoRoot
@@ -130,6 +148,18 @@ if (-not (Test-Path -Path $runScript)) {
     throw "Run-CICompositeLocal.ps1 not found at $runScript"
 }
 
+$runRepoRoot = $repoRoot
+if ($UseWorktree) {
+    $worktreeScript = Join-Path $repoRoot 'Tooling/New-CIWorktree.ps1'
+    if (-not (Test-Path -Path $worktreeScript)) {
+        throw "New-CIWorktree.ps1 not found at $worktreeScript"
+    }
+
+    $suffix = if ([string]::IsNullOrWhiteSpace($WorktreeName)) { "ci-parity-auto-{0}" -f (Get-Date -Format 'yyyyMMdd-HHmmss') } else { $WorktreeName }
+    $runRepoRoot = & $worktreeScript -Ref HEAD -Name $suffix -WorktreeRoot $WorktreeRoot
+    Write-Host ("Using worktree: {0}" -f $runRepoRoot)
+}
+
 $logRoot = Join-Path $repoRoot 'TestResults/agent-logs'
 New-Item -Path $logRoot -ItemType Directory -Force | Out-Null
 $historyPath = Join-Path $logRoot 'auto-run-history.csv'
@@ -151,7 +181,8 @@ for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
             -LabVIEWVersion $LabVIEWVersion `
             -EnsureCleanState:$EnsureCleanState `
             -ConnectTimeoutMs $attemptConnectTimeout `
-            -ProcessTimeoutMs $attemptProcessTimeout
+            -ProcessTimeoutMs $attemptProcessTimeout `
+            -RepoRoot $runRepoRoot
     } catch {
         $status = "error:{0}" -f $_.Exception.Message
     }
