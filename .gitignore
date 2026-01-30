@@ -16,6 +16,13 @@
 # Build output
 /resource/plugins/lv_icon.lvlibp
 *.xml
+/resource/plugins/lv_icon_x64.lvlibp
+/resource/plugins/lv_icon_x86.lvlibp
+builds/
+TestResults/
+.worktrees/
+Tooling/deployment/release_notes.md
+missing_files.txt
 
 # VerifyIEPaths status output
 missing_IE_paths.txt

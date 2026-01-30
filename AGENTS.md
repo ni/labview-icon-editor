@@ -13,6 +13,36 @@ This repository uses LabVIEW, g-cli, and PowerShell tooling. Follow the steps be
 - Confirm `g-cli` is available:
   - `g-cli --version`
 
+## Worktree root (short paths)
+Use a short path for worktrees to avoid Windows path-length issues. Default to `C:\dev`.
+
+Override:
+- Set `LVIE_WORKTREE_ROOT` to change the default worktree root.
+
+Preflight requirement:
+- If the chosen worktree root does not exist, ask the user to create it before proceeding.
+- For CI/self-hosted runners, ensure the directory is pre-created; fail fast with a clear message if missing.
+
+Example preflight (PowerShell):
+```
+$worktreeRoot = $env:LVIE_WORKTREE_ROOT
+if ([string]::IsNullOrWhiteSpace($worktreeRoot)) { $worktreeRoot = 'C:\dev' }
+if (-not (Test-Path $worktreeRoot)) {
+  throw "Worktree root '$worktreeRoot' does not exist. Create it or set LVIE_WORKTREE_ROOT."
+}
+```
+
+Worktree creation helper (recommended):
+```
+pwsh -NoProfile -File .\Tooling\New-CIWorktree.ps1 `
+  -Ref HEAD
+```
+
+Notes:
+- The helper enforces the worktree root and fails fast if it is missing.
+- Use `-Name` to label the worktree directory.
+- Use `-WorktreeRoot` (or `LVIE_WORKTREE_ROOT`) to override the default.
+
 ## Local CI Parity (recommended)
 Run the local parity script that mirrors `ci-composite.yml`:
 ```
@@ -71,61 +101,18 @@ When running locally, keep iterating until a `.vip` is produced. Do not kill bac
 Success criteria:
 - A new `.vip` exists under `builds\VI Package`. The local parity script copies the latest `.vip` into `builds\VI Package` after a successful VIP build.
 
-Suggested loop (PowerShell):
+Automated loop (PowerShell):
 ```
-$logRoot = Join-Path $PWD 'TestResults\agent-logs'
-New-Item -Path $logRoot -ItemType Directory -Force | Out-Null
-$csv = Join-Path $logRoot 'run-history.csv'
-$maxAttempts = 5
-$connectTimeout = 180000
-$processTimeout = 300000
-
-function Get-LatestVip {
-  $buildsDir = Join-Path $PWD 'builds\VI Package'
-  if (-not (Test-Path -Path $buildsDir)) {
-    return $null
-  }
-
-  Get-ChildItem -Path $buildsDir -Recurse -Filter *.vip -ErrorAction SilentlyContinue |
-    Sort-Object -Property LastWriteTime -Descending |
-    Select-Object -First 1
-}
-
-for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-  $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-  $logFile = Join-Path $logRoot "ci-local-$timestamp.log"
-
-  $running = Get-Process -Name g-cli,LabVIEW -ErrorAction SilentlyContinue
-  if ($running) {
-    " $timestamp,wait,processes_running,$($running.Count)" | Add-Content -Path $csv
-    Start-Sleep -Seconds 30
-    continue
-  }
-
-  $command = "pwsh -NoProfile -File .\\Tooling\\Run-CICompositeLocal.ps1 -LabVIEWVersion 2021 -EnsureCleanState -ConnectTimeoutMs $connectTimeout -ProcessTimeoutMs $processTimeout"
-
-  Start-Transcript -Path $logFile -Append | Out-Null
-  try {
-    $duration = Measure-Command { Invoke-Expression $command }
-    $status = if ($LASTEXITCODE -eq 0) { 'success' } else { "exit:$LASTEXITCODE" }
-  } finally {
-    Stop-Transcript | Out-Null
-  }
-
-  $elapsedSec = [Math]::Round($duration.TotalSeconds, 2)
-  "{0},{1},{2},{3}" -f $timestamp, $status, $elapsedSec, $command | Add-Content -Path $csv
-
-  $vip = Get-LatestVip
-  if ($vip) {
-    " $timestamp,success,vip,$($vip.FullName)" | Add-Content -Path $csv
-    break
-  }
-
-  # Backoff if needed for local tuning
-  $connectTimeout = [Math]::Min([int]($connectTimeout * 1.5), 600000)
-  $processTimeout = [Math]::Min([int]($processTimeout * 1.5), 1200000)
-}
+pwsh -NoProfile -File .\Tooling\Run-CICompositeLocal-Auto.ps1 `
+  -LabVIEWVersion 2021 `
+  -EnsureCleanState `
+  -MaxAttempts 5
 ```
+
+Notes:
+- Logs to `TestResults\agent-logs` (see `auto-run-history.csv` plus parity logs).
+- Timeouts grow on each failed attempt; caps are configurable in the script parameters.
+- The script waits for existing `g-cli`/`LabVIEW` processes and never terminates them.
 
 ## Background automation safety
 Some automation may be running in the background and must not be killed. Do not terminate `g-cli` or `LabVIEW` processes unless you have explicit confirmation it is safe.
