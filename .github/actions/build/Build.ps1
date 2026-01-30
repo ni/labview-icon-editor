@@ -12,7 +12,7 @@
 
   Example usage:
     .\Build.ps1 `
-      -RelativePath "C:\release\labview-icon-editor-fork" `
+      -RepoRoot "C:\release\labview-icon-editor-fork" `
       -Major 1 -Minor 0 -Patch 0 -Build 3 -Commit "Placeholder" `
       -CompanyName "Acme Corporation" `
       -AuthorName "John Doe (Acme Corp)" `
@@ -22,7 +22,7 @@
 [CmdletBinding()]  # Enables -Verbose, -Debug, etc.
 param(
     [Parameter(Mandatory = $true)]
-    [string]$RelativePath,
+    [string]$RepoRoot,
 
     [Parameter(Mandatory = $true)]
     [int]$Major = 1,
@@ -98,7 +98,7 @@ function Execute-Script {
 try {
     Write-Verbose "Script: Build.ps1 starting."
     Write-Verbose "Parameters received:"
-    Write-Verbose " - RelativePath: $RelativePath"
+    Write-Verbose " - RepoRoot: $RepoRoot"
     Write-Verbose " - Major: $Major"
     Write-Verbose " - Minor: $Minor"
     Write-Verbose " - Patch: $Patch"
@@ -109,17 +109,17 @@ try {
     Write-Verbose " - AuthorName: $AuthorName"
 
     # Validate needed folders
-    Assert-PathExists $RelativePath "RelativePath"
-    Assert-PathExists "$RelativePath\resource\plugins" "Plugins folder"
+    Assert-PathExists $RepoRoot "RepoRoot"
+    Assert-PathExists "$RepoRoot\resource\plugins" "Plugins folder"
 
     $ActionsPath = Split-Path -Parent $PSScriptRoot
     Assert-PathExists $ActionsPath "Actions folder"
 
     # 1) Clean up old .lvlibp in the plugins folder
     Write-Host "Cleaning up old .lvlibp files in plugins folder..." -ForegroundColor Yellow
-    Write-Verbose "Looking for .lvlibp files in $($RelativePath)\resource\plugins..."
+    Write-Verbose "Looking for .lvlibp files in $($RepoRoot)\resource\plugins..."
     try {
-        $PluginFiles = Get-ChildItem -Path "$RelativePath\resource\plugins" -Filter '*.lvlibp' -ErrorAction Stop
+        $PluginFiles = Get-ChildItem -Path "$RepoRoot\resource\plugins" -Filter '*.lvlibp' -ErrorAction Stop
         if ($PluginFiles) {
             Write-Verbose "Found $($PluginFiles.Count) file(s): $($PluginFiles | ForEach-Object { $_.Name } -join ', ')"
             $PluginFiles | Remove-Item -Force
@@ -140,7 +140,7 @@ try {
 #        ("-MinimumSupportedLVVersion 2021 " +
 #         "-VIP_LVVersion 2021 " +
 #         "-SupportedBitness 32 " +
-#         "-RelativePath `"$RelativePath`" " +
+#         "-RepoRoot `"$RepoRoot`" " +
 #         "-VIPCPath `"Tooling\deployment\runner_dependencies.vipc`"")
 
     # 3) Build LV Library (32-bit)
@@ -149,7 +149,7 @@ try {
     Execute-Script $BuildLvlibp `
         ("-MinimumSupportedLVVersion 2021 " +
          "-SupportedBitness 32 " +
-         "-RelativePath `"$RelativePath`" " +
+         "-RepoRoot `"$RepoRoot`" " +
          "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
          "-Commit `"$Commit`"")
 
@@ -163,7 +163,7 @@ try {
     Write-Verbose "Renaming .lvlibp file to lv_icon_x86.lvlibp..."
     $RenameFile = Join-Path $ActionsPath "rename-file/Rename-file.ps1"
     Execute-Script $RenameFile `
-        "-CurrentFilename `"$RelativePath\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x86.lvlibp'"
+        "-CurrentFilename `"$RepoRoot\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x86.lvlibp'"
 
  #   # 6) Apply VIPC (64-bit)
  #   Write-Verbose "Now applying VIPC for 64-bit..."
@@ -172,7 +172,7 @@ try {
  #       ("-MinimumSupportedLVVersion 2021 " +
  #        "-VIP_LVVersion 2021 " +
  #        "-SupportedBitness 64 " +
- #        "-RelativePath `"$RelativePath`" " +
+ #        "-RepoRoot `"$RepoRoot`" " +
  #        "-VIPCPath `"Tooling\deployment\runner_dependencies.vipc`"")
 
     # 7) Build LV Library (64-bit)
@@ -180,7 +180,7 @@ try {
     Execute-Script $BuildLvlibp `
         ("-MinimumSupportedLVVersion 2021 " +
          "-SupportedBitness 64 " +
-         "-RelativePath `"$RelativePath`" " +
+         "-RepoRoot `"$RepoRoot`" " +
          "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
          "-Commit `"$Commit`"")
     
@@ -193,7 +193,7 @@ try {
     # Rename .lvlibp -> lv_icon_x64.lvlibp
     Write-Verbose "Renaming .lvlibp file to lv_icon_x64.lvlibp..."
     Execute-Script $RenameFile `
-        "-CurrentFilename `"$RelativePath\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x64.lvlibp'"
+        "-CurrentFilename `"$RepoRoot\resource\plugins\lv_icon.lvlibp`" -NewFilename 'lv_icon_x64.lvlibp'"
 
     # -------------------------------------------------------------------------
     # 8) Construct the JSON for "Company Name" & "Author Name", plus version
@@ -227,13 +227,13 @@ try {
         (
             # Use single-dash for all recognized parameters
             "-SupportedBitness 64 " +
-            "-RelativePath `"$RelativePath`" " +
+            "-RepoRoot `"$RepoRoot`" " +
             "-VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" " +
             "-MinimumSupportedLVVersion 2021 " +
             "-LabVIEWMinorRevision $LabVIEWMinorRevision " +
             "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
             "-Commit `"$Commit`" " +
-            "-ReleaseNotesFile `"$RelativePath\Tooling\deployment\release_notes.md`" " +
+            "-ReleaseNotesFile `"$RepoRoot\Tooling\deployment\release_notes.md`" " +
             # Pass our JSON
             "-DisplayInformationJSON '$DisplayInformationJSON' " +
             "-Verbose"
@@ -246,13 +246,13 @@ try {
         (
             # Use single-dash for all recognized parameters
             "-SupportedBitness 64 " +
-            "-RelativePath `"$RelativePath`" " +
+            "-RepoRoot `"$RepoRoot`" " +
             "-VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" " +
             "-MinimumSupportedLVVersion 2021 " +
             "-LabVIEWMinorRevision $LabVIEWMinorRevision " +
             "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
             "-Commit `"$Commit`" " +
-            "-ReleaseNotesFile `"$RelativePath\Tooling\deployment\release_notes.md`" " +
+            "-ReleaseNotesFile `"$RepoRoot\Tooling\deployment\release_notes.md`" " +
             # Pass our JSON
             "-DisplayInformationJSON '$DisplayInformationJSON' " +
             "-Verbose"

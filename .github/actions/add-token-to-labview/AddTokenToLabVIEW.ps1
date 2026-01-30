@@ -13,23 +13,23 @@
 .PARAMETER SupportedBitness
     Target bitness of the LabVIEW environment ("32" or "64").
 
-.PARAMETER RelativePath
+.PARAMETER RepoRoot
     Path to the repository root that should be added to the INI token.
 
 .EXAMPLE
-    .\AddTokenToLabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RelativePath "C:\labview-icon-editor"
+    .\AddTokenToLabVIEW.ps1 -MinimumSupportedLVVersion "2021" -SupportedBitness "64" -RepoRoot "C:\labview-icon-editor"
 #>
 
 param(
     [ValidateSet('2021')]
     [string]$MinimumSupportedLVVersion = '2021',
     [string]$SupportedBitness,
-    [string]$RelativePath
+    [string]$RepoRoot
 )
 
 # Construct the command
 $script = @"
-g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v "$RelativePath\Tooling\deployment\Create_LV_INI_Token.vi" -- "LabVIEW" "Localhost.LibraryPaths" "$RelativePath"
+g-cli --lv-ver $MinimumSupportedLVVersion --arch $SupportedBitness -v "$RepoRoot\Tooling\deployment\Create_LV_INI_Token.vi" -- "LabVIEW" "Localhost.LibraryPaths" "$RepoRoot"
 "@
 
 Write-Output "Executing the following command:"

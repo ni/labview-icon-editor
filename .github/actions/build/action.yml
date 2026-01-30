@@ -12,7 +12,7 @@ runs:
       shell: pwsh
       run: |
         & "${{ github.action_path }}/Build.ps1" `
-          -RelativePath "${{ inputs.relative_path }}" `
+          -RepoRoot "${{ inputs.repo_root }}" `
           -Major ${{ inputs.major }} `
           -Minor ${{ inputs.minor }} `
           -Patch ${{ inputs.patch }} `
@@ -22,7 +22,7 @@ runs:
           -CompanyName "${{ inputs.company_name }}" `
           -AuthorName "${{ inputs.author_name }}"
 inputs:
-  relative_path:
+  repo_root:
     description: 'Workspace root path'
     required: true
   major:

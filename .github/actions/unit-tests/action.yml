@@ -12,8 +12,8 @@ runs:
       shell: pwsh
       run: |
         & "${{ github.action_path }}/unit_tests.ps1" \
-          -RelativePath "${{ inputs.relative_path }}"
+          -RepoRoot "${{ inputs.repo_root }}"
 inputs:
-  relative_path:
+  repo_root:
     description: 'Workspace root path'
     required: true

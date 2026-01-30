@@ -73,7 +73,7 @@ jobs:
         with:
           minimum_supported_lv_version: 2021
           supported_bitness: ${{ matrix.bitness }}
-          relative_path: ${{ github.workspace }}
+          repo_root: ${{ github.workspace }}
           major: ${{ needs.version.outputs.MAJOR }}
           minor: ${{ needs.version.outputs.MINOR }}
           patch: ${{ needs.version.outputs.PATCH }}
@@ -99,7 +99,7 @@ jobs:
           vipb_path: .github/actions/build-vi-package/NI Icon editor.vipb
           minimum_supported_lv_version: 2021
           labview_minor_revision: 0
-          relative_path: ${{ github.workspace }}
+          repo_root: ${{ github.workspace }}
           supported_bitness: 64
           major: ${{ needs.version.outputs.MAJOR }}
           minor: ${{ needs.version.outputs.MINOR }}
@@ -158,7 +158,7 @@ The previous build system used a `Build.ps1` script. For historical reference, y
 
 ```powershell
 \.github\actions\build\Build.ps1 `
-  -RelativePath "C:\labview-icon-editor-fork" `
+  -RepoRoot "C:\labview-icon-editor-fork" `
   -Major 2 -Minor 1 -Patch 0 -Build 5 `
   -Commit "abc12345" `
   -CompanyName "Acme Corporation" `

@@ -25,7 +25,7 @@ jobs:
         with:
           minimum_supported_lv_version: ${{ matrix.lv-version }}
           supported_bitness: ${{ matrix.bitness }}
-          relative_path: ${{ github.workspace }}
+          repo_root: ${{ github.workspace }}
 
       # 1️⃣  Detect the first *.lvproj and expose its **absolute path**
       - name: Find .lvproj file
@@ -84,7 +84,7 @@ jobs:
         with:
           minimum_supported_lv_version: ${{ matrix.lv-version }}
           supported_bitness: ${{ matrix.bitness }}
-          relative_path: ${{ github.workspace }}
+          repo_root: ${{ github.workspace }}
       - name: Close LabVIEW (LV${{ matrix.lv-version }} ${{ matrix.bitness }}-bit)
         if: always()
         uses: ./.github/actions/close-labview

@@ -106,7 +106,7 @@ Describe 'Development Mode integration (LabVIEW 2021 (21.0))' {
 
             return @(
                 '-MinimumSupportedLVVersion', $LabVIEWVersion,
-                '-RelativePath', $RepoRoot,
+                '-RepoRoot', $RepoRoot,
                 '-SupportedBitness', $Bitness,
                 '-ConnectTimeoutMs', $script:connectTimeoutMs,
                 '-ProcessTimeoutMs', $script:processTimeoutMs

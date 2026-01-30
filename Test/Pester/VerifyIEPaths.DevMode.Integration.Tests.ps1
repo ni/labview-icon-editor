@@ -160,7 +160,7 @@ Describe 'Verify IE Paths (dev mode) integration' {
                 '-SupportedBitness', $bitness,
                 '-ConnectTimeoutMs', $script:connectTimeoutMs,
                 '-ProcessTimeoutMs', $script:processTimeoutMs,
-                '-RelativePath', $script:repoRoot
+                '-RepoRoot', $script:repoRoot
             )
 
             $exitCode = Invoke-Runner -ScriptPath $script:revertScript -Arguments $revertArgs
@@ -193,7 +193,7 @@ Describe 'Verify IE Paths (dev mode) integration' {
                 '-SupportedBitness', $bitness,
                 '-ConnectTimeoutMs', $script:connectTimeoutMs,
                 '-ProcessTimeoutMs', $script:processTimeoutMs,
-                '-RelativePath', $script:repoRoot
+                '-RepoRoot', $script:repoRoot
             )
 
             $archiveRoot = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath 'labview-icon-editor'
@@ -217,7 +217,7 @@ Describe 'Verify IE Paths (dev mode) integration' {
                 '-SupportedBitness', $bitness,
                 '-ConnectTimeoutMs', $script:connectTimeoutMs,
                 '-ProcessTimeoutMs', $script:processTimeoutMs,
-                '-RelativePath', $script:repoRoot
+                '-RepoRoot', $script:repoRoot
             )
 
             try {

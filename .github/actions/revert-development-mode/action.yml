@@ -15,8 +15,8 @@ runs:
           MinimumSupportedLVVersion = "${{ inputs.minimum_supported_lv_version }}"
         }
 
-        if ("${{ inputs.relative_path }}" -ne "") {
-          $scriptArgs.RelativePath = "${{ inputs.relative_path }}"
+        if ("${{ inputs.repo_root }}" -ne "") {
+          $scriptArgs.RepoRoot = "${{ inputs.repo_root }}"
         }
 
         if ("${{ inputs.supported_bitness }}" -ne "") {
@@ -32,6 +32,6 @@ inputs:
   supported_bitness:
     description: 'LabVIEW bitness (32 or 64). Defaults to both when omitted.'
     required: false
-  relative_path:
+  repo_root:
     description: 'Workspace root path'
     required: false

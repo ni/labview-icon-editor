@@ -14,7 +14,7 @@
 .PARAMETER SupportedBitness
     LabVIEW bitness to target ("32" or "64"). Defaults to "64".
 
-.PARAMETER RelativePath
+.PARAMETER RepoRoot
     Optional path to the repository root. If omitted, resolved relative to
     this script's location.
 
@@ -96,7 +96,7 @@ param(
     [switch]$FailOnUnknownStatus,
 
     [Parameter(Mandatory = $false)]
-    [string]$RelativePath
+    [string]$RepoRoot
 )
 
 $ErrorActionPreference = 'Stop'
@@ -108,7 +108,7 @@ function Resolve-RepoRoot {
 
     if ($PathOverride) {
         if (-not (Test-Path -Path $PathOverride)) {
-            throw "RelativePath does not exist: $PathOverride"
+            throw "RepoRoot does not exist: $PathOverride"
         }
         return (Resolve-Path -Path $PathOverride).Path
     }
@@ -225,7 +225,7 @@ function Invoke-VerifyIEPathsStatusCleanup {
     }
 }
 
-$repoRoot = Resolve-RepoRoot -PathOverride $RelativePath
+$repoRoot = Resolve-RepoRoot -PathOverride $RepoRoot
 $gCliRunner = Join-Path -Path $PSScriptRoot -ChildPath 'support\GcliRunner.ps1'
 if (-not (Test-Path -Path $gCliRunner)) {
     throw "g-cli helper not found at $gCliRunner"

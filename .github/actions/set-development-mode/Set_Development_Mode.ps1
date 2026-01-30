@@ -13,7 +13,7 @@
 #    .PARAMETER SupportedBitness
 #        One or more bitness values ("32", "64") to run (default: both).
 #
-#    .PARAMETER RelativePath
+#    .PARAMETER RepoRoot
 #        Optional path to the repository root.
 #
 #    .PARAMETER ConnectTimeoutMs
@@ -37,7 +37,7 @@ param(
     [string[]]$SupportedBitness = @('32', '64'),
 
     [Parameter(Mandatory = $false)]
-    [string]$RelativePath,
+    [string]$RepoRoot,
 
     [Parameter(Mandatory = $false)]
     [ValidateRange(0, 600000)]
@@ -83,8 +83,8 @@ function Invoke-PrepareLabviewSource {
         ProcessTimeoutMs          = $ProcessTimeoutMs
     }
 
-    if ($RelativePath) {
-        $scriptArgs.RelativePath = $RelativePath
+    if ($RepoRoot) {
+        $scriptArgs.RepoRoot = $RepoRoot
     }
 
     & $PrepareScript @scriptArgs

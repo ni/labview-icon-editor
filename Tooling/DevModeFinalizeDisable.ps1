@@ -15,7 +15,7 @@
 .PARAMETER LogPath
     Optional log file path. If omitted, a log file is created under Tooling\logs.
 
-.PARAMETER RelativePath
+.PARAMETER RepoRoot
     Optional path to the repository root. If omitted, resolved relative to
     this script's location.
 #>
@@ -33,7 +33,7 @@ param(
     [string]$LogPath,
 
     [Parameter(Mandatory = $false)]
-    [string]$RelativePath
+    [string]$RepoRoot
 )
 
 $ErrorActionPreference = 'Stop'
@@ -45,7 +45,7 @@ function Resolve-RepoRoot {
 
     if ($PathOverride) {
         if (-not (Test-Path -Path $PathOverride)) {
-            throw "RelativePath does not exist: $PathOverride"
+            throw "RepoRoot does not exist: $PathOverride"
         }
         return (Resolve-Path -Path $PathOverride).Path
     }
@@ -64,7 +64,7 @@ function Write-Log {
     Write-Host $line
 }
 
-$repoRoot = Resolve-RepoRoot -PathOverride $RelativePath
+$repoRoot = Resolve-RepoRoot -PathOverride $RepoRoot
 $logPathResolved = $LogPath
 if ([string]::IsNullOrWhiteSpace($logPathResolved)) {
     $logDir = Join-Path -Path $repoRoot -ChildPath 'Tooling\logs'
@@ -85,7 +85,7 @@ if (-not (Test-Path -Path $revertScript)) {
 $scriptArgs = @{
     MinimumSupportedLVVersion = $MinimumSupportedLVVersion
     SupportedBitness          = $SupportedBitness
-    RelativePath              = $repoRoot
+    RepoRoot              = $repoRoot
 }
 
 Write-Log ("start version={0} bitness={1} log={2}" -f $MinimumSupportedLVVersion, $SupportedBitness, $logPathResolved)

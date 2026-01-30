@@ -13,7 +13,7 @@ runs:
       shell: pwsh
       run: |
         $ErrorActionPreference = 'Stop'
-        $logDir = Join-Path -Path "${{ inputs.relative_path }}" -ChildPath "builds/logs"
+        $logDir = Join-Path -Path "${{ inputs.repo_root }}" -ChildPath "builds/logs"
         New-Item -ItemType Directory -Path $logDir -Force | Out-Null
         $logFile = Join-Path -Path $logDir -ChildPath "gcli-preflight.log"
 
@@ -85,7 +85,7 @@ runs:
           return $Dir
         }
 
-        $vipDir = Join-Path -Path "${{ inputs.relative_path }}" -ChildPath "builds/VI Package"
+        $vipDir = Join-Path -Path "${{ inputs.repo_root }}" -ChildPath "builds/VI Package"
         $vipDir = Remove-ExistingVip -Dir $vipDir
 
         "vip_dir=$vipDir" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
@@ -100,7 +100,7 @@ runs:
 
         & "${{ github.action_path }}/build_vip.ps1" `
           -SupportedBitness ${{ inputs.supported_bitness }} `
-          -RelativePath "${{ inputs.relative_path }}" `
+          -RepoRoot "${{ inputs.repo_root }}" `
           -VIPBPath "${{ inputs.vipb_path }}" `
           -MinimumSupportedLVVersion ${{ inputs.minimum_supported_lv_version }} `
           -LabVIEWMinorRevision ${{ inputs.labview_minor_revision }} `
@@ -117,7 +117,7 @@ runs:
       shell: pwsh
       run: |
         $ErrorActionPreference = 'Stop'
-        $logDir = Join-Path -Path "${{ inputs.relative_path }}" -ChildPath "builds/logs"
+        $logDir = Join-Path -Path "${{ inputs.repo_root }}" -ChildPath "builds/logs"
         if (-not (Test-Path $logDir)) {
           Write-Host "No log directory found at $logDir."
           exit 0
@@ -208,7 +208,7 @@ runs:
       uses: actions/upload-artifact@v4
       with:
         name: gcli-logs
-        path: ${{ inputs.relative_path }}/builds/logs
+        path: ${{ inputs.repo_root }}/builds/logs
         if-no-files-found: ignore
 
     - name: Print release notes
@@ -228,7 +228,7 @@ inputs:
   supported_bitness:
     description: '32 or 64'
     required: true
-  relative_path:
+  repo_root:
     description: 'Workspace root path'
     required: true
   vipb_path:

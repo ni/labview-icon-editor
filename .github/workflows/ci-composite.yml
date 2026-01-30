@@ -54,7 +54,7 @@ jobs:
           pwsh -NoProfile -ExecutionPolicy Bypass -File ${{ github.workspace }}\Tooling\Invoke-MissingIEFilesFromLVInstall.ps1 `
             -MinimumSupportedLVVersion 2021 `
             -SupportedBitness ${{ matrix.bitness }} `
-            -RelativePath ${{ github.workspace }} `
+            -RepoRoot ${{ github.workspace }} `
             -ConnectTimeoutMs 180000 `
             -ProcessTimeoutMs 300000 `
             -StatusFileTimeoutMs 60000 `
@@ -94,7 +94,7 @@ jobs:
           minimum_supported_lv_version: 2021
           vip_lv_version:               2021
           supported_bitness:            64
-          relative_path:                ${{ github.workspace }}
+          repo_root:                ${{ github.workspace }}
           vipc_path:                    ".github/actions/apply-vipc/runner_dependencies.vipc"
       - run: echo "No .vipc changes detected; skipping dependency application."
         if: needs.changes.outputs.vipc != 'true'
@@ -110,7 +110,7 @@ jobs:
           minimum_supported_lv_version: 2021
           vip_lv_version:               2021
           supported_bitness:            32
-          relative_path:                ${{ github.workspace }}
+          repo_root:                ${{ github.workspace }}
           vipc_path:                    ".github/actions/apply-vipc/runner_dependencies.vipc"
       - run: echo "No .vipc changes detected; skipping dependency application."
         if: needs.changes.outputs.vipc != 'true'
@@ -169,7 +169,7 @@ jobs:
         with:
           minimum_supported_lv_version: "2021"
           supported_bitness: ${{ matrix.bitness }}
-          relative_path: ${{ github.workspace }}
+          repo_root: ${{ github.workspace }}
       - name: Run Unit Tests (2021 ${{ matrix.bitness }}-bit)
         uses: ./.github/actions/run-unit-tests
         with:
@@ -181,7 +181,7 @@ jobs:
         with:
           minimum_supported_lv_version: "2021"
           supported_bitness: ${{ matrix.bitness }}
-          relative_path: ${{ github.workspace }}
+          repo_root: ${{ github.workspace }}
       - if: always()
         name: Close LabVIEW 2021 ${{ matrix.bitness }}-bit after unit tests
         uses: ./.github/actions/close-labview
@@ -199,12 +199,12 @@ jobs:
         with:
           minimum_supported_lv_version: 2021
           supported_bitness: 32
-          relative_path: ${{ github.workspace }}
+          repo_root: ${{ github.workspace }}
       - uses: ./.github/actions/build-lvlibp
         with:
           minimum_supported_lv_version: 2021
           supported_bitness: 32
-          relative_path: ${{ github.workspace }}
+          repo_root: ${{ github.workspace }}
           major: ${{ needs.version.outputs.MAJOR }}
           minor: ${{ needs.version.outputs.MINOR }}
           patch: ${{ needs.version.outputs.PATCH }}
@@ -224,7 +224,7 @@ jobs:
         with:
           minimum_supported_lv_version: 2021
           supported_bitness: 32
-          relative_path: ${{ github.workspace }}
+          repo_root: ${{ github.workspace }}
       - name: Close LabVIEW (2021 32-bit)
         if: always()
         uses: ./.github/actions/close-labview
@@ -242,12 +242,12 @@ jobs:
         with:
           minimum_supported_lv_version: 2021
           supported_bitness: 64
-          relative_path: ${{ github.workspace }}
+          repo_root: ${{ github.workspace }}
       - uses: ./.github/actions/build-lvlibp
         with:
           minimum_supported_lv_version: 2021
           supported_bitness: 64
-          relative_path: ${{ github.workspace }}
+          repo_root: ${{ github.workspace }}
           major: ${{ needs.version.outputs.MAJOR }}
           minor: ${{ needs.version.outputs.MINOR }}
           patch: ${{ needs.version.outputs.PATCH }}
@@ -267,7 +267,7 @@ jobs:
         with:
           minimum_supported_lv_version: 2021
           supported_bitness: 64
-          relative_path: ${{ github.workspace }}
+          repo_root: ${{ github.workspace }}
       - name: Close LabVIEW (2021 64-bit)
         if: always()
         uses: ./.github/actions/close-labview
@@ -351,7 +351,7 @@ jobs:
       - uses: ./.github/actions/modify-vipb-display-info
         with:
           supported_bitness: 64
-          relative_path: ${{ github.workspace }}
+          repo_root: ${{ github.workspace }}
           vipb_path: Tooling/deployment/NI Icon editor.vipb
           minimum_supported_lv_version: 2021
           labview_minor_revision: 0
@@ -365,7 +365,7 @@ jobs:
       - uses: ./.github/actions/build-vip
         with:
           supported_bitness: 64
-          relative_path: ${{ github.workspace }}
+          repo_root: ${{ github.workspace }}
           vipb_path: Tooling/deployment/NI Icon editor.vipb
           minimum_supported_lv_version: 2021
           labview_minor_revision: 0

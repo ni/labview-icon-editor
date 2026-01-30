@@ -11,7 +11,7 @@
 .PARAMETER SupportedBitness
     LabVIEW bitness for the build ("32" or "64").
 
-.PARAMETER RelativePath
+.PARAMETER RepoRoot
     Path to the repository root.
 
 .PARAMETER VIPBPath
@@ -45,11 +45,11 @@
     JSON string representing the VIPB display information to update.
 
 .EXAMPLE
-    .\ModifyVIPBDisplayInfo.ps1 -SupportedBitness "64" -RelativePath "C:\repo" -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -MinimumSupportedLVVersion 2021 -LabVIEWMinorRevision 0 -Major 1 -Minor 0 -Patch 0 -Build 2 -Commit "abcd123" -ReleaseNotesFile "Tooling\deployment\release_notes.md" -DisplayInformationJSON '{"Package Version":{"major":1,"minor":0,"patch":0,"build":2}}'
+    .\ModifyVIPBDisplayInfo.ps1 -SupportedBitness "64" -RepoRoot "C:\repo" -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -MinimumSupportedLVVersion 2021 -LabVIEWMinorRevision 0 -Major 1 -Minor 0 -Patch 0 -Build 2 -Commit "abcd123" -ReleaseNotesFile "Tooling\deployment\release_notes.md" -DisplayInformationJSON '{"Package Version":{"major":1,"minor":0,"patch":0,"build":2}}'
 #>
 param (
     [string]$SupportedBitness,
-    [string]$RelativePath,
+    [string]$RepoRoot,
     [string]$VIPBPath,
 
     [ValidateSet(2021)]
@@ -71,12 +71,12 @@ param (
 
 # 1) Resolve paths
 try {
-    $ResolvedRelativePath = Resolve-Path -Path $RelativePath -ErrorAction Stop
-    $ResolvedVIPBPath = Join-Path -Path $ResolvedRelativePath -ChildPath $VIPBPath -ErrorAction Stop
+    $ResolvedRepoRoot = Resolve-Path -Path $RepoRoot -ErrorAction Stop
+    $ResolvedVIPBPath = Join-Path -Path $ResolvedRepoRoot -ChildPath $VIPBPath -ErrorAction Stop
 }
 catch {
     $errorObject = [PSCustomObject]@{
-        error      = "Error resolving paths. Ensure RelativePath and VIPBPath are valid."
+        error      = "Error resolving paths. Ensure RepoRoot and VIPBPath are valid."
         exception  = $_.Exception.Message
         stackTrace = $_.Exception.StackTrace
     }
@@ -278,15 +278,15 @@ if (-not [string]::IsNullOrWhiteSpace($licenseAgreementInput)) {
     $relativePath  = $licenseAgreementInput
 
     if (-not [System.IO.Path]::IsPathRooted($candidatePath)) {
-        $candidatePath = Join-Path -Path $ResolvedRelativePath -ChildPath $licenseAgreementInput
+        $candidatePath = Join-Path -Path $ResolvedRepoRoot -ChildPath $licenseAgreementInput
     }
 
     if (Test-Path $candidatePath) {
         try {
             $resolvedLicensePath = (Resolve-Path -Path $candidatePath -ErrorAction Stop).Path
 
-            if ($resolvedLicensePath.StartsWith($ResolvedRelativePath, [System.StringComparison]::OrdinalIgnoreCase)) {
-                $relativePath = $resolvedLicensePath.Substring($ResolvedRelativePath.Length).TrimStart('\','/')
+            if ($resolvedLicensePath.StartsWith($ResolvedRepoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $relativePath = $resolvedLicensePath.Substring($ResolvedRepoRoot.Length).TrimStart('\','/')
             }
         }
         catch {

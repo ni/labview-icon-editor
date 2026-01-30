@@ -14,7 +14,7 @@
 .PARAMETER SupportedBitness
     Target bitness of the LabVIEW environment ("32" or "64").
 
-.PARAMETER RelativePath
+.PARAMETER RepoRoot
     Optional path to the repository root. If omitted, resolved relative to
     this script's location.
 
@@ -38,7 +38,7 @@ param(
     [string]$SupportedBitness,
 
     [Parameter(Mandatory = $false)]
-    [string]$RelativePath,
+    [string]$RepoRoot,
 
     [Parameter(Mandatory = $false)]
     [ValidateRange(0, 600000)]
@@ -58,7 +58,7 @@ function Resolve-RepoRoot {
 
     if ($PathOverride) {
         if (-not (Test-Path -Path $PathOverride)) {
-            throw "RelativePath does not exist: $PathOverride"
+            throw "RepoRoot does not exist: $PathOverride"
         }
         return (Resolve-Path -Path $PathOverride).Path
     }
@@ -105,7 +105,7 @@ function Get-LabVIEWInstallRoot {
     return $null
 }
 
-$repoRoot = Resolve-RepoRoot -PathOverride $RelativePath
+$repoRoot = Resolve-RepoRoot -PathOverride $RepoRoot
 $gCliRunner = Join-Path -Path $repoRoot -ChildPath 'Tooling\support\GcliRunner.ps1'
 if (-not (Test-Path -Path $gCliRunner)) {
     throw "g-cli helper not found at $gCliRunner"

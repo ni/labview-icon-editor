@@ -32,7 +32,7 @@
     Optional transcript path. If omitted and CaptureTranscript is set, a default
     transcript file is created next to the iteration log.
 
-.PARAMETER RelativePath
+.PARAMETER RepoRoot
     Optional path to the repository root. If omitted, resolved relative to
     this script's location.
 
@@ -78,7 +78,7 @@ param(
     [string]$TranscriptPath,
 
     [Parameter(Mandatory = $false)]
-    [string]$RelativePath
+    [string]$RepoRoot
 )
 
 $ErrorActionPreference = 'Stop'
@@ -90,7 +90,7 @@ function Resolve-RepoRoot {
 
     if ($PathOverride) {
         if (-not (Test-Path -Path $PathOverride)) {
-            throw "RelativePath does not exist: $PathOverride"
+            throw "RepoRoot does not exist: $PathOverride"
         }
         return (Resolve-Path -Path $PathOverride).Path
     }
@@ -98,7 +98,7 @@ function Resolve-RepoRoot {
     return (Resolve-Path -Path (Join-Path $PSScriptRoot '..')).Path
 }
 
-$repoRoot = Resolve-RepoRoot -PathOverride $RelativePath
+$repoRoot = Resolve-RepoRoot -PathOverride $RepoRoot
 $logPathResolved = $LogPath
 if ([string]::IsNullOrWhiteSpace($logPathResolved)) {
     $logDir = Join-Path -Path $repoRoot -ChildPath 'Tooling\logs'
@@ -125,7 +125,7 @@ if (-not (Test-Path -Path $revertScript)) {
 $scriptArgs = @{
     MinimumSupportedLVVersion = $MinimumSupportedLVVersion
     SupportedBitness          = $SupportedBitness
-    RelativePath              = $repoRoot
+    RepoRoot              = $repoRoot
 }
 
 function Write-IterationLog {

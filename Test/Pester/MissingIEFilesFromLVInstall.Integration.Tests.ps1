@@ -151,7 +151,7 @@ Describe 'Verify IE Paths integration' {
             $revertArgs = @(
                 '-MinimumSupportedLVVersion', $script:labviewVersion,
                 '-SupportedBitness', $bitness,
-                '-RelativePath', $script:repoRoot,
+                '-RepoRoot', $script:repoRoot,
                 '-ConnectTimeoutMs', $script:connectTimeoutMs,
                 '-ProcessTimeoutMs', $script:processTimeoutMs
             )

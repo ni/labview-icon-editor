@@ -59,7 +59,7 @@
 .PARAMETER ReleaseNotesPath
     Path to release notes file (relative to repo root).
 
-.PARAMETER RelativePath
+.PARAMETER RepoRoot
     Optional repository root override.
 
 .PARAMETER Major
@@ -122,7 +122,7 @@ param(
     [string]$ReleaseNotesPath = 'Tooling/deployment/release_notes.md',
 
     [Parameter(Mandatory = $false)]
-    [string]$RelativePath,
+    [string]$RepoRoot,
 
     [Parameter(Mandatory = $false)]
     [int]$Major,
@@ -175,7 +175,7 @@ function Resolve-RepoRoot {
     param([string]$PathOverride)
     if ($PathOverride) {
         if (-not (Test-Path -Path $PathOverride)) {
-            throw "RelativePath does not exist: $PathOverride"
+            throw "RepoRoot does not exist: $PathOverride"
         }
         return (Resolve-Path -Path $PathOverride).Path
     }
@@ -409,7 +409,7 @@ function Write-GCliBuildLogTail {
     Write-Host "---- end g-cli build log ----"
 }
 
-$repoRoot = Resolve-RepoRoot -PathOverride $RelativePath
+$repoRoot = Resolve-RepoRoot -PathOverride $RepoRoot
 Push-Location -Path $repoRoot
 $script:RunFailed = $false
 $runStart = Get-Date
@@ -464,7 +464,7 @@ try {
                     & (Join-Path $repoRoot '.github/actions/revert-development-mode/RevertDevelopmentMode.ps1') `
                         -MinimumSupportedLVVersion $LabVIEWVersion `
                         -SupportedBitness $bitness `
-                        -RelativePath $repoRoot `
+                        -RepoRoot $repoRoot `
                         -ConnectTimeoutMs $ConnectTimeoutMs `
                         -ProcessTimeoutMs $ProcessTimeoutMs
                 }
@@ -474,7 +474,7 @@ try {
                 & (Join-Path $repoRoot 'Tooling/Invoke-MissingIEFilesFromLVInstall.ps1') `
                     -MinimumSupportedLVVersion $LabVIEWVersion `
                     -SupportedBitness $bitness `
-                    -RelativePath $repoRoot `
+                    -RepoRoot $repoRoot `
                     -ConnectTimeoutMs $ConnectTimeoutMs `
                     -ProcessTimeoutMs $ProcessTimeoutMs `
                     -StatusFileTimeoutMs $StatusFileTimeoutMs `
@@ -490,7 +490,7 @@ try {
                     -MinimumSupportedLVVersion $LabVIEWVersion `
                     -VIP_LVVersion $LabVIEWVersion `
                     -SupportedBitness $bitness `
-                    -RelativePath $repoRoot `
+                    -RepoRoot $repoRoot `
                     -VIPCPath $VipcPath
             }
         }
@@ -512,7 +512,7 @@ try {
                     & (Join-Path $repoRoot '.github/actions/set-development-mode/Set_Development_Mode.ps1') `
                         -MinimumSupportedLVVersion $LabVIEWVersion `
                         -SupportedBitness $bitness `
-                        -RelativePath $repoRoot `
+                        -RepoRoot $repoRoot `
                         -ConnectTimeoutMs $ConnectTimeoutMs `
                         -ProcessTimeoutMs $ProcessTimeoutMs
                 }
@@ -528,7 +528,7 @@ try {
                 & (Join-Path $repoRoot '.github/actions/revert-development-mode/RevertDevelopmentMode.ps1') `
                     -MinimumSupportedLVVersion $LabVIEWVersion `
                     -SupportedBitness $bitness `
-                    -RelativePath $repoRoot `
+                    -RepoRoot $repoRoot `
                     -ConnectTimeoutMs $ConnectTimeoutMs `
                     -ProcessTimeoutMs $ProcessTimeoutMs | Out-Null
                 & (Join-Path $repoRoot '.github/actions/close-labview/Close_LabVIEW.ps1') `
@@ -550,7 +550,7 @@ try {
                     & (Join-Path $repoRoot '.github/actions/set-development-mode/Set_Development_Mode.ps1') `
                         -MinimumSupportedLVVersion $LabVIEWVersion `
                         -SupportedBitness $bitness `
-                        -RelativePath $repoRoot `
+                        -RepoRoot $repoRoot `
                         -ConnectTimeoutMs $ConnectTimeoutMs `
                         -ProcessTimeoutMs $ProcessTimeoutMs
                 }
@@ -565,7 +565,7 @@ try {
                 & (Join-Path $repoRoot '.github/actions/revert-development-mode/RevertDevelopmentMode.ps1') `
                     -MinimumSupportedLVVersion $LabVIEWVersion `
                     -SupportedBitness $bitness `
-                    -RelativePath $repoRoot `
+                    -RepoRoot $repoRoot `
                     -ConnectTimeoutMs $ConnectTimeoutMs `
                     -ProcessTimeoutMs $ProcessTimeoutMs | Out-Null
                 & (Join-Path $repoRoot '.github/actions/close-labview/Close_LabVIEW.ps1') `
@@ -582,7 +582,7 @@ try {
                     & (Join-Path $repoRoot '.github/actions/set-development-mode/Set_Development_Mode.ps1') `
                         -MinimumSupportedLVVersion $LabVIEWVersion `
                         -SupportedBitness $bitness `
-                        -RelativePath $repoRoot `
+                        -RepoRoot $repoRoot `
                         -ConnectTimeoutMs $ConnectTimeoutMs `
                         -ProcessTimeoutMs $ProcessTimeoutMs
                 }
@@ -591,7 +591,7 @@ try {
                     & (Join-Path $repoRoot '.github/actions/build-lvlibp/Build_lvlibp.ps1') `
                         -MinimumSupportedLVVersion $LabVIEWVersion `
                         -SupportedBitness $bitness `
-                        -RelativePath $repoRoot `
+                        -RepoRoot $repoRoot `
                         -Major $versionInfo.Major `
                         -Minor $versionInfo.Minor `
                         -Patch $versionInfo.Patch `
@@ -603,7 +603,7 @@ try {
                 & (Join-Path $repoRoot '.github/actions/revert-development-mode/RevertDevelopmentMode.ps1') `
                     -MinimumSupportedLVVersion $LabVIEWVersion `
                     -SupportedBitness $bitness `
-                    -RelativePath $repoRoot `
+                    -RepoRoot $repoRoot `
                     -ConnectTimeoutMs $ConnectTimeoutMs `
                     -ProcessTimeoutMs $ProcessTimeoutMs | Out-Null
                 & (Join-Path $repoRoot '.github/actions/close-labview/Close_LabVIEW.ps1') `
@@ -643,7 +643,7 @@ try {
         Invoke-Checked -Label "Modify VIPB display info (LV$LabVIEWVersion 64-bit)" -Action {
             & (Join-Path $repoRoot '.github/actions/modify-vipb-display-info/ModifyVIPBDisplayInfo.ps1') `
                 -SupportedBitness 64 `
-                -RelativePath $repoRoot `
+                -RepoRoot $repoRoot `
                 -VIPBPath $VipbPath `
                 -MinimumSupportedLVVersion $LabVIEWVersion `
                 -LabVIEWMinorRevision $vipLabVIEWMinorRevision `
@@ -660,7 +660,7 @@ try {
             Invoke-Checked -Label "Build VIP (LV$LabVIEWVersion 64-bit)" -Action {
                 & (Join-Path $repoRoot '.github/actions/build-vip/build_vip.ps1') `
                     -SupportedBitness 64 `
-                    -RelativePath $repoRoot `
+                    -RepoRoot $repoRoot `
                     -VIPBPath $VipbPath `
                     -MinimumSupportedLVVersion $LabVIEWVersion `
                     -LabVIEWMinorRevision $vipLabVIEWMinorRevision `

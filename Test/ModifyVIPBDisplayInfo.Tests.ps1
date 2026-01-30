@@ -37,11 +37,11 @@ Describe "ModifyVIPBDisplayInfo.ps1" {
         }
 
         $displayInformationJson = $displayInformation | ConvertTo-Json -Depth 5
-        $relativeVipbPath = [System.IO.Path]::GetRelativePath($repoRoot, $vipbPath)
+        $relativeVipbPath = [System.IO.Path]::GetRepoRoot($repoRoot, $vipbPath)
 
         & $scriptPath `
             -SupportedBitness 64 `
-            -RelativePath $repoRoot `
+            -RepoRoot $repoRoot `
             -VIPBPath $relativeVipbPath `
             -MinimumSupportedLVVersion 2021 `
             -LabVIEWMinorRevision 0 `

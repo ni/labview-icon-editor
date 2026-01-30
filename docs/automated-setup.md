@@ -76,7 +76,7 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 4. **Run** `Build.ps1`:
    ```powershell
    .\Build.ps1 `
-       -RelativePath "C:\labview-icon-editor" `
+       -RepoRoot "C:\labview-icon-editor" `
        -Major 1 -Minor 2 -Patch 3 -Build 45 `
     -Commit "my-commit-sha" `
     -LabVIEWMinorRevision 0 `
@@ -118,7 +118,7 @@ An example step in a GitHub Actions file might look like:
 - name: Build Icon Editor
   run: |
     pwsh .\.github\actions\build\Build.ps1 `
-      -RelativePath "$env:GITHUB_WORKSPACE" `
+      -RepoRoot "$env:GITHUB_WORKSPACE" `
       -Major 1 -Minor 2 -Patch 0 -Build 10 `
       -Commit "${{ github.sha }}" `
       # You can pass metadata fields to brand the package:

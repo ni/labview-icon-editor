@@ -14,7 +14,7 @@ runs:
         & "${{ github.action_path }}/RestoreSetupLVSource.ps1" \
           -MinimumSupportedLVVersion ${{ inputs.minimum_supported_lv_version }} \
           -SupportedBitness ${{ inputs.supported_bitness }} \
-          -RelativePath "${{ inputs.relative_path }}"
+          -RepoRoot "${{ inputs.repo_root }}"
 inputs:
   minimum_supported_lv_version:
     description: 'LabVIEW 2021 (21.0)'
@@ -22,6 +22,6 @@ inputs:
   supported_bitness:
     description: '32 or 64'
     required: true
-  relative_path:
+  repo_root:
     description: 'Workspace root path'
     required: false

@@ -30,8 +30,8 @@ Ensure a runner has all required LabVIEW packages installed before building or t
 | `minimum_supported_lv_version` | **Yes** | `2021` | LabVIEW *major* version that the repo supports. |
 | `vip_lv_version` | **Yes** | `2021` | LabVIEW version used to apply the `.vipc` file. Usually the same as `minimum_supported_lv_version`. |
 | `supported_bitness` | **Yes** | `32` or `64` | LabVIEW bitness to target. |
-| `relative_path` | **Yes** | `${{ github.workspace }}` | Root path of the repository on disk. |
-| `vipc_path` | **Yes** | `Tooling/deployment/runner_dependencies.vipc` | Path (relative to `relative_path`) of the VI Package Configuration to apply. |
+| `repo_root` | **Yes** | `${{ github.workspace }}` | Root path of the repository on disk. |
+| `vipc_path` | **Yes** | `Tooling/deployment/runner_dependencies.vipc` | Path (relative to `repo_root`) of the VI Package Configuration to apply. |
 
 ---
 
@@ -46,7 +46,7 @@ steps:
       minimum_supported_lv_version: 2021
       vip_lv_version: 2021
       supported_bitness: 64
-      relative_path: ${{ github.workspace }}
+      repo_root: ${{ github.workspace }}
       vipc_path: Tooling/deployment/runner_dependencies.vipc
 ```
 
@@ -64,7 +64,7 @@ steps:
 | Symptom | Hint |
 |---------|------|
 | *g-cli executable not found* | Ensure g-cli is installed and on `PATH`. |
-| *`.vipc` file not found* | Check `relative_path` and `vipc_path` values. |
+| *`.vipc` file not found* | Check `repo_root` and `vipc_path` values. |
 | *LabVIEW version mismatch* | Make sure the installed LabVIEW version matches both version inputs. |
 
 ---
