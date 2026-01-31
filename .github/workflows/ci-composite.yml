@@ -668,6 +668,74 @@ jobs:
             -Commit "${{ github.sha }}" `
             -ReleaseNotesFile "$env:REPO_ROOT\\Tooling\\deployment\\release_notes.md" `
             -DisplayInformationJSON $displayInformationJson
+      - name: Prepare release notes artifact
+        id: release-notes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $source = "$env:REPO_ROOT\\Tooling\\deployment\\release_notes.md"
+          if (-not (Test-Path $source)) {
+            Write-Error "Release notes file not found at $source."
+            exit 1
+          }
+
+          $version = "{0}.{1}.{2}.{3}" -f "${{ needs.version.outputs.MAJOR }}", "${{ needs.version.outputs.MINOR }}", "${{ needs.version.outputs.PATCH }}", "${{ needs.version.outputs.BUILD }}"
+          $destName = "release_notes_{0}.md" -f $version
+          $artifactName = "release_notes_{0}" -f $version
+          $destPath = Join-Path -Path (Split-Path -Parent $source) -ChildPath $destName
+
+          Copy-Item -LiteralPath $source -Destination $destPath -Force
+          Write-Host ("Release notes artifact prepared at {0}" -f $destPath)
+
+          "artifact_path=$destPath" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "artifact_name=$artifactName" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+      - name: Locate built VI package
+        id: locate-vip
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vipDir = Join-Path -Path $env:REPO_ROOT -ChildPath "builds/VI Package"
+          if (-not (Test-Path $vipDir)) {
+            Write-Error "VI Package directory not found at '$vipDir'."
+            exit 1
+          }
+
+          $vipFiles = Get-ChildItem -Path $vipDir -Filter *.vip -File -Recurse | Sort-Object LastWriteTime -Descending
+          if (-not $vipFiles) {
+            Write-Error "No .vip file found under '$vipDir'."
+            exit 1
+          }
+
+          if ($vipFiles.Count -gt 1) {
+            Write-Warning ("Multiple .vip files found; selecting most recent (by LastWriteTime). Files:`n{0}" -f ($vipFiles | ForEach-Object { " - $($_.FullName)" } | Out-String))
+          }
+
+          $vip = $vipFiles[0]
+          Write-Host ("Selected .vip: {0}" -f $vip.FullName)
+
+          "vip_path=$($vip.FullName)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "vip_name=$($vip.Name)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "vip_artifact=$([System.IO.Path]::GetFileNameWithoutExtension($vip.Name))" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+      - name: Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.release-notes.outputs.artifact_name }}
+          path: ${{ steps.release-notes.outputs.artifact_path }}
+          compression-level: 0
+          if-no-files-found: error
+      - name: Upload VI Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.locate-vip.outputs.vip_artifact }}
+          path: ${{ steps.locate-vip.outputs.vip_path }}
+          if-no-files-found: error
+      - name: Upload g-cli logs (if present)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gcli-logs
+          path: ${{ env.REPO_ROOT }}/builds/logs
+          if-no-files-found: warn
       - if: always()
         shell: pwsh
         run: |
