@@ -44,8 +44,9 @@ jobs:
           $worktreeRoot = & "$env:GITHUB_WORKSPACE\Tooling\Ensure-WorktreeRoot.ps1"
           $targetPath = Join-Path $worktreeRoot $name
           $worktree = & "$env:GITHUB_WORKSPACE\Tooling\New-CIWorktree.ps1" -Ref $env:GITHUB_SHA -Path $targetPath
+          $projectPath = Join-Path $worktree 'lv_icon_editor.lvproj'
           "REPO_ROOT=$worktree" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
-          "PROJECT_PATH=$worktree\\lv_icon_editor.lvproj" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
+          "PROJECT_PATH=$projectPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
 
       - name: Enable Development Mode (LV${{ matrix.lv-version }} ${{ matrix.bitness }}-bit)
         shell: pwsh

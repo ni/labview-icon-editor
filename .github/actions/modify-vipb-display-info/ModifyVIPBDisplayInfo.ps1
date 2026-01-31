@@ -276,6 +276,7 @@ $licenseAgreementInput = $jsonObj.'License Agreement Name'
 if (-not [string]::IsNullOrWhiteSpace($licenseAgreementInput)) {
     $candidatePath = $licenseAgreementInput
     $relativePath  = $licenseAgreementInput
+    $resolvedLicensePath = $null
 
     if (-not [System.IO.Path]::IsPathRooted($candidatePath)) {
         $candidatePath = Join-Path -Path $ResolvedRepoRoot -ChildPath $licenseAgreementInput
@@ -284,20 +285,26 @@ if (-not [string]::IsNullOrWhiteSpace($licenseAgreementInput)) {
     if (Test-Path $candidatePath) {
         try {
             $resolvedLicensePath = (Resolve-Path -Path $candidatePath -ErrorAction Stop).Path
-
-            if ($resolvedLicensePath.StartsWith($ResolvedRepoRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-                $relativePath = $resolvedLicensePath.Substring($ResolvedRepoRoot.Length).TrimStart('\','/')
-            }
         }
         catch {
             Write-Warning "Unable to resolve license file path '$candidatePath'. Using literal value instead."
         }
     }
     else {
-        Write-Warning "License agreement path '$licenseAgreementInput' does not exist relative to the repository."
+        Write-Warning "License agreement path '$licenseAgreementInput' does not exist relative to the repository. Skipping license assignment."
     }
 
-    Set-VipbElementValue -ParentNode $advancedSettings -ElementName "License_Agreement_Filepath" -Value $relativePath
+    if ($resolvedLicensePath) {
+        try {
+            $vipbDirectory = Split-Path -Parent $ResolvedVIPBPath
+            $relativePath = [System.IO.Path]::GetRelativePath($vipbDirectory, $resolvedLicensePath)
+        }
+        catch {
+            Write-Warning "Unable to compute a relative license path from '$ResolvedVIPBPath'. Using absolute path instead."
+            $relativePath = $resolvedLicensePath
+        }
+        Set-VipbElementValue -ParentNode $advancedSettings -ElementName "License_Agreement_Filepath" -Value $relativePath
+    }
 }
 
 # Warn about any DisplayInformation JSON keys we don't yet handle
