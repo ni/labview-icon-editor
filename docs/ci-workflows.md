@@ -104,6 +104,15 @@ Below are the **key GitHub Actions** provided in this repository:
    - By default, “Company Name” and “Author Name” in the generated `.vip` come from `github.repository_owner` and `github.event.repository.name`. Update the “Generate display information JSON” step in [`ci-composite.yml`](../.github/workflows/ci-composite.yml) if you need custom values.
    - Uploads the `.vip` artifact to GitHub’s build artifacts.
 
+3. **Runner CLI (Reusable Build)**
+   - [`runner-cli-reusable.yml`](../.github/workflows/runner-cli-reusable.yml) publishes a self-contained `runner-cli` binary for a target RID.
+   - `ci-composite.yml` calls this reusable workflow and downloads the artifact to run `runner-cli version-gate` without rebuilding on every job.
+   - `runner-audit.yml` uses the published `runner-cli` artifact when available; falls back to PowerShell scripts otherwise.
+
+4. **Runner CLI Docker (Linux)**
+   - [`runner-cli-docker.yml`](../.github/workflows/runner-cli-docker.yml) builds a Linux Docker image with .NET + pylavi.
+   - Runs runner-cli tests plus a pylavi scan/summarize loop on Ubuntu to validate tooling without LabVIEW.
+
 #### Jobs in CI workflow
 
 The [`ci-composite.yml`](../.github/workflows/ci-composite.yml) pipeline breaks the build into several jobs:
