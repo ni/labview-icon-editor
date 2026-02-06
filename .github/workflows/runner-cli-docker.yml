@@ -1,0 +1,60 @@
+name: Runner CLI Docker (Linux)
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - release/*
+      - feature/*
+      - hotfix/*
+    paths:
+      - 'Tooling/runner-cli/**'
+      - 'Tooling/pylavi/**'
+      - 'Tooling/Run-ViValidate.ps1'
+      - 'Tooling/Get-PylaviOffenders.ps1'
+      - 'Tooling/Fetch-PylaviOffenders.ps1'
+      - 'Tooling/docker/runner-cli/**'
+      - '.github/workflows/runner-cli-docker.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'Tooling/runner-cli/**'
+      - 'Tooling/pylavi/**'
+      - 'Tooling/Run-ViValidate.ps1'
+      - 'Tooling/Get-PylaviOffenders.ps1'
+      - 'Tooling/Fetch-PylaviOffenders.ps1'
+      - 'Tooling/docker/runner-cli/**'
+      - '.github/workflows/runner-cli-docker.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docker-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build runner-cli docker image
+        shell: bash
+        run: |
+          docker build -t lvie-runner-cli:ci -f Tooling/docker/runner-cli/Dockerfile Tooling/docker/runner-cli
+
+      - name: Run runner-cli + pylavi checks
+        shell: bash
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo lvie-runner-cli:ci bash -lc "
+            set -euo pipefail
+            dotnet test Tooling/runner-cli/RunnerCli.Tests/RunnerCli.Tests.csproj -c Release
+            dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj --configuration Release -- version-gate --repo-root /repo --json
+            dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj --configuration Release -- pylavi scan --repo-root /repo --config Tooling/pylavi/vi-validate.yml --report-only --offenders-path /tmp/pylavi-offenders.json --log-path /tmp/vi_validate.log
+            test -s /tmp/pylavi-offenders.json
+            test -s /tmp/vi_validate.log
+            dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj --configuration Release -- pylavi summarize --path /tmp/pylavi-offenders.json --json --output-path /tmp/pylavi-summary.json
+            test -s /tmp/pylavi-summary.json
+          "
