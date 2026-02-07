@@ -94,7 +94,7 @@ function Add-Finding {
     }
 }
 
-function Parse-RcMap {
+function Get-RcMap {
     param([string]$FilePath)
 
     $map = @{}
@@ -114,7 +114,7 @@ function Parse-RcMap {
     return $map
 }
 
-function Get-A005TargetIds {
+function Get-A005TargetId {
     param([string]$AcceptanceFilePath)
 
     $a005Line = Get-Content -Path $AcceptanceFilePath | Where-Object {
@@ -191,8 +191,8 @@ $resolvedRepoRoot = Resolve-RepoRoot -PathOverride $RepoRoot
 $requirementsFile = Resolve-DocPath -Root $resolvedRepoRoot -Path $RequirementsPath
 $acceptanceFile = Resolve-DocPath -Root $resolvedRepoRoot -Path $AcceptancePath
 
-$rcMap = Parse-RcMap -FilePath $requirementsFile
-$targetIds = Get-A005TargetIds -AcceptanceFilePath $acceptanceFile
+$rcMap = Get-RcMap -FilePath $requirementsFile
+$targetIds = Get-A005TargetId -AcceptanceFilePath $acceptanceFile
 
 foreach ($targetId in $targetIds) {
     if (-not $rcMap.ContainsKey($targetId)) {
