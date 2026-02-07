@@ -824,6 +824,106 @@ missingCmd.SetHandler((InvocationContext context) =>
     }
 });
 
+// ── manifest ──────────────────────────────────────────────────────
+var manifestCmd = new Command("manifest", "Emit runner-cli capability and spec metadata.");
+manifestCmd.AddOption(repoRootOption);
+manifestCmd.AddOption(jsonOption);
+manifestCmd.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var repoRoot = context.ParseResult.GetValueForOption(repoRootOption);
+        _ = RepoLocator.Resolve(repoRoot, Environment.CurrentDirectory);
+        var manifest = ConformanceService.BuildManifest();
+
+        if (context.ParseResult.GetValueForOption(jsonOption))
+        {
+            Console.WriteLine(JsonSerializer.Serialize(manifest, RunnerCliJsonContext.Default.RunnerCliManifest));
+        }
+        else
+        {
+            Console.WriteLine($"spec_document_id={manifest.SpecDocumentId}");
+            Console.WriteLine($"spec_version={manifest.SpecVersion}");
+            Console.WriteLine($"build_version={manifest.BuildVersion}");
+            Console.WriteLine($"generated_utc={manifest.GeneratedUtc}");
+            Console.WriteLine($"supported_profiles={string.Join(',', manifest.SupportedProfiles)}");
+            Console.WriteLine($"supported_commands={string.Join(',', manifest.SupportedCommands)}");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"ERROR: {ex.Message}");
+        Environment.ExitCode = 1;
+        context.ExitCode = 1;
+    }
+});
+
+// ── conformance check ─────────────────────────────────────────────
+var conformanceCmd = new Command("conformance", "Conformance profile checks.");
+var conformanceCheckCmd = new Command("check", "Evaluate profile-scoped conformance checks.");
+var profileOption = new Option<string?>(
+    name: "--profile",
+    description: "Conformance profile to evaluate (core|extended|full).");
+var strictOption = new Option<bool>(
+    name: "--strict",
+    getDefaultValue: () => false,
+    description: "Treat warning checks as failures.");
+conformanceCheckCmd.AddOption(profileOption);
+conformanceCheckCmd.AddOption(repoRootOption);
+conformanceCheckCmd.AddOption(jsonOption);
+conformanceCheckCmd.AddOption(strictOption);
+conformanceCheckCmd.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var repoRoot = context.ParseResult.GetValueForOption(repoRootOption);
+        _ = RepoLocator.Resolve(repoRoot, Environment.CurrentDirectory);
+
+        var profileOptionValue = context.ParseResult.GetValueForOption(profileOption);
+        var strictProvided = context.ParseResult.Tokens.Any(token =>
+            string.Equals(token.Value, "--strict", StringComparison.OrdinalIgnoreCase));
+        var strictOverride = strictProvided ? context.ParseResult.GetValueForOption(strictOption) : (bool?)null;
+        var strict = ConformanceService.ResolveStrict(strictOverride);
+        var profile = ConformanceService.ResolveProfile(profileOptionValue);
+
+        var result = ConformanceService.Run(
+            profile,
+            strict,
+            Environment.GetEnvironmentVariable("RC_HOSTED_LINUX_EVIDENCE"),
+            Environment.GetEnvironmentVariable("RC_HOSTED_WINDOWS_EVIDENCE"));
+
+        var exitCode = ConformanceService.ResolveExitCode(result, strict);
+        if (context.ParseResult.GetValueForOption(jsonOption))
+        {
+            Console.WriteLine(JsonSerializer.Serialize(result, RunnerCliJsonContext.Default.ConformanceCheckResult));
+        }
+        else
+        {
+            Console.WriteLine($"profile={result.Profile}");
+            Console.WriteLine($"generated_utc={result.GeneratedUtc}");
+            Console.WriteLine($"total={result.Summary.Total}");
+            Console.WriteLine($"pass={result.Summary.Pass}");
+            Console.WriteLine($"warn={result.Summary.Warn}");
+            Console.WriteLine($"fail={result.Summary.Fail}");
+            foreach (var check in result.Checks)
+            {
+                Console.WriteLine($"- [{check.Status}] {check.Id}: {check.Message}");
+                Console.WriteLine($"  evidence={check.Evidence}");
+            }
+        }
+
+        Environment.ExitCode = exitCode;
+        context.ExitCode = exitCode;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"ERROR: {ex.Message}");
+        Environment.ExitCode = 1;
+        context.ExitCode = 1;
+    }
+});
+conformanceCmd.AddCommand(conformanceCheckCmd);
+
 // ── root ───────────────────────────────────────────────────────────
 var rootCmd = new RootCommand("LVIE Runner CLI – contract and parity helpers for stateless runners.");
 rootCmd.AddCommand(validateCmd);
@@ -832,5 +932,7 @@ rootCmd.AddCommand(emitCmd);
 rootCmd.AddCommand(versionCmd);
 rootCmd.AddCommand(pylaviCmd);
 rootCmd.AddCommand(missingCmd);
+rootCmd.AddCommand(manifestCmd);
+rootCmd.AddCommand(conformanceCmd);
 
 return await rootCmd.InvokeAsync(args);

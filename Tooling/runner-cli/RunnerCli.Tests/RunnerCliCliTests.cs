@@ -23,6 +23,70 @@ public class RunnerCliCliTests
     }
 
     [Fact]
+    public void Manifest_emits_required_json_fields()
+    {
+        var repoRoot = FindRepoRoot();
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, $"manifest --repo-root \"{repoRoot}\" --json");
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+
+        using var doc = JsonDocument.Parse(stdout);
+        var root = doc.RootElement;
+        Assert.True(TryGetPropertyIgnoreCase(root, "spec_document_id", out _), "spec_document_id missing");
+        Assert.True(TryGetPropertyIgnoreCase(root, "spec_version", out _), "spec_version missing");
+        Assert.True(TryGetPropertyIgnoreCase(root, "supported_commands", out _), "supported_commands missing");
+        Assert.True(TryGetPropertyIgnoreCase(root, "supported_profiles", out _), "supported_profiles missing");
+        Assert.True(TryGetPropertyIgnoreCase(root, "build_version", out _), "build_version missing");
+        Assert.True(TryGetPropertyIgnoreCase(root, "generated_utc", out _), "generated_utc missing");
+    }
+
+    [Fact]
+    public void ConformanceCheck_json_reports_non_windows_not_applicable_treatment()
+    {
+        var repoRoot = FindRepoRoot();
+        var env = new Dictionary<string, string?>
+        {
+            ["RC_PROFILE"] = "core",
+            ["RC_STRICT_MODE"] = "false",
+            ["RC_HOSTED_LINUX_EVIDENCE"] = "linux evidence",
+            ["RC_HOSTED_WINDOWS_EVIDENCE"] = "windows evidence"
+        };
+
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, "conformance check --json", env);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+
+        using var doc = JsonDocument.Parse(stdout);
+        var root = doc.RootElement;
+        Assert.Equal("core", root.GetProperty("profile").GetString());
+        var checks = root.GetProperty("checks").EnumerateArray().ToList();
+        var naCheck = checks.FirstOrDefault(entry =>
+            string.Equals(entry.GetProperty("id").GetString(), "core.windows-only.nonwindows-not-applicable", StringComparison.OrdinalIgnoreCase));
+        Assert.NotEqual(default, naCheck);
+        Assert.Contains("not applicable", naCheck.GetProperty("message").GetString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ConformanceCheck_strict_mode_escalates_warnings_to_exit_code_3()
+    {
+        var repoRoot = FindRepoRoot();
+        var env = new Dictionary<string, string?>
+        {
+            ["RC_PROFILE"] = "core",
+            ["RC_STRICT_MODE"] = "true",
+            ["RC_HOSTED_LINUX_EVIDENCE"] = null,
+            ["RC_HOSTED_WINDOWS_EVIDENCE"] = null
+        };
+
+        var (exitCode, _, stderr) = RunCli(repoRoot, "conformance check --json", env);
+
+        Assert.Equal(3, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+    }
+
+    [Fact]
     public void PylaviSummarize_writes_output_even_with_json()
     {
         var repoRoot = FindRepoRoot();

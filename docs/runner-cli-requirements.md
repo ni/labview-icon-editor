@@ -40,7 +40,7 @@ v5 is required because it expands the public contract surface with new commands 
 | Establish profile model and conformance hierarchy | RC-SCOPE-001, RC-SCOPE-002, RC-SCOPE-003 | Clarifying | Support gradual scope expansion with explicit applicability | V5-C1 |
 | Harden stream precedence and add stream matrix | RC-GEN-008, RC-GEN-009, RC-GEN-010, RC-GEN-011 | Breaking | Guarantee JSON parser-safe `stdout` in JSON mode | V5-C2 |
 | Extend deterministic and singularity controls | RC-DET-003, RC-DET-004, RC-CONV-005, RC-CONV-006 | Clarifying | Improve repeatability and independent verifiability | V5-C3 |
-| Add hosted cross-platform Core conformance boundaries | RC-PLAT-009, RC-PLAT-010, RC-CONF-010, RC-CONF-011 | Clarifying | Ensure Core evidence is collected on hosted Linux and hosted Windows while preserving Windows-only applicability constraints | V5-C7 |
+| Add hosted cross-platform Core conformance boundaries | RC-PLAT-009, RC-PLAT-010, RC-CONF-010, RC-CONF-011, RC-CONF-012 | Clarifying | Ensure Core evidence is collected on hosted Linux and hosted Windows while preserving Windows-only applicability constraints | V5-C7 |
 | Add `manifest` command and JSON type | RC-MAN-001, RC-MAN-002, RC-MAN-003, RC-JSN-070 | Contract-expanding | Provide introspection surface for spec/version capability discovery | V5-C4 |
 | Add `conformance check` command and JSON types | RC-CONF-001, RC-CONF-002, RC-CONF-003, RC-JSN-080, RC-JSN-090 | Contract-expanding | Provide profile-scoped, machine-readable conformance result surface | V5-C5 |
 | Add governance and deprecation lifecycle controls | RC-GOV-001, RC-GOV-002, RC-GOV-003, RC-GOV-004, RC-GOV-005 | Clarifying | Standardize release/change/deprecation evidence requirements | V5-C6 |
@@ -671,7 +671,8 @@ RC-CONF-007: The command shall return exit code 2 when one or more checks fail.
 RC-CONF-008: The command shall return exit code 3 when strict mode converts warning checks into failures.
 RC-CONF-009: The checks array shall include one ConformanceCheckEntry per evaluated check.
 RC-CONF-010: For Core profile checks targeting commands supported on Windows, Linux, and macOS, the command shall report evidence from at least one hosted Linux execution and one hosted Windows execution.
-RC-CONF-011: For Core profile checks targeting Windows-only commands, non-Windows platforms shall be reported as not applicable and shall not be treated as failures.
+RC-CONF-011: For Core profile checks targeting Windows-only commands, non-Windows platforms shall be reported as not applicable.
+RC-CONF-012: For Core profile checks targeting Windows-only commands, non-Windows not-applicable results shall not be treated as failures.
 
 ## 8. Environment Variables
 
