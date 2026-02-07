@@ -43,6 +43,24 @@
 .PARAMETER EnsureCleanState
     Revert dev mode before enabling it for Verify IE Paths.
 
+.PARAMETER SkipViValidate
+    Skip pylavi vi_validate checks.
+
+.PARAMETER ViValidateConfigPath
+    Path to pylavi vi_validate config file (relative to repo root).
+
+.PARAMETER ViValidateProfile
+    vi_validate profile: strict, legacy, or both (default: strict).
+
+.PARAMETER ViValidateReportOnly
+    Emit vi_validate warnings but do not fail the run.
+
+.PARAMETER ViValidateSkipVersionGate
+    Skip passing --eq to vi_validate (useful for legacy cleanup runs).
+
+.PARAMETER ViValidateOnly
+    Run only the pylavi vi_validate gate and exit.
+
 .PARAMETER UseWorktree
     Create a worktree under the configured root and run parity from there.
 
@@ -114,6 +132,21 @@ param(
     [Parameter(Mandatory = $false)]
     [switch]$EnsureCleanState,
 
+    [switch]$SkipViValidate,
+
+    [Parameter(Mandatory = $false)]
+    [string]$ViValidateConfigPath = 'Tooling/pylavi/vi-validate.yml',
+
+    [Parameter(Mandatory = $false)]
+    [ValidateSet('strict', 'legacy', 'both')]
+    [string]$ViValidateProfile = 'strict',
+
+    [switch]$ViValidateReportOnly,
+
+    [switch]$ViValidateSkipVersionGate,
+
+    [switch]$ViValidateOnly,
+
     [Parameter(Mandatory = $false)]
     [bool]$UseWorktree = $true,
 
@@ -149,7 +182,19 @@ function Resolve-RepoRoot {
         return (Resolve-Path -Path $PathOverride).Path
     }
 
-    return (Resolve-Path -Path (Join-Path $PSScriptRoot '..')).Path
+    $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $PSCommandPath }
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        try {
+            $gitRoot = git -C $scriptRoot rev-parse --show-toplevel 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRoot)) {
+                return (Resolve-Path -Path $gitRoot.Trim()).Path
+            }
+        } catch {
+            Write-Verbose ("git rev-parse failed: {0}" -f $_.Exception.Message)
+        }
+    }
+    return (Resolve-Path -Path (Join-Path $scriptRoot '..')).Path
 }
 
 function Initialize-CsvHeader {
@@ -195,7 +240,7 @@ if (Test-Path -Path $versionHelper) {
     $LabVIEWVersion = $labviewInfo.Year
 }
 if ([string]::IsNullOrWhiteSpace($LabVIEWVersion)) {
-    $LabVIEWVersion = '2021'
+    throw "LabVIEW version could not be resolved. Check .lvversion."
 }
 $runScript = Join-Path $repoRoot 'Tooling/Run-CICompositeLocal.ps1'
 if (-not (Test-Path -Path $runScript)) {
@@ -246,7 +291,8 @@ if (Get-Command Invoke-Preflight -ErrorAction SilentlyContinue) {
         -ScriptArguments $scriptArgs `
         -RunId $RunId `
         -ArtifactRoot $ArtifactRoot `
-        -CleanRoom:$CleanRoom
+        -CleanRoom:$CleanRoom `
+        -RequireViValidate:$(-not $SkipViValidate)
     if ($preflight.Reinvoked) {
         return
     }
@@ -261,6 +307,12 @@ if ($DryRun) {
         -LabVIEWBitness $LabVIEWBitness `
         -AllowVersionMismatch:$AllowVersionMismatch `
         -DryRun `
+        -SkipViValidate:$SkipViValidate `
+        -ViValidateConfigPath $ViValidateConfigPath `
+        -ViValidateProfile $ViValidateProfile `
+        -ViValidateReportOnly:$ViValidateReportOnly `
+        -ViValidateSkipVersionGate:$ViValidateSkipVersionGate `
+        -ViValidateOnly:$ViValidateOnly `
         -RepoRoot $runRepoRoot `
         -WorktreeRoot $resolvedWorktreeRoot `
         -SkipWorktreeRootCheck:$SkipWorktreeRootCheck `
@@ -293,6 +345,12 @@ for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
             -LabVIEWBitness $LabVIEWBitness `
             -AllowVersionMismatch:$AllowVersionMismatch `
             -EnsureCleanState:$EnsureCleanState `
+            -SkipViValidate:$SkipViValidate `
+            -ViValidateConfigPath $ViValidateConfigPath `
+            -ViValidateProfile $ViValidateProfile `
+            -ViValidateReportOnly:$ViValidateReportOnly `
+            -ViValidateSkipVersionGate:$ViValidateSkipVersionGate `
+            -ViValidateOnly:$ViValidateOnly `
             -ConnectTimeoutMs $attemptConnectTimeout `
             -ProcessTimeoutMs $attemptProcessTimeout `
             -RepoRoot $runRepoRoot `
@@ -324,5 +382,6 @@ for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
 if ($preflight -and $preflight.CleanRoomAfter) {
     Invoke-PreflightCleanup -RepoRoot $preflight.RepoRoot -Phase 'after'
 }
+
 
 

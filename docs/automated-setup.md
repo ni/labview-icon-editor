@@ -47,10 +47,11 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 
 5. **Enable Dev Mode**:
    ```powershell
-   .\Set_Development_Mode.ps1 -LabVIEWVersion 2021
+   .\Set_Development_Mode.ps1
    ```
 
    Removes the default `lv_icon.lvlibp` and points LabVIEW to your local Icon Editor code.
+   Omit `-LabVIEWVersion` to use `.lvversion`; if you pass it, it must match `.lvversion`.
 
 6. **Open** the project:
    `lv_icon_editor.lvproj`  
@@ -88,8 +89,9 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 
 5. **Revert Dev Mode (optional)**:
    ```powershell
-   ..\revert-development-mode\RevertDevelopmentMode.ps1 -LabVIEWVersion 2021
+   ..\revert-development-mode\RevertDevelopmentMode.ps1
    ```
+   If you pass `-LabVIEWVersion`, it must match `.lvversion` or the script will fail fast.
 
 6. **Install** the `.vip` in VIPM (as Admin). Validate your custom Icon Editor changes.
 

@@ -45,10 +45,42 @@ function Resolve-RepoRoot {
     param([string]$BasePath)
 
     if (-not $BasePath) {
-        $BasePath = $PSScriptRoot
+        $BasePath = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $PSCommandPath }
+    }
+
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        try {
+            $gitRoot = git -C $BasePath rev-parse --show-toplevel 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRoot)) {
+                return (Resolve-Path -Path $gitRoot.Trim()).Path
+            }
+        } catch {
+            Write-Verbose ("git rev-parse failed: {0}" -f $_.Exception.Message)
+        }
     }
 
     return (Resolve-Path -Path (Join-Path $BasePath '..')).Path
+}
+
+function Get-RunnerCliRuntime {
+    $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+    if ($IsWindows) { return 'win-x64' }
+    if ($IsLinux) {
+        if ($arch -eq 'Arm64') { return 'linux-arm64' }
+        return 'linux-x64'
+    }
+    if ($IsMacOS) {
+        if ($arch -eq 'Arm64') { return 'osx-arm64' }
+        return 'osx-x64'
+    }
+    return 'win-x64'
+}
+
+function Get-RunnerCliFileName {
+    param([string]$Runtime)
+    if ($Runtime -like 'win-*') { return 'runner-cli.exe' }
+    return 'runner-cli'
 }
 
 $repoRoot = Resolve-RepoRoot -BasePath $PSScriptRoot
@@ -88,6 +120,25 @@ if ($gitOutput) {
 }
 if ($LASTEXITCODE -ne 0) {
     throw "git worktree add failed with exit code $LASTEXITCODE."
+}
+
+$ensureRunnerCli = Join-Path $targetPath 'Tooling\Ensure-RunnerCli.ps1'
+if (Test-Path -Path $ensureRunnerCli) {
+    try {
+        Write-Host "Ensuring runner-cli is built in the new worktree..."
+        $runtime = Get-RunnerCliRuntime
+        $cliFile = Get-RunnerCliFileName -Runtime $runtime
+        $preferredPath = Join-Path $targetPath "Tooling\runner-cli\publish\$runtime\$cliFile"
+        $result = & $ensureRunnerCli -RepoRoot $targetPath -RunnerCliPath $preferredPath -SkipDownload
+        if ($result -and $result.Path) {
+            Write-Host ("runner-cli ready at {0}" -f $result.Path)
+        }
+    } catch {
+        if ($env:LVIE_REQUIRE_RUNNER_CLI -eq '1') {
+            throw
+        }
+        Write-Warning ("runner-cli build failed in worktree: {0}" -f $_.Exception.Message)
+    }
 }
 
 Write-Output $targetPath

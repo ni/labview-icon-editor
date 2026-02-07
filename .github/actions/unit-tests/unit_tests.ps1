@@ -63,6 +63,14 @@ try {
     Assert-PathExists $RepoRoot "RepoRoot"
     $repoRootResolved = (Resolve-Path -Path $RepoRoot -ErrorAction Stop).Path
     $RepoRoot = $repoRootResolved
+    $versionHelper = Join-Path $repoRootResolved 'Tooling\support\LabVIEWVersion.ps1'
+    if (-not (Test-Path -Path $versionHelper)) {
+        throw "LabVIEW version helper not found at $versionHelper"
+    }
+    . $versionHelper
+    $labviewInfo = Get-LabVIEWVersionInfo -RepoRoot $repoRootResolved
+    $labviewYear = $labviewInfo.Year
+    Write-Host ("Using LabVIEW version from .lvversion: {0}" -f $labviewInfo.Raw)
     $preflightScript = Join-Path -Path $repoRootResolved -ChildPath 'Tooling\Invoke-Preflight.ps1'
     if (Test-Path -Path $preflightScript) {
         . $preflightScript
@@ -71,7 +79,7 @@ try {
         $preflight = Invoke-Preflight `
             -RepoRoot $repoRootResolved `
             -WorktreeRoot $WorktreeRoot `
-            -LabVIEWVersion '2021' `
+            -LabVIEWVersion $labviewYear `
             -LabVIEWBitness 'both' `
             -SkipWorktreeRootCheck:$SkipWorktreeRootCheck `
             -AutoWorktree:$false `
@@ -112,20 +120,20 @@ try {
     $RunUnitTests = Join-Path $ActionsPath "run-unit-tests/RunUnitTests.ps1"
     $ProjectPath = Join-Path $RepoRoot 'lv_icon_editor.lvproj'
     Execute-Script $RunUnitTests `
-        "-LabVIEWVersion 2021 -SupportedBitness 32 -ProjectPath `"$ProjectPath`""
+        "-LabVIEWVersion $labviewYear -SupportedBitness 32 -ProjectPath `"$ProjectPath`""
 
     # Close LabVIEW
     $CloseLabVIEW = Join-Path $ActionsPath "close-labview/Close_LabVIEW.ps1"
     Execute-Script $CloseLabVIEW `
-        "-LabVIEWVersion 2021 -SupportedBitness 32"
+        "-LabVIEWVersion $labviewYear -SupportedBitness 32"
 
     # Run Unit Tests
     Execute-Script $RunUnitTests `
-        "-LabVIEWVersion 2021 -SupportedBitness 64 -ProjectPath `"$ProjectPath`""
+        "-LabVIEWVersion $labviewYear -SupportedBitness 64 -ProjectPath `"$ProjectPath`""
 
 	# Close LabVIEW
     Execute-Script $CloseLabVIEW `
-        "-LabVIEWVersion 2021 -SupportedBitness 64"
+        "-LabVIEWVersion $labviewYear -SupportedBitness 64"
 		
     Write-Host "All scripts executed successfully!" -ForegroundColor Green
 } catch {

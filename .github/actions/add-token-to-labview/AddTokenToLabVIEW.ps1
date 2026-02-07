@@ -9,7 +9,6 @@
 
 .PARAMETER LabVIEWVersion
     LabVIEW version year (e.g., 2021) or numeric version (e.g., 21.0).
-    Alias: MinimumSupportedLVVersion.
 
 .PARAMETER SupportedBitness
     Target bitness of the LabVIEW environment ("32" or "64").
@@ -18,14 +17,13 @@
     Path to the repository root that should be added to the INI token.
 
 .EXAMPLE
-    .\AddTokenToLabVIEW.ps1 -LabVIEWVersion "2021" -SupportedBitness "64" -RepoRoot "C:\labview-icon-editor"
+    .\AddTokenToLabVIEW.ps1 -SupportedBitness "64" -RepoRoot "C:\labview-icon-editor"
 #>
 
 param(
-    [Alias('MinimumSupportedLVVersion')]
     [AllowNull()]
     [AllowEmptyString()]
-    [string]$LabVIEWVersion = '2021',
+    [string]$LabVIEWVersion = '',
     [string]$SupportedBitness,
     [string]$RepoRoot
 )
@@ -40,7 +38,7 @@ if ($RepoRoot) {
     }
 }
 if ([string]::IsNullOrWhiteSpace($labviewYear)) {
-    $labviewYear = '2021'
+    throw "LabVIEW version could not be resolved. Check .lvversion."
 }
 
 # Construct the command
@@ -63,3 +61,4 @@ try {
     Write-Host ""
     exit 0
 }
+

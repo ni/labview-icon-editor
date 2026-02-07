@@ -11,24 +11,40 @@ runs:
     - name: Run RestoreSetupLVSource.ps1
       shell: pwsh
       run: |
-        $lvVersion = "${{ inputs.labview_version }}"
-        if ([string]::IsNullOrWhiteSpace($lvVersion)) {
-          throw "labview_version is required."
+        $repoRoot = "${{ inputs.repo_root }}"
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          $repoRoot = $env:GITHUB_WORKSPACE
         }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "repo_root is required."
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
 
-        & "${{ github.action_path }}/RestoreSetupLVSource.ps1" \
-          -MinimumSupportedLVVersion $lvVersion \
-          -SupportedBitness ${{ inputs.supported_bitness }} \
-          -RepoRoot "${{ inputs.repo_root }}"
+        $lvVersionInput = "${{ inputs.labview_version }}"
+        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+        if (-not (Test-Path -Path $assertScript)) {
+          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+        }
+        $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $lvVersionInput -Context 'restore-setup-lv-source'
+        if ([string]::IsNullOrWhiteSpace($lvVersionInput)) {
+          Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
+        }
+        $lvVersion = $lvInfo.Year
+
+        & "${{ github.action_path }}/RestoreSetupLVSource.ps1" `
+          -LabVIEWVersion $lvVersion `
+          -SupportedBitness ${{ inputs.supported_bitness }} `
+          -RepoRoot $repoRoot
 inputs:
   labview_version:
     description: 'LabVIEW version to target (year or numeric).'
-    required: true
+    required: false
   supported_bitness:
     description: '32 or 64'
     required: true
   repo_root:
     description: 'Workspace root path'
     required: false
+
 
 

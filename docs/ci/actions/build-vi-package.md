@@ -94,7 +94,7 @@ It eliminates confusion around versioning, keeps everything in one pipeline, and
 
 ### 3.1 How the Action Is Triggered
 The `build-vi-package` directory defines a **composite action**. It does not listen for events on its own; instead, the CI workflow in [`ci-composite.yml`](../../../.github/workflows/ci-composite.yml) invokes it.
-That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. The `issue-status` and `changes` jobs run on GitHub-hosted `ubuntu-latest`. Subsequent jobs that require LabVIEW—`apply-deps`, `version`, `test`, `build-ppl`, and `build-vi-package`—execute on a self-hosted Windows runner (`self-hosted-windows-lv-ie`). Only Windows-specific jobs (e.g., `test`, `build-ppl`, `build-vi-package`) require the self-hosted runner. Linux support is considered a future or custom expansion: you would need to extend the matrix and provide a corresponding runner label (for example, `self-hosted-linux-lv`). Pushes are limited to `main`, `develop`, `release-alpha/*`, `release-beta/*`, `release-rc/*`, `feature/*`, `hotfix/*`, and `issue-*` branches, and pull requests must target one of those branches. However, `build-vi-package` executes only if the `issue-status` job allows the pipeline to continue: the source branch name must contain `issue-<number>` (for example, `issue-123` or `feature/issue-123`) and the linked issue's Status must be **In Progress**. For pull requests, the `issue-status` gate evaluates the PR’s head branch before running the `version` and `build-ppl` jobs, which depend on this gate.
+That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Early jobs like `run-metadata`, `version-gate`, and `changes` run on GitHub-hosted `ubuntu-latest`. Subsequent jobs that require LabVIEW—`apply-deps`, `version`, `test`, `build-ppl`, and `build-vi-package`—execute on a self-hosted Windows runner (`self-hosted-windows-lv-ie`). Only Windows-specific jobs (e.g., `test`, `build-ppl`, `build-vi-package`) require the self-hosted runner. Linux support is considered a future or custom expansion: you would need to extend the matrix and provide a corresponding runner label (for example, `self-hosted-linux-lv`). The branch filters for push/PR triggers live in `ci-composite.yml` (see `on.push.branches` and `on.pull_request.branches`).
 
 ### 3.2 Configurable Inputs / Parameters
 `ci-composite.yml` calls this action and provides all required inputs automatically. When invoking
@@ -104,8 +104,8 @@ That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Th
 | Input | Description |
 | --- | --- |
 | `supported_bitness` | `32` or `64`; selects the VI Package bitness. |
-| `labview_version` | LabVIEW 2021 (21.0). |
-| `labview_minor_revision` | LabVIEW minor revision (defaults to `0`). |
+| `labview_version` | Defaults to `.lvversion`; if provided it must match. |
+| `labview_minor_revision` | Defaults to `.lvversion`; if provided it must match. |
 | `major` | Major version component. |
 | `minor` | Minor version component. |
 | `patch` | Patch version component. |
@@ -272,7 +272,6 @@ components remain unchanged and only the build number increases.
   ```yaml
   - uses: ./.github/actions/run-unit-tests
     with:
-      labview_version: ${{ matrix['lv-version'] }}
       supported_bitness:            ${{ matrix.bitness }}
   ```
 - Ensure they pass before building the `.vip`. If they fail, the script can exit with a non-zero code, stopping the workflow run.

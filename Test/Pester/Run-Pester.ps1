@@ -67,8 +67,8 @@ if (Test-Path -Path $versionHelper) {
     $env:LABVIEW_VERSION_YEAR = $versionInfo.Year
     $env:LABVIEW_MINOR_REVISION = $versionInfo.MinorRevision.ToString()
     $env:LABVIEW_NUMERIC_VERSION = $versionInfo.NumericVersion
-} elseif ([string]::IsNullOrWhiteSpace($LabVIEWVersion)) {
-    $LabVIEWVersion = '2021'
+} else {
+    throw "LabVIEW version helper not found at $versionHelper"
 }
 
 $env:LABVIEW_VERSION = $LabVIEWVersion

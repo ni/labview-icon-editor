@@ -33,7 +33,7 @@ Per-run artifacts are written under `$WORKTREE_ROOT\artifacts\<runid>` when guar
 Adds a custom `LocalHost.LibraryPaths` token to the LabVIEW INI file so LabVIEW can find project libraries during development or builds. This script depends on `Tooling/deployment/Create_LV_INI_Token.vi`, which is not present in this repository, so it is not used by the development-mode automation.
 
 ## ApplyVIPC.ps1
-Applies a `.vipc` **VI Package Configuration** to a specific LabVIEW version and bitness using g-cli. The `.vipc` is applied via VIPM and ensures required LabVIEW dependencies (including the G-CLI VIPM package) are installed before building.
+Applies a `.vipc` **VI Package Configuration** to a specific LabVIEW version and bitness using g-cli. The `.vipc` is applied via VIPM and ensures required LabVIEW dependencies (including the G-CLI VIPM package) are installed before building. If `-LabVIEWVersion` is omitted or empty, the script resolves the version from `.lvversion` and logs a warning.
 
 ## Build.ps1
 Top-level script that orchestrates the full build. Cleans previous outputs, builds packed libraries for 32-bit and 64-bit, updates metadata, and produces the final `.vip` package. Depends on many of the other scripts listed here.

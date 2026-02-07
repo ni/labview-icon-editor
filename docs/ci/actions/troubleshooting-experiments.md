@@ -45,16 +45,16 @@ Review the scan results in the GitHub Actions logs for your experiment branch. I
 
 ---
 
-### 4. “NoCI” Label Remains Even After Manual Approval
+### 4. CI Not Triggering on Experiment Branch
 
 **Symptom**  
-Your experiment branch still has a “NoCI” label after an admin ran the “approve-experiment” action, and CI jobs aren’t triggering automatically.
+Your experiment branch doesn’t trigger CI jobs after pushing or opening a PR.
 
 **Cause**
-The “approve-experiment” process might not automatically remove the “NoCI” label from the branch, or the label was added manually and not cleared. The `ci-composite` workflow skips all jobs when this label is present.
+The branch name might not match the workflow’s trigger patterns, or the workflow is disabled in the repository settings. Another common cause is that the push/PR event doesn’t match the configured branches in `ci-composite.yml`.
 
 **Solution (One Paragraph)**
-First, verify in the Actions log that the approve step completed successfully. If CI is still skipped due to the “NoCI” label, remove that label from the experiment branch via the GitHub UI (you need maintainer permissions to edit labels). Once the label is cleared, the `issue-status` job will permit subsequent jobs to run. Going forward, ensure that the experiment branch has an “ApprovedCI” indicator (if used) or simply no “NoCI” label. This will allow normal CI workflows (like build/test) to run on pushes to that branch.
+Confirm the branch name matches the patterns in `.github/workflows/ci-composite.yml` (for example, `feature/*`, `release/*`, `hotfix/*`, or `main`/`develop`). Verify the workflow is enabled in **Actions** settings and that the event type matches (push vs. pull_request). If needed, run the workflow manually with **workflow_dispatch** to validate the pipeline end-to-end.
 
 ---
 

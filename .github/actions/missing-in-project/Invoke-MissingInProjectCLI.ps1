@@ -1,7 +1,10 @@
 #Requires -Version 7.0
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][string]$LVVersion,
+    [Parameter(Mandatory = $false)]
+    [AllowNull()]
+    [AllowEmptyString()]
+    [string]$LVVersion = '',
     [Parameter(Mandatory)][ValidateSet('32','64')][string]$Arch,
     [Parameter(Mandatory)][string]$ProjectFile,
     [string]$WorktreeRoot,
@@ -40,7 +43,7 @@ if (Test-Path -Path $versionHelper) {
     $labviewYear = $versionInfo.Year
 }
 if ([string]::IsNullOrWhiteSpace($labviewYear)) {
-    $labviewYear = '2021'
+    throw "LabVIEW version could not be resolved. Check .lvversion."
 }
 
 # ---------- GLOBAL STATE ----------
@@ -194,3 +197,4 @@ elseif (-not $passed) {
 else {
     exit 0        # success
 }
+

@@ -80,7 +80,19 @@ function Resolve-RepoRoot {
     if (-not [string]::IsNullOrWhiteSpace($Path)) {
         return (Resolve-Path -Path $Path -ErrorAction Stop).Path
     }
-    return (Resolve-Path -Path (Join-Path $PSScriptRoot '..') -ErrorAction Stop).Path
+    $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $PSCommandPath }
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        try {
+            $gitRoot = git -C $scriptRoot rev-parse --show-toplevel 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRoot)) {
+                return (Resolve-Path -Path $gitRoot.Trim() -ErrorAction Stop).Path
+            }
+        } catch {
+            Write-Verbose ("git rev-parse failed: {0}" -f $_.Exception.Message)
+        }
+    }
+    return (Resolve-Path -Path (Join-Path $scriptRoot '..') -ErrorAction Stop).Path
 }
 
 function Test-ForceNoLabVIEWDevMode {
@@ -215,7 +227,7 @@ try {
         }
         try {
             $revertParams = @{
-                MinimumSupportedLVVersion = $lvVersion
+                LabVIEWVersion = $lvVersion
                 SupportedBitness          = $Bitness
                 RepoRoot                  = $worktreePath
             }
@@ -233,7 +245,7 @@ try {
         $lvVersion = $lvInfo.Year
         try {
             & "$repoRootResolved\.github\actions\close-labview\Close_LabVIEW.ps1" `
-                -MinimumSupportedLVVersion $lvVersion `
+                -LabVIEWVersion $lvVersion `
                 -SupportedBitness $Bitness
         } catch {
             Write-Warning ("Close LabVIEW failed: {0}" -f $_.Exception.Message)
@@ -261,3 +273,4 @@ finally {
 
     Restore-EnvState -Store $envBackup
 }
+

@@ -11,24 +11,37 @@ runs:
     - name: Run RunUnitTests.ps1
       shell: pwsh
       run: |
-        $lvVersion = "${{ inputs.labview_version }}"
-        if ([string]::IsNullOrWhiteSpace($lvVersion)) {
-          throw "labview_version is required."
+        $repoRoot = $env:GITHUB_WORKSPACE
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "GITHUB_WORKSPACE is required to resolve .lvversion."
         }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
+
+        $lvVersionInput = "${{ inputs.labview_version }}"
+        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+        if (-not (Test-Path -Path $assertScript)) {
+          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+        }
+        $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $lvVersionInput -Context 'run-unit-tests'
+        if ([string]::IsNullOrWhiteSpace($lvVersionInput)) {
+          Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
+        }
+        $lvVersion = $lvInfo.Year
 
         & "${{ github.action_path }}/RunUnitTests.ps1" `
-          -MinimumSupportedLVVersion $lvVersion `
+          -LabVIEWVersion $lvVersion `
           -SupportedBitness ${{ inputs.supported_bitness }} `
           -ProjectPath "${{ inputs.project_path }}"
 inputs:
   labview_version:
     description: 'LabVIEW version to run (year or numeric).'
-    required: true
+    required: false
   supported_bitness:
     description: '32 or 64'
     required: true
   project_path:
     description: 'Path to the LabVIEW project (.lvproj)'
     required: true
+
 
 

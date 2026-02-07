@@ -4,6 +4,7 @@ Validate that **every file on disk that should live in a LabVIEW project _actual
 The check is executed as the *first* step in your CI pipeline so the run fails fast and you never ship a package or run a unit test with a broken project file.
 
 Internally the action launches the **`MissingInProjectCLI.vi`** utility (checked into the same directory) through **g‑cli**.  
+When `runner-cli` is available, the action prefers the `runner-cli missing-in-project` subcommand (which shells into the same PowerShell wrapper), otherwise it falls back to the direct PowerShell invocation.  
 Results are returned as standard GitHub Action outputs so downstream jobs can decide what to do next (for example, post a comment with the missing paths).
 
 ---
@@ -26,7 +27,7 @@ Results are returned as standard GitHub Action outputs so downstream jobs can d
 | Requirement            | Notes |
 |------------------------|-------|
 | **Windows runner**     | LabVIEW and g‑cli are only available on Windows. |
-| **LabVIEW 2021 (21.0)**  | Must match the *numeric* version you pass in **`lv-ver`**. |
+| **LabVIEW 2021 (21.0)**  | Must match `.lvversion` (or `lv-ver` if you override it). |
 | **g‑cli** in `PATH`    | The action calls `g-cli --lv-ver …`. Install via **VIPM (JKI)** or copy the executable into the runner image. |
 | **PowerShell 7**       | Composite steps use PowerShell Core (`pwsh`). |
 
@@ -35,7 +36,7 @@ Results are returned as standard GitHub Action outputs so downstream jobs can d
 ## Inputs
 | Name | Required | Example | Description |
 |------|----------|---------|-------------|
-| `lv-ver` | **Yes** | `2021` | LabVIEW *major* version number that should be used to run `MissingInProjectCLI.vi` |
+| `lv-ver` | No | `2021` | LabVIEW *major* version used to run `MissingInProjectCLI.vi`. Defaults to `.lvversion` and fails if it conflicts. |
 | `arch` | **Yes** | `32` or `64` | Bitness of the LabVIEW runtime to launch |
 | `repo-root` | **Yes** | `${{ github.workspace }}` | Absolute path to the repository root. Relative paths are resolved against this. |
 | `project-file` | No | `source/MyPlugin.lvproj` | Path (absolute or relative to `repo-root`) of the project to inspect. Defaults to **`lv_icon_editor.lvproj`** |
@@ -64,7 +65,6 @@ jobs:
         id: mip
         uses: ./.github/actions/missing-in-project
         with:
-          lv-ver: 2021
           arch: 64
           repo-root: ${{ github.workspace }}
 
@@ -86,7 +86,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/missing-in-project
         with:
-          lv-ver: 2021
           arch: 64
 
   build-package:

@@ -4,7 +4,7 @@ param(
     [string[]]$ModeSequence = @('disable', 'enable'),
     [string[]]$AllowFailureModes = @(),
     [ValidatePattern('^\d{2,4}(\.\d+)?$')]
-    [string]$LabVIEWVersion = '2021',
+    [string]$LabVIEWVersion = '',
     [int]$PollSeconds = 2,
     [int]$TimeoutMinutes = 3,
     [int]$RunTimeoutMinutes = 10

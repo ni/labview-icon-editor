@@ -148,13 +148,11 @@ Below are 14 possible issues you might encounter, along with suggested steps to 
 
 **Possible Causes**:
 - Strict branch protection rules require approvals or passing checks before merging.
-- The [`issue-status`](../../.github/workflows/ci-composite.yml#issue-status) job determined the branch name or issue status was invalid, so downstream checks were skipped.
 - You’re lacking the required PR reviews or status checks.
 
 **Solution**:
 1. Have the required reviewers approve your Pull Request.
 2. Ensure all required status checks pass:
-   - [`issue-status`](../../.github/workflows/ci-composite.yml#issue-status) – verifies branch naming and issue status. If it fails or is skipped, downstream jobs won’t run.
    - [`changes`](../../.github/workflows/ci-composite.yml#changes) – detects `.vipc` file changes.
    - [`apply-deps`](../../.github/workflows/ci-composite.yml#apply-deps) – applies VIPC dependencies when needed.
    - [`missing-in-project`](../../.github/workflows/ci-composite.yml#missing-in-project) – validates project file membership.
@@ -206,7 +204,7 @@ Below are 14 possible issues you might encounter, along with suggested steps to 
 - The script has no parameter named `lv-ver` or `arch`, so passing `--lv-ver` or `--arch` triggers a parsing error.
 
 **Solution**:
-1. Remove or replace `--lv-ver` and `--arch` with valid single-dash parameters your script actually declares, such as `-LabVIEWVersion 2021` and `-SupportedBitness 64`.  
+1. Remove or replace `--lv-ver` and `--arch` with valid single-dash parameters your script actually declares, such as `-LabVIEWVersion <year>` (or omit it to use `.lvversion`) and `-SupportedBitness 64`.  
 2. If you really want `--lv-ver`, you must update the script’s `param()` block to accept that alias.
 
 ---

@@ -113,9 +113,20 @@ jobs:
           name: run-manifest
           path: ${{ steps.meta.outputs.manifest_path }}
 
+  runner-cli-build:
+    name: Build runner-cli (linux-x64)
+    needs: run-metadata
+    uses: ./.github/workflows/runner-cli-reusable.yml
+    permissions:
+      actions: read
+      contents: read
+    with:
+      rid: linux-x64
+      artifact_name: runner-cli-linux-x64
+
   version-gate:
     name: LabVIEW Version Gate
-    needs: run-metadata
+    needs: [run-metadata, runner-cli-build]
     runs-on: ubuntu-latest
     outputs:
       raw: ${{ steps.lv.outputs.raw }}
@@ -126,15 +137,61 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Download runner-cli artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.runner-cli-build.outputs.artifact_name }}
+          path: ${{ runner.temp }}/runner-cli
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
       - id: lv
         name: Assert .lvversion
         shell: pwsh
         run: |
-          $info = & "$env:GITHUB_WORKSPACE/Tooling/Assert-LabVIEWVersion.ps1" -RepoRoot $env:GITHUB_WORKSPACE -Context 'ci-version-gate' -WriteSummary
+          $ErrorActionPreference = 'Stop'
+          $repoRoot = $env:GITHUB_WORKSPACE
+          $cliPath = Join-Path $env:RUNNER_TEMP 'runner-cli' 'runner-cli'
+          if (Test-Path $cliPath) {
+            Write-Host "Using prebuilt runner-cli artifact (incremental migration)."
+            chmod +x $cliPath
+            $json = & $cliPath version-gate --repo-root $repoRoot --json
+            $exitCode = $LASTEXITCODE
+            if ($exitCode -ne 0) {
+              exit $exitCode
+            }
+            $info = $json | ConvertFrom-Json
+          } else {
+            $runnerCliProject = Join-Path $repoRoot 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+            $canUseRunnerCli = (Get-Command dotnet -ErrorAction SilentlyContinue) -and (Test-Path $runnerCliProject)
+            if ($canUseRunnerCli) {
+            Write-Host "Using runner-cli version-gate (incremental migration)."
+            dotnet build $runnerCliProject --configuration Release | Out-Host
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
+            $runnerCliDll = Join-Path (Split-Path $runnerCliProject) 'bin/Release/net8.0/runner-cli.dll'
+            if (-not (Test-Path $runnerCliDll)) {
+              throw "Runner CLI build succeeded but binary not found: $runnerCliDll"
+            }
+            $json = & dotnet $runnerCliDll version-gate --repo-root $repoRoot --json
+            $exitCode = $LASTEXITCODE
+            if ($exitCode -ne 0) {
+              exit $exitCode
+            }
+            $info = $json | ConvertFrom-Json
+            } else {
+              Write-Warning "runner-cli unavailable; falling back to Assert-LabVIEWVersion.ps1."
+              $info = & "$repoRoot/Tooling/Assert-LabVIEWVersion.ps1" -RepoRoot $repoRoot -Context 'ci-version-gate' -WriteSummary
+            }
+          }
+          Write-Warning ("labview_version not provided; using .lvversion ({0})." -f $info.Raw)
           "raw=$($info.Raw)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
           "year=$($info.Year)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
           "minor=$($info.MinorRevision)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
           "numeric=$($info.NumericVersion)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          Write-Host ("LabVIEW version gate passed: {0}" -f $info.Raw)
 
   powershell-lint:
     name: PowerShell Lint
@@ -191,9 +248,34 @@ jobs:
         run: |
           pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Invoke-PSScriptAnalyzer.ps1" -WriteSummary
 
+  pylavi-validate:
+    name: Validate LabVIEW Files (pylavi, report-only)
+    needs: [run-metadata, version-gate]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run vi_validate (strict, report-only)
+        uses: ./.github/actions/pylavi-validate
+        with:
+          config_path: Tooling/pylavi/vi-validate.yml
+          label: strict
+          log_name: pylavi-validate-strict-log
+          report_only: 'true'
+          absolute_roots: ${{ vars.LVIE_PYLAVI_ABSOLUTE_PATH_ROOTS }}
+      - name: Run vi_validate (legacy, report-only)
+        uses: ./.github/actions/pylavi-validate
+        with:
+          config_path: Tooling/pylavi/vi-validate-legacy.yml
+          label: legacy
+          log_name: pylavi-validate-legacy-log
+          report_only: 'true'
+          absolute_roots: ${{ vars.LVIE_PYLAVI_ABSOLUTE_PATH_ROOTS }}
+
   dev-mode-gate:
     name: Verify IE Paths Gate (LV ${{ matrix.bitness }}-bit)
-    needs: [run-metadata, version-gate]
+    needs: [run-metadata, version-gate, pylavi-validate]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
@@ -224,7 +306,7 @@ jobs:
         shell: pwsh
         run: |
           pwsh -NoProfile -ExecutionPolicy Bypass -File "$env:REPO_ROOT\\Tooling\\Invoke-MissingIEFilesFromLVInstall.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -SupportedBitness ${{ matrix.bitness }} `
             -RepoRoot $env:REPO_ROOT `
             -ConnectTimeoutMs 180000 `
@@ -294,8 +376,6 @@ jobs:
         working-directory: ${{ env.REPO_ROOT }}
         run: |
           & ".github\\actions\\apply-vipc\\ApplyVIPC.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
-            -VIP_LVVersion $env:LABVIEW_VERSION_YEAR `
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
             -VIPCPath ".github/actions/apply-vipc/runner_dependencies.vipc"
@@ -331,8 +411,6 @@ jobs:
         working-directory: ${{ env.REPO_ROOT }}
         run: |
           & ".github\\actions\\apply-vipc\\ApplyVIPC.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
-            -VIP_LVVersion $env:LABVIEW_VERSION_YEAR `
             -SupportedBitness 32 `
             -RepoRoot "$env:REPO_ROOT" `
             -VIPCPath ".github/actions/apply-vipc/runner_dependencies.vipc"
@@ -408,7 +486,7 @@ jobs:
         working-directory: ${{ env.REPO_ROOT }}
         run: |
           & ".github\\actions\\set-development-mode\\Set_Development_Mode.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -SupportedBitness ${{ matrix.bitness }} `
             -RepoRoot "$env:REPO_ROOT"
       - name: Resolve LabVIEW project path
@@ -495,7 +573,7 @@ jobs:
         working-directory: ${{ env.REPO_ROOT }}
         run: |
           & ".github/actions/set-development-mode/Set_Development_Mode.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -SupportedBitness ${{ matrix.bitness }} `
             -RepoRoot "$env:REPO_ROOT"
       - name: Run Unit Tests (LV ${{ matrix.bitness }}-bit)
@@ -503,7 +581,7 @@ jobs:
         working-directory: ${{ env.REPO_ROOT }}
         run: |
           & ".github/actions/run-unit-tests/RunUnitTests.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -SupportedBitness ${{ matrix.bitness }} `
             -ProjectPath "$env:PROJECT_PATH"
       - name: Upload unit test report (LV ${{ matrix.bitness }}-bit)
@@ -547,7 +625,7 @@ jobs:
         working-directory: ${{ env.REPO_ROOT }}
         run: |
           & ".github/actions/set-development-mode/Set_Development_Mode.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -SupportedBitness 32 `
             -RepoRoot "$env:REPO_ROOT"
       - name: Build PPL (LV 32-bit)
@@ -555,7 +633,7 @@ jobs:
         working-directory: ${{ env.REPO_ROOT }}
         run: |
           & ".github/actions/build-lvlibp/Build_lvlibp.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -SupportedBitness 32 `
             -RepoRoot "$env:REPO_ROOT" `
             -Major ${{ needs.version.outputs.MAJOR }} `
@@ -608,7 +686,7 @@ jobs:
         working-directory: ${{ env.REPO_ROOT }}
         run: |
           & ".github/actions/set-development-mode/Set_Development_Mode.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT"
       - name: Build PPL (LV 64-bit)
@@ -616,7 +694,7 @@ jobs:
         working-directory: ${{ env.REPO_ROOT }}
         run: |
           & ".github/actions/build-lvlibp/Build_lvlibp.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
             -Major ${{ needs.version.outputs.MAJOR }} `
@@ -727,7 +805,7 @@ jobs:
             } else {
               $Env:REPO_URL
             }
-            "Legal Copyright" = "© $(Get-Date -Format yyyy) $($Env:COMPANY)"
+            "Legal Copyright" = "? $(Get-Date -Format yyyy) $($Env:COMPANY)"
             "Product Description Summary" = $description
             "Product Description" = $description
             "Release Notes - Change Log" = $releaseNotes
@@ -746,7 +824,7 @@ jobs:
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
             -VIPBPath "Tooling/deployment/NI Icon editor.vipb" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -LabVIEWMinorRevision $env:LABVIEW_MINOR_REVISION `
             -Major ${{ needs.version.outputs.MAJOR }} `
             -Minor ${{ needs.version.outputs.MINOR }} `
@@ -766,7 +844,7 @@ jobs:
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
             -VIPBPath "Tooling/deployment/NI Icon editor.vipb" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -LabVIEWMinorRevision $env:LABVIEW_MINOR_REVISION `
             -Major ${{ needs.version.outputs.MAJOR }} `
             -Minor ${{ needs.version.outputs.MINOR }} `
@@ -897,6 +975,7 @@ jobs:
       - run-metadata
       - version-gate
       - powershell-lint
+      - pylavi-validate
       - dev-mode-gate
       - changes
       - apply-deps-2021-x64
@@ -922,6 +1001,7 @@ jobs:
             'run-metadata',
             'version-gate',
             'powershell-lint',
+            'pylavi-validate',
             'dev-mode-gate',
             'changes',
             'apply-deps-2021-x64',
@@ -972,6 +1052,7 @@ jobs:
           } else {
             Write-Host 'Pipeline contract satisfied.'
           }
+
 
 
 

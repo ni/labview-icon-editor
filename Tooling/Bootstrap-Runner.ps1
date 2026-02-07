@@ -63,7 +63,7 @@
     Run Tooling/Validate-RunnerContract.ps1 after setup (default true).
 
 .PARAMETER RunnerCliPath
-    Optional path to runner-cli.exe for contract validation.
+    Optional path to runner-cli for contract validation.
 
 .PARAMETER WriteBootstrapMarker
     Write a bootstrap marker JSON file (default true).
@@ -259,6 +259,11 @@ function Resolve-RunnerServiceName {
     return $null
 }
 
+function Get-RunnerCliFileName {
+    if ($IsWindows) { return 'runner-cli.exe' }
+    return 'runner-cli'
+}
+
 function Resolve-RunnerCliPath {
     param([string]$ExplicitPath)
 
@@ -271,7 +276,8 @@ function Resolve-RunnerCliPath {
     }
 
     if (-not [string]::IsNullOrWhiteSpace($env:RUNNER_TEMP)) {
-        $candidate = Join-Path $env:RUNNER_TEMP 'runner-cli\runner-cli.exe'
+        $cliFile = Get-RunnerCliFileName
+        $candidate = Join-Path $env:RUNNER_TEMP 'runner-cli' $cliFile
         if (Test-Path -Path $candidate) {
             return $candidate
         }

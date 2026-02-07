@@ -9,15 +9,52 @@ runs:
         fetch-depth: 0
         clean: false
 
+    - name: Resolve LabVIEW version
+      shell: pwsh
+      run: |
+        $repoRoot = "${{ inputs.repo_root }}"
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          $repoRoot = $env:GITHUB_WORKSPACE
+        }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "repo_root is required."
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
+
+        $lvVersionInput = "${{ inputs.labview_version }}"
+        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+        if (-not (Test-Path -Path $assertScript)) {
+          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+        }
+        $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $lvVersionInput -Context 'build-vip'
+        if ([string]::IsNullOrWhiteSpace($lvVersionInput)) {
+          Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
+        }
+        $minorInput = "${{ inputs.labview_minor_revision }}"
+        if (-not [string]::IsNullOrWhiteSpace($minorInput)) {
+          if ([int]$minorInput -ne [int]$lvInfo.MinorRevision) {
+            throw "labview_minor_revision '$minorInput' does not match .lvversion minor '$($lvInfo.MinorRevision)'."
+          }
+        }
+        $lvMinor = if ([string]::IsNullOrWhiteSpace($minorInput)) { $lvInfo.MinorRevision } else { [int]$minorInput }
+
+        "LVIE_ACTION_REPO_ROOT=$repoRoot" | Out-File -FilePath $Env:GITHUB_ENV -Append
+        "LVIE_ACTION_LABVIEW_VERSION=$($lvInfo.Year)" | Out-File -FilePath $Env:GITHUB_ENV -Append
+        "LVIE_ACTION_LABVIEW_MINOR=$lvMinor" | Out-File -FilePath $Env:GITHUB_ENV -Append
+
     - name: Pre-flight LabVIEW availability check
       shell: pwsh
       run: |
         $ErrorActionPreference = 'Stop'
-        $lvVersion = "${{ inputs.labview_version }}"
+        $lvVersion = $env:LVIE_ACTION_LABVIEW_VERSION
+        $repoRoot = $env:LVIE_ACTION_REPO_ROOT
         if ([string]::IsNullOrWhiteSpace($lvVersion)) {
-          throw "labview_version is required."
+          throw "Resolved LabVIEW version not found; check .lvversion."
         }
-        $logDir = Join-Path -Path "${{ inputs.repo_root }}" -ChildPath "builds/logs"
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "Resolved repo root not found."
+        }
+        $logDir = Join-Path -Path $repoRoot -ChildPath "builds/logs"
         New-Item -ItemType Directory -Path $logDir -Force | Out-Null
         $logFile = Join-Path -Path $logDir -ChildPath "gcli-preflight.log"
 
@@ -100,18 +137,23 @@ runs:
         DISPLAY_INFORMATION_JSON: |
           ${{ inputs.display_information_json }}
       run: |
-        $lvVersion = "${{ inputs.labview_version }}"
+        $lvVersion = $env:LVIE_ACTION_LABVIEW_VERSION
+        $repoRoot = $env:LVIE_ACTION_REPO_ROOT
+        $lvMinor = $env:LVIE_ACTION_LABVIEW_MINOR
         if ([string]::IsNullOrWhiteSpace($lvVersion)) {
-          throw "labview_version is required."
+          throw "Resolved LabVIEW version not found; check .lvversion."
+        }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "Resolved repo root not found."
         }
         $displayInformationJson = $Env:DISPLAY_INFORMATION_JSON
 
         & "${{ github.action_path }}/build_vip.ps1" `
           -SupportedBitness ${{ inputs.supported_bitness }} `
-          -RepoRoot "${{ inputs.repo_root }}" `
+          -RepoRoot $repoRoot `
           -VIPBPath "${{ inputs.vipb_path }}" `
-          -MinimumSupportedLVVersion $lvVersion `
-          -LabVIEWMinorRevision ${{ inputs.labview_minor_revision }} `
+          -LabVIEWVersion $lvVersion `
+          -LabVIEWMinorRevision $lvMinor `
           -Major ${{ inputs.major }} `
           -Minor ${{ inputs.minor }} `
           -Patch ${{ inputs.patch }} `
@@ -235,7 +277,7 @@ runs:
 inputs:
   labview_version:
     description: 'LabVIEW version to target (year or numeric).'
-    required: true
+    required: false
   supported_bitness:
     description: '32 or 64'
     required: true
@@ -248,7 +290,7 @@ inputs:
   labview_minor_revision:
     description: 'LabVIEW minor revision (e.g., 0 for 21.0)'
     required: false
-    default: '0'
+    default: ''
   major:
     description: 'Major version component'
     required: true
@@ -274,5 +316,6 @@ inputs:
     description: 'If true, fail when multiple .vip files exist after the build step'
     required: false
     default: 'true'
+
 
 

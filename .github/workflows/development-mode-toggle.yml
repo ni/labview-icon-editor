@@ -22,7 +22,8 @@ on:
       labview_version:
         description: "LabVIEW version to target (year or numeric)."
         type: string
-        required: true
+        required: false
+        default: ""
       bitness:
         description: "LabVIEW bitness to target (32 or 64)."
         type: string
@@ -46,8 +47,8 @@ on:
           - disable
       labview_version:
         description: "LabVIEW version (year or numeric)."
-        required: true
-        default: "2021"
+        required: false
+        default: ""
         type: string
       bitness:
         description: "LabVIEW bitness."
@@ -68,12 +69,12 @@ run-name: ${{
     format('DevMode {0} {1}-bit LV{2} seq={3}', 
       github.event.inputs.mode == 'enable' && 'enable' || 'disable',
       github.event.inputs.bitness || '64',
-      github.event.inputs.labview_version || '2021',
+      github.event.inputs.labview_version || 'auto',
       github.event.inputs.sequence_id || 'none') || 
     format('DevMode {0} {1}-bit LV{2} seq={3}', 
       inputs.mode == 'enable' && 'enable' || 'disable',
       inputs.bitness || '64',
-      inputs.labview_version || '2021',
+      inputs.labview_version || 'auto',
       inputs.sequence_id || 'none') }}
 
 jobs:
@@ -90,11 +91,11 @@ jobs:
         format('{0} {1}-bit Dev Mode LV{2}', 
           github.event.inputs.mode == 'enable' && 'Enable' || 'Disable',
           github.event.inputs.bitness || '64',
-          github.event.inputs.labview_version || '2021') || 
+          github.event.inputs.labview_version || 'auto') || 
         format('{0} {1}-bit Dev Mode LV{2}', 
           inputs.mode == 'enable' && 'Enable' || 'Disable',
           inputs.bitness || '64',
-          inputs.labview_version || '2021') }}
+          inputs.labview_version || 'auto') }}
 
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
@@ -104,6 +105,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
       - name: Runner bootstrap (stateless)
         uses: ./.github/actions/runner-bootstrap
         with:
@@ -129,24 +134,70 @@ jobs:
             Write-Host "Not triggered by a pull request."
           }
 
+      - name: Resolve LabVIEW version from .lvversion
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:GITHUB_WORKSPACE)) {
+            throw "GITHUB_WORKSPACE is required to resolve RepoRoot."
+          }
+          $repoRoot = (Resolve-Path -Path $env:GITHUB_WORKSPACE -ErrorAction Stop).Path
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $lvVersionInput = '${{ github.event.inputs.labview_version }}'
+          } else {
+            $lvVersionInput = '${{ inputs.labview_version }}'
+          }
+
+          $runnerCliProject = Join-Path $repoRoot 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+          $canUseRunnerCli = (Get-Command dotnet -ErrorAction SilentlyContinue) -and (Test-Path $runnerCliProject)
+          if ($canUseRunnerCli) {
+            Write-Host "Using runner-cli version-gate (incremental migration)."
+            dotnet build $runnerCliProject --configuration Release | Out-Host
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
+            $runnerCliDll = Join-Path (Split-Path $runnerCliProject) 'bin/Release/net8.0/runner-cli.dll'
+            if (-not (Test-Path $runnerCliDll)) {
+              throw "Runner CLI build succeeded but binary not found: $runnerCliDll"
+            }
+            $args = @('version-gate', '--repo-root', $repoRoot, '--json')
+            if (-not [string]::IsNullOrWhiteSpace($lvVersionInput)) {
+              $args += '--version'
+              $args += $lvVersionInput
+            }
+            $json = & dotnet $runnerCliDll @args
+            $exitCode = $LASTEXITCODE
+            if ($exitCode -ne 0) {
+              exit $exitCode
+            }
+            $lvInfo = $json | ConvertFrom-Json
+          } else {
+            Write-Warning "runner-cli unavailable; falling back to Assert-LabVIEWVersion.ps1."
+            $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+            if (-not (Test-Path -Path $assertScript)) {
+              throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+            }
+            $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $lvVersionInput -Context 'development-mode-toggle'
+          }
+          if ([string]::IsNullOrWhiteSpace($lvVersionInput)) {
+            Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
+          }
+          Write-Host ("LabVIEW version gate passed: {0}" -f $lvInfo.Raw)
+          "LVIE_DEV_MODE_VERSION=$($lvInfo.Year)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
+
       - name: Toggle dev mode (64-bit)
         if: ${{ env.selected_bitness == '64' && success() }}
         shell: pwsh
         run: |
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
             $mode = '${{ github.event.inputs.mode }}'
-            $lvVersion = '${{ github.event.inputs.labview_version }}'
           } else {
             $mode = '${{ inputs.mode }}'
-            $lvVersion = '${{ inputs.labview_version }}'
           }
 
-          if ([string]::IsNullOrWhiteSpace($lvVersion)) {
-            $lvVersion = '2021'
-          }
+          $lvVersion = $env:LVIE_DEV_MODE_VERSION
 
           $scriptArgs = @{
-            MinimumSupportedLVVersion = $lvVersion
+            LabVIEWVersion = $lvVersion
             SupportedBitness          = '64'
           }
 
@@ -178,18 +229,14 @@ jobs:
         run: |
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
             $mode = '${{ github.event.inputs.mode }}'
-            $lvVersion = '${{ github.event.inputs.labview_version }}'
           } else {
             $mode = '${{ inputs.mode }}'
-            $lvVersion = '${{ inputs.labview_version }}'
           }
 
-          if ([string]::IsNullOrWhiteSpace($lvVersion)) {
-            $lvVersion = '2021'
-          }
+          $lvVersion = $env:LVIE_DEV_MODE_VERSION
 
           $scriptArgs = @{
-            MinimumSupportedLVVersion = $lvVersion
+            LabVIEWVersion = $lvVersion
             SupportedBitness          = '32'
           }
 
@@ -208,3 +255,4 @@ jobs:
           if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
             exit $LASTEXITCODE
           }
+

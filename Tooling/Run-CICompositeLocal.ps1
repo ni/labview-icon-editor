@@ -12,7 +12,7 @@
     - Build PPLs (version 32/64) + rename
     - Build VIP (version 64)
 
-    GitHub-only gates (issue-status, labels, artifact upload) are not included.
+    GitHub-only steps (workflow metadata, artifact upload) are not included.
 
 .PARAMETER LabVIEWVersion
     LabVIEW version year (e.g., 2021) or numeric version (e.g., 21.0).
@@ -46,6 +46,24 @@
 
 .PARAMETER SkipBuildVip
     Skip VIP build.
+
+.PARAMETER SkipViValidate
+    Skip pylavi vi_validate checks.
+
+.PARAMETER ViValidateConfigPath
+    Path to pylavi vi_validate config file (relative to repo root).
+
+.PARAMETER ViValidateProfile
+    vi_validate profile: strict, legacy, or both (default: strict).
+
+.PARAMETER ViValidateReportOnly
+    Emit vi_validate warnings but do not fail the run.
+
+.PARAMETER ViValidateSkipVersionGate
+    Skip passing --eq to vi_validate (useful for legacy cleanup runs).
+
+.PARAMETER ViValidateOnly
+    Run only the pylavi vi_validate gate and exit.
 
 .PARAMETER UseLabVIEWDevMode
     Use LabVIEW + g-cli for dev-mode toggles (default: false).
@@ -93,7 +111,7 @@
     If set, purge known output folders before and after the run.
 
 .PARAMETER RunnerCliPath
-    Optional path to runner-cli.exe for runner contract validation.
+    Optional path to runner-cli for runner contract validation.
 
 .PARAMETER RequireRunnerCli
     Require runner-cli for contract validation (default true).
@@ -112,6 +130,9 @@
 
 .PARAMETER Commit
     Override commit hash.
+
+.PARAMETER Orchestrated
+    Internal flag used by Invoke-WorktreeOrchestrator to prevent recursion.
 #>
 
 [CmdletBinding()]
@@ -136,6 +157,21 @@ param(
     [switch]$SkipUnitTests,
     [switch]$SkipBuildPpl,
     [switch]$SkipBuildVip,
+
+    [switch]$SkipViValidate,
+
+    [Parameter(Mandatory = $false)]
+    [string]$ViValidateConfigPath = 'Tooling/pylavi/vi-validate.yml',
+
+    [Parameter(Mandatory = $false)]
+    [ValidateSet('strict', 'legacy', 'both')]
+    [string]$ViValidateProfile = 'strict',
+
+    [switch]$ViValidateReportOnly,
+
+    [switch]$ViValidateSkipVersionGate,
+
+    [switch]$ViValidateOnly,
 
     [switch]$UseLabVIEWDevMode,
 
@@ -208,10 +244,64 @@ param(
     [int]$Build,
 
     [Parameter(Mandatory = $false)]
-    [string]$Commit
+    [string]$Commit,
+
+    [switch]$Orchestrated
 )
 
 $ErrorActionPreference = 'Stop'
+
+if (-not $Orchestrated) {
+    $orchestrator = Join-Path $PSScriptRoot 'Invoke-WorktreeOrchestrator.ps1'
+    if (Test-Path -Path $orchestrator) {
+        Write-Warning "Direct execution of Run-CICompositeLocal.ps1 is deprecated. Use Invoke-WorktreeOrchestrator.ps1."
+
+        $forward = @()
+        foreach ($entry in $PSBoundParameters.GetEnumerator()) {
+            if ($entry.Key -eq 'Orchestrated') {
+                continue
+            }
+
+            $paramName = "-$($entry.Key)"
+            $value = $entry.Value
+
+            if ($value -is [System.Management.Automation.SwitchParameter]) {
+                if ($value.IsPresent) {
+                    $forward += $paramName
+                }
+                continue
+            }
+
+            if ($value -is [bool]) {
+                $forward += $paramName
+                $forward += $value.ToString().ToLowerInvariant()
+                continue
+            }
+
+            if ($value -is [array]) {
+                $forward += $paramName
+                $forward += $value
+                continue
+            }
+
+            $forward += $paramName
+            $forward += $value
+        }
+
+        $forward += '-Orchestrated'
+        & $orchestrator -Run -RunScript $PSCommandPath -RunArgs $forward
+        exit $LASTEXITCODE
+    } else {
+        Write-Warning "Invoke-WorktreeOrchestrator.ps1 not found; continuing direct execution."
+    }
+}
+
+if ($ViValidateOnly -and $SkipViValidate) {
+    throw "ViValidateOnly cannot be combined with -SkipViValidate."
+}
+
+$customViConfigSpecified = $PSBoundParameters.ContainsKey('ViValidateConfigPath')
+$skipViVersionSpecified = $PSBoundParameters.ContainsKey('ViValidateSkipVersionGate')
 
 function Test-ForceNoLabVIEWDevMode {
     $value = $env:LVIE_FORCE_NO_LABVIEW_DEVMODE
@@ -279,7 +369,45 @@ function Resolve-RepoRoot {
         }
         return (Resolve-Path -Path $PathOverride).Path
     }
-    return (Resolve-Path -Path (Join-Path $PSScriptRoot '..')).Path
+    $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $PSCommandPath }
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        try {
+            $gitRoot = git -C $scriptRoot rev-parse --show-toplevel 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRoot)) {
+                return (Resolve-Path -Path $gitRoot.Trim()).Path
+            }
+        } catch {
+            Write-Verbose ("git rev-parse failed: {0}" -f $_.Exception.Message)
+        }
+    }
+    return (Resolve-Path -Path (Join-Path $scriptRoot '..')).Path
+}
+
+function Get-RepoHeadSha {
+    param([string]$RepoRoot)
+    if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_SHA)) {
+        $candidate = $env:GITHUB_SHA.Trim()
+        if ($candidate -match '^[0-9a-fA-F]{7,40}$') {
+            return $candidate.ToLowerInvariant()
+        }
+    }
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if (-not $git) {
+        return $null
+    }
+    try {
+        $sha = git -C $RepoRoot rev-parse HEAD 2>$null
+        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($sha)) {
+            $candidate = $sha.Trim()
+            if ($candidate -match '^[0-9a-fA-F]{7,40}$') {
+                return $candidate.ToLowerInvariant()
+            }
+        }
+    } catch {
+        return $null
+    }
+    return $null
 }
 
 function Get-LabVIEWInstallRoot {
@@ -361,6 +489,361 @@ function Resolve-LabVIEWBitnessList {
     }
 
     return @('64', '32')
+}
+
+function Resolve-ViValidateVersion {
+    param(
+        [object]$LabVIEWInfo,
+        [string]$RepoRoot
+    )
+
+    $versionHelper = Join-Path $RepoRoot 'Tooling\support\LabVIEWVersion.ps1'
+    if (Test-Path -Path $versionHelper) {
+        . $versionHelper
+        $info = Get-LabVIEWVersionInfo -RepoRoot $RepoRoot
+        if ($info -and -not [string]::IsNullOrWhiteSpace($info.NumericVersion)) {
+            return $info.NumericVersion
+        }
+    }
+
+    $versionPath = Join-Path $RepoRoot '.lvversion'
+    if (-not (Test-Path -Path $versionPath)) {
+        if ($LabVIEWInfo -and -not [string]::IsNullOrWhiteSpace($LabVIEWInfo.NumericVersion)) {
+            return $LabVIEWInfo.NumericVersion
+        }
+        throw ".lvversion not found at $versionPath"
+    }
+    $raw = (Get-Content -Raw -Path $versionPath).Trim()
+    if (-not ($raw -match '^(?<major>\\d{2,4})(?:\\.(?<minor>\\d+))?$')) {
+        throw "LabVIEW version '$raw' is invalid. Expected formats like '21.0' or '2021'."
+    }
+    $majorRaw = [int]$Matches['major']
+    $minor = if ($Matches['minor']) { [int]$Matches['minor'] } else { 0 }
+    $numericMajor = if ($majorRaw -ge 2000) { $majorRaw - 2000 } else { $majorRaw }
+
+    return "$numericMajor.$minor"
+}
+
+function Get-ViValidatePlan {
+    param(
+        [string]$ProfileName,
+        [string]$CustomConfigPath,
+        [bool]$CustomConfigSpecified,
+        [bool]$SkipVersionGate,
+        [bool]$SkipVersionSpecified
+    )
+
+    $strictConfig = 'Tooling/pylavi/vi-validate.yml'
+    $legacyConfig = 'Tooling/pylavi/vi-validate-legacy.yml'
+    $plan = @()
+
+    switch ($ProfileName) {
+        'strict' {
+            $plan += [pscustomobject]@{
+                Label           = 'strict'
+                ConfigPath      = if ($CustomConfigSpecified) { $CustomConfigPath } else { $strictConfig }
+                SkipVersionGate = $SkipVersionGate
+            }
+        }
+        'legacy' {
+            $legacySkip = if ($SkipVersionSpecified) { $SkipVersionGate } else { $true }
+            $plan += [pscustomobject]@{
+                Label           = 'legacy'
+                ConfigPath      = if ($CustomConfigSpecified) { $CustomConfigPath } else { $legacyConfig }
+                SkipVersionGate = $legacySkip
+            }
+        }
+        'both' {
+            if ($CustomConfigSpecified) {
+                Write-Warning "ViValidateConfigPath is ignored when ViValidateProfile=both."
+            }
+            $legacySkip = if ($SkipVersionSpecified) { $SkipVersionGate } else { $true }
+            $plan += [pscustomobject]@{
+                Label           = 'strict'
+                ConfigPath      = $strictConfig
+                SkipVersionGate = $SkipVersionGate
+            }
+            $plan += [pscustomobject]@{
+                Label           = 'legacy'
+                ConfigPath      = $legacyConfig
+                SkipVersionGate = $legacySkip
+            }
+        }
+    }
+
+    return $plan
+}
+
+function New-ViValidateOffendersReport {
+    param(
+        [string[]]$OutputLines,
+        [string]$Label,
+        [string]$SourceSha
+    )
+
+    $lines = if ($null -ne $OutputLines) { @($OutputLines) } else { @() }
+    $failDetails = @()
+
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $line = $lines[$i]
+        if ($line -like 'FAIL:*') {
+            $pathValue = $null
+            if ($i + 1 -lt $lines.Count) {
+                $next = $lines[$i + 1]
+                if ($next -match '^[\s]*(/|[A-Za-z]:|\\\\)') {
+                    $pathValue = $next.Trim()
+                }
+            }
+            $failDetails += [pscustomobject]@{
+                Reason = $line
+                File   = $pathValue
+            }
+        }
+    }
+
+    $rootsRaw = $env:LVIE_PYLAVI_ABSOLUTE_PATH_ROOTS
+    $roots = if (-not [string]::IsNullOrWhiteSpace($rootsRaw)) {
+        $rootsRaw -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+    } else {
+        @()
+    }
+    if ($roots.Count -gt 1) {
+        $roots = $roots | Sort-Object -Unique
+    }
+    $redactPattern = $null
+    if ($roots.Count -gt 0) {
+        $redactPattern = ($roots | ForEach-Object { [regex]::Escape($_) }) -join '|'
+    }
+    function ConvertTo-RedactedValue {
+        param([string]$Value)
+        if ([string]::IsNullOrWhiteSpace($Value)) { return $Value }
+        if ([string]::IsNullOrWhiteSpace($redactPattern)) { return $Value }
+        return [regex]::Replace($Value, $redactPattern, '<redacted>', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    }
+
+    $offenderCounts = @{}
+    $offenderReasons = @{}
+    $absoluteOffenderCounts = @{}
+    foreach ($detail in $failDetails) {
+        $key = if (-not [string]::IsNullOrWhiteSpace($detail.File)) { $detail.File } else { $detail.Reason }
+        if ([string]::IsNullOrWhiteSpace($key)) { continue }
+        if (-not $offenderCounts.ContainsKey($key)) {
+            $offenderCounts[$key] = 0
+            $offenderReasons[$key] = $detail.Reason
+        }
+        $offenderCounts[$key]++
+
+        $isAbsolute = $false
+        if (-not [string]::IsNullOrWhiteSpace($redactPattern) -and -not [string]::IsNullOrWhiteSpace($detail.File)) {
+            $isAbsolute = $detail.File -match $redactPattern
+        }
+        if (-not $isAbsolute -and $detail.Reason -like 'FAIL: Absolute linker path found:*') {
+            $isAbsolute = $true
+        }
+        if ($isAbsolute) {
+            if (-not $absoluteOffenderCounts.ContainsKey($key)) {
+                $absoluteOffenderCounts[$key] = 0
+            }
+            $absoluteOffenderCounts[$key]++
+        }
+    }
+
+    $topOffenders = $offenderCounts.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 20 | ForEach-Object {
+        [pscustomobject]@{
+            item          = (ConvertTo-RedactedValue -Value $_.Key)
+            count         = $_.Value
+            sample_reason = (ConvertTo-RedactedValue -Value $offenderReasons[$_.Key])
+        }
+    }
+    $topAbsolute = $absoluteOffenderCounts.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 20 | ForEach-Object {
+        [pscustomobject]@{
+            item  = (ConvertTo-RedactedValue -Value $_.Key)
+            count = $_.Value
+        }
+    }
+
+    $report = [ordered]@{
+        label                  = $Label
+        generated_utc          = (Get-Date).ToUniversalTime().ToString('o')
+        total_fails            = $failDetails.Count
+        configured_roots       = if ($roots.Count -gt 0) { '<redacted>' } else { '' }
+        configured_root_count  = $roots.Count
+        top_offenders          = $topOffenders
+        top_absolute_offenders = $topAbsolute
+    }
+    if (-not [string]::IsNullOrWhiteSpace($SourceSha)) {
+        $candidate = $SourceSha.Trim()
+        if ($candidate -match '^[0-9a-fA-F]{7,40}$') {
+            $report.source_sha = $candidate.ToLowerInvariant()
+        }
+    }
+    return [pscustomobject]$report
+}
+
+function Write-ViValidateOffendersReport {
+    param(
+        [pscustomobject]$Report,
+        [string]$RepoRoot
+    )
+
+    if (-not $Report -or [string]::IsNullOrWhiteSpace($RepoRoot)) {
+        return
+    }
+
+    try {
+        $logRoot = Join-Path $RepoRoot 'TestResults\agent-logs'
+        New-Item -Path $logRoot -ItemType Directory -Force | Out-Null
+
+        $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+        $label = $Report.label
+        $labelSuffix = if ([string]::IsNullOrWhiteSpace($label)) { '' } else { ".$label" }
+
+        $latestPath = Join-Path $logRoot 'pylavi-offenders.latest.json'
+        $latestLabelPath = Join-Path $logRoot ("pylavi-offenders.latest{0}.json" -f $labelSuffix)
+        $datedPath = Join-Path $logRoot ("pylavi-offenders{0}.{1}.json" -f $labelSuffix, $timestamp)
+
+        $reportJson = $Report | ConvertTo-Json -Depth 6
+        $reportJson | Out-File -FilePath $datedPath -Encoding utf8
+        $reportJson | Out-File -FilePath $latestPath -Encoding utf8
+        if (-not [string]::IsNullOrWhiteSpace($labelSuffix)) {
+            $reportJson | Out-File -FilePath $latestLabelPath -Encoding utf8
+        }
+
+        $shaValue = $null
+        if ($Report.PSObject.Properties.Name -contains 'source_sha') {
+            $shaValue = $Report.source_sha
+        }
+        if (-not [string]::IsNullOrWhiteSpace($shaValue)) {
+            $candidate = $shaValue.ToString().Trim()
+            if ($candidate -match '^[0-9a-fA-F]{7,40}$') {
+                $shaValue = $candidate.ToLowerInvariant()
+            } else {
+                $shaValue = $null
+            }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($shaValue)) {
+            $shaPath = Join-Path $logRoot ("pylavi-offenders.{0}.json" -f $shaValue)
+            $reportJson | Out-File -FilePath $shaPath -Encoding utf8
+            if (-not [string]::IsNullOrWhiteSpace($label)) {
+                $shaLabelPath = Join-Path $logRoot ("pylavi-offenders.{0}.{1}.json" -f $label, $shaValue)
+                $reportJson | Out-File -FilePath $shaLabelPath -Encoding utf8
+            }
+        }
+    } catch {
+        Write-Warning ("Failed to write pylavi offenders report: {0}" -f $_.Exception.Message)
+    }
+}
+
+function Invoke-ViValidate {
+    param(
+        [string]$RepoRoot,
+        [object]$LabVIEWInfo,
+        [string]$ConfigPath,
+        [string]$Label,
+        [switch]$ReportOnly,
+        [switch]$SkipVersionGate
+    )
+
+    $viValidate = Get-Command vi_validate -ErrorAction SilentlyContinue
+    if (-not $viValidate) {
+        throw "vi_validate not found in PATH. Install pylavi (e.g., py -m pip install --user pylavi)."
+    }
+
+    $viArgs = @()
+    $viConfig = $ConfigPath
+    if (-not [string]::IsNullOrWhiteSpace($viConfig)) {
+        if (-not [System.IO.Path]::IsPathRooted($viConfig)) {
+            $viConfig = Join-Path $RepoRoot $viConfig
+        }
+        if (-not (Test-Path -Path $viConfig)) {
+            throw "vi_validate config not found: $viConfig"
+        }
+        $viArgs += '--config'
+        $viArgs += $viConfig
+    } else {
+        $viArgs += '--path'
+        $viArgs += $RepoRoot
+    }
+
+    if (-not $SkipVersionGate) {
+        $viVersion = Resolve-ViValidateVersion -LabVIEWInfo $LabVIEWInfo -RepoRoot $RepoRoot
+        $viArgs += '--eq'
+        $viArgs += $viVersion
+    }
+
+    $rootsRaw = $env:LVIE_PYLAVI_ABSOLUTE_PATH_ROOTS
+    $roots = if (-not [string]::IsNullOrWhiteSpace($rootsRaw)) {
+        $rootsRaw -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+    } else {
+        @()
+    }
+    if ($roots.Count -gt 1) {
+        $roots = $roots | Sort-Object -Unique
+    }
+    $redactRegex = $null
+    if ($roots.Count -gt 0) {
+        $pattern = ($roots | ForEach-Object { [regex]::Escape($_) }) -join '|'
+        $redactRegex = [regex]::new($pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    }
+    function ConvertTo-RedactedValue {
+        param([string]$Value)
+        if ([string]::IsNullOrWhiteSpace($Value)) { return $Value }
+        if (-not $redactRegex) { return $Value }
+        return $redactRegex.Replace($Value, '<redacted>')
+    }
+    function Format-CommandArgument {
+        param([string[]]$Arguments)
+        if (-not $Arguments) { return '' }
+        return ($Arguments | ForEach-Object {
+            if ([string]::IsNullOrWhiteSpace($_)) { '""' }
+            elseif ($_ -match '\s') { '"' + $_ + '"' }
+            else { $_ }
+        }) -join ' '
+    }
+
+    $labelSuffix = if ([string]::IsNullOrWhiteSpace($Label)) { '' } else { " ($Label)" }
+    $displayArgs = Format-CommandArgument -Arguments $viArgs
+    Write-Host ("vi_validate command{0}: {1} {2}" -f $labelSuffix, $viValidate.Source, $displayArgs)
+    $result = Invoke-CheckedWithOutput -Label "Validate LabVIEW files (pylavi$labelSuffix)" -Action {
+        & $viValidate.Source @viArgs
+    } -RedactionRegex $redactRegex
+
+    $outputLines = if ($null -ne $result.Output) { @($result.Output) } else { @() }
+    if ($roots.Count -gt 0 -and $outputLines.Count -gt 0) {
+        $hits = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+        foreach ($root in $roots) {
+            foreach ($line in $outputLines) {
+                if ($line -like "*$root*") {
+                    [void]$hits.Add($line)
+                }
+            }
+        }
+        if ($hits.Count -gt 0) {
+            Write-Warning ("Absolute linker paths referencing configured roots detected (count: {0})." -f $hits.Count)
+            $preview = $hits | Select-Object -First 20
+            foreach ($hit in $preview) {
+                Write-Warning (ConvertTo-RedactedValue -Value $hit)
+            }
+            if ($hits.Count -gt $preview.Count) {
+                Write-Warning ("... {0} more" -f ($hits.Count - $preview.Count))
+            }
+        }
+    }
+
+    $sourceSha = Get-RepoHeadSha -RepoRoot $RepoRoot
+    $offenderReport = New-ViValidateOffendersReport -OutputLines $outputLines -Label $Label -SourceSha $sourceSha
+    Write-ViValidateOffendersReport -Report $offenderReport -RepoRoot $RepoRoot
+
+    if ($result.Error) {
+        throw $result.Error
+    }
+    if ($result.ExitCode -ne 0 -and $null -ne $result.ExitCode) {
+        if ($ReportOnly) {
+            Write-Warning ("vi_validate{0} exited with {1} (report-only)." -f $labelSuffix, $result.ExitCode)
+        } else {
+            throw "Validate LabVIEW files (pylavi$labelSuffix) failed with exit code $($result.ExitCode)."
+        }
+    }
 }
 
 function Assert-LabVIEWInstalled {
@@ -493,6 +976,58 @@ function Invoke-CheckedWithResult {
     return [pscustomobject]@{
         ExitCode  = $exitCode
         Error     = $stepError
+        Status    = $status
+        Duration  = $duration
+    }
+}
+
+function Invoke-CheckedWithOutput {
+    param(
+        [string]$Label,
+        [scriptblock]$Action,
+        [System.Text.RegularExpressions.Regex]$RedactionRegex
+    )
+
+    $stepStart = Get-Date
+    $exitCode = $null
+    $stepError = $null
+    $output = @()
+
+    Write-Host ""
+    Write-Host ("=== {0} ===" -f $Label)
+    try {
+        $global:LASTEXITCODE = $null
+        $output = & $Action 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    catch {
+        $stepError = $_
+    }
+
+    $duration = [Math]::Round(((Get-Date) - $stepStart).TotalSeconds, 2)
+    $status = if ($stepError) { 'error' } elseif ($null -eq $exitCode -or $exitCode -eq 0) { 'success' } else { "exit:$exitCode" }
+    if ($script:StepHistoryPath) {
+        "{0},{1},{2},{3}" -f $stepStart.ToString('yyyy-MM-dd HH:mm:ss'), ($Label -replace ',', ' '), $status, $duration | Add-Content -Path $script:StepHistoryPath
+    }
+
+    $normalizedOutput = @()
+    if ($null -ne $output) {
+        $normalizedOutput = @($output | ForEach-Object { $_.ToString() })
+    }
+    foreach ($line in $normalizedOutput) {
+        $renderLine = $line
+        if ($RedactionRegex) {
+            $renderLine = $RedactionRegex.Replace($renderLine, '<redacted>')
+        }
+        Write-Host $renderLine
+    }
+
+    Write-Host ("=== {0} completed in {1}s ===" -f $Label, $duration)
+
+    return [pscustomobject]@{
+        ExitCode  = $exitCode
+        Error     = $stepError
+        Output    = $normalizedOutput
         Status    = $status
         Duration  = $duration
     }
@@ -808,11 +1343,34 @@ function Write-GCliBuildLogTail {
     Write-Host "---- end g-cli build log ----"
 }
 
+function Get-RunnerCliRuntime {
+    $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+    if ($IsWindows) { return 'win-x64' }
+    if ($IsLinux) {
+        if ($arch -eq 'Arm64') { return 'linux-arm64' }
+        return 'linux-x64'
+    }
+    if ($IsMacOS) {
+        if ($arch -eq 'Arm64') { return 'osx-arm64' }
+        return 'osx-x64'
+    }
+    return 'win-x64'
+}
+
+function Get-RunnerCliFileName {
+    param([string]$Runtime)
+    if ($Runtime -like 'win-*') { return 'runner-cli.exe' }
+    return 'runner-cli'
+}
+
 function Resolve-RunnerCliPath {
     param(
         [string]$ExplicitPath,
         [string]$RepoRoot
     )
+
+    $runtime = Get-RunnerCliRuntime
+    $cliFile = Get-RunnerCliFileName -Runtime $runtime
 
     $candidates = @()
     if (-not [string]::IsNullOrWhiteSpace($ExplicitPath)) {
@@ -821,13 +1379,13 @@ function Resolve-RunnerCliPath {
     if (-not [string]::IsNullOrWhiteSpace($env:LVIE_RUNNER_CLI_PATH)) {
         $candidates += $env:LVIE_RUNNER_CLI_PATH
     }
-    if (-not [string]::IsNullOrWhiteSpace($env:RUNNER_TEMP)) {
-        $candidates += (Join-Path $env:RUNNER_TEMP 'runner-cli\runner-cli.exe')
-    }
     if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
-        $candidates += (Join-Path $RepoRoot 'Tooling\runner-cli\publish\win-x64\runner-cli.exe')
-        $candidates += (Join-Path $RepoRoot 'Tooling\runner-cli\RunnerCli\bin\Release\net8.0\win-x64\publish\runner-cli.exe')
-        $candidates += (Join-Path $RepoRoot 'Tooling\runner-cli\RunnerCli\bin\Release\net8.0\runner-cli.exe')
+        $candidates += (Join-Path $RepoRoot 'Tooling\runner-cli\publish' $runtime $cliFile)
+        $candidates += (Join-Path $RepoRoot 'Tooling\runner-cli\RunnerCli\bin\Release\net8.0' $runtime 'publish' $cliFile)
+        $candidates += (Join-Path $RepoRoot 'Tooling\runner-cli\RunnerCli\bin\Release\net8.0' $runtime $cliFile)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:RUNNER_TEMP)) {
+        $candidates += (Join-Path $env:RUNNER_TEMP 'runner-cli' $cliFile)
     }
 
     foreach ($candidate in $candidates) {
@@ -987,7 +1545,8 @@ if (Test-Path -Path $preflightScript) {
         -RunId $RunId `
         -ArtifactRoot $ArtifactRoot `
         -CleanRoom:$CleanRoom `
-        -RequireGcli `
+        -RequireGcli:$(-not $ViValidateOnly) `
+        -RequireViValidate:$($ViValidateOnly -or (-not $SkipViValidate)) `
         -RunnerCliPath $RunnerCliPath `
         -RequireRunnerCli:$requireRunnerCliEnabled
     if ($preflight.Reinvoked) {
@@ -1017,7 +1576,7 @@ if ($labviewInfo -and -not [string]::IsNullOrWhiteSpace($labviewInfo.Year)) {
     $LabVIEWVersion = $labviewInfo.Year
 }
 if ([string]::IsNullOrWhiteSpace($LabVIEWVersion)) {
-    $LabVIEWVersion = '2021'
+    throw "LabVIEW version could not be resolved. Check .lvversion."
 }
 Push-Location -Path $repoRoot
 $script:RunFailed = $false
@@ -1032,7 +1591,7 @@ Initialize-CsvHeader -Path $script:RunHistoryPath -Header 'timestamp,status,dura
 Initialize-CsvHeader -Path $script:StepHistoryPath -Header 'timestamp,step,status,duration_seconds'
 $env:LABVIEW_CLOSE_METRICS_PATH = $script:CloseHistoryPath
 $runLog = Join-Path $logRoot "ci-local-$runTimestamp.log"
-$commandLine = "Run-CICompositeLocal.ps1 -LabVIEWVersion $LabVIEWVersion -LabVIEWBitness $LabVIEWBitness -AllowVersionMismatch:$AllowVersionMismatch -DryRun:$DryRun -EnsureCleanState:$EnsureCleanState -SkipVerifyIEPaths:$SkipVerifyIEPaths -SkipVipc:$SkipVipc -SkipMissingInProject:$SkipMissingInProject -SkipUnitTests:$SkipUnitTests -SkipBuildPpl:$SkipBuildPpl -SkipBuildVip:$SkipBuildVip -UseLabVIEWDevMode:$UseLabVIEWDevMode -BumpType $BumpType -ConnectTimeoutMs $ConnectTimeoutMs -ProcessTimeoutMs $ProcessTimeoutMs -StatusFileTimeoutMs $StatusFileTimeoutMs -VipmTimeoutSeconds $VipmTimeoutSeconds -CloseLabVIEWMode $CloseLabVIEWMode -WorktreeRoot $WorktreeRoot -SkipWorktreeRootCheck:$SkipWorktreeRootCheck -AutoWorktree:$AutoWorktree -RunId $RunId -ArtifactRoot $ArtifactRoot -CleanRoom:$CleanRoom -RunnerCliPath $RunnerCliPath -RequireRunnerCli:$requireRunnerCliEnabled"
+$commandLine = "Run-CICompositeLocal.ps1 -LabVIEWVersion $LabVIEWVersion -LabVIEWBitness $LabVIEWBitness -AllowVersionMismatch:$AllowVersionMismatch -DryRun:$DryRun -EnsureCleanState:$EnsureCleanState -SkipVerifyIEPaths:$SkipVerifyIEPaths -SkipVipc:$SkipVipc -SkipMissingInProject:$SkipMissingInProject -SkipUnitTests:$SkipUnitTests -SkipBuildPpl:$SkipBuildPpl -SkipBuildVip:$SkipBuildVip -SkipViValidate:$SkipViValidate -ViValidateConfigPath $ViValidateConfigPath -ViValidateProfile $ViValidateProfile -ViValidateReportOnly:$ViValidateReportOnly -ViValidateSkipVersionGate:$ViValidateSkipVersionGate -ViValidateOnly:$ViValidateOnly -UseLabVIEWDevMode:$UseLabVIEWDevMode -BumpType $BumpType -ConnectTimeoutMs $ConnectTimeoutMs -ProcessTimeoutMs $ProcessTimeoutMs -StatusFileTimeoutMs $StatusFileTimeoutMs -VipmTimeoutSeconds $VipmTimeoutSeconds -CloseLabVIEWMode $CloseLabVIEWMode -WorktreeRoot $WorktreeRoot -SkipWorktreeRootCheck:$SkipWorktreeRootCheck -AutoWorktree:$AutoWorktree -RunId $RunId -ArtifactRoot $ArtifactRoot -CleanRoom:$CleanRoom -RunnerCliPath $RunnerCliPath -RequireRunnerCli:$requireRunnerCliEnabled"
 $script:TranscriptStarted = $false
 try {
     Start-Transcript -Path $runLog -Append | Out-Null
@@ -1043,6 +1602,31 @@ catch {
 }
 
 try {
+    $viValidatePlan = @()
+    if ($ViValidateOnly -or (-not $SkipViValidate)) {
+        $viValidatePlan = Get-ViValidatePlan `
+            -ProfileName $ViValidateProfile `
+            -CustomConfigPath $ViValidateConfigPath `
+            -CustomConfigSpecified:$customViConfigSpecified `
+            -SkipVersionGate:$ViValidateSkipVersionGate `
+            -SkipVersionSpecified:$skipViVersionSpecified
+    }
+
+    if ($ViValidateOnly) {
+        foreach ($entry in $viValidatePlan) {
+            Invoke-ViValidate `
+                -RepoRoot $repoRoot `
+                -LabVIEWInfo $labviewInfo `
+                -ConfigPath $entry.ConfigPath `
+                -Label $entry.Label `
+                -ReportOnly:$ViValidateReportOnly `
+                -SkipVersionGate:$entry.SkipVersionGate
+        }
+        Write-Host ""
+        Write-Host "vi_validate completed; exiting due to -ViValidateOnly."
+        return
+    }
+
     if ($DryRun) {
         $bitnessList = Resolve-LabVIEWBitnessList -BitnessMode $LabVIEWBitness -Version $LabVIEWVersion
         foreach ($bitness in $bitnessList) {
@@ -1054,6 +1638,18 @@ try {
 
     if (-not (Get-Command g-cli -ErrorAction SilentlyContinue)) {
         throw "g-cli.exe not found in PATH."
+    }
+
+    if (-not $SkipViValidate) {
+        foreach ($entry in $viValidatePlan) {
+            Invoke-ViValidate `
+                -RepoRoot $repoRoot `
+                -LabVIEWInfo $labviewInfo `
+                -ConfigPath $entry.ConfigPath `
+                -Label $entry.Label `
+                -ReportOnly:$ViValidateReportOnly `
+                -SkipVersionGate:$entry.SkipVersionGate
+        }
     }
 
     Wait-ForIdle -RunHistoryPath $script:RunHistoryPath
@@ -1111,7 +1707,6 @@ try {
             Invoke-Checked -Label "Apply VIPC (LV$LabVIEWVersion $bitness-bit)" -Action {
                 & (Join-Path $repoRoot '.github/actions/apply-vipc/ApplyVIPC.ps1') `
                     -LabVIEWVersion $LabVIEWVersion `
-                    -VIP_LVVersion $LabVIEWVersion `
                     -SupportedBitness $bitness `
                     -RepoRoot $repoRoot `
                     -VIPCPath $VipcPath
@@ -1351,6 +1946,8 @@ finally {
     "{0},{1},{2},{3}" -f $runTimestamp, $runStatus, $runDuration, ($commandLine -replace ',', ' ') | Add-Content -Path $script:RunHistoryPath
     Pop-Location
 }
+
+
 
 
 

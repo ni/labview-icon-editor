@@ -5,7 +5,7 @@ Call **`Build_lvlibp.ps1`** to compile the editor packed library using g-cli.
 ## Inputs
 | Name | Required | Example | Description |
 |------|----------|---------|-------------|
-| `labview_version` | **Yes** | `2021` | LabVIEW 2021 (21.0) to use. |
+| `labview_version` | No | `2021` | LabVIEW 2021 (21.0) to use. Defaults to `.lvversion` and fails if it conflicts. |
 | `supported_bitness` | **Yes** | `32` or `64` | Target LabVIEW bitness. |
 | `repo_root` | **Yes** | `${{ github.workspace }}` | Repository root on disk. |
 | `major` | **Yes** | `1` | Major version component. |
@@ -18,7 +18,6 @@ Call **`Build_lvlibp.ps1`** to compile the editor packed library using g-cli.
 ```yaml
 - uses: ./.github/actions/build-lvlibp
   with:
-    labview_version: 2021
     supported_bitness: 64
     repo_root: ${{ github.workspace }}
     major: 1

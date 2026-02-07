@@ -11,7 +11,6 @@
 
 .PARAMETER LabVIEWVersion
     LabVIEW version year (e.g., 2021) or numeric version (e.g., 21.0).
-    Alias: MinimumSupportedLVVersion.
 
 .PARAMETER SupportedBitness
     Bitness for LabVIEW (e.g., "64").
@@ -36,9 +35,8 @@
 
 [CmdletBinding(DefaultParameterSetName = 'Run')]
 param(
-    [Parameter(Mandatory = $true, ParameterSetName = 'Run')]
-    [Parameter(Mandatory = $true, ParameterSetName = 'ReportOnly')]
-    [Alias('MinimumSupportedLVVersion')]
+    [Parameter(Mandatory = $false, ParameterSetName = 'Run')]
+    [Parameter(Mandatory = $false, ParameterSetName = 'ReportOnly')]
     [AllowNull()]
     [AllowEmptyString()]
     [string]
@@ -122,7 +120,7 @@ if (Test-Path -Path $versionHelper) {
     $labviewYear = $versionInfo.Year
 }
 if ([string]::IsNullOrWhiteSpace($labviewYear)) {
-    $labviewYear = '2021'
+    throw "LabVIEW version could not be resolved. Check .lvversion."
 }
 
 # --------------------------------------------------------------------
@@ -496,3 +494,4 @@ elseif ($Script:TestsHadFailures) {
 else {
     exit 0
 }
+

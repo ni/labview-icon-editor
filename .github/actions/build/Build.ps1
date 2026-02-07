@@ -41,7 +41,7 @@ param(
 
     # LabVIEW "minor" revision (0 for 21.0)
     [Parameter(Mandatory = $false)]
-    [ValidateSet(0)]
+    [ValidateRange(0, 99)]
     [int]$LabVIEWMinorRevision = 0,
 
     # New parameters that will populate the JSON fields
@@ -117,6 +117,22 @@ try {
     Assert-PathExists $RepoRoot "RepoRoot"
     $repoRootResolved = (Resolve-Path -Path $RepoRoot -ErrorAction Stop).Path
     $RepoRoot = $repoRootResolved
+    $versionHelper = Join-Path $repoRootResolved 'Tooling\support\LabVIEWVersion.ps1'
+    if (-not (Test-Path -Path $versionHelper)) {
+        throw "LabVIEW version helper not found at $versionHelper"
+    }
+    . $versionHelper
+    $labviewInfo = Get-LabVIEWVersionInfo -RepoRoot $repoRootResolved
+    $labviewYear = $labviewInfo.Year
+    if ($PSBoundParameters.ContainsKey('LabVIEWMinorRevision')) {
+        if ([int]$LabVIEWMinorRevision -ne [int]$labviewInfo.MinorRevision) {
+            throw "LabVIEWMinorRevision '$LabVIEWMinorRevision' does not match .lvversion minor '$($labviewInfo.MinorRevision)'."
+        }
+    } else {
+        $LabVIEWMinorRevision = [int]$labviewInfo.MinorRevision
+    }
+    Write-Verbose " - LabVIEWVersion: $labviewYear"
+    Write-Verbose " - LabVIEWMinorRevision (resolved): $LabVIEWMinorRevision"
     $preflightScript = Join-Path -Path $repoRootResolved -ChildPath 'Tooling\Invoke-Preflight.ps1'
     if (Test-Path -Path $preflightScript) {
         . $preflightScript
@@ -125,7 +141,7 @@ try {
         $preflight = Invoke-Preflight `
             -RepoRoot $repoRootResolved `
             -WorktreeRoot $WorktreeRoot `
-            -LabVIEWVersion '2021' `
+            -LabVIEWVersion $labviewYear `
             -LabVIEWBitness 'both' `
             -SkipWorktreeRootCheck:$SkipWorktreeRootCheck `
             -AutoWorktree:$false `
@@ -164,8 +180,7 @@ try {
 #    # 2) Apply VIPC (32-bit)
 #    Write-Verbose "Now applying VIPC for 32-bit..."
 #    Execute-Script $ApplyVIPC `
-#        ("-LabVIEWVersion 2021 " +
-#         "-VIP_LVVersion 2021 " +
+#        ("-LabVIEWVersion $labviewYear " +
 #         "-SupportedBitness 32 " +
 #         "-RepoRoot `"$RepoRoot`" " +
 #         "-VIPCPath `"Tooling\deployment\runner_dependencies.vipc`"")
@@ -174,7 +189,7 @@ try {
     Write-Verbose "Building LV library (32-bit)..."
     $BuildLvlibp = Join-Path $ActionsPath "build-lvlibp/Build_lvlibp.ps1"
     Execute-Script $BuildLvlibp `
-        ("-LabVIEWVersion 2021 " +
+        ("-LabVIEWVersion $labviewYear " +
          "-SupportedBitness 32 " +
          "-RepoRoot `"$RepoRoot`" " +
          "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
@@ -184,7 +199,7 @@ try {
     Write-Verbose "Closing LabVIEW (32-bit)..."
     $CloseLabVIEW = Join-Path $ActionsPath "close-labview/Close_LabVIEW.ps1"
     Execute-Script $CloseLabVIEW `
-        "-LabVIEWVersion 2021 -SupportedBitness 32"
+        "-LabVIEWVersion $labviewYear -SupportedBitness 32"
 
     # 5) Rename .lvlibp -> lv_icon_x86.lvlibp
     Write-Verbose "Renaming .lvlibp file to lv_icon_x86.lvlibp..."
@@ -196,16 +211,15 @@ try {
  #   Write-Verbose "Now applying VIPC for 64-bit..."
 #   $ApplyVIPC = Join-Path $ActionsPath "apply-vipc/ApplyVIPC.ps1"
 #   Execute-Script $ApplyVIPC `
- #       ("-LabVIEWVersion 2021 " +
- #        "-VIP_LVVersion 2021 " +
- #        "-SupportedBitness 64 " +
- #        "-RepoRoot `"$RepoRoot`" " +
- #        "-VIPCPath `"Tooling\deployment\runner_dependencies.vipc`"")
+#       ("-LabVIEWVersion $labviewYear " +
+#        "-SupportedBitness 64 " +
+#        "-RepoRoot `"$RepoRoot`" " +
+#        "-VIPCPath `"Tooling\deployment\runner_dependencies.vipc`"")
 
     # 7) Build LV Library (64-bit)
     Write-Verbose "Building LV library (64-bit)..."
     Execute-Script $BuildLvlibp `
-        ("-LabVIEWVersion 2021 " +
+        ("-LabVIEWVersion $labviewYear " +
          "-SupportedBitness 64 " +
          "-RepoRoot `"$RepoRoot`" " +
          "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
@@ -214,7 +228,7 @@ try {
     # 7.1) Close LabVIEW (64-bit)
     Write-Verbose "Closing LabVIEW (64-bit)..."
     Execute-Script $CloseLabVIEW `
-        "-LabVIEWVersion 2021 -SupportedBitness 64"
+        "-LabVIEWVersion $labviewYear -SupportedBitness 64"
     
 
     # Rename .lvlibp -> lv_icon_x64.lvlibp
@@ -256,7 +270,7 @@ try {
             "-SupportedBitness 64 " +
             "-RepoRoot `"$RepoRoot`" " +
             "-VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" " +
-            "-LabVIEWVersion 2021 " +
+            "-LabVIEWVersion $labviewYear " +
             "-LabVIEWMinorRevision $LabVIEWMinorRevision " +
             "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
             "-Commit `"$Commit`" " +
@@ -266,7 +280,7 @@ try {
             "-Verbose"
         )   
 
-    # 11) Build VI Package (64-bit) 2021
+    # 11) Build VI Package (64-bit)
     Write-Verbose "Building VI Package (64-bit)..."
     $BuildVip = Join-Path $ActionsPath "build-vip/build_vip.ps1"
     Execute-Script $BuildVip `
@@ -275,7 +289,7 @@ try {
             "-SupportedBitness 64 " +
             "-RepoRoot `"$RepoRoot`" " +
             "-VIPBPath `"Tooling\deployment\NI Icon editor.vipb`" " +
-            "-LabVIEWVersion 2021 " +
+            "-LabVIEWVersion $labviewYear " +
             "-LabVIEWMinorRevision $LabVIEWMinorRevision " +
             "-Major $Major -Minor $Minor -Patch $Patch -Build $Build " +
             "-Commit `"$Commit`" " +
@@ -288,7 +302,7 @@ try {
     # 12) Close LabVIEW (64-bit)
     Write-Verbose "Closing LabVIEW (64-bit)..."
     Execute-Script $CloseLabVIEW `
-        "-LabVIEWVersion 2021 -SupportedBitness 64"
+        "-LabVIEWVersion $labviewYear -SupportedBitness 64"
 
     Write-Host "All scripts executed successfully!" -ForegroundColor Green
     Write-Verbose "Script: Build.ps1 completed without errors."

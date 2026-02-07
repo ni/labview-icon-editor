@@ -11,14 +11,36 @@ runs:
     - name: Run Build.ps1
       shell: pwsh
       run: |
+        $repoRoot = "${{ inputs.repo_root }}"
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          $repoRoot = $env:GITHUB_WORKSPACE
+        }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "repo_root is required."
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
+
+        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+        if (-not (Test-Path -Path $assertScript)) {
+          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+        }
+        $lvInfo = & $assertScript -RepoRoot $repoRoot -Context 'build'
+        $minorInput = "${{ inputs.labview_minor_revision }}"
+        if (-not [string]::IsNullOrWhiteSpace($minorInput)) {
+          if ([int]$minorInput -ne [int]$lvInfo.MinorRevision) {
+            throw "labview_minor_revision '$minorInput' does not match .lvversion minor '$($lvInfo.MinorRevision)'."
+          }
+        }
+        $lvMinor = if ([string]::IsNullOrWhiteSpace($minorInput)) { $lvInfo.MinorRevision } else { [int]$minorInput }
+
         & "${{ github.action_path }}/Build.ps1" `
-          -RepoRoot "${{ inputs.repo_root }}" `
+          -RepoRoot $repoRoot `
           -Major ${{ inputs.major }} `
           -Minor ${{ inputs.minor }} `
           -Patch ${{ inputs.patch }} `
           -Build ${{ inputs.build }} `
           -Commit "${{ inputs.commit }}" `
-          -LabVIEWMinorRevision ${{ inputs.labview_minor_revision }} `
+          -LabVIEWMinorRevision $lvMinor `
           -CompanyName "${{ inputs.company_name }}" `
           -AuthorName "${{ inputs.author_name }}"
 inputs:
@@ -43,7 +65,7 @@ inputs:
   labview_minor_revision:
     description: 'LabVIEW minor revision (0 for 21.0)'
     required: false
-    default: '0'
+    default: ''
   company_name:
     description: 'Company name for metadata'
     required: true

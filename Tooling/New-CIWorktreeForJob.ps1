@@ -79,7 +79,20 @@ function Resolve-RepoRoot {
         return [System.IO.Path]::GetFullPath($env:GITHUB_WORKSPACE)
     }
 
-    return (Resolve-Path -Path (Join-Path $PSScriptRoot '..')).Path
+    $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $PSCommandPath }
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        try {
+            $gitRoot = git -C $scriptRoot rev-parse --show-toplevel 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRoot)) {
+                return (Resolve-Path -Path $gitRoot.Trim()).Path
+            }
+        } catch {
+            Write-Verbose ("git rev-parse failed: {0}" -f $_.Exception.Message)
+        }
+    }
+
+    return (Resolve-Path -Path (Join-Path $scriptRoot '..')).Path
 }
 
 function Resolve-NormalizedPath {
@@ -95,6 +108,26 @@ function Resolve-NormalizedPath {
     }
 
     return $full
+}
+
+function Get-RunnerCliRuntime {
+    $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+    if ($IsWindows) { return 'win-x64' }
+    if ($IsLinux) {
+        if ($arch -eq 'Arm64') { return 'linux-arm64' }
+        return 'linux-x64'
+    }
+    if ($IsMacOS) {
+        if ($arch -eq 'Arm64') { return 'osx-arm64' }
+        return 'osx-x64'
+    }
+    return 'win-x64'
+}
+
+function Get-RunnerCliFileName {
+    param([string]$Runtime)
+    if ($Runtime -like 'win-*') { return 'runner-cli.exe' }
+    return 'runner-cli'
 }
 
 function Get-RegisteredWorktreePathList {
@@ -322,6 +355,27 @@ if (-not (Test-Path -Path $projectPath)) {
 
 $lvInfo = Resolve-LabVIEWVersionInfo -VersionPath (Join-Path $worktree '.lvversion')
 
+$runnerCliPath = $null
+$ensureRunnerCli = Join-Path $worktree 'Tooling\Ensure-RunnerCli.ps1'
+if (Test-Path -Path $ensureRunnerCli) {
+    try {
+        Write-Host "Ensuring runner-cli is built in the new worktree..."
+        $runtime = Get-RunnerCliRuntime
+        $cliFile = Get-RunnerCliFileName -Runtime $runtime
+        $preferredPath = Join-Path $worktree "Tooling\runner-cli\publish\$runtime\$cliFile"
+        $ensureResult = & $ensureRunnerCli -RepoRoot $worktree -RunnerCliPath $preferredPath -SkipDownload
+        if ($ensureResult -and $ensureResult.Path) {
+            $runnerCliPath = $ensureResult.Path
+            Write-Host ("runner-cli ready at {0}" -f $runnerCliPath)
+        }
+    } catch {
+        if ($env:LVIE_REQUIRE_RUNNER_CLI -eq '1') {
+            throw
+        }
+        Write-Warning ("runner-cli build failed in worktree: {0}" -f $_.Exception.Message)
+    }
+}
+
 if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_ENV)) {
     "LVIE_WORKTREE_ROOT=$root" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
     "REPO_ROOT=$worktree" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
@@ -330,6 +384,9 @@ if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_ENV)) {
     "LABVIEW_VERSION_YEAR=$($lvInfo.Year)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
     "LABVIEW_MINOR_REVISION=$($lvInfo.MinorRevision)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
     "LABVIEW_NUMERIC_VERSION=$($lvInfo.NumericVersion)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
+    if (-not [string]::IsNullOrWhiteSpace($runnerCliPath)) {
+        "LVIE_RUNNER_CLI_PATH=$runnerCliPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
+    }
 }
 
 Write-Host ("Worktree created: {0}" -f $worktree)

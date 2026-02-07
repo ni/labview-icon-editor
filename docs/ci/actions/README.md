@@ -5,7 +5,7 @@ This repository defines several reusable [composite actions](https://docs.github
 | Action | Description |
 |---|---|
 | [add-token-to-labview](../../../.github/actions/add-token-to-labview) | Legacy; requires `Tooling/deployment/Create_LV_INI_Token.vi` (not in repo). Dev-mode automation uses `PrepareIESource.vi` and `RestoreSetupLVSource.vi` only. |
-| [apply-vipc](../../../.github/actions/apply-vipc) | Installs runner dependencies for a given LabVIEW version and bitness. |
+| [apply-vipc](../../../.github/actions/apply-vipc) | Installs runner dependencies for a given LabVIEW version and bitness (defaults to `.lvversion` when omitted). |
 | [auto-issue-branch](../../../.github/actions/auto-issue-branch) | Automatically creates branches for issues with required metadata; used by [auto-issue-branch workflow](../../../.github/workflows/auto-issue-branch.yml). |
 | [build](../../../.github/actions/build) | **Deprecated**: previously orchestrated the full build and packaging process. |
 | [build-lvlibp](../../../.github/actions/build-lvlibp) | Creates the editor packed library. |
@@ -16,6 +16,7 @@ This repository defines several reusable [composite actions](https://docs.github
 | [missing-in-project](../../../.github/actions/missing-in-project) | Checks a project for missing files using `MissingInProjectCLI.vi`. |
 | [modify-vipb-display-info](../../../.github/actions/modify-vipb-display-info) | Updates display information in a VIPB file. |
 | [prepare-labview-source](../../../.github/actions/prepare-labview-source) | Prepares LabVIEW sources for builds. |
+| [pylavi-validate](../../../.github/actions/pylavi-validate) | Runs pylavi `vi_validate` with `.lvversion`-synced LabVIEW version (report-only or strict). |
 | [rename-file](../../../.github/actions/rename-file) | Renames a file on disk. |
 | [restore-setup-lv-source](../../../.github/actions/restore-setup-lv-source) | Reverts prepared sources back to their packaged state. |
 | [revert-development-mode](../../../.github/actions/revert-development-mode) | Restores the repository after development mode. |
@@ -23,3 +24,6 @@ This repository defines several reusable [composite actions](https://docs.github
 | [set-development-mode](../../../.github/actions/set-development-mode) | Configures the repository for development mode. |
 
 Each action directory includes a `README.md` and `action.yml` with full usage details.
+
+> [!NOTE]
+> Several actions now prefer `runner-cli` subcommands when available (for example, `pylavi-validate`, `missing-in-project`, and `.lvversion` version-gate usage in workflows). They fall back to PowerShell scripts if `runner-cli` is unavailable, so behavior remains backward-compatible during the migration.

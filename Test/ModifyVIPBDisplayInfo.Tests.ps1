@@ -67,8 +67,6 @@
             -SupportedBitness 64 `
             -RepoRoot $script:repoRoot `
             -VIPBPath $relativeVipbPath `
-            -LabVIEWVersion 2021 `
-            -LabVIEWMinorRevision 0 `
             -Major 1 `
             -Minor 4 `
             -Patch 1 `

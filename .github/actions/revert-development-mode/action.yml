@@ -11,17 +11,29 @@ runs:
     - name: Run RevertDevelopmentMode.ps1
       shell: pwsh
       run: |
-        $lvVersion = "${{ inputs.labview_version }}"
-        if ([string]::IsNullOrWhiteSpace($lvVersion)) {
-          throw "labview_version is required."
+        $repoRoot = "${{ inputs.repo_root }}"
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          $repoRoot = $env:GITHUB_WORKSPACE
         }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "repo_root is required."
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
+
+        $lvVersionInput = "${{ inputs.labview_version }}"
+        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+        if (-not (Test-Path -Path $assertScript)) {
+          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+        }
+        $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $lvVersionInput -Context 'revert-development-mode'
+        if ([string]::IsNullOrWhiteSpace($lvVersionInput)) {
+          Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
+        }
+        $lvVersion = $lvInfo.Year
 
         $scriptArgs = @{
-          MinimumSupportedLVVersion = $lvVersion
-        }
-
-        if ("${{ inputs.repo_root }}" -ne "") {
-          $scriptArgs.RepoRoot = "${{ inputs.repo_root }}"
+          LabVIEWVersion = $lvVersion
+          RepoRoot       = $repoRoot
         }
 
         $scriptArgs.SupportedBitness = "${{ inputs.supported_bitness }}"
@@ -38,7 +50,7 @@ runs:
 inputs:
   labview_version:
     description: 'LabVIEW version to target (year or numeric).'
-    required: true
+    required: false
   supported_bitness:
     description: 'LabVIEW bitness (32 or 64).'
     required: true
@@ -48,5 +60,6 @@ inputs:
   use_labview:
     description: 'Use LabVIEW + g-cli instead of the no-LabVIEW path.'
     required: false
+
 
 

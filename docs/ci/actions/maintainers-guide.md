@@ -22,17 +22,13 @@ current.
 
 1. Confirm the related GitHub issue is approved for work.
 2. Create a branch from `develop` named `issue-<number>-<short-description>`
-   (for example, `issue-123-fix-toolbar`). Branch names **must** include
-   `issue-<number>`.
-3. Set the linked issue's **Status** field to **In Progress**. The
-   [`issue-status` job](../../../.github/workflows/ci-composite.yml)
-   enforces the branch naming and status requirements, skipping most jobs when
-   either condition is not met.
-4. Push the branch to the main repository and open a pull request targeting
+   (for example, `issue-123-fix-toolbar`). This naming is recommended for
+   traceability, but CI no longer requires it.
+3. Ensure the branch matches CI trigger patterns and open a pull request targeting
    `develop` (or another appropriate branch).
-5. Run unit tests or scripted checks locally whenever possible.
-6. Ensure CI passes and obtain at least one maintainer approval before merging.
-7. After merging, delete the source branch to keep the repository tidy.
+4. Run unit tests or scripted checks locally whenever possible.
+5. Ensure CI passes and obtain at least one maintainer approval before merging.
+6. After merging, delete the source branch to keep the repository tidy.
 
 ## Workflow Administration
 
@@ -41,9 +37,8 @@ current.
   Coordinate with the NI Open-Source Program Manager (OSPM) before execution.
 - **Finalize experiment merges** – Prior to merging an experiment branch into
   `develop`, apply an appropriate version label (major/minor/patch) and remove
-  any temporary settings or `NoCI` labels. A `NoCI` label causes the CI
-  workflow to skip all jobs, so clear it before running final tests. The OSPM
-  or designated NI staff typically gives the final approval.
+  any temporary settings. The OSPM or designated NI staff typically gives the
+  final approval.
 - **Hotfix branches** – For critical fixes on an official release, create or
   approve a `hotfix/*` branch targeting `main`. After merging into `main`, merge
   the changes back into `develop` to keep branches synchronized.

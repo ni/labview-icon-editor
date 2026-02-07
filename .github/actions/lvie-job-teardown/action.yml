@@ -37,9 +37,6 @@ runs:
       shell: pwsh
       run: |
         $labviewVersion = '${{ inputs.labview_version }}'
-        if ([string]::IsNullOrWhiteSpace($labviewVersion)) {
-          $labviewVersion = $env:LABVIEW_VERSION_YEAR
-        }
         $bitness = '${{ inputs.revert_bitness }}'
         if ([string]::IsNullOrWhiteSpace($bitness)) {
           throw "revert_bitness input is required when revert_dev_mode is true."
@@ -48,8 +45,28 @@ runs:
         if ([string]::IsNullOrWhiteSpace($repoRoot)) {
           $repoRoot = $env:REPO_ROOT
         }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          $repoRoot = $env:GITHUB_WORKSPACE
+        }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "repo_root is required."
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
+
+        if ([string]::IsNullOrWhiteSpace($labviewVersion)) {
+          $labviewVersion = $env:LABVIEW_VERSION_YEAR
+        }
+        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+        if (-not (Test-Path -Path $assertScript)) {
+          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+        }
+        $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $labviewVersion -Context 'lvie-job-teardown-revert'
+        if ([string]::IsNullOrWhiteSpace($labviewVersion)) {
+          Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
+        }
+        $labviewVersion = $lvInfo.Year
         & "$repoRoot\\.github\\actions\\revert-development-mode\\RevertDevelopmentMode.ps1" `
-          -MinimumSupportedLVVersion $labviewVersion `
+          -LabVIEWVersion $labviewVersion `
           -SupportedBitness $bitness `
           -RepoRoot "$repoRoot"
     - name: Close LabVIEW
@@ -57,9 +74,6 @@ runs:
       shell: pwsh
       run: |
         $labviewVersion = '${{ inputs.labview_version }}'
-        if ([string]::IsNullOrWhiteSpace($labviewVersion)) {
-          $labviewVersion = $env:LABVIEW_VERSION_YEAR
-        }
         $bitness = '${{ inputs.close_bitness }}'
         if ([string]::IsNullOrWhiteSpace($bitness)) {
           throw "close_bitness input is required when close_labview is true."
@@ -68,8 +82,28 @@ runs:
         if ([string]::IsNullOrWhiteSpace($repoRoot)) {
           $repoRoot = $env:REPO_ROOT
         }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          $repoRoot = $env:GITHUB_WORKSPACE
+        }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "repo_root is required."
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
+
+        if ([string]::IsNullOrWhiteSpace($labviewVersion)) {
+          $labviewVersion = $env:LABVIEW_VERSION_YEAR
+        }
+        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+        if (-not (Test-Path -Path $assertScript)) {
+          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+        }
+        $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $labviewVersion -Context 'lvie-job-teardown-close'
+        if ([string]::IsNullOrWhiteSpace($labviewVersion)) {
+          Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
+        }
+        $labviewVersion = $lvInfo.Year
         & "$repoRoot\\.github\\actions\\close-labview\\Close_LabVIEW.ps1" `
-          -MinimumSupportedLVVersion $labviewVersion `
+          -LabVIEWVersion $labviewVersion `
           -SupportedBitness $bitness
     - name: Cleanup worktree
       if: ${{ inputs.cleanup_worktree == 'true' && always() }}
@@ -106,3 +140,4 @@ runs:
           exit 0
         }
         pwsh -NoProfile -File $lockScript -Mode Release
+

@@ -47,17 +47,8 @@ Automating your Icon Editor builds and tests:
 
 4. **Run Tests**
    Use the main CI workflow (`ci-composite.yml`) to confirm your environment is valid.
-   - The workflow triggers on pushes to or pull requests targeting:
-     - `main`
-     - `develop`
-     - release branches: `release-alpha/*`, `release-beta/*`, `release-rc/*`
-     - feature branches: `feature/*`
-     - hotfix branches: `hotfix/*`
-     - issue branches: `issue-*`
-     - `workflow_dispatch` enables manual runs.
-     - Every run—push, pull request, or manual—requires the source branch name to match `issue-<number>` and the linked issue's Status to be **In Progress**; otherwise, downstream jobs are skipped.
+   - The workflow triggers on pushes to or pull requests targeting the branches configured in `ci-composite.yml` (`on.push.branches` / `on.pull_request.branches`), and supports manual `workflow_dispatch` runs.
      - Typically run with Dev Mode **disabled** unless you’re testing dev features specifically.
-     - The `issue-status` job enforces these checks and also skips the workflow if the branch or pull request has a `NoCI` label. Contributors must ensure their issue is added to a project with the required Status. For pull requests, the check inspects the head branch. This gating helps avoid ambiguous runs for automated tools.
      - A concurrency group cancels any previous run on the same branch, ensuring only the latest pipeline execution continues.
 
 5. **Build VI Package**
@@ -94,6 +85,7 @@ Below are the **key GitHub Actions** provided in this repository:
 1. **[Development Mode Toggle](ci/actions/development-mode-toggle.md)**
    - Invokes `Set_Development_Mode.ps1` or `RevertDevelopmentMode.ps1`.  
    - Usually triggered via `workflow_dispatch` for manual toggling.
+   - Uses `runner-cli version-gate` when available to resolve `.lvversion` (falls back to PowerShell).
 
 2. **[Build VI Package](ci/actions/build-vi-package.md)**
    - **Automatically** versions your code based on PR labels (`major`, `minor`, `patch`).
@@ -117,7 +109,7 @@ Below are the **key GitHub Actions** provided in this repository:
 
 The [`ci-composite.yml`](../.github/workflows/ci-composite.yml) pipeline breaks the build into several jobs:
 
-- **issue-status** – skips the workflow if the pull request or branch has a `NoCI` label, then queries the **Status** field of the linked GitHub issue’s associated GitHub Project and proceeds only when that field is **In Progress**. Contributors must ensure their issue is added to a project with this Status value. It also requires the source branch name to contain `issue-<number>` (such as `issue-123` or `feature/issue-123`). For pull requests, the job evaluates the PR’s head branch.
+- **pylavi-validate** – report-only LabVIEW file validation using `vi_validate` (strict + legacy profiles) with `.lvversion`-synced version gating.
 - **changes** – checks out the repository and detects `.vipc` file changes to determine if dependencies need to be applied.
 - **apply-deps** – installs VIPC dependencies for multiple LabVIEW versions and bitnesses **only when** the `changes` job reports `.vipc` modifications (`if: needs.changes.outputs.vipc == 'true'`).
 - **version** – computes the semantic version and build number using commit count and PR labels.

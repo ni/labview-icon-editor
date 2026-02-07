@@ -9,7 +9,6 @@
 
 .PARAMETER LabVIEWVersion
     LabVIEW version year (e.g., 2021) or numeric version (e.g., 21.0).
-    Alias: MinimumSupportedLVVersion.
 
 .PARAMETER SupportedBitness
     One or more bitness values ("32", "64") to run (default: both).
@@ -47,12 +46,11 @@
     Attempt restore when Toggle-DevMode fails (default: true).
 
 .EXAMPLE
-    .\RevertDevelopmentMode.ps1 -LabVIEWVersion 2021
+    .\RevertDevelopmentMode.ps1  # Uses .lvversion by default
 #>
 
 param(
     [Parameter(Mandatory = $false)]
-    [Alias('MinimumSupportedLVVersion')]
     [AllowNull()]
     [AllowEmptyString()]
     [string]$LabVIEWVersion = '',
@@ -138,7 +136,7 @@ if (Test-Path -Path $versionHelper) {
     $labviewYear = $versionInfo.Year
 }
 if ([string]::IsNullOrWhiteSpace($labviewYear)) {
-    $labviewYear = '2021'
+    throw "LabVIEW version could not be resolved. Check .lvversion."
 }
 
 if (Test-ForceNoLabVIEWDevMode) {
@@ -156,7 +154,7 @@ if ($shouldCloseBeforeToggle) {
 
     Write-Host "Closing LabVIEW before no-LabVIEW revert..."
     foreach ($bitness in ($SupportedBitness | Where-Object { $_ } | Select-Object -Unique)) {
-        & $CloseScript -MinimumSupportedLVVersion $labviewYear -SupportedBitness $bitness
+        & $CloseScript -LabVIEWVersion $labviewYear -SupportedBitness $bitness
         if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
             throw "Close_LabVIEW.ps1 failed with exit code $LASTEXITCODE."
         }
@@ -339,4 +337,6 @@ try {
     Write-Error "An unexpected error occurred during script execution: $($_.Exception.Message)"
     exit 1
 }
+
+
 

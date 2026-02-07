@@ -1,0 +1,366 @@
+name: Pylavi Validate
+description: Run vi_validate with .lvversion-synced LabVIEW version.
+inputs:
+  config_path:
+    description: Path to vi_validate config file (relative to repo root).
+    required: false
+    default: Tooling/pylavi/vi-validate.yml
+  labview_numeric:
+    description: LabVIEW version (year or numeric, e.g., 2021 or 21.0). If omitted, .lvversion is used.
+    required: false
+    default: ''
+  python_version:
+    description: Python version to use.
+    required: false
+    default: '3.x'
+  label:
+    description: Label used in warnings and summary (e.g., strict, legacy).
+    required: false
+    default: pylavi
+  report_only:
+    description: Emit warnings but do not fail the step on vi_validate errors.
+    required: false
+    default: 'true'
+  absolute_roots:
+    description: Semicolon-delimited absolute path roots to flag (optional; keep sensitive paths out of the repo).
+    required: false
+    default: ''
+  upload_offenders:
+    description: Upload a top offenders report artifact.
+    required: false
+    default: 'true'
+  offenders_name:
+    description: Artifact name prefix for the offenders report.
+    required: false
+    default: pylavi-validate-offenders
+  upload_log:
+    description: Upload vi_validate log as an artifact.
+    required: false
+    default: 'true'
+  log_name:
+    description: Artifact name for the vi_validate log.
+    required: false
+    default: pylavi-validate-log
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python_version }}
+    - name: Install pylavi
+      shell: pwsh
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install pylavi
+    - name: Run vi_validate
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $config = Join-Path $env:GITHUB_WORKSPACE '${{ inputs.config_path }}'
+        $versionHelper = Join-Path $env:GITHUB_WORKSPACE 'Tooling/support/LabVIEWVersion.ps1'
+        if (-not (Test-Path $versionHelper)) {
+          throw "LabVIEW version helper not found: $versionHelper"
+        }
+        . $versionHelper
+        $repoInfo = Get-LabVIEWVersionInfo -RepoRoot $env:GITHUB_WORKSPACE
+        $inputVersion = '${{ inputs.labview_numeric }}'
+        if (-not [string]::IsNullOrWhiteSpace($inputVersion)) {
+          $inputInfo = Get-LabVIEWVersionInfo -VersionInput $inputVersion -RepoRoot $env:GITHUB_WORKSPACE
+          $labviewNumeric = $inputInfo.NumericVersion
+        } else {
+          $labviewNumeric = $repoInfo.NumericVersion
+          Write-Warning ("labview_numeric not provided; using .lvversion ({0})." -f $repoInfo.Raw)
+        }
+        if ([string]::IsNullOrWhiteSpace($labviewNumeric)) {
+          throw 'LabVIEW numeric version could not be resolved.'
+        }
+        $log = Join-Path $env:RUNNER_TEMP 'vi_validate.log'
+        $offendersPath = Join-Path $env:RUNNER_TEMP 'vi_validate_offenders.json'
+        $label = '${{ inputs.label }}'
+        if ([string]::IsNullOrWhiteSpace($label)) {
+          $label = 'pylavi'
+        }
+        $absoluteRootsRaw = '${{ inputs.absolute_roots }}'
+        $viCommand = Get-Command vi_validate -ErrorAction SilentlyContinue
+        if (-not $viCommand) {
+          throw 'vi_validate not found in PATH. Install pylavi (python -m pip install pylavi).'
+        }
+        $commandLine = "{0} --config `"{1}`" --eq {2}" -f $viCommand.Source, $config, $labviewNumeric
+        Write-Host ("vi_validate command ({0}): {1}" -f $label, $commandLine)
+        $runnerCliProject = Join-Path $env:GITHUB_WORKSPACE 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+        $canUseRunnerCli = (Get-Command dotnet -ErrorAction SilentlyContinue) -and (Test-Path $runnerCliProject)
+        if ($canUseRunnerCli) {
+          Write-Host "Using runner-cli pylavi scan (incremental migration)."
+          $scanArgs = @(
+            'run',
+            '--project', $runnerCliProject,
+            '--configuration', 'Release',
+            '--',
+            'pylavi', 'scan',
+            '--repo-root', $env:GITHUB_WORKSPACE,
+            '--config', $config,
+            '--label', $label,
+            '--log-path', $log,
+            '--offenders-path', $offendersPath
+          )
+          if (-not [string]::IsNullOrWhiteSpace($inputVersion)) {
+            $scanArgs += '--labview'
+            $scanArgs += $inputVersion
+          }
+          if (-not [string]::IsNullOrWhiteSpace($absoluteRootsRaw)) {
+            $scanArgs += '--absolute-roots'
+            $scanArgs += $absoluteRootsRaw
+          }
+          if ('${{ inputs.report_only }}' -eq 'true') {
+            $scanArgs += '--report-only'
+          }
+          & dotnet @scanArgs
+          $scanExit = $LASTEXITCODE
+
+          if (Test-Path -Path $offendersPath) {
+            $summaryArgs = @(
+              'run',
+              '--project', $runnerCliProject,
+              '--configuration', 'Release',
+              '--',
+              'pylavi', 'summarize',
+              '--path', $offendersPath,
+              '--label', $label,
+              '--write-summary',
+              '--top', '10'
+            )
+            & dotnet @summaryArgs | Out-Host
+          }
+
+          if ('${{ inputs.report_only }}' -eq 'true' -and $scanExit -ne 0) {
+            Write-Host ("vi_validate exit code {0} (report-only, {1})" -f $scanExit, $label)
+            $global:LASTEXITCODE = 0
+          } elseif ($scanExit -ne 0 -and $scanExit -ne $null) {
+            exit $scanExit
+          }
+
+          return
+        }
+        if (-not (Test-Path $config)) {
+          throw "vi_validate config not found: $config"
+        }
+        $output = & $viCommand.Source --config $config --eq $labviewNumeric 2>&1
+        $lines = if ($null -eq $output) { @() } else { @($output | ForEach-Object { $_.ToString() }) }
+        $absoluteRoots = @()
+        if (-not [string]::IsNullOrWhiteSpace($absoluteRootsRaw)) {
+          $absoluteRoots = $absoluteRootsRaw -split ';' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+        }
+        if ($absoluteRoots.Count -gt 1) {
+          $absoluteRoots = $absoluteRoots | Sort-Object -Unique
+        }
+        $redactPattern = $null
+        if ($absoluteRoots.Count -gt 0) {
+          $redactPattern = ($absoluteRoots | ForEach-Object { [regex]::Escape($_) }) -join '|'
+        }
+        function Redact-Value {
+          param([string]$Value)
+          if ([string]::IsNullOrWhiteSpace($Value)) { return $Value }
+          if ([string]::IsNullOrWhiteSpace($redactPattern)) { return $Value }
+          return [regex]::Replace($Value, $redactPattern, '<redacted>', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        }
+        function Escape-Markdown {
+          param([string]$Value)
+          if ([string]::IsNullOrWhiteSpace($Value)) { return '' }
+          $safe = $Value -replace "(`r`n|`n|`r)", ' '
+          $safe = $safe -replace '\|', '\|'
+          $safe = $safe -replace '`', '\`'
+          return $safe
+        }
+        $linesForLog = if ([string]::IsNullOrWhiteSpace($redactPattern)) {
+          $lines
+        } else {
+          $lines | ForEach-Object { Redact-Value -Value $_ }
+        }
+        $linesForLog | Out-File -FilePath $log -Encoding utf8
+        $failLines = @()
+        $failDetails = @()
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+          $line = $lines[$i]
+          if ($line -like 'FAIL:*') {
+            $failLines += $line
+            $message = $line
+            $pathValue = $null
+            if ($i + 1 -lt $lines.Count) {
+              $next = $lines[$i + 1]
+              if ($next -match '^[\s]*(/|[A-Za-z]:|\\\\)') {
+                $message = "$message | $($next.Trim())"
+                $pathValue = $next.Trim()
+              }
+            }
+            $message = Redact-Value -Value $message
+            Write-Host ("::warning::[{0}] {1}" -f $label, $message)
+            $failDetails += [pscustomobject]@{
+              Reason = $line
+              File   = $pathValue
+            }
+          }
+        }
+        $absoluteRootHits = @()
+        foreach ($root in $absoluteRoots) {
+          if ([string]::IsNullOrWhiteSpace($root)) { continue }
+          $absoluteRootHits += $lines | Where-Object { $_ -like "*$root*" } | ForEach-Object { $_.ToString() }
+        }
+        $absoluteRootHits = $absoluteRootHits | Select-Object -Unique
+        if ($absoluteRootHits.Count -gt 0) {
+          Write-Host ("::warning::[{0}] Absolute linker paths referencing configured roots detected (count: {1})." -f $label, $absoluteRootHits.Count)
+          $preview = $absoluteRootHits | Select-Object -First 20
+          foreach ($hit in $preview) {
+            $redactedHit = Redact-Value -Value $hit
+            Write-Host ("::warning::[{0}] {1}" -f $label, $redactedHit)
+          }
+          if ($absoluteRootHits.Count -gt $preview.Count) {
+            Write-Host ("::warning::[{0}] ... {1} more" -f $label, ($absoluteRootHits.Count - $preview.Count))
+          }
+        }
+        $totalFails = $failLines.Count
+        $absoluteCount = ($failLines | Where-Object { $_ -like 'FAIL: Absolute linker path found:*' }).Count
+        $betaCount = ($failLines | Where-Object { $_ -match 'beta version' }).Count
+        $alphaCount = ($failLines | Where-Object { $_ -match 'alpha version' }).Count
+        $devCount = ($failLines | Where-Object { $_ -match 'development version' }).Count
+        $invalidCount = ($failLines | Where-Object { $_ -match 'invalid' }).Count
+        $pathLenCount = ($failLines | Where-Object { $_ -match 'path length' }).Count
+        $knownSum = $absoluteCount + $betaCount + $alphaCount + $devCount + $invalidCount + $pathLenCount
+        $otherCount = $totalFails - $knownSum
+        $summary = @(
+          "### Pylavi ($label)",
+          "",
+          "| Category | Count |",
+          "|---|---|",
+          "| Total FAIL | $totalFails |",
+          "| Absolute paths | $absoluteCount |",
+          "| Beta-saved | $betaCount |",
+          "| Alpha-saved | $alphaCount |",
+          "| Development-saved | $devCount |",
+          "| Invalid version | $invalidCount |",
+          "| Path length | $pathLenCount |",
+          "| Other | $otherCount |",
+          ""
+        ) -join "`n"
+        if ($absoluteRootHits.Count -gt 0) {
+          $summary += @(
+            "#### Absolute paths referencing configured roots",
+            "",
+            "Configured roots: <redacted> (count: $($absoluteRoots.Count))",
+            "Hits: $($absoluteRootHits.Count)",
+            ""
+          ) -join "`n"
+          $preview = $absoluteRootHits | Select-Object -First 20
+          foreach ($hit in $preview) {
+            $summary += ("- {0}`n" -f (Redact-Value -Value $hit))
+          }
+          if ($absoluteRootHits.Count -gt $preview.Count) {
+            $summary += ("- ... {0} more`n" -f ($absoluteRootHits.Count - $preview.Count))
+          }
+          $summary += "`n"
+        }
+        $offenderCounts = @{}
+        $offenderReasons = @{}
+        $absoluteOffenderCounts = @{}
+        foreach ($detail in $failDetails) {
+          $key = if (-not [string]::IsNullOrWhiteSpace($detail.File)) { $detail.File } else { $detail.Reason }
+          if ([string]::IsNullOrWhiteSpace($key)) { continue }
+          if (-not $offenderCounts.ContainsKey($key)) {
+            $offenderCounts[$key] = 0
+            $offenderReasons[$key] = $detail.Reason
+          }
+          $offenderCounts[$key]++
+
+          $isAbsolute = $false
+          if (-not [string]::IsNullOrWhiteSpace($redactPattern) -and -not [string]::IsNullOrWhiteSpace($detail.File)) {
+            $isAbsolute = $detail.File -match $redactPattern
+          }
+          if (-not $isAbsolute -and $detail.Reason -like 'FAIL: Absolute linker path found:*') {
+            $isAbsolute = $true
+          }
+          if ($isAbsolute) {
+            if (-not $absoluteOffenderCounts.ContainsKey($key)) {
+              $absoluteOffenderCounts[$key] = 0
+            }
+            $absoluteOffenderCounts[$key]++
+          }
+        }
+        $topOffenders = $offenderCounts.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 20 | ForEach-Object {
+          [pscustomobject]@{
+            item          = (Redact-Value -Value $_.Key)
+            count         = $_.Value
+            sample_reason = (Redact-Value -Value $offenderReasons[$_.Key])
+          }
+        }
+        $topAbsolute = $absoluteOffenderCounts.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 20 | ForEach-Object {
+          [pscustomobject]@{
+            item  = (Redact-Value -Value $_.Key)
+            count = $_.Value
+          }
+        }
+        $offendersReport = [pscustomobject]@{
+          label                 = $label
+          generated_utc         = (Get-Date).ToUniversalTime().ToString('o')
+          source_sha            = $env:GITHUB_SHA
+          total_fails           = $totalFails
+          configured_roots      = if ($absoluteRoots.Count -gt 0) { '<redacted>' } else { '' }
+          configured_root_count = $absoluteRoots.Count
+          top_offenders         = $topOffenders
+          top_absolute_offenders = $topAbsolute
+        }
+        $summaryTables = @()
+        if ($topOffenders.Count -gt 0) {
+          $summaryTables += "#### Top offenders"
+          $summaryTables += ""
+          $summaryTables += "| Item | Count | Sample reason |"
+          $summaryTables += "|---|---:|---|"
+          foreach ($entry in ($topOffenders | Select-Object -First 10)) {
+            $summaryTables += ("| {0} | {1} | {2} |" -f (Escape-Markdown $entry.item), $entry.count, (Escape-Markdown $entry.sample_reason))
+          }
+          $summaryTables += ""
+        }
+        if ($topAbsolute.Count -gt 0) {
+          $summaryTables += "#### Top absolute-path offenders"
+          $summaryTables += ""
+          $summaryTables += "| Item | Count |"
+          $summaryTables += "|---|---:|"
+          foreach ($entry in ($topAbsolute | Select-Object -First 10)) {
+            $summaryTables += ("| {0} | {1} |" -f (Escape-Markdown $entry.item), $entry.count)
+          }
+          $summaryTables += ""
+        }
+        if ('${{ inputs.upload_offenders }}' -eq 'true') {
+          $artifactName = '${{ inputs.offenders_name }}'
+          if ([string]::IsNullOrWhiteSpace($artifactName)) {
+            $artifactName = 'pylavi-validate-offenders'
+          }
+          $artifactName = "$artifactName-$label"
+          $summaryTables += ('Offenders report artifact: ' + '`' + (Escape-Markdown $artifactName) + '`')
+          $summaryTables += ""
+        }
+        if ($summaryTables.Count -gt 0) {
+          $summary += ($summaryTables -join "`n") + "`n"
+        }
+        if ($env:GITHUB_STEP_SUMMARY) {
+          $summary | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+        }
+        $offendersPath = Join-Path $env:RUNNER_TEMP 'vi_validate_offenders.json'
+        $offendersReport | ConvertTo-Json -Depth 6 | Out-File -FilePath $offendersPath -Encoding utf8
+        if ('${{ inputs.report_only }}' -eq 'true' -and $LASTEXITCODE -ne 0) {
+          Write-Host ("vi_validate exit code {0} (report-only, {1})" -f $LASTEXITCODE, $label)
+          $global:LASTEXITCODE = 0
+        }
+    - name: Upload vi_validate log
+      if: ${{ inputs.upload_log == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.log_name }}
+        path: ${{ runner.temp }}\vi_validate.log
+        if-no-files-found: warn
+    - name: Upload vi_validate offenders report
+      if: ${{ inputs.upload_offenders == 'true' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.offenders_name }}-${{ inputs.label }}
+        path: ${{ runner.temp }}\vi_validate_offenders.json
+        if-no-files-found: warn

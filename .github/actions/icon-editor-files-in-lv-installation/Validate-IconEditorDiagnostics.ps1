@@ -14,7 +14,7 @@ param(
 
     [AllowNull()]
     [AllowEmptyString()]
-    [string]$LabVIEWVersion = '2021',
+    [string]$LabVIEWVersion = '',
 
     [Parameter(Mandatory)]
     [string]$RepoRoot,
@@ -221,7 +221,7 @@ if (Test-Path -Path $versionHelper) {
     $labviewYear = $versionInfo.Year
 }
 if ([string]::IsNullOrWhiteSpace($labviewYear)) {
-    $labviewYear = '2021'
+    throw "LabVIEW version could not be resolved. Check .lvversion."
 }
 
 $separator = [System.IO.Path]::DirectorySeparatorChar
@@ -314,3 +314,4 @@ else {
 }
 
 Write-Host "Dev mode validation passed."
+

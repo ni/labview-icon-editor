@@ -46,13 +46,12 @@
 #        Attempt restore when Toggle-DevMode fails (default: true).
 #
 #    .EXAMPLE
-#        .\Set_Development_Mode.ps1 -LabVIEWVersion 2021
+#        .\Set_Development_Mode.ps1  # Uses .lvversion by default
 #
 #>
 
 param(
     [Parameter(Mandatory = $false)]
-    [Alias('MinimumSupportedLVVersion')]
     [AllowNull()]
     [AllowEmptyString()]
     [string]$LabVIEWVersion = '',
@@ -140,7 +139,7 @@ if (Test-Path -Path $versionHelper) {
     $labviewYear = $versionInfo.Year
 }
 if ([string]::IsNullOrWhiteSpace($labviewYear)) {
-    $labviewYear = '2021'
+    throw "LabVIEW version could not be resolved. Check .lvversion."
 }
 
 if (Test-ForceNoLabVIEWDevMode) {
@@ -314,3 +313,4 @@ catch {
     Write-Error "An unexpected error occurred during script execution: $($_.Exception.Message)"
     exit 1
 }
+

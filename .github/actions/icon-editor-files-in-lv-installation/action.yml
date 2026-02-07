@@ -4,7 +4,7 @@ description: "Runs GetPathsToIconEditorFilesInLVInstallationCLI.vi via g-cli and
 inputs:
   lv-ver:
     description: "LabVIEW version (year or numeric)."
-    required: true
+    required: false
   arch:
     description: "Bitness (32 or 64)."
     required: true
@@ -39,12 +39,32 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Resolve LabVIEW version
+      id: resolve_lv
+      shell: pwsh
+      run: |
+        $repoRoot = '${{ inputs.repo-root }}'
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "repo-root is required."
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
+        $lvInput = '${{ inputs.lv-ver }}'
+        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+        if (-not (Test-Path -Path $assertScript)) {
+          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+        }
+        $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $lvInput -Context 'icon-editor-files-in-lv-installation'
+        if ([string]::IsNullOrWhiteSpace($lvInput)) {
+          Write-Warning "lv-ver not provided; using .lvversion ($($lvInfo.Raw))."
+        }
+        "lv_year=$($lvInfo.Year)" >> $Env:GITHUB_OUTPUT
+
     - name: Run diagnostics VI
       id: run_vi
       shell: pwsh
       run: |
         & "${{ github.action_path }}/Invoke-GetPathsToIconEditorFilesInLVInstallationCLI.ps1" `
-          -LVVersion "${{ inputs.lv-ver }}" `
+          -LVVersion "${{ steps.resolve_lv.outputs.lv_year }}" `
           -Arch "${{ inputs.arch }}" `
           -RepoRoot "${{ inputs.repo-root }}" `
           -CsvFileName "${{ inputs.csv-name }}" `

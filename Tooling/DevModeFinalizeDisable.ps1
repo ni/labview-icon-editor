@@ -8,7 +8,6 @@
 
 .PARAMETER LabVIEWVersion
     LabVIEW version year (e.g., 2021) or numeric version (e.g., 21.0).
-    Alias: MinimumSupportedLVVersion.
 
 .PARAMETER SupportedBitness
     LabVIEW bitness to target ("32" or "64"). Defaults to "64".
@@ -43,7 +42,6 @@ param(
     [Parameter(Mandatory = $false)]
     [AllowNull()]
     [AllowEmptyString()]
-    [Alias('MinimumSupportedLVVersion')]
     [string]$LabVIEWVersion = '',
 
     [Parameter(Mandatory = $false)]
@@ -77,14 +75,27 @@ function Resolve-RepoRoot {
         [string]$PathOverride
     )
 
-    if ($PathOverride) {
+    if (-not [string]::IsNullOrWhiteSpace($PathOverride)) {
         if (-not (Test-Path -Path $PathOverride)) {
             throw "RepoRoot does not exist: $PathOverride"
         }
         return (Resolve-Path -Path $PathOverride).Path
     }
 
-    return (Resolve-Path -Path (Join-Path $PSScriptRoot '..')).Path
+    $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $PSCommandPath }
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        try {
+            $gitRoot = git -C $scriptRoot rev-parse --show-toplevel 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRoot)) {
+                return (Resolve-Path -Path $gitRoot.Trim()).Path
+            }
+        } catch {
+            Write-Verbose ("git rev-parse failed: {0}" -f $_.Exception.Message)
+        }
+    }
+
+    return (Resolve-Path -Path (Join-Path $scriptRoot '..')).Path
 }
 
 function Write-DevModeLog {
@@ -132,7 +143,7 @@ if (Test-Path -Path $versionHelper) {
     $labviewYear = $versionInfo.Year
 }
 if ([string]::IsNullOrWhiteSpace($labviewYear)) {
-    $labviewYear = '2021'
+    throw "LabVIEW version could not be resolved. Check .lvversion."
 }
 $logPathResolved = $LogPath
 if ([string]::IsNullOrWhiteSpace($logPathResolved)) {
@@ -174,5 +185,6 @@ try {
         Invoke-PreflightCleanup -RepoRoot $preflight.RepoRoot -Phase 'after'
     }
 }
+
 
 

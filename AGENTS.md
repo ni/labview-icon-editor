@@ -7,11 +7,37 @@ This repository uses LabVIEW, g-cli, and PowerShell tooling. Follow the steps be
 - `g-cli` available on PATH.
 - LabVIEW 2021 (21.0) 32-bit and 64-bit installed.
 - VIPM/VIPC installed (required for dependency application).
+- Python 3 with `pylavi` installed so `vi_validate` is on PATH.
 
 ## Repo Setup
 - Open a PowerShell terminal at the repo root.
 - Confirm `g-cli` is available:
   - `g-cli --version`
+
+## pylavi / vi_validate gate
+- The local CI parity run includes a fast LabVIEW file validation step powered by `pylavi` (`vi_validate`) and runs **before** any g-cli/LabVIEW work.
+- The gate uses `.lvversion` as the canonical LabVIEW version and passes it to `vi_validate --eq` automatically.
+- Absolute-path focus: optionally set `LVIE_PYLAVI_ABSOLUTE_PATH_ROOTS` (semicolon-delimited) to flag specific roots without committing sensitive paths. CI redacts configured roots in logs and the uploaded pylavi log artifact.
+- CI also uploads a redacted top-offenders report artifact per pylavi run (`pylavi-validate-offenders-<label>`) and prints the top offenders table in the step summary.
+- Local runs write a redacted offenders report to `TestResults\agent-logs\pylavi-offenders.latest.json`. Use `Tooling\Get-PylaviOffenders.ps1` to summarize it.
+- If the local report is missing, fetch the latest CI artifact instead: `pwsh -NoProfile -File .\Tooling\Fetch-PylaviOffenders.ps1 -Branch develop` or `pwsh -NoProfile -File .\Tooling\Get-PylaviOffenders.ps1 -FetchLatest`. Requires `GH_TOKEN`/`GITHUB_TOKEN` with `actions:read`.
+- Deterministic: `Tooling\Get-PylaviOffenders.ps1 -Sha <commit>` to read `pylavi-offenders.<sha>.json`, or `-RunId <id> -FetchLatest` to pin a specific workflow run.
+- Config files:
+  - `Tooling/pylavi/vi-validate.yml` (strict scope; version injected at runtime).
+  - `Tooling/pylavi/vi-validate-legacy.yml` (legacy scope; typically absolute-path checks only).
+- CI report-only step uses the composite action: `.github/actions/pylavi-validate`.
+- Install (user scope):
+  - `py -m pip install --user pylavi`
+- Verify install:
+  - `vi_validate --help`
+- If `vi_validate` is not found, ensure your Python Scripts folder is on PATH (typical: `%APPDATA%\Python\Python3x\Scripts`).
+- Skip the gate if needed:
+  - `pwsh -NoProfile -File .\Tooling\Invoke-WorktreeOrchestrator.ps1 -Run -RunArgs -SkipViValidate`
+  - `pwsh -NoProfile -File .\Tooling\Run-CICompositeLocal-Auto.ps1 -SkipViValidate`
+- Smoke run (pylavi only):
+  - `pwsh -NoProfile -File .\Tooling\Invoke-WorktreeOrchestrator.ps1 -Run -RunArgs -ViValidateOnly`
+  - `pwsh -NoProfile -File .\Tooling\Run-ViValidate.ps1`
+  - Profiles: `-ViValidateProfile strict|legacy|both` (optional `-ViValidateReportOnly`, `-ViValidateSkipVersionGate`)
 
 ## Worktree root (short paths)
 Use a short path for worktrees to avoid Windows path-length issues. Default to `C:\dev` for local dev; for self-hosted runners, standardize under the runner directory (example: `C:\actions-runner\_work\lvie\w`).
@@ -74,11 +100,11 @@ Notes:
 - Self-hosted LabVIEW jobs acquire a runner lock at `<lock_root>\labview-runner.lock` via `Tooling\RunnerLock.ps1`. The lock auto-expires stale entries (lease + optional GitHub run status check) and logs owner metadata. Env overrides: `LVIE_LOCK_ROOT`, `LVIE_RUNNER_LOCK_TIMEOUT_SECONDS`, `LVIE_RUNNER_LOCK_LEASE_SECONDS`, `LVIE_RUNNER_LOCK_STALE_SECONDS`, `LVIE_RUNNER_LOCK_GITHUB_CHECK`, `LVIE_RUNNER_LOCK_GITHUB_MIN_AGE_SECONDS`, `LVIE_RUNNER_LOCK_GITHUB_CHECK_INTERVAL_SECONDS`.
 
 ## Local CI Parity (recommended)
-Run the local parity script that mirrors `ci-composite.yml`:
+Run the local parity script that mirrors `ci-composite.yml` (preferred entrypoint is the worktree orchestrator):
 ```
-pwsh -NoProfile -File .\Tooling\Run-CICompositeLocal.ps1 `
-  -LabVIEWVersion 2021 `
-  -EnsureCleanState
+pwsh -NoProfile -File .\Tooling\Invoke-WorktreeOrchestrator.ps1 `
+  -Run `
+  -RunArgs -EnsureCleanState
 ```
 
 Notes:
@@ -86,6 +112,8 @@ Notes:
 - GitHub Actions disables artifact roots by default unless `LVIE_ENABLE_ARTIFACT_ROOT=1` or an explicit `-RunId`/`-ArtifactRoot` is passed.
 - The script always runs both 64-bit and 32-bit steps for LabVIEW 2021 (21.0).
 - The script handles Verify IE Paths, VIPC, missing-in-project, unit tests, PPL builds, and VIP build.
+- The script runs `vi_validate` (pylavi) and uses `.lvversion` as the canonical LabVIEW version. Skip with `-SkipViValidate`.
+- If you pass `-LabVIEWVersion`, it must match `.lvversion` or the run will fail fast.
 - If LabVIEW or g-cli is already running, the script waits for them to exit before starting.
 - You can skip steps with switches like `-SkipBuildVip` or `-SkipUnitTests`.
 - VIP builds flow through `Tooling\Invoke-VipBuild.ps1`, which emits `builds\status\vip-build.json` and respects `LVIE_VIPM_TIMEOUT_SECONDS`, `LVIE_VIPM_MAX_ATTEMPTS`, and `LVIE_VIPM_RETRY_DELAY_SECONDS`.
@@ -113,7 +141,7 @@ New-Item -Path $logRoot -ItemType Directory -Force | Out-Null
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $logFile = Join-Path $logRoot "run-$timestamp.log"
 $csv = Join-Path $logRoot 'run-history.csv'
-$command = 'pwsh -NoProfile -File .\Tooling\Run-CICompositeLocal.ps1 -LabVIEWVersion 2021 -EnsureCleanState'
+$command = 'pwsh -NoProfile -File .\Tooling\Invoke-WorktreeOrchestrator.ps1 -Run -RunArgs -EnsureCleanState'
 
 $start = Get-Date
 Start-Transcript -Path $logFile -Append | Out-Null
@@ -136,7 +164,6 @@ Success criteria:
 Automated loop (PowerShell):
 ```
 pwsh -NoProfile -File .\Tooling\Run-CICompositeLocal-Auto.ps1 `
-  -LabVIEWVersion 2021 `
   -EnsureCleanState `
   -MaxAttempts 5
 ```
@@ -190,7 +217,6 @@ Some automation may be running in the background and must not be killed. Do not 
 Run the integration suite (includes dev-mode tests when enabled):
 ```
 pwsh -NoProfile -File .\Test\Pester\Run-Pester.ps1 `
-  -LabVIEWVersion 2021 `
   -LabVIEWBitness both `
   -RunDevModeTests `
   -ConnectTimeoutMs 180000 `
@@ -206,4 +232,5 @@ Notes:
 - If a run hangs, close LabVIEW and re-run the step:
   - `.github\actions\close-labview\Close_LabVIEW.ps1`
 - Release note generation can log `git describe` errors in shallow or tagless repos; VIP builds may still complete, but fetch tags if you need accurate version strings.
+- If `vi_validate` is missing, confirm `py -m pip show pylavi` and ensure the Python Scripts directory is on PATH.
 
