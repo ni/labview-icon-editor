@@ -40,7 +40,8 @@ public static class ConformanceService
         string? profileInput,
         bool strict,
         string? hostedLinuxEvidence,
-        string? hostedWindowsEvidence
+        string? hostedWindowsEvidence,
+        string repoRoot
     )
     {
         var profile = NormalizeProfile(profileInput);
@@ -89,14 +90,33 @@ public static class ConformanceService
 
         if (IsAtLeastFull(profile))
         {
-            checks.Add(new ConformanceCheckEntry
+            var tracePath = Path.Combine(repoRoot, "docs", "runner-cli-requirements-v4-to-v5-trace.md");
+            var acceptancePath = Path.Combine(repoRoot, "docs", "runner-cli-requirements-v5-acceptance.md");
+            var traceExists = File.Exists(tracePath);
+            var acceptanceExists = File.Exists(acceptancePath);
+
+            if (traceExists && acceptanceExists)
             {
-                Id = "full.governance.traceability",
-                Status = "pass",
-                Severity = "info",
-                Message = "Governance and traceability requirements are represented in the requirements artifacts.",
-                Evidence = "docs/runner-cli-requirements-v4-to-v5-trace.md"
-            });
+                checks.Add(new ConformanceCheckEntry
+                {
+                    Id = "full.governance.traceability",
+                    Status = "pass",
+                    Severity = "info",
+                    Message = "Governance and traceability requirements are represented in the requirements artifacts.",
+                    Evidence = "docs/runner-cli-requirements-v4-to-v5-trace.md; docs/runner-cli-requirements-v5-acceptance.md"
+                });
+            }
+            else
+            {
+                checks.Add(new ConformanceCheckEntry
+                {
+                    Id = "full.governance.traceability",
+                    Status = "fail",
+                    Severity = "error",
+                    Message = "Required governance traceability artifacts are missing for full profile conformance.",
+                    Evidence = $"trace_exists={traceExists}; acceptance_exists={acceptanceExists}; repo_root={repoRoot}"
+                });
+            }
         }
 
         var summary = BuildSummary(checks);

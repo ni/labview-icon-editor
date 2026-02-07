@@ -833,7 +833,7 @@ manifestCmd.SetHandler((InvocationContext context) =>
     try
     {
         var repoRoot = context.ParseResult.GetValueForOption(repoRootOption);
-        _ = RepoLocator.Resolve(repoRoot, Environment.CurrentDirectory);
+        var resolvedRoot = RepoLocator.Resolve(repoRoot, Environment.CurrentDirectory);
         var manifest = ConformanceService.BuildManifest();
 
         if (context.ParseResult.GetValueForOption(jsonOption))
@@ -877,7 +877,7 @@ conformanceCheckCmd.SetHandler((InvocationContext context) =>
     try
     {
         var repoRoot = context.ParseResult.GetValueForOption(repoRootOption);
-        _ = RepoLocator.Resolve(repoRoot, Environment.CurrentDirectory);
+        var resolvedRoot = RepoLocator.Resolve(repoRoot, Environment.CurrentDirectory);
 
         var profileOptionValue = context.ParseResult.GetValueForOption(profileOption);
         var strictProvided = context.ParseResult.Tokens.Any(token =>
@@ -890,7 +890,8 @@ conformanceCheckCmd.SetHandler((InvocationContext context) =>
             profile,
             strict,
             Environment.GetEnvironmentVariable("RC_HOSTED_LINUX_EVIDENCE"),
-            Environment.GetEnvironmentVariable("RC_HOSTED_WINDOWS_EVIDENCE"));
+            Environment.GetEnvironmentVariable("RC_HOSTED_WINDOWS_EVIDENCE"),
+            resolvedRoot);
 
         var exitCode = ConformanceService.ResolveExitCode(result, strict);
         if (context.ParseResult.GetValueForOption(jsonOption))

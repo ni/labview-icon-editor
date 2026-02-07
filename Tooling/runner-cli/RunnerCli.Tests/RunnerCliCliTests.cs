@@ -87,6 +87,29 @@ public class RunnerCliCliTests
     }
 
     [Fact]
+    public void ConformanceCheck_full_profile_missing_artifacts_returns_exit_code_2()
+    {
+        var repoRoot = FindRepoRoot();
+        var tempRoot = Directory.CreateTempSubdirectory("lvie-cli-conformance-full").FullName;
+        var env = new Dictionary<string, string?>
+        {
+            ["RC_HOSTED_LINUX_EVIDENCE"] = "linux evidence",
+            ["RC_HOSTED_WINDOWS_EVIDENCE"] = "windows evidence"
+        };
+
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, $"conformance check --profile full --repo-root \"{tempRoot}\" --json", env);
+
+        Assert.Equal(2, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+        using var doc = JsonDocument.Parse(stdout);
+        var checks = doc.RootElement.GetProperty("checks").EnumerateArray().ToList();
+        var traceability = checks.FirstOrDefault(entry =>
+            string.Equals(entry.GetProperty("id").GetString(), "full.governance.traceability", StringComparison.OrdinalIgnoreCase));
+        Assert.NotEqual(default, traceability);
+        Assert.Equal("fail", traceability.GetProperty("status").GetString());
+    }
+
+    [Fact]
     public void PylaviSummarize_writes_output_even_with_json()
     {
         var repoRoot = FindRepoRoot();
