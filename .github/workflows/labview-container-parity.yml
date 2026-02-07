@@ -1,0 +1,81 @@
+name: LabVIEW Container Parity
+
+on:
+  workflow_dispatch:
+    inputs:
+      lv_release:
+        description: LabVIEW container release tag (for example, 2026q1)
+        required: false
+        default: "2026q1"
+  pull_request:
+    paths:
+      - ".github/workflows/labview-container-parity.yml"
+      - "Tooling/container-parity/**"
+      - "Test/Templates/**"
+      - "lv_icon_editor.lvproj"
+      - ".lvversion"
+
+jobs:
+  parity-linux:
+    name: Parity (Linux Container)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Pull LabVIEW Linux image
+        shell: bash
+        run: |
+          set -euo pipefail
+          LV_RELEASE="${{ github.event_name == 'workflow_dispatch' && github.event.inputs.lv_release || '2026q1' }}"
+          IMAGE="nationalinstruments/labview:${LV_RELEASE}-linux"
+          echo "Using image: ${IMAGE}"
+          docker pull "${IMAGE}"
+          echo "IMAGE=${IMAGE}" >> "$GITHUB_ENV"
+
+      - name: Run LabVIEWCLI parity script (Linux)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            -e WORKSPACE_ROOT=/workspace \
+            -e TARGET_DIR=/workspace/Test/Templates \
+            "$IMAGE" \
+            bash -lc "chmod +x /workspace/Tooling/container-parity/runlabview-linux.sh && /workspace/Tooling/container-parity/runlabview-linux.sh"
+
+  parity-windows:
+    name: Parity (Windows Container)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Pull LabVIEW Windows image
+        shell: pwsh
+        run: |
+          $lvRelease = if ('${{ github.event_name }}' -eq 'workflow_dispatch' -and '${{ github.event.inputs.lv_release }}') {
+            '${{ github.event.inputs.lv_release }}'
+          } else {
+            '2026q1'
+          }
+          $image = "nationalinstruments/labview:$lvRelease-windows"
+          Write-Host "Using image: $image"
+          docker pull $image
+          "IMAGE=$image" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Run LabVIEWCLI parity script (Windows)
+        shell: pwsh
+        run: |
+          docker run --rm `
+            -v "${env:GITHUB_WORKSPACE}:C:\workspace" `
+            -e WORKSPACE_ROOT=C:\workspace `
+            -e TARGET_DIR=C:\workspace\Test\Templates `
+            $env:IMAGE `
+            powershell -NoProfile -ExecutionPolicy Bypass -File C:\workspace\Tooling\container-parity\runlabview-windows.ps1 -WorkspaceRoot C:\workspace
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows container parity run failed with exit code $LASTEXITCODE."
+          }
