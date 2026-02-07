@@ -284,7 +284,7 @@ jobs:
             throw "runner-cli artifact missing at $cli"
           }
           $runUrl = "{0}/{1}/actions/runs/{2}" -f $env:GITHUB_SERVER_URL, $env:GITHUB_REPOSITORY, $env:GITHUB_RUN_ID
-          $evidence = "core-windows:$runUrl:attempt-$($env:GITHUB_RUN_ATTEMPT)"
+          $evidence = "core-windows:${runUrl}:attempt-$($env:GITHUB_RUN_ATTEMPT)"
           $versionOut = Join-Path $env:RUNNER_TEMP 'core-windows-version-gate.json'
           $pylaviOut = Join-Path $env:RUNNER_TEMP 'core-windows-pylavi-summarize.json'
           $evidenceOut = Join-Path $env:RUNNER_TEMP 'core-conformance-windows-evidence.json'
