@@ -16,7 +16,7 @@ public static class ConformanceService
         return new RunnerCliManifest
         {
             SpecDocumentId = "LVIE-RC-REQ-v5",
-            SpecVersion = "v5",
+            SpecVersion = "v5.1",
             SupportedCommands = new List<string>
             {
                 "validate-contract",

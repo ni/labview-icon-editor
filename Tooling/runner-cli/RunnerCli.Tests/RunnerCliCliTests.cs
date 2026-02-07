@@ -33,12 +33,14 @@ public class RunnerCliCliTests
 
         using var doc = JsonDocument.Parse(stdout);
         var root = doc.RootElement;
-        Assert.True(TryGetPropertyIgnoreCase(root, "spec_document_id", out _), "spec_document_id missing");
-        Assert.True(TryGetPropertyIgnoreCase(root, "spec_version", out _), "spec_version missing");
+        Assert.True(TryGetPropertyIgnoreCase(root, "spec_document_id", out var specDocumentId), "spec_document_id missing");
+        Assert.True(TryGetPropertyIgnoreCase(root, "spec_version", out var specVersion), "spec_version missing");
         Assert.True(TryGetPropertyIgnoreCase(root, "supported_commands", out _), "supported_commands missing");
         Assert.True(TryGetPropertyIgnoreCase(root, "supported_profiles", out _), "supported_profiles missing");
         Assert.True(TryGetPropertyIgnoreCase(root, "build_version", out _), "build_version missing");
         Assert.True(TryGetPropertyIgnoreCase(root, "generated_utc", out _), "generated_utc missing");
+        Assert.Equal("LVIE-RC-REQ-v5", specDocumentId.GetString());
+        Assert.Equal("v5.1", specVersion.GetString());
     }
 
     [Fact]
@@ -385,6 +387,33 @@ public class RunnerCliCliTests
     }
 
     [Fact]
+    public void PylaviService_write_warning_uses_github_annotation_format_when_env_is_uppercase_true()
+    {
+        var originalError = Console.Error;
+        var originalGitHubActions = Environment.GetEnvironmentVariable("GITHUB_ACTIONS");
+        using var errorWriter = new StringWriter();
+        try
+        {
+            Console.SetError(errorWriter);
+            Environment.SetEnvironmentVariable("GITHUB_ACTIONS", "TRUE");
+
+            var writeWarning = typeof(PylaviService).GetMethod(
+                "WriteWarning",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.NotNull(writeWarning);
+            writeWarning!.Invoke(null, new object[] { "pylavi", "synthetic warning" });
+        }
+        finally
+        {
+            Console.SetError(originalError);
+            Environment.SetEnvironmentVariable("GITHUB_ACTIONS", originalGitHubActions);
+        }
+
+        var stderr = errorWriter.ToString();
+        Assert.StartsWith("::warning::", stderr.TrimStart(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void MissingInProject_emits_command_echo_to_stderr_on_windows()
     {
         if (!OperatingSystem.IsWindows())
@@ -529,19 +558,31 @@ public class RunnerCliCliTests
 
     private static string? ResolveRunnerCliDll(string repoRoot)
     {
-        var outputRoot = Path.Combine(repoRoot, "Tooling", "runner-cli", "RunnerCli", "bin", "Release", "net8.0");
-        if (!Directory.Exists(outputRoot))
+        var outputRoots = new[]
         {
-            return null;
+            Path.Combine(repoRoot, "Tooling", "runner-cli", "RunnerCli", "bin", "Debug", "net8.0"),
+            Path.Combine(repoRoot, "Tooling", "runner-cli", "RunnerCli", "bin", "Release", "net8.0")
+        };
+
+        foreach (var outputRoot in outputRoots)
+        {
+            if (!Directory.Exists(outputRoot))
+            {
+                continue;
+            }
+
+            var dll = new DirectoryInfo(outputRoot)
+                .GetFiles("runner-cli.dll", SearchOption.AllDirectories)
+                .OrderByDescending(file => file.LastWriteTimeUtc)
+                .Select(file => file.FullName)
+                .FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(dll))
+            {
+                return dll;
+            }
         }
 
-        var dlls = Directory.GetFiles(outputRoot, "runner-cli.dll", SearchOption.AllDirectories);
-        if (dlls.Length == 0)
-        {
-            return null;
-        }
-
-        return dlls[0];
+        return null;
     }
 
     private static string EnsurePublishedBinary(string repoRoot)

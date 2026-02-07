@@ -8,7 +8,7 @@ public sealed class RunnerCliManifest
     public string SpecDocumentId { get; set; } = "LVIE-RC-REQ-v5";
 
     [JsonPropertyName("spec_version")]
-    public string SpecVersion { get; set; } = "v5";
+    public string SpecVersion { get; set; } = "v5.1";
 
     [JsonPropertyName("supported_commands")]
     public List<string> SupportedCommands { get; set; } = new();

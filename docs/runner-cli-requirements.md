@@ -1,13 +1,14 @@
-# Runner CLI Requirements v5 (Proposed)
+# Runner CLI Requirements v5.1 (Clarifying Revision)
 
 **Document Control**
 
 | Field | Value |
 |---|---|
 | Document ID | LVIE-RC-REQ-v5 |
+| Semantic Revision | v5.1 |
 | Product | runner-cli |
 | Scope | Progressive scope expansion (core -> extended -> full) |
-| Status | Draft v5 (progressive-scope) |
+| Status | Draft v5.1 (ISO 29148 remediation) |
 
 ## Scope Expansion Model (Normative)
 
@@ -20,7 +21,7 @@ Profile rule:
 - Full conformance implies Extended conformance.
 - Extended conformance implies Core conformance.
 
-## v5 Change Summary (Normative)
+## v5.1 Change Summary (Normative)
 
 - [Clarifying] Preserves existing command names and options for current command set.
 - [Breaking] Enforces global `--json` precedence: non-JSON diagnostics never appear on `stdout`.
@@ -30,10 +31,11 @@ Profile rule:
 - [Clarifying] Adds hosted cross-platform Core conformance evidence requirements and explicit non-applicable handling for Windows-only command checks.
 - [Contract-expanding] Adds new command interfaces: `manifest` and `conformance check`.
 - [Clarifying] Adds governance controls for change classification, deprecation lifecycle, and evidence traceability.
+- [Clarifying] Resolves ISO/IEC/IEEE 29148 well-formedness issues for conformance gating, atomicity, and requirement language precision.
 
-## v5 Changelog (Normative)
+## v5.1 Changelog (Normative)
 
-v5 is required because it expands the public contract surface with new commands and introduces profile-based conformance and governance requirements.
+v5.1 is a clarifying revision that preserves the v5 command surface while tightening requirement language for unambiguity, verifiability, and modifiability.
 
 | Change | RC IDs | Impact | Reason | Trace row reference |
 |---|---|---|---|---|
@@ -44,20 +46,25 @@ v5 is required because it expands the public contract surface with new commands 
 | Add `manifest` command and JSON type | RC-MAN-001, RC-MAN-002, RC-MAN-003, RC-JSN-070 | Contract-expanding | Provide introspection surface for spec/version capability discovery | V5-C4 |
 | Add `conformance check` command and JSON types | RC-CONF-001, RC-CONF-002, RC-CONF-003, RC-JSN-080, RC-JSN-090 | Contract-expanding | Provide profile-scoped, machine-readable conformance result surface | V5-C5 |
 | Add governance and deprecation lifecycle controls | RC-GOV-001, RC-GOV-002, RC-GOV-003, RC-GOV-004, RC-GOV-005 | Clarifying | Standardize release/change/deprecation evidence requirements | V5-C6 |
+| Clarify requirement quality and governance linkage for ISO 29148 | RC-SCOPE-004, RC-JSN-004, RC-GOV-006 | Clarifying | Make conformance applicability, JSON compatibility, and breaking-change governance explicit | V5.1-C1 |
 
 ## 1. Scope Profiles
 
 RC-SCOPE-001: The requirements in this document shall be grouped into Core, Extended, and Full profiles.
-RC-SCOPE-002: Full conformance shall require all Extended and Core requirements.
-RC-SCOPE-003: Extended conformance shall require all Core requirements.
+RC-SCOPE-002: Full conformance shall require satisfaction of all applicable mandatory requirements in Extended and Core profiles.
+RC-SCOPE-003: Extended conformance shall require satisfaction of all applicable mandatory requirements in the Core profile.
+RC-SCOPE-004: Requirements using should or may are non-blocking for conformance claims.
 
 ## 2. Purpose and Non-goals
 
+Non-goal (non-normative): Workflow orchestration is handled by CI/workflow engines.
+Non-goal (non-normative): CI scheduling and job-level policy enforcement are handled outside runner-cli.
+
 RC-PUR-001: runner-cli shall expose the commands init-contract, validate-contract, emit-env, version-gate, pylavi scan, pylavi summarize, pylavi fetch, and missing-in-project with behaviors defined in section 7.
 RC-PUR-002: runner-cli shall expose the commands manifest and conformance check with behaviors defined in section 7 and profile constraints defined in section 1.
-RC-PUR-003: runner-cli command execution shall be stateless: each invocation result shall be determined only by command options, supported environment variables, and observable external state at execution time.
-RC-PUR-004: Workflow orchestration responsibility shall remain in CI/workflow engines, and runner-cli shall limit behavior to helper operations defined in section 7.
-RC-PUR-005: CI scheduling and job-level policy enforcement responsibilities shall remain outside runner-cli, and runner-cli shall expose exit codes and outputs for external policy consumers.
+RC-PUR-003: runner-cli command execution shall be stateless, meaning each invocation result is determined only by command options, supported environment variables, and observable external state at execution time.
+RC-PUR-004: runner-cli shall limit behavior to helper operations defined in section 7.
+RC-PUR-005: runner-cli shall expose the exit codes and outputs defined in this document for external policy consumers.
 
 ## 3. Conventions and Normative Language
 
@@ -70,7 +77,7 @@ RC-CONV-006: Requirement identifiers shall be unique and monotonic ascending wit
 
 ## 4. Supported Platforms and Dependencies
 
-This table applies to commands in scope for v5 Core and Extended profiles.
+This table applies to commands in scope for v5.1 Core and Extended profiles.
 
 | Command | Supported OS | Dependencies |
 |---|---|---|
@@ -114,7 +121,7 @@ RC-GEN-005: Console output line endings shall use the executing platform default
 RC-GEN-006: When a command fails, it shall write at least one error line to stderr beginning with ERROR:.
 RC-GEN-007: Warnings shall be emitted to stderr beginning with WARNING: unless otherwise specified by a command section.
 RC-GEN-008: When a command is invoked with --json, stdout shall contain only the JSON output for that command (no additional human-readable lines).
-RC-GEN-009: When GITHUB_ACTIONS is set to true, pylavi scan warnings shall use ::warning:: formatting as specified in its section.
+RC-GEN-009: When GITHUB_ACTIONS equals the string true (case-insensitive), pylavi scan warnings shall use ::warning:: formatting as specified in its section.
 RC-GEN-010: When --json is set, non-JSON diagnostic, informational, warning, and annotation lines shall be emitted to stderr.
 RC-GEN-011: For commands that support both json and non-json modes, stream behavior shall conform to Table 5-1.
 
@@ -180,7 +187,8 @@ RC-SEC-002: If a token is required but not available, runner-cli shall fail with
 
 RC-JSN-001: JSON objects emitted by runner-cli shall be valid JSON and contain all required fields listed in this section.
 RC-JSN-002: When determinism is required, runner-cli shall output arrays in a stable order as described in the producing command section and RC-DET-003.
-RC-JSN-003: JSON objects emitted by runner-cli may include additional fields not specified in this document; all fields marked Required in this document shall remain present and semantically stable.
+RC-JSN-003: JSON objects emitted by runner-cli may include additional fields not specified in this document.
+RC-JSN-004: Fields marked Required in this document shall preserve field name, JSON type, units/format, and semantic meaning within the same major specification version.
 
 ### 6.2 RunnerContract
 
@@ -478,7 +486,7 @@ RC-PS-004: When --skip-version-gate is false, the command shall include --eq <nu
 RC-PS-005: The command shall write the constructed vi_validate command line string, including the label, to stderr before invoking vi_validate.
 RC-PS-006: The command shall execute vi_validate from PATH and capture stdout and stderr lines.
 RC-PS-007: If --log-path is provided, the command shall write a redacted log file to that path.
-RC-PS-008: If --offenders-path is provided, the command shall write a PylaviOffendersReport JSON file to that path; otherwise it shall write the report to <repo_root>/vi_validate_offenders.json.
+RC-PS-008: The command shall write a PylaviOffendersReport JSON file to --offenders-path when provided; otherwise to <repo_root>/vi_validate_offenders.json.
 RC-PS-009: The PylaviOffendersReport shall include up to 20 entries in top_offenders and top_absolute_offenders, ordered by descending count with ties broken per RC-DET-003.
 RC-PS-010: When --absolute-roots is provided, the command shall apply redaction per section 5.7.
 RC-PS-011: Unless --quiet is set, the command shall emit warnings for FAIL entries and absolute root detections to stderr.
@@ -487,7 +495,7 @@ RC-PS-013: When --json is not set and --quiet is not set, the command shall emit
 RC-PS-014: If vi_validate exits non-zero and --report-only is set, the command shall exit with code 0 and emit an informational line to stderr about the original exit code.
 RC-PS-015: Otherwise, the command shall propagate the vi_validate exit code.
 RC-PS-016: For pylavi scan, --log-path and --offenders-path shall be resolved per RC-PATH-004.
-RC-PS-017: When GITHUB_ACTIONS=true and --quiet is not set, warnings emitted per RC-PS-011 shall use ::warning:: formatting.
+RC-PS-017: When GITHUB_ACTIONS equals the string true (case-insensitive) and --quiet is not set, warnings emitted per RC-PS-011 shall use ::warning:: formatting.
 RC-PS-018: The command shall fail if the resolved config file does not exist.
 RC-PS-019: When --skip-version-gate is false, the command shall fail if .lvversion is missing.
 RC-PS-020: When --skip-version-gate is false, the command shall fail if --labview is provided and does not match .lvversion.
@@ -640,7 +648,7 @@ Behavior
 RC-MAN-001: The command shall emit a manifest describing the runner-cli requirement contract and supported commands.
 RC-MAN-002: When --json is set, the command shall emit a RunnerCliManifest JSON object to stdout.
 RC-MAN-003: When --json is not set, the command shall emit a human-readable summary that includes spec_document_id, spec_version, supported_commands, supported_profiles, build_version, and generated_utc.
-RC-MAN-004: Unknown additional manifest fields may be added in future versions without removing required fields defined by RC-JSN-070.
+RC-MAN-004: RunnerCliManifest JSON may include additional fields, and required fields defined by RC-JSN-070 shall remain present and semantics-compatible per RC-JSN-004.
 
 ### 7.10 conformance check
 
@@ -685,13 +693,13 @@ RC-ENV-006: pylavi fetch shall use GITHUB_REPOSITORY when --repo is not provided
 RC-ENV-007: emit-env shall write LVIE_* variables to the env file when available.
 RC-ENV-008: pylavi summarize shall emit PYLAVI_OFFENDERS_* machine lines in non-json mode (unless RC-PSUM-006 exits early).
 RC-ENV-009: pylavi fetch shall emit PYLAVI_OFFENDERS_* machine lines on success.
-RC-ENV-010: conformance check shall read RC_PROFILE when --profile is not provided.
-RC-ENV-011: conformance check shall read RC_STRICT_MODE when --strict is not provided.
+RC-ENV-010: RC_PROFILE shall be the canonical environment variable name for conformance profile defaulting.
+RC-ENV-011: RC_STRICT_MODE shall be the canonical environment variable name for conformance strict-mode defaulting.
 
 ## 9. Compatibility and Error Handling
 
-RC-COMP-001: On failure, commands shall emit at least one ERROR: line to stderr and return the non-zero exit code specified in section 7.
-RC-COMP-002: runner-cli should avoid breaking changes to command-line options and JSON output fields in minor/patch releases; when breaking changes are required, they should be gated behind a major version increment or a new option.
+RC-COMP-001: Within the same major specification version, command failure signaling shall remain compatible with RC-GEN-002 and RC-GEN-006.
+RC-COMP-002: Breaking changes to command-line options or required JSON fields shall be governed by RC-GOV-006.
 
 ## 10. Governance and Deprecation
 
@@ -700,13 +708,36 @@ RC-GOV-002: Breaking changes shall include release notes that describe user impa
 RC-GOV-003: Deprecated behavior shall follow the lifecycle phases announce, warn, and remove.
 RC-GOV-004: Deprecation records shall include explicit first-version and removal-version boundaries.
 RC-GOV-005: Each released requirement revision shall include a trace artifact mapping changed RC IDs to tests or evidence scenarios.
+RC-GOV-006: Breaking changes to command-line options or required JSON fields shall occur only in a major specification version and include migration notes in release documentation.
+
+### 10.1 Inline attributes for v5.1 delta requirements
+
+| RC ID | Profile | Verification method |
+|---|---|---|
+| RC-SCOPE-002 | Core | Inspection (requirements review) |
+| RC-SCOPE-003 | Core | Inspection (requirements review) |
+| RC-SCOPE-004 | Core | Inspection (conformance language review) |
+| RC-PUR-003 | Core | Inspection (atomicity lint + wording check) |
+| RC-PUR-004 | Core | Inspection (scope/boundary review) |
+| RC-PUR-005 | Core | Inspection (scope/boundary review) |
+| RC-GEN-009 | Core | Test (pylavi warning format with GITHUB_ACTIONS=true variants) |
+| RC-JSN-003 | Core | Inspection (schema extensibility rule check) |
+| RC-JSN-004 | Core | Analysis (schema compatibility analysis) |
+| RC-PS-008 | Core | Test (default vs explicit offenders report path) |
+| RC-PS-017 | Core | Test (annotation format behavior) |
+| RC-MAN-004 | Extended | Test (manifest required-field compatibility) |
+| RC-ENV-010 | Extended | Inspection (canonical env variable naming) |
+| RC-ENV-011 | Extended | Inspection (canonical env variable naming) |
+| RC-COMP-001 | Full | Analysis (compatibility contract audit) |
+| RC-COMP-002 | Full | Inspection (governance linkage check) |
+| RC-GOV-006 | Full | Inspection (release governance audit) |
 
 ## 11. Migration Note
 
-v5 migration by profile:
-1. Core: align command stream behavior and deterministic ordering to v5 rules.
-2. Extended: add support for `manifest` and `conformance check` surfaces.
-3. Full: enforce governance and deprecation evidence requirements in release workflows.
+v5.1 migration by profile:
+1. Core: align conformance applicability and requirement atomicity language to v5.1 rules.
+2. Extended: keep `manifest` and `conformance check` command surfaces unchanged while clarifying environment variable naming and manifest compatibility wording.
+3. Full: enforce explicit major-version governance for breaking option/required-field changes.
 
 ## 12. References
 
