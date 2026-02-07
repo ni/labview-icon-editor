@@ -5,6 +5,7 @@ permissions:
 
 env:
   LVIE_FORCE_NO_LABVIEW_DEVMODE: 1
+  LVIE_REQUIRE_RUNNER_CLI: ${{ vars.LVIE_REQUIRE_RUNNER_CLI || '0' }}
 
 concurrency:
   group: labview-${{ github.repository }}-${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
@@ -171,6 +172,9 @@ jobs:
             }
             $lvInfo = $json | ConvertFrom-Json
           } else {
+            if ($env:LVIE_REQUIRE_RUNNER_CLI -eq '1') {
+              throw "LVIE_REQUIRE_RUNNER_CLI=1 but runner-cli was not available."
+            }
             Write-Warning "runner-cli unavailable; falling back to Assert-LabVIEWVersion.ps1."
             $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
             if (-not (Test-Path -Path $assertScript)) {

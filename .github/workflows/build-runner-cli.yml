@@ -93,6 +93,82 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+  smoke-pr:
+    name: Smoke Runner CLI (PR linux-x64)
+    needs: build-and-test
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish runner-cli (linux-x64)
+        shell: pwsh
+        run: |
+          $outputDir = Join-Path $env:RUNNER_TEMP 'runner-cli-pr'
+          dotnet publish "Tooling/runner-cli/RunnerCli/RunnerCli.csproj" `
+            --configuration Release `
+            --runtime linux-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:PublishTrimmed=true `
+            --output $outputDir
+
+      - name: Smoke test runner-cli (linux-x64)
+        shell: pwsh
+        run: |
+          $cli = Join-Path $env:RUNNER_TEMP 'runner-cli-pr' 'runner-cli'
+          if (-not (Test-Path $cli)) {
+            Write-Error "runner-cli not found at $cli"
+            Get-ChildItem -Path $env:RUNNER_TEMP -Recurse -File | Select-Object -First 50 | ForEach-Object { Write-Host $_.FullName }
+            exit 1
+          }
+          chmod +x $cli
+          & $cli --help
+          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
+            throw "runner-cli --help failed with exit code $LASTEXITCODE"
+          }
+          & $cli version-gate --repo-root $env:GITHUB_WORKSPACE --json
+          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
+            throw "runner-cli version-gate failed with exit code $LASTEXITCODE"
+          }
+
+          $fixture = Join-Path $env:GITHUB_WORKSPACE 'Tooling' 'pylavi' 'fixtures' 'pylavi-offenders.sample.json'
+          if (-not (Test-Path $fixture)) {
+            throw "Pylavi fixture not found at $fixture"
+          }
+
+          $summaryPath = Join-Path $env:RUNNER_TEMP 'pylavi-summary.json'
+          $output = & $cli pylavi summarize --path $fixture --json --output-path $summaryPath | Out-String
+          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
+            throw "runner-cli pylavi summarize failed with exit code $LASTEXITCODE"
+          }
+
+          $report = $output | ConvertFrom-Json
+          if (-not $report.label) { throw "pylavi summarize JSON missing label" }
+          if ($report.total_fails -lt 1) { throw "pylavi summarize JSON missing total_fails" }
+          if (-not $report.top_offenders -or $report.top_offenders.Count -lt 1) { throw "pylavi summarize JSON missing top_offenders" }
+          if (-not $report.top_absolute_offenders -or $report.top_absolute_offenders.Count -lt 1) { throw "pylavi summarize JSON missing top_absolute_offenders" }
+
+          if (-not (Test-Path $summaryPath)) {
+            throw "pylavi summarize output file not found at $summaryPath"
+          }
+          $summary = Get-Content $summaryPath -Raw | ConvertFrom-Json
+          if (-not $summary.label) { throw "pylavi summarize output missing label" }
+          if (-not $summary.file -or ($summary.file -notlike "*pylavi-offenders.sample.json")) {
+            throw "pylavi summarize output missing file path"
+          }
+          if (-not $summary.has_findings) { throw "pylavi summarize output missing has_findings" }
+
+      - name: Shutdown dotnet build servers
+        if: always()
+        run: dotnet build-server shutdown
+
   smoke:
     name: Smoke Runner CLI (${{ matrix.rid }} on ${{ matrix.os }})
     needs: publish

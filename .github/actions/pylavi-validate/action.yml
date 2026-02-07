@@ -41,6 +41,18 @@ inputs:
     description: Artifact name for the vi_validate log.
     required: false
     default: pylavi-validate-log
+  baseline_path:
+    description: Optional baseline offenders report path (relative to repo root) for delta checks.
+    required: false
+    default: ''
+  baseline_required:
+    description: Fail if baseline_path is set but missing.
+    required: false
+    default: 'false'
+  fail_on_delta:
+    description: Fail if new offenders are detected compared to the baseline.
+    required: false
+    default: 'false'
 runs:
   using: composite
   steps:
@@ -82,21 +94,49 @@ runs:
           $label = 'pylavi'
         }
         $absoluteRootsRaw = '${{ inputs.absolute_roots }}'
+        function Test-Enabled {
+          param([string]$Value)
+          if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+          $normalized = $Value.Trim().ToLowerInvariant()
+          return ($normalized -eq '1' -or $normalized -eq 'true' -or $normalized -eq 'yes')
+        }
+        $baselineInput = '${{ inputs.baseline_path }}'
+        if ([string]::IsNullOrWhiteSpace($baselineInput)) {
+          $baselineInput = $env:LVIE_PYLAVI_BASELINE_PATH
+        }
+        $baselineRequired = (Test-Enabled '${{ inputs.baseline_required }}') -or (Test-Enabled $env:LVIE_PYLAVI_BASELINE_REQUIRED)
+        $failOnDelta = (Test-Enabled '${{ inputs.fail_on_delta }}') -or (Test-Enabled $env:LVIE_PYLAVI_FAIL_ON_DELTA)
+        if ($baselineRequired -and [string]::IsNullOrWhiteSpace($baselineInput)) {
+          throw "baseline_required is true but baseline_path is empty. Set inputs.baseline_path or LVIE_PYLAVI_BASELINE_PATH."
+        }
+        $requireRunnerCli = Test-Enabled $env:LVIE_REQUIRE_RUNNER_CLI
+        $needsRunnerCli = $requireRunnerCli -or (-not [string]::IsNullOrWhiteSpace($baselineInput)) -or $baselineRequired -or $failOnDelta
         $viCommand = Get-Command vi_validate -ErrorAction SilentlyContinue
         if (-not $viCommand) {
           throw 'vi_validate not found in PATH. Install pylavi (python -m pip install pylavi).'
         }
         $commandLine = "{0} --config `"{1}`" --eq {2}" -f $viCommand.Source, $config, $labviewNumeric
         Write-Host ("vi_validate command ({0}): {1}" -f $label, $commandLine)
+        $runnerCliPath = $env:LVIE_RUNNER_CLI_PATH
+        if ([string]::IsNullOrWhiteSpace($runnerCliPath)) {
+          $cliName = if ($IsWindows) { 'runner-cli.exe' } else { 'runner-cli' }
+          $candidate = Join-Path $env:RUNNER_TEMP 'runner-cli' $cliName
+          if (Test-Path $candidate) {
+            $runnerCliPath = $candidate
+          }
+        }
         $runnerCliProject = Join-Path $env:GITHUB_WORKSPACE 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
-        $canUseRunnerCli = (Get-Command dotnet -ErrorAction SilentlyContinue) -and (Test-Path $runnerCliProject)
+        $useRunnerCliBinary = (-not [string]::IsNullOrWhiteSpace($runnerCliPath)) -and (Test-Path $runnerCliPath)
+        $canUseRunnerCli = $useRunnerCliBinary -or ((Get-Command dotnet -ErrorAction SilentlyContinue) -and (Test-Path $runnerCliProject))
+        if (-not $canUseRunnerCli -and $needsRunnerCli) {
+          throw "runner-cli is required but unavailable. Set LVIE_RUNNER_CLI_PATH or enable dotnet build for Tooling/runner-cli."
+        }
         if ($canUseRunnerCli) {
+          if ($useRunnerCliBinary -and -not $IsWindows) {
+            chmod +x $runnerCliPath
+          }
           Write-Host "Using runner-cli pylavi scan (incremental migration)."
           $scanArgs = @(
-            'run',
-            '--project', $runnerCliProject,
-            '--configuration', 'Release',
-            '--',
             'pylavi', 'scan',
             '--repo-root', $env:GITHUB_WORKSPACE,
             '--config', $config,
@@ -115,22 +155,48 @@ runs:
           if ('${{ inputs.report_only }}' -eq 'true') {
             $scanArgs += '--report-only'
           }
-          & dotnet @scanArgs
+          if ($useRunnerCliBinary) {
+            & $runnerCliPath @scanArgs
+          } else {
+            $dotnetArgs = @(
+              'run',
+              '--project', $runnerCliProject,
+              '--configuration', 'Release',
+              '--'
+            ) + $scanArgs
+            & dotnet @dotnetArgs
+          }
           $scanExit = $LASTEXITCODE
 
           if (Test-Path -Path $offendersPath) {
             $summaryArgs = @(
-              'run',
-              '--project', $runnerCliProject,
-              '--configuration', 'Release',
-              '--',
               'pylavi', 'summarize',
               '--path', $offendersPath,
               '--label', $label,
               '--write-summary',
               '--top', '10'
             )
-            & dotnet @summaryArgs | Out-Host
+            if (-not [string]::IsNullOrWhiteSpace($baselineInput)) {
+              $summaryArgs += '--baseline'
+              $summaryArgs += $baselineInput
+            }
+            if ($baselineRequired) {
+              $summaryArgs += '--baseline-required'
+            }
+            if ($failOnDelta) {
+              $summaryArgs += '--fail-on-delta'
+            }
+            if ($useRunnerCliBinary) {
+              & $runnerCliPath @summaryArgs | Out-Host
+            } else {
+              $dotnetSummaryArgs = @(
+                'run',
+                '--project', $runnerCliProject,
+                '--configuration', 'Release',
+                '--'
+              ) + $summaryArgs
+              & dotnet @dotnetSummaryArgs | Out-Host
+            }
           }
 
           if ('${{ inputs.report_only }}' -eq 'true' -and $scanExit -ne 0) {

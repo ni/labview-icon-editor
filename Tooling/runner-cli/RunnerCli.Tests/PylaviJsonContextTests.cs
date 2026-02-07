@@ -97,6 +97,47 @@ public class PylaviJsonContextTests
     }
 
     [Fact]
+    public void PylaviSummarizeOutput_serializes_baseline_and_delta_fields()
+    {
+        var output = new PylaviSummarizeOutput
+        {
+            Label = "strict",
+            GeneratedUtc = "2026-02-06T12:00:00Z",
+            TotalFails = 4,
+            ConfiguredRootCount = 2,
+            HasFindings = true,
+            File = "TestResults/agent-logs/pylavi-offenders.latest.json",
+            BaselineFile = "Tooling/pylavi/pylavi-offenders.baseline.json",
+            BaselineTotalFails = 3,
+            BaselineConfiguredRootCount = 1,
+            BaselineHasFindings = true,
+            HasDelta = true,
+            DeltaTotalFails = 1,
+            DeltaOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "delta.vi", Count = 1 }
+            },
+            DeltaAbsoluteOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "C:\\Users\\DevUser\\Projects\\delta.vi", Count = 1 }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(output, RunnerCliJsonContext.Default.PylaviSummarizeOutput);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        Assert.Equal("Tooling/pylavi/pylavi-offenders.baseline.json", root.GetProperty("baseline_file").GetString());
+        Assert.Equal(3, root.GetProperty("baseline_total_fails").GetInt32());
+        Assert.Equal(1, root.GetProperty("baseline_configured_root_count").GetInt32());
+        Assert.True(root.GetProperty("baseline_has_findings").GetBoolean());
+        Assert.True(root.GetProperty("has_delta").GetBoolean());
+        Assert.Equal(1, root.GetProperty("delta_total_fails").GetInt32());
+        Assert.Equal("delta.vi", root.GetProperty("delta_offenders")[0].GetProperty("item").GetString());
+        Assert.Equal("C:\\Users\\DevUser\\Projects\\delta.vi", root.GetProperty("delta_absolute_offenders")[0].GetProperty("item").GetString());
+    }
+
+    [Fact]
     public void PylaviOffendersReport_deserializes_case_insensitive_json()
     {
         var json = """

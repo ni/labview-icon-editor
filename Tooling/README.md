@@ -35,6 +35,7 @@ Common entrypoints:
   Example: `runner-cli pylavi scan --config Tooling/pylavi/vi-validate.yml --report-only`  
   Example: `runner-cli pylavi summarize --repo-root .`  
   Example: `runner-cli pylavi fetch --repo <owner/name> --branch develop`
+  Example (baseline delta): `runner-cli pylavi summarize --path TestResults/agent-logs/pylavi-offenders.latest.json --baseline Tooling/pylavi/pylavi-offenders.baseline.json --fail-on-delta`
 
 Related config:
 - `pylavi/vi-validate.yml`  

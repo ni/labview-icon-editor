@@ -95,4 +95,36 @@ public sealed class PylaviSummarizeOutput
     [JsonPropertyName("source_sha")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? SourceSha { get; set; }
+
+    [JsonPropertyName("baseline_file")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? BaselineFile { get; set; }
+
+    [JsonPropertyName("baseline_total_fails")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? BaselineTotalFails { get; set; }
+
+    [JsonPropertyName("baseline_configured_root_count")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? BaselineConfiguredRootCount { get; set; }
+
+    [JsonPropertyName("baseline_has_findings")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? BaselineHasFindings { get; set; }
+
+    [JsonPropertyName("has_delta")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? HasDelta { get; set; }
+
+    [JsonPropertyName("delta_total_fails")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? DeltaTotalFails { get; set; }
+
+    [JsonPropertyName("delta_offenders")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<PylaviOffenderEntry>? DeltaOffenders { get; set; }
+
+    [JsonPropertyName("delta_absolute_offenders")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<PylaviOffenderEntry>? DeltaAbsoluteOffenders { get; set; }
 }

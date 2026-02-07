@@ -11,6 +11,10 @@ env:
   LVIE_FORCE_NO_LABVIEW_DEVMODE: 1
   LVIE_RUNNER_ACL_AUTOFIX: 1
   LVIE_RUNNER_ACL_WARN_ONLY: 1
+  LVIE_REQUIRE_RUNNER_CLI: ${{ vars.LVIE_REQUIRE_RUNNER_CLI || '0' }}
+  LVIE_PYLAVI_BASELINE_PATH: ${{ vars.LVIE_PYLAVI_BASELINE_PATH || '' }}
+  LVIE_PYLAVI_BASELINE_REQUIRED: ${{ vars.LVIE_PYLAVI_BASELINE_REQUIRED || '0' }}
+  LVIE_PYLAVI_FAIL_ON_DELTA: ${{ vars.LVIE_PYLAVI_FAIL_ON_DELTA || '0' }}
 
 concurrency:
   group: labview-${{ github.repository }}-${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
@@ -124,6 +128,17 @@ jobs:
       rid: linux-x64
       artifact_name: runner-cli-linux-x64
 
+  runner-cli-build-win:
+    name: Build runner-cli (win-x64)
+    needs: run-metadata
+    uses: ./.github/workflows/runner-cli-reusable.yml
+    permissions:
+      actions: read
+      contents: read
+    with:
+      rid: win-x64
+      artifact_name: runner-cli-win-x64
+
   version-gate:
     name: LabVIEW Version Gate
     needs: [run-metadata, runner-cli-build]
@@ -182,6 +197,9 @@ jobs:
             }
             $info = $json | ConvertFrom-Json
             } else {
+              if ($env:LVIE_REQUIRE_RUNNER_CLI -eq '1') {
+                throw "LVIE_REQUIRE_RUNNER_CLI=1 but runner-cli was not available."
+              }
               Write-Warning "runner-cli unavailable; falling back to Assert-LabVIEWVersion.ps1."
               $info = & "$repoRoot/Tooling/Assert-LabVIEWVersion.ps1" -RepoRoot $repoRoot -Context 'ci-version-gate' -WriteSummary
             }
@@ -250,12 +268,30 @@ jobs:
 
   pylavi-validate:
     name: Validate LabVIEW Files (pylavi, report-only)
-    needs: [run-metadata, version-gate]
+    needs: [run-metadata, version-gate, runner-cli-build-win]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Download runner-cli artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.runner-cli-build-win.outputs.artifact_name }}
+          path: ${{ runner.temp }}/runner-cli
+      - name: Export runner-cli path
+        shell: pwsh
+        run: |
+          $cliPath = Join-Path $env:RUNNER_TEMP 'runner-cli' 'runner-cli.exe'
+          if (Test-Path $cliPath) {
+            "LVIE_RUNNER_CLI_PATH=$cliPath" | Out-File -FilePath $Env:GITHUB_ENV -Append -Encoding ascii
+            Write-Host ("Using runner-cli at {0}" -f $cliPath)
+          } else {
+            Write-Warning ("runner-cli artifact missing at {0}" -f $cliPath)
+            if ($env:LVIE_REQUIRE_RUNNER_CLI -eq '1') {
+              throw "LVIE_REQUIRE_RUNNER_CLI=1 but runner-cli was not found."
+            }
+          }
       - name: Run vi_validate (strict, report-only)
         uses: ./.github/actions/pylavi-validate
         with:
@@ -858,7 +894,8 @@ jobs:
         id: vip-status
         shell: pwsh
         run: |
-          $statusPath = Join-Path $env:REPO_ROOT 'builds/status/vip-build.json'
+          $statusRoot = if (-not [string]::IsNullOrWhiteSpace($env:LVIE_ARTIFACT_ROOT)) { $env:LVIE_ARTIFACT_ROOT } else { $env:REPO_ROOT }
+          $statusPath = Join-Path $statusRoot 'builds/status/vip-build.json'
           $exists = Test-Path -Path $statusPath
           "exists=$($exists.ToString().ToLowerInvariant())" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
       - name: Upload VIP build status
@@ -866,7 +903,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vip-build-status
-          path: ${{ env.REPO_ROOT }}/builds/status/vip-build.json
+          path: ${{ env.LVIE_ARTIFACT_ROOT || env.REPO_ROOT }}/builds/status/vip-build.json
           if-no-files-found: warn
       - name: Prepare release notes artifact
         id: release-notes

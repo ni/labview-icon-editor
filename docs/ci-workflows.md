@@ -98,7 +98,7 @@ Below are the **key GitHub Actions** provided in this repository:
 
 3. **Runner CLI (Reusable Build)**
    - [`runner-cli-reusable.yml`](../.github/workflows/runner-cli-reusable.yml) publishes a self-contained `runner-cli` binary for a target RID.
-   - `ci-composite.yml` calls this reusable workflow and downloads the artifact to run `runner-cli version-gate` without rebuilding on every job.
+   - `ci-composite.yml` calls this reusable workflow and downloads the artifact to run `runner-cli version-gate` on Linux and `runner-cli pylavi` on Windows without rebuilding on every job.
    - `runner-audit.yml` uses the published `runner-cli` artifact when available; falls back to PowerShell scripts otherwise.
 
 4. **Runner CLI Docker (Linux)**
@@ -109,7 +109,7 @@ Below are the **key GitHub Actions** provided in this repository:
 
 The [`ci-composite.yml`](../.github/workflows/ci-composite.yml) pipeline breaks the build into several jobs:
 
-- **pylavi-validate** – report-only LabVIEW file validation using `vi_validate` (strict + legacy profiles) with `.lvversion`-synced version gating.
+- **pylavi-validate** – report-only LabVIEW file validation using `vi_validate` (strict + legacy profiles) with `.lvversion`-synced version gating and optional baseline/delta reporting.
 - **changes** – checks out the repository and detects `.vipc` file changes to determine if dependencies need to be applied.
 - **apply-deps** – installs VIPC dependencies for multiple LabVIEW versions and bitnesses **only when** the `changes` job reports `.vipc` modifications (`if: needs.changes.outputs.vipc == 'true'`).
 - **version** – computes the semantic version and build number using commit count and PR labels.

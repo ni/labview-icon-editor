@@ -1,5 +1,6 @@
 using System.CommandLine;
 using System.CommandLine.Invocation;
+using System.Text;
 using System.Text.Json;
 using RunnerCli;
 
@@ -324,6 +325,17 @@ var failOnThresholdOption = new Option<int>(
     name: "--fail-on-threshold",
     getDefaultValue: () => -1,
     description: "Exit non-zero if total FAILs exceed this threshold.");
+var baselinePathOption = new Option<string?>(
+    name: "--baseline",
+    description: "Optional baseline offenders report to compute deltas.");
+var baselineRequiredOption = new Option<bool>(
+    name: "--baseline-required",
+    getDefaultValue: () => false,
+    description: "Exit non-zero if the baseline file is missing.");
+var failOnDeltaOption = new Option<bool>(
+    name: "--fail-on-delta",
+    getDefaultValue: () => false,
+    description: "Exit non-zero if new offenders are detected compared to the baseline.");
 
 pylaviSummarizeCmd.AddOption(reportPathOption);
 pylaviSummarizeCmd.AddOption(summarizeLabelOption);
@@ -337,6 +349,9 @@ pylaviSummarizeCmd.AddOption(validateExistsOption);
 pylaviSummarizeCmd.AddOption(failOnEmptyOption);
 pylaviSummarizeCmd.AddOption(failOnFindingsOption);
 pylaviSummarizeCmd.AddOption(failOnThresholdOption);
+pylaviSummarizeCmd.AddOption(baselinePathOption);
+pylaviSummarizeCmd.AddOption(baselineRequiredOption);
+pylaviSummarizeCmd.AddOption(failOnDeltaOption);
 
 pylaviSummarizeCmd.SetHandler((InvocationContext context) =>
 {
@@ -355,6 +370,9 @@ pylaviSummarizeCmd.SetHandler((InvocationContext context) =>
         var failOnEmpty = context.ParseResult.GetValueForOption(failOnEmptyOption);
         var failOnFindings = context.ParseResult.GetValueForOption(failOnFindingsOption);
         var failOnThreshold = context.ParseResult.GetValueForOption(failOnThresholdOption);
+        var baselineInput = context.ParseResult.GetValueForOption(baselinePathOption);
+        var baselineRequired = context.ParseResult.GetValueForOption(baselineRequiredOption);
+        var failOnDelta = context.ParseResult.GetValueForOption(failOnDeltaOption);
 
         var resolvedRoot = RepoLocator.Resolve(repoRoot, Environment.CurrentDirectory);
         var resolvedPath = PylaviOffendersService.ResolveReportPath(resolvedRoot, path, label, sha);
@@ -369,14 +387,14 @@ pylaviSummarizeCmd.SetHandler((InvocationContext context) =>
                 {
                     var shaHint = PylaviOffendersService.ResolveSha(sha, resolvedPath, null);
                     var labelValueHint = string.IsNullOrWhiteSpace(label) ? "pylavi" : label;
-                PylaviOffendersService.WriteMachineLines(resolvedPath, labelValueHint, shaHint, false, 0, 2);
+                    PylaviOffendersService.WriteMachineLines(resolvedPath, labelValueHint, shaHint, false, 0, 2);
+                }
+                Environment.ExitCode = 2;
+                context.ExitCode = 2;
+                return;
             }
-            Environment.ExitCode = 2;
-            context.ExitCode = 2;
-            return;
+            throw new FileNotFoundException(message, resolvedPath);
         }
-        throw new FileNotFoundException(message, resolvedPath);
-    }
 
         if (validateExists)
         {
@@ -399,9 +417,63 @@ pylaviSummarizeCmd.SetHandler((InvocationContext context) =>
         var shaValue = PylaviOffendersService.ResolveSha(sha, resolvedPath, report);
         var hasFindings = report.TotalFails > 0 || report.TopOffenders.Count > 0;
 
+        var baselinePath = string.IsNullOrWhiteSpace(baselineInput)
+            ? null
+            : (Path.IsPathRooted(baselineInput) ? baselineInput : Path.Combine(resolvedRoot, baselineInput));
+        var baselineMissing = false;
+        PylaviOffendersReport? baselineReport = null;
+        if (!string.IsNullOrWhiteSpace(baselinePath))
+        {
+            if (!File.Exists(baselinePath))
+            {
+                baselineMissing = true;
+                Console.WriteLine($"WARNING: Baseline report not found at {baselinePath}.");
+            }
+            else
+            {
+                baselineReport = PylaviOffendersService.LoadReport(baselinePath);
+            }
+        }
+
+        var deltaTotalFails = (int?)null;
+        var deltaOffenders = (List<PylaviOffenderEntry>?)null;
+        var deltaAbsolute = (List<PylaviOffenderEntry>?)null;
+        var hasDelta = (bool?)null;
+        if (baselineReport is not null)
+        {
+            deltaTotalFails = report.TotalFails - baselineReport.TotalFails;
+            var baselineOffenders = new HashSet<string>(
+                baselineReport.TopOffenders.Select(entry => entry.Item),
+                StringComparer.OrdinalIgnoreCase);
+            var baselineAbsolute = new HashSet<string>(
+                baselineReport.TopAbsoluteOffenders.Select(entry => entry.Item),
+                StringComparer.OrdinalIgnoreCase);
+
+            deltaOffenders = report.TopOffenders
+                .Where(entry => !baselineOffenders.Contains(entry.Item))
+                .ToList();
+            deltaAbsolute = report.TopAbsoluteOffenders
+                .Where(entry => !baselineAbsolute.Contains(entry.Item))
+                .ToList();
+
+            hasDelta = (deltaTotalFails > 0)
+                || (deltaOffenders.Count > 0)
+                || (deltaAbsolute.Count > 0);
+        }
+
         var exitCode = 0;
         string? exitMessage = null;
-        if (failOnEmpty && !hasFindings)
+        if (baselineRequired && string.IsNullOrWhiteSpace(baselinePath))
+        {
+            exitCode = 7;
+            exitMessage = "Baseline is required but no baseline path was provided.";
+        }
+        else if (baselineRequired && baselineMissing)
+        {
+            exitCode = 7;
+            exitMessage = $"Baseline report not found at {baselinePath}.";
+        }
+        else if (failOnEmpty && !hasFindings)
         {
             exitCode = 3;
             exitMessage = "Pylavi offenders report contains no entries.";
@@ -416,6 +488,11 @@ pylaviSummarizeCmd.SetHandler((InvocationContext context) =>
             exitCode = 4;
             exitMessage = "Pylavi offenders report contains offender entries.";
         }
+        else if (failOnDelta && hasDelta == true)
+        {
+            exitCode = 6;
+            exitMessage = "Pylavi offenders report contains new entries compared to the baseline.";
+        }
 
         if (!string.IsNullOrWhiteSpace(outputPath))
         {
@@ -429,7 +506,15 @@ pylaviSummarizeCmd.SetHandler((InvocationContext context) =>
                 File = resolvedPath,
                 TopOffenders = report.TopOffenders.Take(top).ToList(),
                 TopAbsoluteOffenders = report.TopAbsoluteOffenders.Take(top).ToList(),
-                SourceSha = string.IsNullOrWhiteSpace(shaValue) ? null : shaValue
+                SourceSha = string.IsNullOrWhiteSpace(shaValue) ? null : shaValue,
+                BaselineFile = baselinePath,
+                BaselineTotalFails = baselineReport?.TotalFails,
+                BaselineConfiguredRootCount = baselineReport?.ConfiguredRootCount,
+                BaselineHasFindings = baselineReport is null ? null : (baselineReport.TotalFails > 0 || baselineReport.TopOffenders.Count > 0),
+                HasDelta = hasDelta,
+                DeltaTotalFails = deltaTotalFails,
+                DeltaOffenders = deltaOffenders,
+                DeltaAbsoluteOffenders = deltaAbsolute
             };
 
             var summaryDir = Path.GetDirectoryName(outputPath);
@@ -466,6 +551,34 @@ pylaviSummarizeCmd.SetHandler((InvocationContext context) =>
                 Console.WriteLine($"Source SHA: {shaValue}");
             }
             Console.WriteLine($"Configured roots: <redacted> (count: {report.ConfiguredRootCount})");
+            if (baselineReport is not null)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Baseline file: {baselinePath}");
+                Console.WriteLine($"Baseline FAILs: {baselineReport.TotalFails}");
+                Console.WriteLine($"Baseline configured roots: <redacted> (count: {baselineReport.ConfiguredRootCount})");
+                if (hasDelta == true)
+                {
+                    Console.WriteLine($"Delta FAILs: {deltaTotalFails}");
+                    if (deltaOffenders is { Count: > 0 })
+                    {
+                        Console.WriteLine($"New offenders: {deltaOffenders.Count}");
+                    }
+                    if (deltaAbsolute is { Count: > 0 })
+                    {
+                        Console.WriteLine($"New absolute-path offenders: {deltaAbsolute.Count}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Delta FAILs: 0");
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(baselinePath))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Baseline file: {baselinePath} (missing)");
+            }
 
             if (report.TopOffenders.Count > 0)
             {
@@ -490,6 +603,29 @@ pylaviSummarizeCmd.SetHandler((InvocationContext context) =>
 
         var summaryPath = writeSummary ? Environment.GetEnvironmentVariable("GITHUB_STEP_SUMMARY") : null;
         PylaviOffendersService.WriteSummary(labelValue, report, top, shaValue, summaryPath);
+        if (!string.IsNullOrWhiteSpace(summaryPath) && (baselineReport is not null || !string.IsNullOrWhiteSpace(baselinePath)))
+        {
+            var summaryLines = new List<string>
+            {
+                "### Pylavi Delta",
+                ""
+            };
+            if (baselineReport is null)
+            {
+                summaryLines.Add($"- Baseline: {PylaviOffendersService.EscapeMarkdown(baselinePath ?? string.Empty)} (missing)");
+            }
+            else
+            {
+                summaryLines.Add($"- Baseline: {PylaviOffendersService.EscapeMarkdown(baselinePath ?? string.Empty)}");
+                summaryLines.Add($"- Baseline FAILs: {baselineReport.TotalFails}");
+                summaryLines.Add($"- Baseline configured roots: <redacted> (count: {baselineReport.ConfiguredRootCount})");
+                summaryLines.Add($"- Delta FAILs: {deltaTotalFails}");
+                summaryLines.Add($"- New offenders: {deltaOffenders?.Count ?? 0}");
+                summaryLines.Add($"- New absolute-path offenders: {deltaAbsolute?.Count ?? 0}");
+            }
+            summaryLines.Add("");
+            File.AppendAllLines(summaryPath, summaryLines, Encoding.UTF8);
+        }
 
         PylaviOffendersService.WriteMachineLines(resolvedPath, labelValue, shaValue, hasFindings, report.TotalFails, exitCode);
 

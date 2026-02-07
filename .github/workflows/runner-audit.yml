@@ -6,6 +6,7 @@ permissions:
 env:
   LVIE_EXPECTED_RUNNER_LABEL: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
   LVIE_CANONICAL_RUNNER_LABEL: self-hosted-windows-lv
+  LVIE_REQUIRE_RUNNER_CLI: ${{ vars.LVIE_REQUIRE_RUNNER_CLI || '0' }}
 
 on:
   workflow_dispatch:
@@ -95,6 +96,9 @@ jobs:
             }
             $lvInfo = $json | ConvertFrom-Json
           } else {
+            if ($env:LVIE_REQUIRE_RUNNER_CLI -eq '1') {
+              throw "LVIE_REQUIRE_RUNNER_CLI=1 but runner-cli was not available."
+            }
             Write-Warning "runner-cli not available; falling back to Assert-LabVIEWVersion.ps1."
             $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
             if (-not (Test-Path -Path $assertScript)) {
@@ -118,6 +122,9 @@ jobs:
             Write-Host 'Validating contract with runner-cli …'
             & $cli validate-contract --contract-path $env:LVIE_RUNNER_CONTRACT_PATH
           } else {
+            if ($env:LVIE_REQUIRE_RUNNER_CLI -eq '1') {
+              throw "LVIE_REQUIRE_RUNNER_CLI=1 but runner-cli was not available."
+            }
             Write-Host 'runner-cli not found; using PowerShell fallback.'
             pwsh -NoProfile -File "$env:GITHUB_WORKSPACE\\Tooling\\Validate-RunnerContract.ps1"
           }

@@ -22,6 +22,8 @@ This repository uses LabVIEW, g-cli, and PowerShell tooling. Follow the steps be
 - Local runs write a redacted offenders report to `TestResults\agent-logs\pylavi-offenders.latest.json`. Use `Tooling\Get-PylaviOffenders.ps1` to summarize it.
 - If the local report is missing, fetch the latest CI artifact instead: `pwsh -NoProfile -File .\Tooling\Fetch-PylaviOffenders.ps1 -Branch develop` or `pwsh -NoProfile -File .\Tooling\Get-PylaviOffenders.ps1 -FetchLatest`. Requires `GH_TOKEN`/`GITHUB_TOKEN` with `actions:read`.
 - Deterministic: `Tooling\Get-PylaviOffenders.ps1 -Sha <commit>` to read `pylavi-offenders.<sha>.json`, or `-RunId <id> -FetchLatest` to pin a specific workflow run.
+- Baseline/delta gating (runner-cli): set `LVIE_PYLAVI_BASELINE_PATH` to a redacted offenders report and optionally `LVIE_PYLAVI_FAIL_ON_DELTA=1` to fail on new offenders. Use `LVIE_PYLAVI_BASELINE_REQUIRED=1` to require the baseline file.
+- Runner-cli-only toggle: set `LVIE_REQUIRE_RUNNER_CLI=1` to enforce runner-cli usage (no PowerShell fallback).
 - Config files:
   - `Tooling/pylavi/vi-validate.yml` (strict scope; version injected at runtime).
   - `Tooling/pylavi/vi-validate-legacy.yml` (legacy scope; typically absolute-path checks only).

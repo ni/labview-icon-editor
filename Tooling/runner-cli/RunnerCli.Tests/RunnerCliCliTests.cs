@@ -65,6 +65,114 @@ public class RunnerCliCliTests
     }
 
     [Fact]
+    public void PylaviSummarize_with_baseline_emits_delta_fields()
+    {
+        var repoRoot = FindRepoRoot();
+        var tempDir = Directory.CreateTempSubdirectory("lvie-cli-delta");
+        var reportPath = Path.Combine(tempDir.FullName, "pylavi-report.json");
+        var baselinePath = Path.Combine(tempDir.FullName, "pylavi-baseline.json");
+        var outputPath = Path.Combine(tempDir.FullName, "pylavi-summary.json");
+
+        var baseline = new PylaviOffendersReport
+        {
+            Label = "pylavi",
+            GeneratedUtc = "2026-02-06T12:00:00Z",
+            TotalFails = 1,
+            ConfiguredRoots = "<redacted>",
+            ConfiguredRootCount = 1,
+            TopOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "foo.vi", Count = 1 }
+            },
+            TopAbsoluteOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "C:\\Users\\DevUser\\Projects\\bar.vi", Count = 1 }
+            }
+        };
+
+        var report = new PylaviOffendersReport
+        {
+            Label = "pylavi",
+            GeneratedUtc = "2026-02-06T12:00:00Z",
+            TotalFails = 2,
+            ConfiguredRoots = "<redacted>",
+            ConfiguredRootCount = 2,
+            TopOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "foo.vi", Count = 1 },
+                new() { Item = "delta.vi", Count = 1 }
+            },
+            TopAbsoluteOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "C:\\Users\\DevUser\\Projects\\bar.vi", Count = 1 },
+                new() { Item = "C:\\Users\\DevUser\\Projects\\delta.vi", Count = 1 }
+            }
+        };
+
+        File.WriteAllText(baselinePath, JsonSerializer.Serialize(baseline, RunnerCliJsonContext.Default.PylaviOffendersReport));
+        File.WriteAllText(reportPath, JsonSerializer.Serialize(report, RunnerCliJsonContext.Default.PylaviOffendersReport));
+
+        var args = $"pylavi summarize --path \"{reportPath}\" --baseline \"{baselinePath}\" --json --output-path \"{outputPath}\"";
+        var (exitCode, _, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+        Assert.True(File.Exists(outputPath), "output path not written");
+
+        using var summaryDoc = JsonDocument.Parse(File.ReadAllText(outputPath));
+        var summaryRoot = summaryDoc.RootElement;
+        Assert.True(summaryRoot.GetProperty("has_delta").GetBoolean());
+        Assert.Equal(1, summaryRoot.GetProperty("delta_total_fails").GetInt32());
+        Assert.Equal("delta.vi", summaryRoot.GetProperty("delta_offenders")[0].GetProperty("item").GetString());
+        Assert.Equal("C:\\Users\\DevUser\\Projects\\delta.vi", summaryRoot.GetProperty("delta_absolute_offenders")[0].GetProperty("item").GetString());
+    }
+
+    [Fact]
+    public void PylaviSummarize_fail_on_delta_returns_exit_code_6()
+    {
+        var repoRoot = FindRepoRoot();
+        var tempDir = Directory.CreateTempSubdirectory("lvie-cli-delta-fail");
+        var reportPath = Path.Combine(tempDir.FullName, "pylavi-report.json");
+        var baselinePath = Path.Combine(tempDir.FullName, "pylavi-baseline.json");
+
+        var baseline = new PylaviOffendersReport
+        {
+            Label = "pylavi",
+            GeneratedUtc = "2026-02-06T12:00:00Z",
+            TotalFails = 1,
+            ConfiguredRoots = "<redacted>",
+            ConfiguredRootCount = 1,
+            TopOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "foo.vi", Count = 1 }
+            }
+        };
+
+        var report = new PylaviOffendersReport
+        {
+            Label = "pylavi",
+            GeneratedUtc = "2026-02-06T12:00:00Z",
+            TotalFails = 2,
+            ConfiguredRoots = "<redacted>",
+            ConfiguredRootCount = 1,
+            TopOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "foo.vi", Count = 1 },
+                new() { Item = "delta.vi", Count = 1 }
+            }
+        };
+
+        File.WriteAllText(baselinePath, JsonSerializer.Serialize(baseline, RunnerCliJsonContext.Default.PylaviOffendersReport));
+        File.WriteAllText(reportPath, JsonSerializer.Serialize(report, RunnerCliJsonContext.Default.PylaviOffendersReport));
+
+        var args = $"pylavi summarize --path \"{reportPath}\" --baseline \"{baselinePath}\" --fail-on-delta";
+        var (exitCode, _, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(6, exitCode);
+        Assert.Contains("new entries", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void PylaviSummarize_validate_exists_returns_exit_code_2()
     {
         var repoRoot = FindRepoRoot();

@@ -147,15 +147,33 @@ runs:
         $projectFile = '${{ steps.resolve.outputs.projFile }}'
         $lvInput = '${{ inputs.lv-ver }}'
 
+        function Test-Enabled {
+          param([string]$Value)
+          if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+          $normalized = $Value.Trim().ToLowerInvariant()
+          return ($normalized -eq '1' -or $normalized -eq 'true' -or $normalized -eq 'yes')
+        }
+        $requireRunnerCli = Test-Enabled $env:LVIE_REQUIRE_RUNNER_CLI
+        $runnerCliPath = $env:LVIE_RUNNER_CLI_PATH
+        if ([string]::IsNullOrWhiteSpace($runnerCliPath)) {
+          $cliName = if ($IsWindows) { 'runner-cli.exe' } else { 'runner-cli' }
+          $candidate = Join-Path $env:RUNNER_TEMP 'runner-cli' $cliName
+          if (Test-Path $candidate) {
+            $runnerCliPath = $candidate
+          }
+        }
         $runnerCliProject = Join-Path $repoRoot 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
-        $canUseRunnerCli = (Get-Command dotnet -ErrorAction SilentlyContinue) -and (Test-Path $runnerCliProject)
+        $useRunnerCliBinary = (-not [string]::IsNullOrWhiteSpace($runnerCliPath)) -and (Test-Path $runnerCliPath)
+        $canUseRunnerCli = $useRunnerCliBinary -or ((Get-Command dotnet -ErrorAction SilentlyContinue) -and (Test-Path $runnerCliProject))
+        if (-not $canUseRunnerCli -and $requireRunnerCli) {
+          throw "runner-cli is required but unavailable. Set LVIE_RUNNER_CLI_PATH or enable dotnet build for Tooling/runner-cli."
+        }
         if ($canUseRunnerCli) {
+          if ($useRunnerCliBinary -and -not $IsWindows) {
+            chmod +x $runnerCliPath
+          }
           Write-Host "Using runner-cli missing-in-project (incremental migration)."
           $args = @(
-            'run',
-            '--project', $runnerCliProject,
-            '--configuration', 'Release',
-            '--',
             'missing-in-project',
             '--repo-root', $repoRoot,
             '--arch', '${{ inputs.arch }}',
@@ -165,7 +183,17 @@ runs:
             $args += '--labview'
             $args += $lvInput
           }
-          & dotnet @args
+          if ($useRunnerCliBinary) {
+            & $runnerCliPath @args
+          } else {
+            $dotnetArgs = @(
+              'run',
+              '--project', $runnerCliProject,
+              '--configuration', 'Release',
+              '--'
+            ) + $args
+            & dotnet @dotnetArgs
+          }
           $exitCode = $LASTEXITCODE
           if ($exitCode -ne 0 -and $exitCode -ne $null) {
             exit $exitCode

@@ -198,6 +198,26 @@ function Get-ContractLabelSet {
     }
 }
 
+function Write-RunnerLabelSummary {
+    param([string]$ContractPath)
+
+    if ([string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY)) {
+        return
+    }
+    if ($env:LVIE_RUNNER_LABEL_SUMMARY_WRITTEN -eq '1') {
+        return
+    }
+
+    $contractNote = if ([string]::IsNullOrWhiteSpace($ContractPath)) {
+        "Runner label check used local runner contract. Refresh labels with `Tooling\\Setup-Runner.ps1` on the runner host if labels are stale."
+    } else {
+        "Runner label check used local runner contract ($ContractPath). Refresh labels with `Tooling\\Setup-Runner.ps1` on the runner host if labels are stale."
+    }
+
+    Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $contractNote
+    $env:LVIE_RUNNER_LABEL_SUMMARY_WRITTEN = '1'
+}
+
 function Test-LabelSet {
     param(
         [string[]]$ExpectedLabels,
@@ -232,6 +252,7 @@ function Test-LabelSet {
 $contractFallback = Get-ContractLabelSet
 if ($contractFallback -and -not $contractFallback.HasLabels) {
     Write-Warning ("Runner label check: runner contract at {0} has no labels. Run Tooling\Setup-Runner.ps1 to refresh it." -f $contractFallback.Source)
+    Write-RunnerLabelSummary -ContractPath $contractFallback.Source
     if ($strictLabelCheck) {
         throw "Runner label check: strict mode enabled and contract is missing labels."
     }
@@ -243,6 +264,7 @@ if ([string]::IsNullOrWhiteSpace($Token)) {
     if ($fallback -and $fallback.Labels -and $fallback.Labels.Count -gt 0) {
         Write-Warning ("Runner label check: GitHub token not available; validating against runner contract at {0}." -f $fallback.Source)
         Test-LabelSet -ExpectedLabels $expected -ActualLabels $fallback.Labels -SourceLabel 'contract fallback'
+        Write-RunnerLabelSummary -ContractPath $fallback.Source
         return
     }
 
@@ -297,6 +319,7 @@ try {
     if ($contractFallback -and $contractFallback.Labels -and $contractFallback.Labels.Count -gt 0) {
         Write-Warning ("Runner label check: API lookup failed ({0}). Falling back to runner contract at {1}." -f $message, $contractFallback.Source)
         Test-LabelSet -ExpectedLabels $expected -ActualLabels $contractFallback.Labels -SourceLabel 'contract fallback'
+        Write-RunnerLabelSummary -ContractPath $contractFallback.Source
         return
     }
     if ($requireLabelEnabled -and $strictLabelCheck) { throw }
@@ -309,6 +332,7 @@ if (-not $runnerInfo) {
     if ($contractFallback -and $contractFallback.Labels -and $contractFallback.Labels.Count -gt 0) {
         Write-Warning ("{0} Using contract fallback at {1}." -f $message, $contractFallback.Source)
         Test-LabelSet -ExpectedLabels $expected -ActualLabels $contractFallback.Labels -SourceLabel 'contract fallback'
+        Write-RunnerLabelSummary -ContractPath $contractFallback.Source
         return
     }
     if ($requireLabelEnabled -and $strictLabelCheck) { throw $message }
