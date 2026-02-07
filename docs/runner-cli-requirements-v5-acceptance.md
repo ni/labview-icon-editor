@@ -23,3 +23,9 @@ Acceptance coverage summary:
 - Profiles covered: `core`, `extended`, `full`
 - New command surfaces covered: `manifest`, `conformance check`
 - New JSON types covered: `RunnerCliManifest`, `ConformanceCheckResult`, `ConformanceCheckEntry`
+
+## Evidence Records
+
+| Scenario ID | Status | Commit | CI Run | Notes |
+|---|---|---|---|---|
+| A-013 | Pass | `e70e010783c4a33e8730da610be8ecbe3af08e78` | `21786875251` | Hosted Linux + hosted Windows Core checks completed in `CI Pipeline (Composite)` with successful `Conformance Check (Full, Strict)` and no malformed `actions-runner_work` path occurrences in logs. |
