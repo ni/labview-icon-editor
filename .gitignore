@@ -34,3 +34,4 @@ TOOLING.md
 Tooling/runner-cli/**/bin/
 Tooling/runner-cli/**/obj/
 Tooling/runner-cli/**/publish/
+*.UserState
