@@ -13,6 +13,7 @@ This repository includes a hosted parity workflow at `.github/workflows/labview-
 - Linux container image: `nationalinstruments/labview:<release>-linux`
 - Windows container image: `nationalinstruments/labview:<release>-windows`
 - Operation: `LabVIEWCLI MassCompile` on `Test/Templates`
+- Default exclusion: `Polymorphic Template.vi` is excluded from parity MassCompile via `CONTAINER_PARITY_EXCLUDE_FILES` because it is a known headless bad VI in container runs.
 
 The workflow defaults to release tag `2026q1`, and supports override via `workflow_dispatch` input `lv_release`.
 

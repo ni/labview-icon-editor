@@ -42,6 +42,7 @@ jobs:
             -v "${{ github.workspace }}:/workspace" \
             -e WORKSPACE_ROOT=/workspace \
             -e TARGET_DIR=/workspace/Test/Templates \
+            -e "CONTAINER_PARITY_EXCLUDE_FILES=Polymorphic Template.vi" \
             "$IMAGE" \
             bash -lc "chmod +x /workspace/Tooling/container-parity/runlabview-linux.sh && /workspace/Tooling/container-parity/runlabview-linux.sh"
 
@@ -73,6 +74,7 @@ jobs:
             -v "${env:GITHUB_WORKSPACE}:C:\workspace" `
             -e WORKSPACE_ROOT=C:\workspace `
             -e TARGET_DIR=C:\workspace\Test\Templates `
+            -e "CONTAINER_PARITY_EXCLUDE_FILES=Polymorphic Template.vi" `
             $env:IMAGE `
             powershell -NoProfile -ExecutionPolicy Bypass -File C:\workspace\Tooling\container-parity\runlabview-windows.ps1 -WorkspaceRoot C:\workspace
 
