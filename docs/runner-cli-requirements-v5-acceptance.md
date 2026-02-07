@@ -36,7 +36,7 @@ Acceptance coverage summary:
 | A-009 | Pass | `06fc47d1893893af74c6192b3fbda1cd4727f7d7` | `local` | Validated from `TestResults/agent-logs/extended-go-no-go-20260207-140227`; env defaults `RC_PROFILE=extended` and `RC_STRICT_MODE=true` produce expected profile and strict behavior. |
 | A-010 | Pass | `06fc47d1893893af74c6192b3fbda1cd4727f7d7` | `local` | Validated from `TestResults/agent-logs/extended-go-no-go-20260207-140227`; exit-code matrix verified (`pass=0`, `warn=0`, `strict-warn=3`, `fail=2`). |
 | A-013 | Pass | `e70e010783c4a33e8730da610be8ecbe3af08e78` | `21786875251` | Hosted Linux + hosted Windows Core checks completed in `CI Pipeline (Composite)` with successful `Conformance Check (Full, Strict)` and no malformed `actions-runner_work` path occurrences in logs. |
-| A-005 | Pending-Revalidation | `N/A` | `N/A` | Required due v5.1 ISO remediation (atomicity rewrites and single-obligation validation updates). |
+| A-005 | Pass | `153dcb68047e9e311516589bb35480d25392ab61` | `local` | Revalidated on 2026-02-07 via `pwsh -NoProfile -File .\\Tooling\\Test-RunnerCliRequirementsA005.ps1`; A-005 target RC IDs passed atomicity/single-obligation lint. |
 | A-006 | Pending-Revalidation | `N/A` | `N/A` | Required due v5.1 ISO remediation (`spec_version=v5.1` assertion added). |
 | A-007 | Pending-Revalidation | `N/A` | `N/A` | Required due v5.1 ISO remediation (manifest compatibility semantics updated via RC-MAN-004 and RC-JSN-004). |
 | A-009 | Pending-Revalidation | `N/A` | `N/A` | Required due v5.1 ISO remediation (RC-CONF and RC-ENV split-responsibility wording update). |
