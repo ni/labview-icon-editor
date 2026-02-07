@@ -386,7 +386,7 @@ jobs:
             vipc:
               - '**/*.vipc'
 
-  apply-deps-2021-x64:
+  apply-deps-lv-x64:
     name: Apply VIPC (LV x64)
     needs: [run-metadata, version-gate, changes]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
@@ -423,7 +423,7 @@ jobs:
 
   apply-deps-2021-x86:
     name: Apply VIPC (LV x86)
-    needs: [run-metadata, version-gate, apply-deps-2021-x64, changes]
+    needs: [run-metadata, version-gate, apply-deps-lv-x64, changes]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
@@ -1015,7 +1015,7 @@ jobs:
       - pylavi-validate
       - dev-mode-gate
       - changes
-      - apply-deps-2021-x64
+      - apply-deps-lv-x64
       - apply-deps-2021-x86
       - missing-in-project
       - unit-tests
@@ -1041,7 +1041,7 @@ jobs:
             'pylavi-validate',
             'dev-mode-gate',
             'changes',
-            'apply-deps-2021-x64',
+            'apply-deps-lv-x64',
             'apply-deps-2021-x86',
             'missing-in-project',
             'unit-tests',
