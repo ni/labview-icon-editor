@@ -10,6 +10,10 @@ namespace RunnerCli;
 [JsonSerializable(typeof(PylaviOffendersReport))]
 [JsonSerializable(typeof(PylaviScanSummary))]
 [JsonSerializable(typeof(PylaviSummarizeOutput))]
+[JsonSerializable(typeof(RunnerCliManifest))]
+[JsonSerializable(typeof(ConformanceCheckResult))]
+[JsonSerializable(typeof(ConformanceCheckSummary))]
+[JsonSerializable(typeof(ConformanceCheckEntry))]
 internal partial class RunnerCliJsonContext : JsonSerializerContext
 {
 }

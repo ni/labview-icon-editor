@@ -13,9 +13,13 @@ on:
       - 'Tooling/runner-cli/**'
       - 'Tooling/pylavi/**'
       - 'Tooling/Run-ViValidate.ps1'
+      - 'Tooling/Test-RunnerCliRequirementsA005.ps1'
       - 'Tooling/Get-PylaviOffenders.ps1'
       - 'Tooling/Fetch-PylaviOffenders.ps1'
       - 'Tooling/docker/runner-cli/**'
+      - 'docs/runner-cli-requirements.md'
+      - 'docs/runner-cli-requirements-v5-acceptance.md'
+      - 'docs/runner-cli-requirements-v4-to-v5-trace.md'
       - '.github/workflows/runner-cli.yml'
   pull_request:
     branches:
@@ -25,9 +29,13 @@ on:
       - 'Tooling/runner-cli/**'
       - 'Tooling/pylavi/**'
       - 'Tooling/Run-ViValidate.ps1'
+      - 'Tooling/Test-RunnerCliRequirementsA005.ps1'
       - 'Tooling/Get-PylaviOffenders.ps1'
       - 'Tooling/Fetch-PylaviOffenders.ps1'
       - 'Tooling/docker/runner-cli/**'
+      - 'docs/runner-cli-requirements.md'
+      - 'docs/runner-cli-requirements-v5-acceptance.md'
+      - 'docs/runner-cli-requirements-v4-to-v5-trace.md'
       - '.github/workflows/runner-cli.yml'
   workflow_dispatch:
 
@@ -44,6 +52,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Lint A-005 requirements atomicity
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-RunnerCliRequirementsA005.ps1" -WriteSummary
 
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4

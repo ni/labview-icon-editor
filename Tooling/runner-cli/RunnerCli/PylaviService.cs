@@ -58,7 +58,7 @@ public static class PylaviService
         }
 
         var commandLine = $"vi_validate {string.Join(' ', args.Select(QuoteIfNeeded))}";
-        Console.WriteLine($"vi_validate command ({options.Label}): {commandLine}");
+        Console.Error.WriteLine($"vi_validate command ({options.Label}): {commandLine}");
 
         var (exitCode, lines) = RunProcess("vi_validate", args);
 
@@ -113,7 +113,7 @@ public static class PylaviService
         var finalExit = exitCode;
         if (options.ReportOnly && finalExit != 0)
         {
-            Console.WriteLine($"vi_validate exit code {finalExit} (report-only, {options.Label})");
+            Console.Error.WriteLine($"vi_validate exit code {finalExit} (report-only, {options.Label})");
             finalExit = 0;
         }
 
@@ -321,6 +321,7 @@ public static class PylaviService
 
         var topOffenders = offenderCounts
             .OrderByDescending(kv => kv.Value)
+            .ThenBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
             .Take(20)
             .Select(kv => new PylaviOffenderEntry
             {
@@ -332,6 +333,7 @@ public static class PylaviService
 
         var topAbsolute = absoluteCounts
             .OrderByDescending(kv => kv.Value)
+            .ThenBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
             .Take(20)
             .Select(kv => new PylaviOffenderEntry
             {
@@ -365,11 +367,11 @@ public static class PylaviService
         var useGitHub = string.Equals(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"), "true", StringComparison.OrdinalIgnoreCase);
         if (useGitHub)
         {
-            Console.WriteLine($"::warning::[{label}] {message}");
+            Console.Error.WriteLine($"::warning::[{label}] {message}");
         }
         else
         {
-            Console.WriteLine($"WARNING: [{label}] {message}");
+            Console.Error.WriteLine($"WARNING: [{label}] {message}");
         }
     }
 
