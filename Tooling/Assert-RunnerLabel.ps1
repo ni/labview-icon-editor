@@ -209,9 +209,9 @@ function Write-RunnerLabelSummary {
     }
 
     $contractNote = if ([string]::IsNullOrWhiteSpace($ContractPath)) {
-        "Runner label check used local runner contract. Refresh labels with `Tooling\\Setup-Runner.ps1` on the runner host if labels are stale."
+        'Runner label check used local runner contract. Refresh labels with `Tooling\Setup-Runner.ps1` on the runner host if labels are stale.'
     } else {
-        "Runner label check used local runner contract ($ContractPath). Refresh labels with `Tooling\\Setup-Runner.ps1` on the runner host if labels are stale."
+        'Runner label check used local runner contract (`{0}`). Refresh labels with `Tooling\Setup-Runner.ps1` on the runner host if labels are stale.' -f $ContractPath
     }
 
     Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $contractNote
