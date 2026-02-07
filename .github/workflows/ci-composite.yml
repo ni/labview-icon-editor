@@ -211,6 +211,155 @@ jobs:
           "numeric=$($info.NumericVersion)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
           Write-Host ("LabVIEW version gate passed: {0}" -f $info.Raw)
 
+  core-conformance-hosted-linux:
+    name: Core Conformance Evidence (Hosted Linux)
+    needs: [run-metadata, version-gate, runner-cli-build]
+    runs-on: ubuntu-latest
+    outputs:
+      evidence: ${{ steps.evidence.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download runner-cli artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.runner-cli-build.outputs.artifact_name }}
+          path: ${{ runner.temp }}/runner-cli
+      - id: evidence
+        name: Run Core JSON checks (linux)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cli="${RUNNER_TEMP}/runner-cli/runner-cli"
+          if [ ! -x "$cli" ]; then
+            chmod +x "$cli"
+          fi
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          evidence="core-linux:${run_url}:attempt-${GITHUB_RUN_ATTEMPT}"
+          "$cli" version-gate --repo-root "$GITHUB_WORKSPACE" --json > "${RUNNER_TEMP}/core-linux-version-gate.json"
+          "$cli" pylavi summarize --path "$GITHUB_WORKSPACE/Tooling/pylavi/fixtures/pylavi-offenders.sample.json" --json > "${RUNNER_TEMP}/core-linux-pylavi-summarize.json"
+          cat > "${RUNNER_TEMP}/core-conformance-linux-evidence.json" <<JSON
+          {
+            "platform": "linux",
+            "run_url": "${run_url}",
+            "evidence": "${evidence}",
+            "version_gate_json": "${RUNNER_TEMP}/core-linux-version-gate.json",
+            "pylavi_summarize_json": "${RUNNER_TEMP}/core-linux-pylavi-summarize.json"
+          }
+          JSON
+          echo "value=${evidence}" >> "$GITHUB_OUTPUT"
+      - name: Upload Core conformance linux evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-conformance-linux-evidence
+          path: |
+            ${{ runner.temp }}/core-linux-version-gate.json
+            ${{ runner.temp }}/core-linux-pylavi-summarize.json
+            ${{ runner.temp }}/core-conformance-linux-evidence.json
+          if-no-files-found: error
+
+  core-conformance-hosted-windows:
+    name: Core Conformance Evidence (Hosted Windows)
+    needs: [run-metadata, version-gate, runner-cli-build-win]
+    runs-on: windows-latest
+    outputs:
+      evidence: ${{ steps.evidence.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download runner-cli artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.runner-cli-build-win.outputs.artifact_name }}
+          path: ${{ runner.temp }}/runner-cli
+      - id: evidence
+        name: Run Core JSON checks (windows)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cli = Join-Path $env:RUNNER_TEMP 'runner-cli/runner-cli.exe'
+          if (-not (Test-Path $cli)) {
+            throw "runner-cli artifact missing at $cli"
+          }
+          $runUrl = "{0}/{1}/actions/runs/{2}" -f $env:GITHUB_SERVER_URL, $env:GITHUB_REPOSITORY, $env:GITHUB_RUN_ID
+          $evidence = "core-windows:$runUrl:attempt-$($env:GITHUB_RUN_ATTEMPT)"
+          $versionOut = Join-Path $env:RUNNER_TEMP 'core-windows-version-gate.json'
+          $pylaviOut = Join-Path $env:RUNNER_TEMP 'core-windows-pylavi-summarize.json'
+          $evidenceOut = Join-Path $env:RUNNER_TEMP 'core-conformance-windows-evidence.json'
+          & $cli version-gate --repo-root $env:GITHUB_WORKSPACE --json | Out-File -FilePath $versionOut -Encoding utf8
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli version-gate failed with exit code $LASTEXITCODE"
+          }
+          $sample = Join-Path $env:GITHUB_WORKSPACE 'Tooling/pylavi/fixtures/pylavi-offenders.sample.json'
+          & $cli pylavi summarize --path $sample --json | Out-File -FilePath $pylaviOut -Encoding utf8
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli pylavi summarize failed with exit code $LASTEXITCODE"
+          }
+          $payload = [ordered]@{
+            platform = 'windows'
+            run_url = $runUrl
+            evidence = $evidence
+            version_gate_json = $versionOut
+            pylavi_summarize_json = $pylaviOut
+          }
+          $payload | ConvertTo-Json -Depth 5 | Out-File -FilePath $evidenceOut -Encoding utf8
+          "value=$evidence" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+      - name: Upload Core conformance windows evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-conformance-windows-evidence
+          path: |
+            ${{ runner.temp }}/core-windows-version-gate.json
+            ${{ runner.temp }}/core-windows-pylavi-summarize.json
+            ${{ runner.temp }}/core-conformance-windows-evidence.json
+          if-no-files-found: error
+
+  conformance-full:
+    name: Conformance Check (Full, Strict)
+    needs: [run-metadata, core-conformance-hosted-linux, core-conformance-hosted-windows, runner-cli-build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download runner-cli artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.runner-cli-build.outputs.artifact_name }}
+          path: ${{ runner.temp }}/runner-cli
+      - name: Run full conformance gate
+        shell: pwsh
+        env:
+          RC_HOSTED_LINUX_EVIDENCE: ${{ needs.core-conformance-hosted-linux.outputs.evidence }}
+          RC_HOSTED_WINDOWS_EVIDENCE: ${{ needs.core-conformance-hosted-windows.outputs.evidence }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cli = Join-Path $env:RUNNER_TEMP 'runner-cli/runner-cli'
+          if (-not (Test-Path $cli)) {
+            throw "runner-cli artifact missing at $cli"
+          }
+          chmod +x $cli
+          $outDir = Join-Path $env:RUNNER_TEMP 'conformance-full'
+          New-Item -Path $outDir -ItemType Directory -Force | Out-Null
+          $jsonPath = Join-Path $outDir 'conformance-full.json'
+          $json = & $cli conformance check --profile full --json --strict --repo-root $env:GITHUB_WORKSPACE
+          $exitCode = $LASTEXITCODE
+          $json | Out-File -FilePath $jsonPath -Encoding utf8
+          if ($exitCode -ne 0) {
+            throw "runner-cli conformance check failed with exit code $exitCode"
+          }
+          $result = $json | ConvertFrom-Json
+          Write-Host ("Conformance profile: {0}" -f $result.profile)
+          Write-Host ("Conformance totals: total={0}, pass={1}, warn={2}, fail={3}" -f $result.summary.total, $result.summary.pass, $result.summary.warn, $result.summary.fail)
+      - name: Upload full conformance artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: conformance-full
+          path: ${{ runner.temp }}/conformance-full/conformance-full.json
+          if-no-files-found: error
+
   powershell-lint:
     name: PowerShell Lint
     needs: run-metadata
@@ -1023,6 +1172,7 @@ jobs:
       - build-ppl-x86
       - build-vip
       - version
+      - conformance-full
     runs-on: ubuntu-latest
     steps:
       - name: Download VIP build status (if available)
@@ -1048,7 +1198,8 @@ jobs:
             'build-ppl-x64',
             'build-ppl-x86',
             'build-vip',
-            'version'
+            'version',
+            'conformance-full'
           )
           $needs = ConvertFrom-Json -InputObject '${{ toJson(needs) }}'
           $needsProps = $needs.PSObject.Properties
