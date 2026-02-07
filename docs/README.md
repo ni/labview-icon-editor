@@ -9,6 +9,7 @@ This directory collects guides and references for working with the LabVIEW Icon 
 - [PowerShell CLI GitHub Action Instructions](powershell-cli-github-action-instructions.md)
 - [PowerShell Dependency Scripts](powershell-dependency-scripts.md)
 - [CI Workflows Overview](ci-workflows.md)
+- [Runner CLI Requirements](runner-cli-requirements.md)
   - `runner-cli.yml` consolidates runner-cli build/test/smoke and Docker validation (see CI Workflows Overview).
 
 ## CI and Advanced Topics
