@@ -4,10 +4,7 @@ This repository defines several reusable [composite actions](https://docs.github
 
 | Action | Description |
 |---|---|
-| [add-token-to-labview](../../../.github/actions/add-token-to-labview) | Legacy; requires `Tooling/deployment/Create_LV_INI_Token.vi` (not in repo). Dev-mode automation uses `PrepareIESource.vi` and `RestoreSetupLVSource.vi` only. |
 | [apply-vipc](../../../.github/actions/apply-vipc) | Installs runner dependencies for a given LabVIEW version and bitness (defaults to `.lvversion` when omitted). |
-| [auto-issue-branch](../../../.github/actions/auto-issue-branch) | Automatically creates branches for issues with required metadata; used by [auto-issue-branch workflow](../../../.github/workflows/auto-issue-branch.yml). |
-| [build](../../../.github/actions/build) | **Deprecated**: previously orchestrated the full build and packaging process. |
 | [build-lvlibp](../../../.github/actions/build-lvlibp) | Creates the editor packed library. |
 | [build-vi-package](../../../.github/actions/build-vi-package) | Updates a VIPB file and builds the VI package. |
 | [close-labview](../../../.github/actions/close-labview) | Gracefully shuts down a LabVIEW instance after build steps to free runner resources. |

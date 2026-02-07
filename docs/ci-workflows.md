@@ -1,5 +1,9 @@
 # Local CI/CD Workflows
 
+**Last updated:** 2026-02-07
+
+Quick link: `.github/workflows/runner-cli.yml` (Runner CLI consolidated workflow).
+
 This document explains how to automate build, test, and distribution steps for the Icon Editor using GitHub Actions. It includes features such as **automatic version bumping** (using labels) and **artifact upload**. Additionally, it shows how you can **brand** the resulting VI Package with **organization** and **repository** metadata for unique identification.
 
 ---
@@ -96,14 +100,10 @@ Below are the **key GitHub Actions** provided in this repository:
    - By default, “Company Name” and “Author Name” in the generated `.vip` come from `github.repository_owner` and `github.event.repository.name`. Update the “Generate display information JSON” step in [`ci-composite.yml`](../.github/workflows/ci-composite.yml) if you need custom values.
    - Uploads the `.vip` artifact to GitHub’s build artifacts.
 
-3. **Runner CLI (Reusable Build)**
-   - [`runner-cli-reusable.yml`](../.github/workflows/runner-cli-reusable.yml) publishes a self-contained `runner-cli` binary for a target RID.
-   - `ci-composite.yml` calls this reusable workflow and downloads the artifact to run `runner-cli version-gate` on Linux and `runner-cli pylavi` on Windows without rebuilding on every job.
-   - `runner-audit.yml` uses the published `runner-cli` artifact when available; falls back to PowerShell scripts otherwise.
-
-4. **Runner CLI Docker (Linux)**
-   - [`runner-cli-docker.yml`](../.github/workflows/runner-cli-docker.yml) builds a Linux Docker image with .NET + pylavi.
-   - Runs runner-cli tests plus a pylavi scan/summarize loop on Ubuntu to validate tooling without LabVIEW.
+3. **Runner CLI**
+   - [`runner-cli.yml`](../.github/workflows/runner-cli.yml) is the single source of truth for runner-cli build/test paths.
+   - It builds/tests the .NET CLI, publishes multi-RID artifacts on pushes, runs cross-platform smoke tests, and validates pylavi inside the Linux Docker image.
+   - `ci-composite.yml` still uses `runner-cli-reusable.yml` as an internal helper to publish a Linux artifact for version-gate usage; `runner-audit.yml` downloads the latest artifact when available.
 
 #### Jobs in CI workflow
 
@@ -167,7 +167,7 @@ Although GitHub Actions primarily run on GitHub-hosted or self-hosted agents, yo
    - If you have custom or dev references, ensure Dev Mode is toggled appropriately.
 
 3. **Build VI Package**:
-   - Manually invoke `Build.ps1` from `.github/actions/build` to generate a `.vip`.
+   - Manually invoke `Tooling/Invoke-VipBuild.ps1` (preferred) to generate a `.vip`, or run the full `Run-CICompositeLocal.ps1` parity workflow.
    - Pass optional metadata fields (e.g., `-CompanyName`, `-AuthorName`) if you want your build to be **branded**.
    - On GitHub Actions, the workflow will produce and upload the artifact automatically.
 

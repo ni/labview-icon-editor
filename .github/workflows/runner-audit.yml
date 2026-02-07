@@ -54,16 +54,16 @@ jobs:
           }
           $repo = if ($env:GITHUB_REPOSITORY) { $env:GITHUB_REPOSITORY } else { '${{ github.repository }}' }
           $branch = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME } else { '${{ github.ref_name }}' }
-          Write-Host "Finding latest successful build-runner-cli run for $repo@$branch ..."
+          Write-Host "Finding latest successful runner-cli run for $repo@$branch ..."
           try {
-            $runs = gh run list -R $repo -w build-runner-cli.yml -b $branch -s success -L 1 --json databaseId | ConvertFrom-Json
+            $runs = gh run list -R $repo -w runner-cli.yml -b $branch -s success -L 1 --json databaseId | ConvertFrom-Json
           } catch {
             Write-Warning ("Failed to query workflow runs: {0}" -f $_.Exception.Message)
             exit 0
           }
           $runId = if ($runs -is [array]) { $runs[0].databaseId } else { $runs.databaseId }
           if (-not $runId) {
-            Write-Warning 'No successful build-runner-cli run found; skipping download.'
+            Write-Warning 'No successful runner-cli workflow run found; skipping download.'
             exit 0
           }
           New-Item -Path $cliDir -ItemType Directory -Force | Out-Null

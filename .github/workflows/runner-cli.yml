@@ -1,4 +1,4 @@
-name: Build Runner CLI
+name: Runner CLI
 
 on:
   push:
@@ -11,14 +11,24 @@ on:
       - integrate/*
     paths:
       - 'Tooling/runner-cli/**'
-      - '.github/workflows/build-runner-cli.yml'
+      - 'Tooling/pylavi/**'
+      - 'Tooling/Run-ViValidate.ps1'
+      - 'Tooling/Get-PylaviOffenders.ps1'
+      - 'Tooling/Fetch-PylaviOffenders.ps1'
+      - 'Tooling/docker/runner-cli/**'
+      - '.github/workflows/runner-cli.yml'
   pull_request:
     branches:
       - main
       - develop
     paths:
       - 'Tooling/runner-cli/**'
-      - '.github/workflows/build-runner-cli.yml'
+      - 'Tooling/pylavi/**'
+      - 'Tooling/Run-ViValidate.ps1'
+      - 'Tooling/Get-PylaviOffenders.ps1'
+      - 'Tooling/Fetch-PylaviOffenders.ps1'
+      - 'Tooling/docker/runner-cli/**'
+      - '.github/workflows/runner-cli.yml'
   workflow_dispatch:
 
 permissions:
@@ -48,6 +58,7 @@ jobs:
 
       - name: Run tests
         run: dotnet test RunnerCli.Tests/RunnerCli.Tests.csproj --configuration Release --verbosity normal
+
       - name: Shutdown dotnet build servers
         if: always()
         run: dotnet build-server shutdown
@@ -81,6 +92,7 @@ jobs:
           -p:PublishSingleFile=true
           -p:PublishTrimmed=true
           --output ./publish/${{ matrix.rid }}
+
       - name: Shutdown dotnet build servers
         if: always()
         run: dotnet build-server shutdown
@@ -195,6 +207,7 @@ jobs:
         with:
           name: runner-cli-${{ matrix.rid }}
           path: runner-cli
+
       - name: Ensure Rosetta for x64 on arm64
         if: ${{ matrix.rid == 'osx-x64' && runner.os == 'macOS' }}
         shell: bash
@@ -254,3 +267,46 @@ jobs:
             throw "pylavi summarize output missing file path"
           }
           if (-not $summary.has_findings) { throw "pylavi summarize output missing has_findings" }
+
+  docker-linux:
+    name: Runner CLI Docker (Linux)
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build runner-cli docker image
+        shell: bash
+        run: |
+          docker build -t lvie-runner-cli:ci -f Tooling/docker/runner-cli/Dockerfile Tooling/docker/runner-cli
+
+      - name: Run runner-cli + pylavi checks
+        shell: bash
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo lvie-runner-cli:ci bash -lc "
+            set -euo pipefail
+            if ! command -v vi_validate >/dev/null 2>&1; then
+              echo '::error::vi_validate not found on PATH. Ensure pylavi is installed and vi_validate is exposed in the image.'
+              exit 1
+            fi
+            if ! vi_validate --version >/tmp/vi_validate_version.txt 2>&1; then
+              if grep -qi 'unrecognized arguments: --version' /tmp/vi_validate_version.txt; then
+                echo '::warning::vi_validate --version not supported; reporting pylavi version via pip.'
+                /opt/pylavi-venv/bin/python -m pip show pylavi | sed -n 's/^Version: /pylavi version: /p'
+              else
+                cat /tmp/vi_validate_version.txt
+                echo '::error::vi_validate --version failed. Verify pylavi installation and PATH.'
+                exit 1
+              fi
+            else
+              cat /tmp/vi_validate_version.txt
+            fi
+            dotnet test Tooling/runner-cli/RunnerCli.Tests/RunnerCli.Tests.csproj -c Release
+            dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj --configuration Release -- version-gate --repo-root /repo --json
+            dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj --configuration Release -- pylavi scan --repo-root /repo --config Tooling/pylavi/vi-validate.yml --report-only --offenders-path /tmp/pylavi-offenders.json --log-path /tmp/vi_validate.log
+            test -s /tmp/pylavi-offenders.json
+            test -s /tmp/vi_validate.log
+            dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj --configuration Release -- pylavi summarize --path /tmp/pylavi-offenders.json --json --output-path /tmp/pylavi-summary.json
+            test -s /tmp/pylavi-summary.json
+          "

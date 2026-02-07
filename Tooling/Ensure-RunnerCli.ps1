@@ -26,7 +26,7 @@
     GitHub repo in owner/name format (for gh download).
 
 .PARAMETER Branch
-    Git branch to query for build-runner-cli workflow runs.
+    Git branch to query for runner-cli workflow runs.
 #>
 
 [CmdletBinding()]
@@ -178,7 +178,7 @@ function Get-RunnerCliArtifact {
 
     Write-Host ("Downloading runner-cli artifact for {0}@{1}..." -f $RepoValue, $branch)
     try {
-        $runs = gh run list -R $RepoValue -w build-runner-cli.yml -b $branch -s success -L 1 --json databaseId | ConvertFrom-Json
+        $runs = gh run list -R $RepoValue -w runner-cli.yml -b $branch -s success -L 1 --json databaseId | ConvertFrom-Json
     } catch {
         Write-Warning ("Failed to query workflow runs: {0}" -f $_.Exception.Message)
         return $false
@@ -186,7 +186,7 @@ function Get-RunnerCliArtifact {
 
     $runId = if ($runs -is [array]) { $runs[0].databaseId } else { $runs.databaseId }
     if (-not $runId) {
-        Write-Warning 'No successful build-runner-cli run found; skipping download.'
+        Write-Warning 'No successful runner-cli workflow run found; skipping download.'
         return $false
     }
 
