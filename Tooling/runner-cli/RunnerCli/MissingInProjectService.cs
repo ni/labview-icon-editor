@@ -82,7 +82,7 @@ public static class MissingInProjectService
         }
 
         var commandLine = $"pwsh {string.Join(' ', args.Select(QuoteIfNeeded))}";
-        Console.WriteLine($"missing-in-project command: {commandLine}");
+        Console.Error.WriteLine($"missing-in-project command: {commandLine}");
 
         var psi = new ProcessStartInfo
         {

@@ -202,6 +202,119 @@ public class RunnerCliCliTests
     }
 
     [Fact]
+    public void PylaviSummarize_orders_ranked_arrays_deterministically()
+    {
+        var repoRoot = FindRepoRoot();
+        var tempDir = Directory.CreateTempSubdirectory("lvie-cli-ordering");
+        var reportPath = Path.Combine(tempDir.FullName, "pylavi-report.json");
+        var baselinePath = Path.Combine(tempDir.FullName, "pylavi-baseline.json");
+        var outputPath = Path.Combine(tempDir.FullName, "pylavi-summary.json");
+
+        var baseline = new PylaviOffendersReport
+        {
+            Label = "pylavi",
+            GeneratedUtc = "2026-02-06T12:00:00Z",
+            TotalFails = 3,
+            ConfiguredRoots = "<redacted>",
+            ConfiguredRootCount = 1,
+            TopOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "Alpha2.vi", Count = 3 }
+            },
+            TopAbsoluteOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "C:\\Alpha2.vi", Count = 3 }
+            }
+        };
+
+        var report = new PylaviOffendersReport
+        {
+            Label = "pylavi",
+            GeneratedUtc = "2026-02-07T12:00:00Z",
+            TotalFails = 9,
+            ConfiguredRoots = "<redacted>",
+            ConfiguredRootCount = 1,
+            TopOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "zeta.vi", Count = 2 },
+                new() { Item = "Alpha.vi", Count = 2 },
+                new() { Item = "beta.vi", Count = 2 },
+                new() { Item = "Alpha2.vi", Count = 3 }
+            },
+            TopAbsoluteOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "C:\\zeta.vi", Count = 2 },
+                new() { Item = "C:\\Alpha.vi", Count = 2 },
+                new() { Item = "C:\\beta.vi", Count = 2 },
+                new() { Item = "C:\\Alpha2.vi", Count = 3 }
+            }
+        };
+
+        File.WriteAllText(reportPath, JsonSerializer.Serialize(report, RunnerCliJsonContext.Default.PylaviOffendersReport));
+        File.WriteAllText(baselinePath, JsonSerializer.Serialize(baseline, RunnerCliJsonContext.Default.PylaviOffendersReport));
+
+        var args = $"pylavi summarize --path \"{reportPath}\" --baseline \"{baselinePath}\" --json --output-path \"{outputPath}\"";
+        var (exitCode, _, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+
+        using var summaryDoc = JsonDocument.Parse(File.ReadAllText(outputPath));
+        var summaryRoot = summaryDoc.RootElement;
+
+        AssertItemOrder(summaryRoot.GetProperty("top_offenders"), "Alpha2.vi", "Alpha.vi", "beta.vi", "zeta.vi");
+        AssertItemOrder(summaryRoot.GetProperty("top_absolute_offenders"), "C:\\Alpha2.vi", "C:\\Alpha.vi", "C:\\beta.vi", "C:\\zeta.vi");
+        AssertItemOrder(summaryRoot.GetProperty("delta_offenders"), "Alpha.vi", "beta.vi", "zeta.vi");
+        AssertItemOrder(summaryRoot.GetProperty("delta_absolute_offenders"), "C:\\Alpha.vi", "C:\\beta.vi", "C:\\zeta.vi");
+    }
+
+    [Fact]
+    public void PylaviScan_report_only_emits_command_and_info_to_stderr()
+    {
+        var repoRoot = FindRepoRoot();
+        var tempDir = Directory.CreateTempSubdirectory("lvie-cli-scan-stream");
+        var offendersPath = Path.Combine(tempDir.FullName, "offenders.json");
+        var logPath = Path.Combine(tempDir.FullName, "vi_validate.log");
+        var configPath = Path.Combine(repoRoot, "Tooling", "pylavi", "vi-validate.yml");
+        var stubPathRoot = CreateViValidateStub(exitCode: 2, line: "FAIL: synthetic failure");
+        var existingPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+        var env = new Dictionary<string, string?>
+        {
+            ["PATH"] = $"{stubPathRoot}{Path.PathSeparator}{existingPath}",
+            ["GITHUB_ACTIONS"] = "false"
+        };
+
+        var args = $"pylavi scan --repo-root \"{repoRoot}\" --config \"{configPath}\" --skip-version-gate --report-only --json --offenders-path \"{offendersPath}\" --log-path \"{logPath}\"";
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args, env);
+
+        Assert.Equal(0, exitCode);
+        Assert.Contains("vi_validate command", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("vi_validate exit code", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("vi_validate command", stdout, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("vi_validate exit code", stdout, StringComparison.OrdinalIgnoreCase);
+
+        using var json = JsonDocument.Parse(stdout);
+        Assert.True(TryGetPropertyIgnoreCase(json.RootElement, "total_fails", out _));
+    }
+
+    [Fact]
+    public void MissingInProject_emits_command_echo_to_stderr_on_windows()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var repoRoot = FindRepoRoot();
+        var projectPath = Path.Combine(repoRoot, "lv_icon_editor.lvproj");
+        var args = $"missing-in-project --repo-root \"{repoRoot}\" --arch 64 --project-file \"{projectPath}\" --skip-worktree-root-check";
+        var (_, stdout, stderr) = RunCli(repoRoot, args);
+
+        Assert.Contains("missing-in-project command:", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("missing-in-project command:", stdout, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void MissingInProject_on_non_windows_returns_clear_error()
     {
         if (OperatingSystem.IsWindows())
@@ -275,7 +388,10 @@ public class RunnerCliCliTests
         throw new DirectoryNotFoundException("Repo root not found (missing .lvversion).");
     }
 
-    private static (int ExitCode, string StdOut, string StdErr) RunCli(string repoRoot, string args)
+    private static (int ExitCode, string StdOut, string StdErr) RunCli(
+        string repoRoot,
+        string args,
+        IDictionary<string, string?>? environmentOverrides = null)
     {
         var dllPath = ResolveRunnerCliDll(repoRoot);
         var runArgs = dllPath is null
@@ -292,6 +408,13 @@ public class RunnerCliCliTests
             UseShellExecute = false,
             CreateNoWindow = true
         };
+        if (environmentOverrides is not null)
+        {
+            foreach (var entry in environmentOverrides)
+            {
+                psi.Environment[entry.Key] = entry.Value ?? string.Empty;
+            }
+        }
 
         using var process = Process.Start(psi);
         if (process is null)
@@ -427,6 +550,36 @@ public class RunnerCliCliTests
         var stderr = process.StandardError.ReadToEnd();
         process.WaitForExit();
         return (process.ExitCode, stdout.Trim(), stderr.Trim());
+    }
+
+    private static string CreateViValidateStub(int exitCode, string line)
+    {
+        var dir = Directory.CreateTempSubdirectory("vi-validate-stub").FullName;
+        if (OperatingSystem.IsWindows())
+        {
+            // Use powershell.exe as a deterministic non-zero shim for unsupported args.
+            var psExe = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe");
+            File.Copy(psExe, Path.Combine(dir, "vi_validate.exe"));
+            return dir;
+        }
+
+        var scriptPath = Path.Combine(dir, "vi_validate");
+        File.WriteAllText(scriptPath, $"#!/usr/bin/env sh{Environment.NewLine}echo \"{line}\"{Environment.NewLine}exit {exitCode}{Environment.NewLine}");
+        var (_, _, stderr) = RunProcess("chmod", $"+x \"{scriptPath}\"", dir);
+        if (!string.IsNullOrWhiteSpace(stderr))
+        {
+            throw new InvalidOperationException($"chmod failed for vi_validate stub: {stderr}");
+        }
+        return dir;
+    }
+
+    private static void AssertItemOrder(JsonElement array, params string[] expectedItems)
+    {
+        var actualItems = array
+            .EnumerateArray()
+            .Select(element => element.GetProperty("item").GetString())
+            .ToArray();
+        Assert.Equal(expectedItems, actualItems);
     }
 
     private static (int ExitCode, string StdOut, string StdErr) RunProcess(string fileName, string args, string workingDirectory)

@@ -4,8 +4,8 @@ This matrix defines executable acceptance scenarios and pass criteria for the v5
 
 | Scenario ID | Scope/Profile | Target RC IDs | Setup | Execution | Pass Criteria |
 |---|---|---|---|---|---|
-| A-001 | Core | RC-CONV-003, RC-CONV-006 | Load `docs/runner-cli-requirements.md`. | Parse all `RC-*` identifiers. | No duplicate RC IDs; each prefix family uses sequential numbering. |
-| A-002 | Core | RC-GEN-008, RC-GEN-010, RC-GEN-011 | Build runner-cli test harness with JSON-mode commands. | Run `version-gate --json`, `pylavi summarize --json`, `manifest --json`, `conformance check --json`. | Stdout is valid JSON only; any diagnostics are emitted on stderr. |
+| A-001 | Core | RC-CONV-003, RC-CONV-006 | Load `docs/runner-cli-requirements.md`. | Parse requirement definition lines matching `^RC-[A-Z]+-\\d{3}:`. | No duplicate definition IDs; IDs are monotonic ascending within each prefix family. |
+| A-002 | Core | RC-GEN-008, RC-GEN-010, RC-GEN-011 | Build runner-cli test harness with JSON-mode commands. | Run `version-gate --json` and `pylavi summarize --json`. | Stdout is valid JSON only; any diagnostics are emitted on stderr. |
 | A-003 | Core | RC-PS-005, RC-PS-014, RC-MIP-004 | Prepare runs for `pylavi scan` and `missing-in-project`. | Execute commands in non-json and json contexts. | Command echo and informational lines are on stderr as specified by stream matrix. |
 | A-004 | Core | RC-DET-003, RC-DET-004 | Use offender datasets containing equal counts. | Generate ranked offender/delta outputs. | Ties are ordered by ascending item with case-insensitive ordinal comparison. |
 | A-005 | Core | RC-CONV-005 | Static lint over requirement statements. | Detect multi-obligation patterns and atomicity violations. | Each changed/new RC in v5 expresses one independently testable obligation. |

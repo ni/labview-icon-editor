@@ -27,4 +27,38 @@ public class PylaviOffendersServiceTests
         var sha = PylaviOffendersService.ResolveSha(null, "pylavi-offenders.latest.json", report);
         Assert.Equal("deadbeef", sha);
     }
+
+    [Fact]
+    public void SortOffenders_orders_by_count_desc_then_item_asc_case_insensitive()
+    {
+        var sorted = PylaviOffendersService.SortOffenders(new[]
+        {
+            new PylaviOffenderEntry { Item = "zeta.vi", Count = 2 },
+            new PylaviOffenderEntry { Item = "alpha.vi", Count = 2 },
+            new PylaviOffenderEntry { Item = "beta.vi", Count = 2 },
+            new PylaviOffenderEntry { Item = "omega.vi", Count = 3 }
+        });
+
+        Assert.Collection(sorted,
+            item => Assert.Equal("omega.vi", item.Item),
+            item => Assert.Equal("alpha.vi", item.Item),
+            item => Assert.Equal("beta.vi", item.Item),
+            item => Assert.Equal("zeta.vi", item.Item));
+    }
+
+    [Fact]
+    public void SortOffenders_handles_mixed_case_ties_consistently()
+    {
+        var sorted = PylaviOffendersService.SortOffenders(new[]
+        {
+            new PylaviOffenderEntry { Item = "Gamma.vi", Count = 1 },
+            new PylaviOffenderEntry { Item = "beta.vi", Count = 1 },
+            new PylaviOffenderEntry { Item = "Alpha.vi", Count = 1 }
+        });
+
+        Assert.Collection(sorted,
+            item => Assert.Equal("Alpha.vi", item.Item),
+            item => Assert.Equal("beta.vi", item.Item),
+            item => Assert.Equal("Gamma.vi", item.Item));
+    }
 }

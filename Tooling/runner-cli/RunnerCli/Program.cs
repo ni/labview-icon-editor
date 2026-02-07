@@ -409,6 +409,8 @@ pylaviSummarizeCmd.SetHandler((InvocationContext context) =>
         }
 
         var report = PylaviOffendersService.LoadReport(resolvedPath);
+        report.TopOffenders = PylaviOffendersService.SortOffenders(report.TopOffenders);
+        report.TopAbsoluteOffenders = PylaviOffendersService.SortOffenders(report.TopAbsoluteOffenders);
         var labelValue = !string.IsNullOrWhiteSpace(report.Label) ? report.Label : (label ?? string.Empty);
         if (string.IsNullOrWhiteSpace(labelValue))
         {
@@ -455,6 +457,8 @@ pylaviSummarizeCmd.SetHandler((InvocationContext context) =>
             deltaAbsolute = report.TopAbsoluteOffenders
                 .Where(entry => !baselineAbsolute.Contains(entry.Item))
                 .ToList();
+            deltaOffenders = PylaviOffendersService.SortOffenders(deltaOffenders);
+            deltaAbsolute = PylaviOffendersService.SortOffenders(deltaAbsolute);
 
             hasDelta = (deltaTotalFails > 0)
                 || (deltaOffenders.Count > 0)

@@ -5,6 +5,17 @@ namespace RunnerCli;
 
 public static class PylaviOffendersService
 {
+    public static List<PylaviOffenderEntry> SortOffenders(IEnumerable<PylaviOffenderEntry>? entries)
+    {
+        if (entries is null)
+            return new List<PylaviOffenderEntry>();
+
+        return entries
+            .OrderByDescending(entry => entry.Count)
+            .ThenBy(entry => entry.Item, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
     public static string ResolveReportPath(string repoRoot, string? path, string? label, string? sha)
     {
         if (!string.IsNullOrWhiteSpace(path))
