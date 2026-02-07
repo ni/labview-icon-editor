@@ -28,4 +28,9 @@ Acceptance coverage summary:
 
 | Scenario ID | Status | Commit | CI Run | Notes |
 |---|---|---|---|---|
+| A-006 | Pass | `06fc47d1893893af74c6192b3fbda1cd4727f7d7` | `local` | Validated from `TestResults/agent-logs/extended-go-no-go-20260207-140227`; `manifest --json` required fields and types verified (including `generated_utc`). |
+| A-007 | Pass | `06fc47d1893893af74c6192b3fbda1cd4727f7d7` | `local` | Validated from `TestResults/agent-logs/extended-go-no-go-20260207-140227`; `manifest` non-json summary includes required keys. |
+| A-008 | Pass | `06fc47d1893893af74c6192b3fbda1cd4727f7d7` | `local` | Validated from `TestResults/agent-logs/extended-go-no-go-20260207-140227`; `conformance check --profile core --json` schema fields verified. |
+| A-009 | Pass | `06fc47d1893893af74c6192b3fbda1cd4727f7d7` | `local` | Validated from `TestResults/agent-logs/extended-go-no-go-20260207-140227`; env defaults `RC_PROFILE=extended` and `RC_STRICT_MODE=true` produce expected profile and strict behavior. |
+| A-010 | Pass | `06fc47d1893893af74c6192b3fbda1cd4727f7d7` | `local` | Validated from `TestResults/agent-logs/extended-go-no-go-20260207-140227`; exit-code matrix verified (`pass=0`, `warn=0`, `strict-warn=3`, `fail=2`). |
 | A-013 | Pass | `e70e010783c4a33e8730da610be8ecbe3af08e78` | `21786875251` | Hosted Linux + hosted Windows Core checks completed in `CI Pipeline (Composite)` with successful `Conformance Check (Full, Strict)` and no malformed `actions-runner_work` path occurrences in logs. |
