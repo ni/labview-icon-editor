@@ -564,8 +564,25 @@ jobs:
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
             -VIPCPath ".github/actions/apply-vipc/runner_dependencies.vipc"
+      - name: Audit VIPC apply (LV x64)
+        if: needs.changes.outputs.vipc == 'true'
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          & "$env:REPO_ROOT\\Tooling\\Assert-VipcApplied.ps1" `
+            -RepoRoot "$env:REPO_ROOT" `
+            -VIPCPath ".github/actions/apply-vipc/runner_dependencies.vipc" `
+            -SupportedBitness 64 `
+            -OutputPath "$env:REPO_ROOT\\builds\\status\\vipc-audit-64.json"
       - run: echo "No .vipc changes detected; skipping dependency application."
         if: needs.changes.outputs.vipc != 'true'
+      - name: Upload VIPC audit artifact (LV x64)
+        if: ${{ always() && needs.changes.outputs.vipc == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vipc-audit-64
+          path: ${{ env.REPO_ROOT }}/builds/status/vipc-audit-64.json
+          if-no-files-found: warn
       - name: Job teardown
         if: always()
         uses: ./.github/actions/lvie-job-teardown
@@ -599,8 +616,25 @@ jobs:
             -SupportedBitness 32 `
             -RepoRoot "$env:REPO_ROOT" `
             -VIPCPath ".github/actions/apply-vipc/runner_dependencies.vipc"
+      - name: Audit VIPC apply (LV x86)
+        if: needs.changes.outputs.vipc == 'true'
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          & "$env:REPO_ROOT\\Tooling\\Assert-VipcApplied.ps1" `
+            -RepoRoot "$env:REPO_ROOT" `
+            -VIPCPath ".github/actions/apply-vipc/runner_dependencies.vipc" `
+            -SupportedBitness 32 `
+            -OutputPath "$env:REPO_ROOT\\builds\\status\\vipc-audit-32.json"
       - run: echo "No .vipc changes detected; skipping dependency application."
         if: needs.changes.outputs.vipc != 'true'
+      - name: Upload VIPC audit artifact (LV x86)
+        if: ${{ always() && needs.changes.outputs.vipc == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vipc-audit-32
+          path: ${{ env.REPO_ROOT }}/builds/status/vipc-audit-32.json
+          if-no-files-found: warn
       - name: Job teardown
         if: always()
         uses: ./.github/actions/lvie-job-teardown
