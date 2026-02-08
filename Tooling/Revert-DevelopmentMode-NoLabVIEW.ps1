@@ -24,6 +24,9 @@
 
 .PARAMETER SkipProcessCheck
     Skip checking for running LabVIEW or g-cli processes.
+
+.PARAMETER SkipRepoVersionCheck
+    When LabVIEWVersion is provided, skip strict .lvversion equality validation.
 #>
 
 [CmdletBinding()]
@@ -44,7 +47,10 @@ param(
     [string]$ContractPath,
 
     [Parameter(Mandatory = $false)]
-    [switch]$SkipProcessCheck
+    [switch]$SkipProcessCheck,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$SkipRepoVersionCheck
 )
 
 $ErrorActionPreference = 'Stop'
@@ -525,7 +531,8 @@ function Invoke-RevertDevModeNoLabVIEWMain {
         [string[]]$SupportedBitness,
         [string]$RepoRoot,
         [string]$ContractPath,
-        [switch]$SkipProcessCheck
+        [switch]$SkipProcessCheck,
+        [switch]$SkipRepoVersionCheck
     )
 
     $resolvedRepoRoot = Resolve-RepoRoot -PathOverride $RepoRoot
@@ -534,7 +541,12 @@ function Invoke-RevertDevModeNoLabVIEWMain {
     $labviewYear = $LabVIEWVersion
     if (Test-Path -Path $versionHelper) {
         . $versionHelper
-        $versionInfo = Get-LabVIEWVersionInfo -VersionInput $LabVIEWVersion -RepoRoot $resolvedRepoRoot
+        $useBypass = $SkipRepoVersionCheck -and -not [string]::IsNullOrWhiteSpace($LabVIEWVersion)
+        if ($useBypass) {
+            $versionInfo = Get-LabVIEWVersionInfo -VersionInput $LabVIEWVersion
+        } else {
+            $versionInfo = Get-LabVIEWVersionInfo -VersionInput $LabVIEWVersion -RepoRoot $resolvedRepoRoot
+        }
         $labviewYear = $versionInfo.Year
     }
     if (-not (Test-Path -Path $contractHelper)) {
@@ -573,7 +585,8 @@ if ($MyInvocation.InvocationName -ne '.') {
         -SupportedBitness $SupportedBitness `
         -RepoRoot $RepoRoot `
         -ContractPath $ContractPath `
-        -SkipProcessCheck:$SkipProcessCheck
+        -SkipProcessCheck:$SkipProcessCheck `
+        -SkipRepoVersionCheck:$SkipRepoVersionCheck
 }
 
 

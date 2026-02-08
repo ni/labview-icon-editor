@@ -7,6 +7,14 @@ on:
         description: LabVIEW container release tag (for example, 2026q1)
         required: false
         default: "2026q1"
+      run_build_spec:
+        description: Run ExecuteBuildSpec parity for Editor Packed Library
+        required: false
+        type: boolean
+        default: true
+  push:
+    branches:
+      - develop
   pull_request:
     paths:
       - ".github/workflows/labview-container-parity.yml"
@@ -24,6 +32,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Resolve build-spec mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if [[ "${{ github.event.inputs.run_build_spec }}" == "false" ]]; then
+              echo "RUN_BUILD_SPEC=false" >> "$GITHUB_ENV"
+            else
+              echo "RUN_BUILD_SPEC=true" >> "$GITHUB_ENV"
+            fi
+          else
+            echo "RUN_BUILD_SPEC=true" >> "$GITHUB_ENV"
+          fi
+
       - name: Pull LabVIEW Linux image
         shell: bash
         run: |
@@ -33,26 +55,79 @@ jobs:
           echo "Using image: ${IMAGE}"
           docker pull "${IMAGE}"
           echo "IMAGE=${IMAGE}" >> "$GITHUB_ENV"
+          echo "LV_RELEASE=${LV_RELEASE}" >> "$GITHUB_ENV"
 
       - name: Run LabVIEWCLI parity script (Linux)
         shell: bash
         run: |
           set -euo pipefail
+          LV_YEAR="${LV_RELEASE:0:4}"
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             -e WORKSPACE_ROOT=/workspace \
             -e TARGET_DIR=/workspace/Test/Templates \
+            -e "LV_YEAR=${LV_YEAR}" \
             -e "CONTAINER_PARITY_EXCLUDE_FILES=Polymorphic Template.vi" \
+            -e "CONTAINER_PARITY_BUILD_SPEC=${RUN_BUILD_SPEC}" \
+            -e "CONTAINER_PARITY_BUILD_SPEC_NAME=Editor Packed Library" \
+            -e "CONTAINER_PARITY_TARGET_NAME=My Computer" \
+            -e "CONTAINER_PARITY_BUILD_OUTPUT_RELATIVE_PATH=resource/plugins/lv_icon.lvlibp" \
+            -e "CONTAINER_PARITY_LABVIEW_VERSION=${LV_YEAR}" \
             "$IMAGE" \
-            bash -lc "chmod +x /workspace/Tooling/container-parity/runlabview-linux.sh && /workspace/Tooling/container-parity/runlabview-linux.sh"
+            bash -lc "chmod +x /workspace/Tooling/container-parity/runlabview-linux.sh /workspace/Tooling/container-parity/devmode-linux.sh && /workspace/Tooling/container-parity/runlabview-linux.sh"
+
+      - name: Verify built specification output (Linux container)
+        if: ${{ env.RUN_BUILD_SPEC == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          output_path="${GITHUB_WORKSPACE}/resource/plugins/lv_icon.lvlibp"
+          if [[ ! -f "$output_path" ]]; then
+            echo "Expected build output was not found: $output_path" >&2
+            exit 1
+          fi
+          bytes="$(wc -c < "$output_path" | xargs)"
+          echo "Built specification artifact: $output_path ($bytes bytes)"
+
+      - name: Upload built specification artifact (Linux container)
+        if: ${{ env.RUN_BUILD_SPEC == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-container-editor-packed-library-linux
+          path: resource/plugins/lv_icon.lvlibp
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload LabVIEWCLI logs (Linux container)
+        if: ${{ env.RUN_BUILD_SPEC == 'true' || failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-container-logs-linux
+          path: TestResults/container-parity/linux/logs
+          if-no-files-found: warn
+          retention-days: 14
 
   parity-windows:
     name: Parity (Windows Container)
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref_name == 'develop') }}
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Resolve build-spec mode
+        shell: pwsh
+        run: |
+          if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
+            if ('${{ github.event.inputs.run_build_spec }}' -eq 'false') {
+              'RUN_BUILD_SPEC=false' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            } else {
+              'RUN_BUILD_SPEC=true' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            }
+          } else {
+            'RUN_BUILD_SPEC=true' | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
 
       - name: Pull LabVIEW Windows image
         shell: pwsh
@@ -66,18 +141,54 @@ jobs:
           Write-Host "Using image: $image"
           docker pull $image
           "IMAGE=$image" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "LV_RELEASE=$lvRelease" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Run LabVIEWCLI parity script (Windows)
         shell: pwsh
         run: |
+          $lvYear = if ($env:LV_RELEASE -match '^(?<year>\d{4})') { $Matches['year'] } else { '2026' }
           docker run --rm `
             -v "${env:GITHUB_WORKSPACE}:C:\workspace" `
             -e WORKSPACE_ROOT=C:\workspace `
             -e TARGET_DIR=C:\workspace\Test\Templates `
             -e "CONTAINER_PARITY_EXCLUDE_FILES=Polymorphic Template.vi" `
+            -e "CONTAINER_PARITY_BUILD_SPEC=${env:RUN_BUILD_SPEC}" `
+            -e "CONTAINER_PARITY_BUILD_SPEC_NAME=Editor Packed Library" `
+            -e "CONTAINER_PARITY_TARGET_NAME=My Computer" `
+            -e "CONTAINER_PARITY_BUILD_OUTPUT_RELATIVE_PATH=resource\plugins\lv_icon.lvlibp" `
+            -e "CONTAINER_PARITY_LABVIEW_VERSION=$lvYear" `
             $env:IMAGE `
             powershell -NoProfile -ExecutionPolicy Bypass -File C:\workspace\Tooling\container-parity\runlabview-windows.ps1 -WorkspaceRoot C:\workspace
 
           if ($LASTEXITCODE -ne 0) {
             throw "Windows container parity run failed with exit code $LASTEXITCODE."
           }
+
+      - name: Verify built specification output (Windows container)
+        if: ${{ env.RUN_BUILD_SPEC == 'true' }}
+        shell: pwsh
+        run: |
+          $outputPath = Join-Path $env:GITHUB_WORKSPACE 'resource\plugins\lv_icon.lvlibp'
+          if (-not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
+            throw "Expected build output was not found: $outputPath"
+          }
+          $item = Get-Item -LiteralPath $outputPath
+          Write-Host ("Built specification artifact: {0} ({1} bytes)" -f $item.FullName, $item.Length)
+
+      - name: Upload built specification artifact (Windows container)
+        if: ${{ env.RUN_BUILD_SPEC == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-container-editor-packed-library-windows
+          path: resource/plugins/lv_icon.lvlibp
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload LabVIEWCLI logs (Windows container)
+        if: ${{ env.RUN_BUILD_SPEC == 'true' || failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-container-logs-windows
+          path: TestResults/container-parity/windows/logs
+          if-no-files-found: warn
+          retention-days: 14
