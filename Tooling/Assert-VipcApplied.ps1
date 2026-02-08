@@ -60,7 +60,7 @@ function Get-PackageEntry {
     }
 }
 
-function Get-InstalledPackageBasenames {
+function Get-InstalledPackageBasename {
     param(
         [Parameter(Mandatory = $true)]
         [string]$PackageDirectory
@@ -148,7 +148,7 @@ try {
     foreach ($root in ($expectedByRoot.Keys | Sort-Object)) {
         $expectedForRoot = @($expectedByRoot[$root] | Sort-Object -Unique)
         $packageDirectory = Join-Path -Path $vipmDbPath -ChildPath $root
-        $installedForRoot = @(Get-InstalledPackageBasenames -PackageDirectory $packageDirectory)
+        $installedForRoot = @(Get-InstalledPackageBasename -PackageDirectory $packageDirectory)
 
         $missingExpected = @($expectedForRoot | Where-Object { $installedForRoot -notcontains $_ })
         $unexpectedInstalled = @($installedForRoot | Where-Object { $expectedForRoot -notcontains $_ })
