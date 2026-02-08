@@ -4,10 +4,10 @@ This guide explains how to install the LabVIEW Icon Editor VI Package on your sy
 
 ## Prerequisites
 
-- **LabVIEW 2026 (26.1)** – The Icon Editor package is built and validated against **LabVIEW 2026 (26.1)**. *(Note: other versions are not covered by CI validation.)*
+- **LabVIEW 2020 (20.0)** – The Icon Editor package is built and validated against **LabVIEW 2020 (20.0)**. *(Note: other versions are not covered by CI validation.)*
 - **VI Package Manager (VIPM)** – You’ll use VIPM to install the `.vip` file. Ensure you have VIPM installed (the free Community Edition is fine).
 
-> *Development note:* The source code is saved in **LabVIEW 2026 (26.1)** for building and maintenance. It is recommended that contributors develop with 2026 (26.1) or newer and package against LabVIEW 2026 (26.1).
+> *Development note:* The source code is saved in **LabVIEW 2020 (20.0)** for building and maintenance. It is recommended that contributors develop with 2025 (25.0) or newer and package against LabVIEW 2020 (20.0).
 
 ## Installation Steps
 
@@ -24,4 +24,3 @@ This guide explains how to install the LabVIEW Icon Editor VI Package on your sy
 - **Reverting to Default Icon Editor:** If you need to revert to the original NI Icon Editor, you can uninstall the package via VIPM.
 
 For any installation issues, feel free to [start a discussion](https://github.com/ni/labview-icon-editor/discussions) on GitHub or ask for help on the [NI Community forums](https://forums.ni.com) or Discord. Enjoy the enhanced Icon Editor!
-

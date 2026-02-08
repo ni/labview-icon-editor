@@ -5,7 +5,7 @@
 [![Discord Chat](https://img.shields.io/discord/1319915996789739540?label=Discord&logo=discord&style=flat)](https://discord.gg/q4d3ggrFVA)
 [![License: MIT](https://img.shields.io/github/license/ni/labview-icon-editor?style=flat)](LICENSE)
 ![Coding hours](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/ni/labview-icon-editor/metrics/badge.json)
-![LabVIEW Version](https://img.shields.io/badge/LabVIEW-2026-FEDE06)
+![LabVIEW Version](https://img.shields.io/badge/LabVIEW-2020-FEDE06)
 ---
 
 ## 🗂 Table of Contents
@@ -30,10 +30,10 @@
 
 The **LabVIEW Icon Editor** is an open-source, MIT-licensed tool for creating and editing VI icons, delivered as a VI Package. Each official **LabVIEW** release automatically includes the latest Icon Editor from this repository’s `main` branch (the next integration is targeting **LabVIEW 2026 Q3**).
 
-In practice, **your contributions** – whether new features, fixes, or improvements – can become part of the Icon Editor shipped with LabVIEW itself. The source code is maintained in **LabVIEW 2026 (26.1)** format for broad compatibility, and the released VI Package is built and validated against **LabVIEW 2026 (26.1)**.
+In practice, **your contributions** – whether new features, fixes, or improvements – can become part of the Icon Editor shipped with LabVIEW itself. The source code is maintained in **LabVIEW 2020 (20.0)** format for broad compatibility, and the released VI Package is built and validated against **LabVIEW 2020 (20.0)**.
 
 - 🛠 **Built in LabVIEW (“G” code)** – All editor functionality is implemented as LabVIEW VIs (graphical code).
-- 📁 **Compatibility Target** – Source is stored in LabVIEW 2026 (26.1) format for development, and the distributed packages target LabVIEW 2026 (26.1).
+- 📁 **Compatibility Target** – Source is stored in LabVIEW 2020 (20.0) format for development, and the distributed packages target LabVIEW 2020 (20.0).
 - ⚙️ **CI Pipeline** – **GitHub Actions** orchestrate PowerShell-based workflows for testing, building, and publishing the `.vip` package. The LabVIEW version is enforced via `.lvversion` (mismatches fail fast in CI and local parity scripts unless explicitly overridden).
 - 🔄 **Modern Development Practices** – This project helped pioneer NI’s open-source CI/CD patterns, and its infrastructure will migrate to a centralized toolkit for future LabVIEW projects.
 
@@ -44,9 +44,9 @@ NI’s open-source initiative encourages **community collaboration** on this pro
 ## 📦 Installation
 
 > **Prerequisites:**
-> • LabVIEW 2026 (26.1) or newer
+> • LabVIEW 2020 (20.0) or newer
 > • VI Package Manager (VIPM) installed
-> • *(Development note: Source code is saved in LabVIEW 2026 (26.1) for building and backward compatibility.)*
+> • *(Development note: Source code is saved in LabVIEW 2020 (20.0) for building and backward compatibility.)*
 
 1. **Download** the latest `.vip` installer from the [Releases page](https://github.com/ni/labview-icon-editor/releases/latest).
 2. **Open VIPM** (VI Package Manager).
@@ -135,5 +135,4 @@ This project is distributed under the **MIT License** – see the [LICENSE](LICE
 ### 🙏 Thanks for Contributing!
 
 Your ideas, testing, and code contributions directly shape the Icon Editor experience across the LabVIEW community. Thank you for helping improve this tool for the entire LabVIEW community!
-
 
