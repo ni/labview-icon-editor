@@ -69,6 +69,16 @@ Automating your Icon Editor builds and tests:
 > [!NOTE]
 > The workflow automatically brands the VI Package using the repository owner (`github.repository_owner`) and repository name (`github.event.repository.name`). Modify the “Generate display information JSON” step in `.github/workflows/ci-composite.yml` if you need different values.
 
+### Release Publication Policy
+
+This document is the canonical source for release/publication policy.
+
+- Normative contract: [VI Package Pre-Release Requirements](vip-prerelease-requirements.md).
+- Auto publish contract: prerelease publication runs for `push` events on `develop` when the pushed SHA is associated with a merged pull request targeting `develop`.
+- Manual publish contract: `workflow_dispatch` supports explicit prerelease backfill with `publish_prerelease=true` and SHA validation.
+- Asset contract: published prereleases attach `.vip`, release notes, `gcli-logs`, and `vip-build-status` assets from the same CI run.
+- Branch trigger reality for `ci-composite.yml`: `push` and `pull_request` run on `main`, `develop`, `release/*`, `feature/*`, and `hotfix/*`, plus `workflow_dispatch`.
+
 ---
 
 ## 3. Detailed Guide
@@ -114,11 +124,13 @@ The [`ci-composite.yml`](../.github/workflows/ci-composite.yml) pipeline breaks 
 - **pylavi-validate** – report-only LabVIEW file validation using `vi_validate` (strict + legacy profiles) with `.lvversion`-synced version gating and optional baseline/delta reporting.
 - **changes** – checks out the repository and detects `.vipc` file changes to determine if dependencies need to be applied.
 - **apply-deps** – installs VIPC dependencies for multiple LabVIEW versions and bitnesses **only when** the `changes` job reports `.vipc` modifications (`if: needs.changes.outputs.vipc == 'true'`).
+- **prerelease-context** – computes prerelease publish eligibility, reason, and merged-PR bump override context.
 - **version** – computes the semantic version and build number using commit count and PR labels.
 - **missing-in-project-check** – verifies every source file is referenced in the `.lvproj`.
 - **test** – runs LabVIEW unit tests on Windows in LabVIEW 2021 (32- and 64-bit).
 - **build-ppl** – uses a matrix to build 32-bit and 64-bit packed libraries, then uses the `rename-file` action to append the bitness to each library’s filename.
 - **build-vip** – Windows/self-hosted VI Package packaging path. This job requires both PPL artifacts (`lv_icon_x86.lvlibp`, `lv_icon_x64.lvlibp`) and runs for pull requests, pushes, and manual dispatch.
+- **publish-prerelease** – upserts GitHub prereleases for eligible runs, attaches required assets, and emits `prerelease-publish-status`.
 
 Windows self-hosted build jobs (`build-ppl-*` and `build-vip`) run a `close-labview` step after their build actions finish but before any steps that rename files or upload artifacts, so it is not the final step.
 
@@ -201,10 +213,12 @@ Although GitHub Actions primarily run on GitHub-hosted or self-hosted agents, yo
 
 3. **Open a Pull Request** and **Label** it:
    - Assign `major`, `minor`, or `patch` to control the version bump.
-   - The CI validates your code without creating tags or releases.
+   - The CI validates your code and produces versioned build artifacts.
 
 4. **Merge the PR** into `develop` (or `main`):
      - The **Build VI Package** workflow builds and uploads the `.vip` artifact.
+     - Merged PR commits into `develop` publish a GitHub prerelease automatically when eligibility checks pass.
+     - Manual backfill is available through `workflow_dispatch` using `publish_prerelease=true` with SHA pinning.
      - **Inside** that `.vip`, the **“Company Name”** and **“Author Name (Person or Company)”** fields are filled automatically using `github.repository_owner` and `github.event.repository.name`. Modify the “Generate display information JSON” step in `.github/workflows/ci-composite.yml` to override them.
 
 5. **Disable Development Mode**:  

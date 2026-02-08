@@ -14,7 +14,7 @@ This document provides a collection of common **troubleshooting** scenarios (wit
    5. [No. 5: Dev Mode Still Enabled After Build](#no-5-dev-mode-still-enabled-after-build)
    6. [No. 6: Release Not Created](#no-6-release-not-created)
    7. [No. 7: Branch Protection Blocks Merge](#no-7-branch-protection-blocks-merge)
-   8. [No. 8: Incorrect Pre-Release Suffix (Alpha/Beta/RC)](#no-8-incorrect-pre-release-suffix-alphabetarc)
+   8. [No. 8: Incorrect Pre-Release Suffix (Legacy Alpha/Beta/RC Channels)](#no-8-incorrect-pre-release-suffix-legacy-alphabetarc-channels)
    9. [No. 9: Hotfix Not Tagged as Expected](#no-9-hotfix-not-tagged-as-expected)
    10. [No. 10: Double-Dash Parameters Not Recognized](#no-10-double-dash-parameters-not-recognized)
    11. [No. 11: Company/Author Fields Not Populating](#no-11-companyauthor-fields-not-populating)
@@ -131,20 +131,20 @@ Below are 14 possible issues you might encounter, along with suggested steps to 
 - The workflow completes, but you see no new release in GitHub’s “Releases” section.
 
 **Possible Causes**:
-- The composite pipeline only uploads artifacts and does not create releases automatically.
-- The build was triggered by a Pull Request, and your workflow logic only creates releases on “push” or merges to main.
+- The run was not a merge to `develop`, so the pre-release publication policy was not expected to run.
+- The publish step failed or was skipped due to eligibility, assets, or API errors.
 
 **Solution**:
-1. Create releases manually through GitHub’s interface or configure a separate workflow to publish them.
-2. Check your workflow triggers if you expect another workflow to handle releases on certain branches.
-3. Confirm you have “Read and write” permissions for Actions in your repo settings.
+1. Confirm the run is an eligible publish path (`develop` merged-PR push, or `workflow_dispatch` with `publish_prerelease=true` and valid `expected_sha`).
+2. Inspect the `publish-prerelease` job logs for explicit failure/skip reason output.
+3. Inspect the `prerelease-publish-status` artifact for machine-readable failure details and required-asset validation results.
 
 ---
 
 ### No. 7: Branch Protection Blocks Merge
 
 **Symptoms**:
-- You can’t merge into `main` or `release-alpha/*`; GitHub says “Branch is protected.”
+- You can’t merge into `main`, `develop`, or `release/*`; GitHub says “Branch is protected.”
 
 **Possible Causes**:
 - Strict branch protection rules require approvals or passing checks before merging.
@@ -162,18 +162,19 @@ Below are 14 possible issues you might encounter, along with suggested steps to 
 
 ---
 
-### No. 8: Incorrect Pre-Release Suffix (Alpha/Beta/RC)
+### No. 8: Incorrect Pre-Release Suffix (Legacy Alpha/Beta/RC Channels)
 
 **Symptoms**:
 - You expected a `-beta.<N>` suffix, but got `-alpha.<N>` or no suffix at all.
 
 **Possible Causes**:
-- Your branch name doesn’t match the required pattern: `release-beta/*`.  
-- The script that checks for alpha/beta/rc might not be updated for your custom naming.
+- Your repository intentionally uses legacy channel branch names and your branch name does not match the expected pattern (for example, `release-beta/*`).  
+- The script that checks legacy alpha/beta/rc suffixes is not updated for your custom naming.
 
 **Solution**:
-1. Rename your branch to the correct pattern: `release-beta/2.0`, `release-rc/2.0`, etc.  
-2. If you changed naming conventions, update your workflow logic to detect them (e.g., a RegEx match).
+1. If your repository uses legacy channels, rename your branch to the expected pattern (for example, `release-beta/2.0` or `release-rc/2.0`).  
+2. If your repository follows `develop` pre-release direction, ignore alpha/beta/rc suffix expectations and validate pre-release publication from `develop` merges instead.
+3. If you changed naming conventions, update version suffix detection logic accordingly.
 
 ---
 
@@ -300,7 +301,7 @@ By default, the workflow calculates the build number with `git rev-list --count 
 ### Q2: How Do I Create a Release?
 
 **Answer**:
-The composite pipeline only uploads artifacts and does not create GitHub releases automatically. Create releases manually through the GitHub interface or set up a separate workflow dedicated to publishing them.
+Repository policy publishes a GitHub prerelease for eligible `develop` publication events. Use `workflow_dispatch` with `publish_prerelease=true` for explicit backfill operations, and review `prerelease-publish-status` when troubleshooting.
 
 ---
 
@@ -328,7 +329,7 @@ Yes. In standard Gitflow, after merging a `hotfix/*` into `main`, you also merge
 ### Q6: What About Draft Releases?
 
 **Answer**:
-The composite pipeline doesn’t create releases, so draft releases are not generated. If you require a draft or published release, create it manually or configure a separate workflow to handle release creation.
+The prerelease contract currently publishes with `draft=false` and `prerelease=true`. If you need draft behavior instead, change the `publish-prerelease` payload in `.github/workflows/ci-composite.yml` and update requirements/acceptance artifacts accordingly.
 
 ---
 

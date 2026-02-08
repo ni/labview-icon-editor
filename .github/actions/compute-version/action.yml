@@ -4,6 +4,10 @@ inputs:
   github_token:
     description: "GitHub token with repository access"
     required: true
+  bump_type_override:
+    description: "Optional bump override: major, minor, patch, or none."
+    required: false
+    default: ""
 outputs:
   VERSION:
     description: "Full version string"
@@ -38,8 +42,19 @@ runs:
         github-token: ${{ inputs.github_token }}
         script: |
           const allowed = ['major', 'minor', 'patch'];
+          const allowedWithNone = [...allowed, 'none'];
           let bump = 'none';
-          if (context.event_name === 'pull_request') {
+          const override = core.getInput('bump_type_override').trim().toLowerCase();
+          if (override) {
+            if (!allowedWithNone.includes(override)) {
+              core.setFailed(`Invalid bump_type_override '${override}'. Allowed: ${allowedWithNone.join(', ')}`);
+              return;
+            }
+            core.info(`Using bump_type_override: ${override}`);
+            core.setOutput('bump_type', override);
+            return;
+          }
+          if (context.eventName === 'pull_request') {
             const labels = context.payload.pull_request.labels.map(l => l.name.toLowerCase());
             const found = labels.filter(l => allowed.includes(l));
             if (found.length > 1) {

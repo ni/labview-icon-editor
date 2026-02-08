@@ -22,7 +22,8 @@ This document details how to automate **building**, **testing**, and **packaging
 - **Eliminate** manual tasks like editing `vi.lib` or toggling `labview.ini`.  
 - **Run** consistent builds and tests across different machines or developers.  
 - **Automatically version** your Icon Editor code via **semantic labeling** (major/minor/patch) plus a global build counter.
-- **Upload** the `.vip` artifact for download; the workflow does **not** create tags or GitHub releases.
+- **Upload** the `.vip` artifact for download, with active GitHub prerelease publication on eligible merges to `develop`.
+  - Normative prerelease contract: [`docs/vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md).
 
 Additionally, **you can pass metadata fields** (like **organization** or **repository name**) to the **build script**. These fields are embedded into the **VI Package** display information, effectively **branding** the Icon Editor package with a unique identifier. This is especially useful when multiple forks or organizations produce their own versions of the Icon Editor—ensuring each `.vip` is clearly labeled with the correct “author” or “company.”
 
@@ -57,7 +58,8 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
    - Run the tests using the **CI Pipeline (Composite)** workflow; its dedicated **test** job executes the unit tests.
 
 6. **Build VI Package**
-   - Invoke the **Build VI Package** job within the CI Pipeline (Composite) workflow to produce a `.vip` using the version computed by the workflow's separate **version** job (see that job's output for the generated version). Publishing tags or GitHub releases requires a separate workflow.
+    - Invoke the **Build VI Package** job within the CI Pipeline (Composite) workflow to produce a `.vip` using the version computed by the workflow's separate **version** job (see that job's output for the generated version).
+   - Pre-release publication behavior is specified by [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md), including eligibility, assets, and failure policy.
    - **You can also** pass in **org/repository** info (e.g., `-CompanyName "MyOrg"` or `-AuthorName "myorg/myrepo"`) to brand the resulting package with your unique identifiers.
 
 7. **Disable Dev Mode** (Optional)  
@@ -93,7 +95,8 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
    - **Label-based** semantic versioning (`major`, `minor`, `patch`). Defaults to `patch` if no label.
    - **Derives build number from total commit count** (`git rev-list --count HEAD`).
    - **Fork-friendly**: runs on forks without requiring signing keys.
-   - Publishes `.vip` as an artifact; creating Git tags or GitHub releases requires a separate workflow.
+    - Produces `.vip` and release-notes artifacts in CI.
+   - Publish contract: `publish-prerelease` job behavior is defined in [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md).
    - **Branding the Package**:
      - You can **pass** metadata parameters like `-CompanyName` and `-AuthorName` into the build script. These map to fields in the **VI Package** (e.g., “Company Name,” “Author Name (Person or Company)”).
      - This means each package can show the **organization** and **repository** that produced it, providing a **unique ID** if you have multiple forks or parallel versions.
@@ -175,7 +178,9 @@ With your runner online:
    - Execute the workflow and review the **test** job logs to confirm all unit tests pass.
 
 3. **Build VI Package**
-   - Produces `.vip` using the version computed in the **version** job (review that job's output for version details). The workflow only uploads the artifact; creating tags or GitHub releases requires additional steps.
+    - Produces `.vip` using the version computed in the **version** job (review that job's output for version details).
+   - Merged-PR pushes to `develop` publish prereleases per [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md).
+   - `workflow_dispatch` backfill publishing is available with explicit publish intent input.
    - **Pass** your **org/repo** info (e.g. `-CompanyName "AcmeCorp"` / `-AuthorName "AcmeCorp/IconEditor"`) to embed in the final package.
    - Artifacts appear in the run summary under **Artifacts**.
 
@@ -184,7 +189,13 @@ With your runner online:
    - Keep `labview_version` aligned with `.lvversion` if you include it.
 
 5. **Review the `.vip`**
-   - Download from **Artifacts**. Publishing to a GitHub release requires a separate workflow.
+   - Download from **Artifacts**.
+   - Confirm publish status via `prerelease-publish-status` artifact when prerelease publication is in scope for the run.
+
+#### Develop Pre-Release Direction
+
+- Policy contract: [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md).
+- Summary source: [CI Workflows Overview](../../ci-workflows.md).
 
 #### Worktree naming (CI)
 CI jobs run from short-path worktrees to avoid Windows path limits. Each job creates:
@@ -221,9 +232,17 @@ Notes:
    - The workflow checks this label upon merging.  
 4. **Merge**:
    - The **CI Pipeline (Composite)** workflow triggers, with the **version** job computing the version and the **Build VI Package** job using that version to package and upload the `.vip`.
+   - Direction: a merge to `develop` should result in a GitHub pre-release that includes the `.vip` and release notes.
+   - Publish status is reported by the `publish-prerelease` job and the `prerelease-publish-status` artifact.
    - **Metadata** (such as company/repo) is already integrated into the final `.vip`, so each build is easily identified.
 5. **Disable Dev Mode**: Return to a normal LabVIEW environment.  
 6. **Install & Verify**: Download the `.vip` artifact for final validations.
+
+#### Develop Pre-Release Direction
+
+- Use `develop` merges as the default pre-release publication event.
+- Keep `main` focused on stable/final release handling.
+- Treat alpha/beta/rc channel branches as optional legacy behavior unless your repository explicitly enables that model.
 
 ---
 

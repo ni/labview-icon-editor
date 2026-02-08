@@ -3,6 +3,8 @@ run-name: "CI ${{ github.sha }} (#${{ github.run_id }}.${{ github.run_attempt }}
 
 permissions:
   actions: read
+  contents: read
+  pull-requests: read
 
 env:
   LVIE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
@@ -58,6 +60,11 @@ on:
         description: "Require expected_sha to be provided and matched"
         required: false
         type: boolean
+      publish_prerelease:
+        description: "Publish prerelease for this dispatch run"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   run-metadata:
@@ -82,8 +89,12 @@ jobs:
           $workflow = '${{ github.workflow }}'
           $expectedSha = '${{ github.event.inputs.expected_sha }}'
           $strictSha = '${{ github.event.inputs.strict_sha }}'
+          $publishPrerelease = '${{ github.event.inputs.publish_prerelease }}'
           $runUid = "{0}-{1}-{2}" -f $runId, $runAttempt, $sha
 
+          if ($eventName -eq 'workflow_dispatch' -and $publishPrerelease -eq 'true' -and [string]::IsNullOrWhiteSpace($expectedSha)) {
+            throw "expected_sha is required when publish_prerelease=true."
+          }
           if ($strictSha -eq 'true' -and [string]::IsNullOrWhiteSpace($expectedSha)) {
             throw "expected_sha is required when strict_sha=true."
           }
@@ -116,6 +127,112 @@ jobs:
         with:
           name: run-manifest
           path: ${{ steps.meta.outputs.manifest_path }}
+
+  prerelease-context:
+    name: Pre-Release Context
+    needs: run-metadata
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.ctx.outputs.should_publish }}
+      publish_mode: ${{ steps.ctx.outputs.publish_mode }}
+      publish_reason: ${{ steps.ctx.outputs.publish_reason }}
+      bump_type_override: ${{ steps.ctx.outputs.bump_type_override }}
+      merged_pr_number: ${{ steps.ctx.outputs.merged_pr_number }}
+      bump_conflict: ${{ steps.ctx.outputs.bump_conflict }}
+      bump_conflict_labels: ${{ steps.ctx.outputs.bump_conflict_labels }}
+    steps:
+      - id: ctx
+        name: Resolve publish eligibility and bump override
+        uses: actions/github-script@v7
+        env:
+          PUBLISH_PRERELEASE: ${{ github.event.inputs.publish_prerelease || 'false' }}
+        with:
+          script: |
+            const allowed = ['major', 'minor', 'patch'];
+            const publishInput = (process.env.PUBLISH_PRERELEASE || 'false').toLowerCase() === 'true';
+
+            async function findMergedPrTargetingDevelop() {
+              const response = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.sha,
+              });
+              const mergedDevelopPrs = response.data
+                .filter((pr) => pr.merged_at && pr.base && pr.base.ref === 'develop')
+                .sort((a, b) => new Date(b.merged_at) - new Date(a.merged_at));
+              return mergedDevelopPrs.length > 0 ? mergedDevelopPrs[0] : null;
+            }
+
+            function deriveBumpFromLabels(pr) {
+              const labels = (pr.labels || []).map((l) => String(l.name || '').toLowerCase());
+              const found = [...new Set(labels.filter((l) => allowed.includes(l)))];
+              if (found.length > 1) {
+                return {
+                  conflict: true,
+                  conflictLabels: found.join(', '),
+                  bumpTypeOverride: '',
+                };
+              }
+              return {
+                conflict: false,
+                conflictLabels: '',
+                bumpTypeOverride: found[0] || 'patch',
+              };
+            }
+
+            let shouldPublish = false;
+            let publishMode = 'none';
+            let publishReason = 'not-eligible';
+            let bumpTypeOverride = '';
+            let mergedPrNumber = '';
+            let bumpConflict = false;
+            let bumpConflictLabels = '';
+
+            const mergedPr = await findMergedPrTargetingDevelop();
+            if (mergedPr) {
+              mergedPrNumber = String(mergedPr.number);
+            }
+
+            if (context.eventName === 'push' && context.ref === 'refs/heads/develop') {
+              publishMode = 'auto';
+              if (mergedPr) {
+                shouldPublish = true;
+                publishReason = 'develop-push-merged-pr';
+              } else {
+                shouldPublish = false;
+                publishReason = 'develop-push-no-merged-pr';
+              }
+            } else if (context.eventName === 'workflow_dispatch') {
+              publishMode = 'manual';
+              shouldPublish = publishInput;
+              publishReason = publishInput ? 'manual-intent-true' : 'manual-intent-false';
+            } else if (context.eventName === 'pull_request') {
+              publishMode = 'pull-request';
+              shouldPublish = false;
+              publishReason = 'pull-request-events-never-publish';
+            } else {
+              publishMode = context.eventName;
+              shouldPublish = false;
+              publishReason = 'event-not-eligible';
+            }
+
+            const shouldDeriveMergedPrBump =
+              (context.eventName === 'push' && context.ref === 'refs/heads/develop' && !!mergedPr) ||
+              (context.eventName === 'workflow_dispatch' && publishInput && !!mergedPr);
+            if (shouldDeriveMergedPrBump) {
+              const bumpInfo = deriveBumpFromLabels(mergedPr);
+              bumpConflict = bumpInfo.conflict;
+              bumpConflictLabels = bumpInfo.conflictLabels;
+              bumpTypeOverride = bumpInfo.bumpTypeOverride;
+            }
+
+            core.setOutput('should_publish', shouldPublish ? 'true' : 'false');
+            core.setOutput('publish_mode', publishMode);
+            core.setOutput('publish_reason', publishReason);
+            core.setOutput('bump_type_override', bumpTypeOverride);
+            core.setOutput('merged_pr_number', mergedPrNumber);
+            core.setOutput('bump_conflict', bumpConflict ? 'true' : 'false');
+            core.setOutput('bump_conflict_labels', bumpConflictLabels);
 
   runner-cli-build:
     name: Build runner-cli (linux-x64)
@@ -415,6 +532,26 @@ jobs:
         run: |
           pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Invoke-PSScriptAnalyzer.ps1" -WriteSummary
 
+  vip-prerelease-requirements-lint:
+    name: VIP Prerelease Requirements Lint
+    needs: run-metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Lint VIP prerelease requirements v1
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-VipPrereleaseRequirementsV1.ps1" -WriteSummary
+      - name: Upload VIP prerelease requirements lint status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vip-prerelease-requirements-lint
+          path: builds/status/vip-prerelease-requirements-lint.json
+          if-no-files-found: error
+
   pylavi-validate:
     name: Validate LabVIEW Files (pylavi, report-only)
     needs: [run-metadata, version-gate, runner-cli-build-win]
@@ -641,7 +778,7 @@ jobs:
 
   version:
     name: Compute Version
-    needs: [run-metadata, version-gate, dev-mode-gate]
+    needs: [run-metadata, version-gate, dev-mode-gate, prerelease-context]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
@@ -665,10 +802,21 @@ jobs:
         with:
           checkout: 'false'
           create_worktree: 'false'
+      - name: Fail on conflicting merged PR release labels
+        if: ${{ needs.prerelease-context.outputs.bump_conflict == 'true' }}
+        shell: pwsh
+        run: |
+          $labels = '${{ needs.prerelease-context.outputs.bump_conflict_labels }}'
+          $prNumber = '${{ needs.prerelease-context.outputs.merged_pr_number }}'
+          if ([string]::IsNullOrWhiteSpace($prNumber)) {
+            throw ("Conflicting merged PR release labels detected: {0}" -f $labels)
+          }
+          throw ("Conflicting merged PR release labels detected on merged PR #{0}: {1}" -f $prNumber, $labels)
       - id: compute
         uses: ./.github/actions/compute-version
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          bump_type_override: ${{ needs.prerelease-context.outputs.bump_type_override }}
       - name: Job teardown
         if: always()
         uses: ./.github/actions/lvie-job-teardown
@@ -948,6 +1096,10 @@ jobs:
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     outputs:
       vip_status_exists: ${{ steps.vip-status.outputs.exists }}
+      vip_artifact_name: ${{ steps.locate-vip.outputs.vip_artifact }}
+      vip_file_name: ${{ steps.locate-vip.outputs.vip_name }}
+      release_notes_artifact_name: ${{ steps.release-notes.outputs.artifact_name }}
+      release_notes_file_name: ${{ steps.release-notes.outputs.asset_name }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
       LVIE_VIPM_TIMEOUT_SECONDS: 900
@@ -1109,6 +1261,7 @@ jobs:
 
           "artifact_path=$destPath" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
           "artifact_name=$artifactName" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "asset_name=$destName" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
       - name: Locate built VI package
         id: locate-vip
         shell: pwsh
@@ -1188,13 +1341,211 @@ jobs:
           close_labview: 'true'
           close_bitness: 64
 
+  publish-prerelease:
+    name: Publish Pre-Release
+    needs: [run-metadata, prerelease-context, version, build-vip]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    outputs:
+      release_tag: ${{ steps.publish.outputs.release_tag }}
+      release_url: ${{ steps.publish.outputs.release_url }}
+      release_id: ${{ steps.publish.outputs.release_id }}
+      publish_status: ${{ steps.publish.outputs.publish_status }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download VI package artifact
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-vip.outputs.vip_artifact_name }}
+          path: ${{ runner.temp }}/prerelease-assets/vip
+
+      - name: Download release notes artifact
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-vip.outputs.release_notes_artifact_name }}
+          path: ${{ runner.temp }}/prerelease-assets/release-notes
+
+      - name: Download g-cli logs artifact
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: gcli-logs
+          path: ${{ runner.temp }}/prerelease-assets/gcli-logs
+
+      - name: Download VIP build status artifact
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: vip-build-status
+          path: ${{ runner.temp }}/prerelease-assets/vip-build-status
+
+      - id: publish
+        name: Publish prerelease and write status
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $statusDir = Join-Path $env:GITHUB_WORKSPACE 'builds/status'
+          New-Item -Path $statusDir -ItemType Directory -Force | Out-Null
+          $statusPath = Join-Path $statusDir 'prerelease-publish.json'
+
+          $shouldPublish = '${{ needs.prerelease-context.outputs.should_publish }}' -eq 'true'
+          $publishMode = '${{ needs.prerelease-context.outputs.publish_mode }}'
+          $publishReason = '${{ needs.prerelease-context.outputs.publish_reason }}'
+          $mergedPrNumber = '${{ needs.prerelease-context.outputs.merged_pr_number }}'
+          $tag = '${{ needs.version.outputs.VERSION }}'
+          $expectedVipFileName = '${{ needs.build-vip.outputs.vip_file_name }}'
+          $expectedReleaseNotesFileName = '${{ needs.build-vip.outputs.release_notes_file_name }}'
+
+          $publishStatus = 'skipped'
+          $releaseUrl = ''
+          $releaseId = ''
+          $attachedAssets = @()
+          $errorMessage = ''
+
+          try {
+            if ($shouldPublish) {
+              $assetRoot = Join-Path $env:RUNNER_TEMP 'prerelease-assets'
+              if ([string]::IsNullOrWhiteSpace($expectedVipFileName)) {
+                throw 'Required build-vip output missing: vip_file_name.'
+              }
+              if ([string]::IsNullOrWhiteSpace($expectedReleaseNotesFileName)) {
+                throw 'Required build-vip output missing: release_notes_file_name.'
+              }
+
+              $vipFiles = Get-ChildItem -Path (Join-Path $assetRoot 'vip') -Filter $expectedVipFileName -File -Recurse -ErrorAction SilentlyContinue | Sort-Object FullName
+              if (-not $vipFiles) { throw ("Required asset missing: expected VIP file '{0}'." -f $expectedVipFileName) }
+              $vipFile = $vipFiles[0]
+
+              $notesFiles = Get-ChildItem -Path (Join-Path $assetRoot 'release-notes') -Filter $expectedReleaseNotesFileName -File -Recurse -ErrorAction SilentlyContinue | Sort-Object FullName
+              if (-not $notesFiles) { throw ("Required asset missing: expected release notes file '{0}'." -f $expectedReleaseNotesFileName) }
+              $notesFile = $notesFiles[0]
+
+              $vipStatusFile = Get-ChildItem -Path (Join-Path $assetRoot 'vip-build-status') -Filter vip-build.json -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+              if (-not $vipStatusFile) { throw 'Required asset missing: vip-build-status/vip-build.json.' }
+
+              $gcliDir = Join-Path $assetRoot 'gcli-logs'
+              if (-not (Test-Path $gcliDir)) { throw 'Required asset missing: gcli-logs artifact.' }
+              $gcliFiles = Get-ChildItem -Path $gcliDir -Recurse -File -ErrorAction SilentlyContinue
+              if (-not $gcliFiles) { throw 'Required asset missing: gcli-logs artifact content.' }
+              $gcliZip = Join-Path $assetRoot 'gcli-logs.zip'
+              if (Test-Path $gcliZip) {
+                Remove-Item -Path $gcliZip -Force
+              }
+              Compress-Archive -Path (Join-Path $gcliDir '*') -DestinationPath $gcliZip -Force
+
+              $null = gh --version
+
+              $releaseBody = Get-Content -Raw -Path $notesFile.FullName
+              $payloadPath = Join-Path $assetRoot 'release-payload.json'
+              $payload = [ordered]@{
+                tag_name = $tag
+                target_commitish = $env:GITHUB_SHA
+                name = $tag
+                body = $releaseBody
+                draft = $false
+                prerelease = $true
+              }
+              $payload | ConvertTo-Json -Depth 8 | Out-File -FilePath $payloadPath -Encoding utf8
+
+              $repo = $env:GITHUB_REPOSITORY
+              $existing = $null
+              try {
+                $existingRaw = gh api --method GET -H "Accept: application/vnd.github+json" "/repos/$repo/releases/tags/$tag" 2>$null
+                if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($existingRaw)) {
+                  $existing = $existingRaw | ConvertFrom-Json
+                }
+              } catch {
+                $existing = $null
+              }
+
+              if ($existing) {
+                $releaseRaw = gh api --method PATCH -H "Accept: application/vnd.github+json" "/repos/$repo/releases/$($existing.id)" --input $payloadPath
+              } else {
+                $releaseRaw = gh api --method POST -H "Accept: application/vnd.github+json" "/repos/$repo/releases" --input $payloadPath
+              }
+
+              if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($releaseRaw)) {
+                throw "Failed to create or update release metadata for tag '$tag'."
+              }
+
+              $release = $releaseRaw | ConvertFrom-Json
+              $releaseUrl = [string]$release.html_url
+              $releaseId = [string]$release.id
+
+              & gh release upload $tag $vipFile.FullName $notesFile.FullName $gcliZip $vipStatusFile.FullName --clobber
+              if ($LASTEXITCODE -ne 0) {
+                throw "Failed to upload release assets for tag '$tag'."
+              }
+
+              $publishStatus = 'published'
+              $attachedAssets = @($vipFile.Name, $notesFile.Name, (Split-Path -Path $gcliZip -Leaf), $vipStatusFile.Name)
+            }
+          } catch {
+            $publishStatus = 'failed'
+            $errorMessage = $_.Exception.Message
+          } finally {
+            $status = [ordered]@{
+              run_id = '${{ github.run_id }}'
+              run_attempt = '${{ github.run_attempt }}'
+              sha = '${{ github.sha }}'
+              ref = '${{ github.ref }}'
+              event = '${{ github.event_name }}'
+              publish_mode = $publishMode
+              publish_reason = $publishReason
+              should_publish = $shouldPublish
+              publish_status = $publishStatus
+              version = $tag
+              release_tag = $tag
+              release_url = $releaseUrl
+              release_id = $releaseId
+              merged_pr_number = $mergedPrNumber
+              required_assets = @('vip', 'release_notes', 'gcli-logs', 'vip-build-status')
+              attached_assets = $attachedAssets
+              error = $errorMessage
+              generated_utc = (Get-Date).ToUniversalTime().ToString('o')
+            }
+            $status | ConvertTo-Json -Depth 8 | Out-File -FilePath $statusPath -Encoding utf8
+
+            "release_tag=$tag" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+            "release_url=$releaseUrl" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+            "release_id=$releaseId" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+            "publish_status=$publishStatus" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          }
+
+          if ($publishStatus -eq 'failed') {
+            throw $errorMessage
+          }
+
+      - name: Upload prerelease publish status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prerelease-publish-status
+          path: builds/status/prerelease-publish.json
+          if-no-files-found: error
+
   pipeline-contract:
     name: Pipeline Contract
     if: always()
     needs:
       - run-metadata
+      - prerelease-context
       - version-gate
       - powershell-lint
+      - vip-prerelease-requirements-lint
       - pylavi-validate
       - dev-mode-gate
       - changes
@@ -1205,6 +1556,7 @@ jobs:
       - build-ppl-x64
       - build-ppl-x86
       - build-vip
+      - publish-prerelease
       - version
       - conformance-full
     runs-on: ubuntu-latest
@@ -1220,8 +1572,10 @@ jobs:
         run: |
           $required = @(
             'run-metadata',
+            'prerelease-context',
             'version-gate',
             'powershell-lint',
+            'vip-prerelease-requirements-lint',
             'pylavi-validate',
             'dev-mode-gate',
             'changes',
@@ -1232,6 +1586,7 @@ jobs:
             'build-ppl-x64',
             'build-ppl-x86',
             'build-vip',
+            'publish-prerelease',
             'version',
             'conformance-full'
           )
