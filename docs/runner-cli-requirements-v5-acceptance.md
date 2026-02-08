@@ -39,7 +39,7 @@ Acceptance coverage summary:
 | A-005 | Pass | `153dcb68047e9e311516589bb35480d25392ab61` | `local` | Revalidated on 2026-02-07 via `pwsh -NoProfile -File .\\Tooling\\Test-RunnerCliRequirementsA005.ps1`; A-005 target RC IDs passed atomicity/single-obligation lint. |
 | A-006 | Pass | `457c3cc07156accfce5cfd82699d0c8e96fd1cfd` | `local` | Revalidated on 2026-02-07 via `dotnet test Tooling/runner-cli/RunnerCli.Tests/RunnerCli.Tests.csproj --filter \"FullyQualifiedName~Manifest_emits_required_json_fields\"`; confirms `spec_document_id=LVIE-RC-REQ-v5` and `spec_version=v5.1`. |
 | A-007 | Pending-Revalidation | `N/A` | `N/A` | Required due v5.1 ISO remediation (manifest compatibility semantics updated via RC-MAN-004 and RC-JSN-004). |
-| A-009 | Pending-Revalidation | `N/A` | `N/A` | Required due v5.1 ISO remediation (RC-CONF and RC-ENV split-responsibility wording update). |
+| A-009 | Pass | `eb2fe4b59281e1de4902c90f0888f75c07b15906` | `21788889016` | Revalidated on 2026-02-07 using CI `Build & Test Runner CLI` (env-default conformance tests for `RC_PROFILE`/`RC_STRICT_MODE`) plus local requirements inspection confirming canonical env names in `RC-ENV-010`/`RC-ENV-011`. |
 | A-011 | Pending-Revalidation | `N/A` | `N/A` | Required due v5.1 ISO remediation (RC-GOV-006 major-version governance criterion). |
 | A-012 | Pending-Revalidation | `N/A` | `N/A` | Required due v5.1 ISO remediation (traceability coverage expanded to v5.1 RC IDs). |
 | A-014 | Pending-Revalidation | `N/A` | `N/A` | Required due v5.1 ISO remediation (target RC list revised for updated compatibility/scope clauses). |
