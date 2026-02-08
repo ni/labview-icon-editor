@@ -748,7 +748,7 @@ RC-CONF-014: The command shall classify each RC ID in the coverage set as covere
 RC-CONF-015: When --json is set, ConformanceCheckResult summary shall include a CoverageSummary object conforming to RC-JSN-100.
 RC-CONF-016: When --coverage-report is provided, the command shall write a ConformanceCoverageReport JSON file conforming to RC-JSN-101 at the specified path.
 RC-CONF-017: When --coverage-fail-on-gap is set and rc_uncovered is greater than zero, the command shall exit with code 2.
-RC-CONF-018: For each uncovered RC ID, the command shall emit one ConformanceCheckEntry with status fail, severity error, and evidence referencing the acceptance and trace artifacts used for coverage evaluation.
+RC-CONF-018: When --coverage-fail-on-gap is set, for each uncovered RC ID the command shall emit one ConformanceCheckEntry with status fail, severity error, and evidence referencing the acceptance and trace artifacts used for coverage evaluation.
 
 ## 8. Environment Variables
 

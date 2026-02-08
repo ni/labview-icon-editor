@@ -36,6 +36,9 @@ public sealed class ConformanceCheckSummary
 
     [JsonPropertyName("fail")]
     public int Fail { get; set; }
+
+    [JsonPropertyName("coverage")]
+    public CoverageSummary? Coverage { get; set; }
 }
 
 public sealed class ConformanceCheckEntry
@@ -69,4 +72,46 @@ public sealed class ConformanceCheckResult
 
     [JsonPropertyName("checks")]
     public List<ConformanceCheckEntry> Checks { get; set; } = new();
+}
+
+public sealed class CoverageSummary
+{
+    [JsonPropertyName("rc_total")]
+    public int RcTotal { get; set; }
+
+    [JsonPropertyName("rc_covered")]
+    public int RcCovered { get; set; }
+
+    [JsonPropertyName("rc_uncovered")]
+    public int RcUncovered { get; set; }
+
+    [JsonPropertyName("coverage_percent")]
+    public double CoveragePercent { get; set; }
+
+    [JsonPropertyName("uncovered_rc_ids")]
+    public List<string> UncoveredRcIds { get; set; } = new();
+}
+
+public sealed class ConformanceCoverageReport
+{
+    [JsonPropertyName("profile")]
+    public string Profile { get; set; } = string.Empty;
+
+    [JsonPropertyName("generated_utc")]
+    public string GeneratedUtc { get; set; } = string.Empty;
+
+    [JsonPropertyName("semantic_revision")]
+    public string SemanticRevision { get; set; } = string.Empty;
+
+    [JsonPropertyName("requirements_path")]
+    public string RequirementsPath { get; set; } = string.Empty;
+
+    [JsonPropertyName("acceptance_path")]
+    public string AcceptancePath { get; set; } = string.Empty;
+
+    [JsonPropertyName("trace_path")]
+    public string TracePath { get; set; } = string.Empty;
+
+    [JsonPropertyName("coverage")]
+    public CoverageSummary Coverage { get; set; } = new();
 }

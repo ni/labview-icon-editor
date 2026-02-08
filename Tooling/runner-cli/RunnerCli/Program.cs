@@ -868,16 +868,27 @@ var strictOption = new Option<bool>(
     name: "--strict",
     getDefaultValue: () => false,
     description: "Treat warning checks as failures.");
+var coverageReportOption = new Option<string?>(
+    name: "--coverage-report",
+    description: "Optional output path for ConformanceCoverageReport JSON.");
+var coverageFailOnGapOption = new Option<bool>(
+    name: "--coverage-fail-on-gap",
+    getDefaultValue: () => false,
+    description: "Fail when uncovered RC IDs are found in trace-derived coverage.");
 conformanceCheckCmd.AddOption(profileOption);
 conformanceCheckCmd.AddOption(repoRootOption);
 conformanceCheckCmd.AddOption(jsonOption);
 conformanceCheckCmd.AddOption(strictOption);
+conformanceCheckCmd.AddOption(coverageReportOption);
+conformanceCheckCmd.AddOption(coverageFailOnGapOption);
 conformanceCheckCmd.SetHandler((InvocationContext context) =>
 {
     try
     {
         var repoRoot = context.ParseResult.GetValueForOption(repoRootOption);
         var resolvedRoot = RepoLocator.Resolve(repoRoot, Environment.CurrentDirectory);
+        var coverageReportPath = context.ParseResult.GetValueForOption(coverageReportOption);
+        var coverageFailOnGap = context.ParseResult.GetValueForOption(coverageFailOnGapOption);
 
         var profileOptionValue = context.ParseResult.GetValueForOption(profileOption);
         var strictProvided = context.ParseResult.Tokens.Any(token =>
@@ -891,9 +902,25 @@ conformanceCheckCmd.SetHandler((InvocationContext context) =>
             strict,
             Environment.GetEnvironmentVariable("RC_HOSTED_LINUX_EVIDENCE"),
             Environment.GetEnvironmentVariable("RC_HOSTED_WINDOWS_EVIDENCE"),
-            resolvedRoot);
+            resolvedRoot,
+            coverageFailOnGap,
+            out var coverageReport);
 
         var exitCode = ConformanceService.ResolveExitCode(result, strict);
+        if (!string.IsNullOrWhiteSpace(coverageReportPath))
+        {
+            var resolvedCoveragePath = ConformanceService.ResolveOutputPath(coverageReportPath, resolvedRoot);
+            var coverageDir = Path.GetDirectoryName(resolvedCoveragePath);
+            if (!string.IsNullOrWhiteSpace(coverageDir))
+            {
+                Directory.CreateDirectory(coverageDir);
+            }
+
+            File.WriteAllText(
+                resolvedCoveragePath,
+                JsonSerializer.Serialize(coverageReport, RunnerCliJsonContext.Default.ConformanceCoverageReport));
+        }
+
         if (context.ParseResult.GetValueForOption(jsonOption))
         {
             Console.WriteLine(JsonSerializer.Serialize(result, RunnerCliJsonContext.Default.ConformanceCheckResult));
@@ -906,6 +933,13 @@ conformanceCheckCmd.SetHandler((InvocationContext context) =>
             Console.WriteLine($"pass={result.Summary.Pass}");
             Console.WriteLine($"warn={result.Summary.Warn}");
             Console.WriteLine($"fail={result.Summary.Fail}");
+            if (result.Summary.Coverage is not null)
+            {
+                Console.WriteLine($"coverage_rc_total={result.Summary.Coverage.RcTotal}");
+                Console.WriteLine($"coverage_rc_covered={result.Summary.Coverage.RcCovered}");
+                Console.WriteLine($"coverage_rc_uncovered={result.Summary.Coverage.RcUncovered}");
+                Console.WriteLine($"coverage_percent={result.Summary.Coverage.CoveragePercent}");
+            }
             foreach (var check in result.Checks)
             {
                 Console.WriteLine($"- [{check.Status}] {check.Id}: {check.Message}");

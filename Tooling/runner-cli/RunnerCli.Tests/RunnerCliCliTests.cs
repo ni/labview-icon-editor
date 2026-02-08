@@ -112,6 +112,120 @@ public class RunnerCliCliTests
     }
 
     [Fact]
+    public void ConformanceCheck_json_includes_coverage_summary_and_writes_report()
+    {
+        var repoRoot = FindRepoRoot();
+        var reportRelativePath = Path.Combine("TestResults", "agent-logs", $"coverage-report-{Guid.NewGuid():N}.json");
+        var reportPath = Path.Combine(repoRoot, reportRelativePath);
+        var reportDirectory = Path.GetDirectoryName(reportPath);
+        if (!string.IsNullOrWhiteSpace(reportDirectory))
+        {
+            Directory.CreateDirectory(reportDirectory);
+        }
+
+        if (File.Exists(reportPath))
+        {
+            File.Delete(reportPath);
+        }
+
+        var env = new Dictionary<string, string?>
+        {
+            ["RC_HOSTED_LINUX_EVIDENCE"] = "linux evidence",
+            ["RC_HOSTED_WINDOWS_EVIDENCE"] = "windows evidence"
+        };
+
+        var args = $"conformance check --profile full --repo-root \"{repoRoot}\" --json --coverage-report \"{reportRelativePath}\"";
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args, env);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+        Assert.True(File.Exists(reportPath), "coverage report file was not created");
+
+        using var resultDoc = JsonDocument.Parse(stdout);
+        var summary = resultDoc.RootElement.GetProperty("summary");
+        Assert.True(TryGetPropertyIgnoreCase(summary, "coverage", out var coverage), "summary.coverage missing");
+        Assert.True(TryGetPropertyIgnoreCase(coverage, "rc_total", out var rcTotal), "summary.coverage.rc_total missing");
+        Assert.True(TryGetPropertyIgnoreCase(coverage, "rc_covered", out _), "summary.coverage.rc_covered missing");
+        Assert.True(TryGetPropertyIgnoreCase(coverage, "rc_uncovered", out _), "summary.coverage.rc_uncovered missing");
+        Assert.True(TryGetPropertyIgnoreCase(coverage, "coverage_percent", out _), "summary.coverage.coverage_percent missing");
+        Assert.True(TryGetPropertyIgnoreCase(coverage, "uncovered_rc_ids", out _), "summary.coverage.uncovered_rc_ids missing");
+        Assert.True(rcTotal.GetInt32() > 0, "summary.coverage.rc_total should be greater than zero");
+
+        using var reportDoc = JsonDocument.Parse(File.ReadAllText(reportPath));
+        Assert.Equal("full", reportDoc.RootElement.GetProperty("profile").GetString());
+        Assert.Equal("v5.1", reportDoc.RootElement.GetProperty("semantic_revision").GetString());
+        Assert.True(reportDoc.RootElement.TryGetProperty("coverage", out var reportCoverage));
+        Assert.Equal(
+            coverage.GetProperty("rc_total").GetInt32(),
+            reportCoverage.GetProperty("rc_total").GetInt32());
+    }
+
+    [Fact]
+    public void ConformanceCheck_coverage_fail_on_gap_requires_flag_and_emits_fail_entries()
+    {
+        var repoRoot = FindRepoRoot();
+        var fixtureRoot = CreateConformanceCoverageGapFixture(repoRoot, out var expectedUncoveredRcIds);
+        var env = new Dictionary<string, string?>
+        {
+            ["RC_HOSTED_LINUX_EVIDENCE"] = "linux evidence",
+            ["RC_HOSTED_WINDOWS_EVIDENCE"] = "windows evidence"
+        };
+
+        var withoutFlagArgs = $"conformance check --profile extended --repo-root \"{fixtureRoot}\" --json";
+        var (exitWithoutFlag, stdoutWithoutFlag, stderrWithoutFlag) = RunCli(repoRoot, withoutFlagArgs, env);
+        Assert.Equal(0, exitWithoutFlag);
+        Assert.True(string.IsNullOrWhiteSpace(stderrWithoutFlag), $"stderr: {stderrWithoutFlag}");
+
+        using var withoutFlagDoc = JsonDocument.Parse(stdoutWithoutFlag);
+        var withoutFlagCoverage = withoutFlagDoc.RootElement.GetProperty("summary").GetProperty("coverage");
+        var withoutFlagUncovered = withoutFlagCoverage
+            .GetProperty("uncovered_rc_ids")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .ToArray();
+        Assert.Equal(expectedUncoveredRcIds, withoutFlagUncovered);
+        Assert.Equal(expectedUncoveredRcIds.Length, withoutFlagCoverage.GetProperty("rc_uncovered").GetInt32());
+        var withoutFlagChecks = withoutFlagDoc.RootElement.GetProperty("checks").EnumerateArray().ToList();
+        Assert.Empty(withoutFlagChecks.Where(check =>
+            check.GetProperty("id").GetString()!.StartsWith("coverage.uncovered.", StringComparison.OrdinalIgnoreCase)));
+
+        var coverageReportRelative = Path.Combine("coverage", "gap-report.json");
+        var withFlagArgs = $"conformance check --profile extended --repo-root \"{fixtureRoot}\" --json --coverage-fail-on-gap --coverage-report \"{coverageReportRelative}\"";
+        var (exitWithFlag, stdoutWithFlag, stderrWithFlag) = RunCli(repoRoot, withFlagArgs, env);
+        Assert.Equal(2, exitWithFlag);
+        Assert.True(string.IsNullOrWhiteSpace(stderrWithFlag), $"stderr: {stderrWithFlag}");
+
+        using var withFlagDoc = JsonDocument.Parse(stdoutWithFlag);
+        var withFlagChecks = withFlagDoc.RootElement.GetProperty("checks").EnumerateArray().ToList();
+        var uncoveredFailChecks = withFlagChecks.Where(check =>
+            check.GetProperty("id").GetString()!.StartsWith("coverage.uncovered.", StringComparison.OrdinalIgnoreCase)).ToList();
+        Assert.Equal(expectedUncoveredRcIds.Length, uncoveredFailChecks.Count);
+        foreach (var expectedRcId in expectedUncoveredRcIds)
+        {
+            var matchingCheck = uncoveredFailChecks.FirstOrDefault(check =>
+                check.GetProperty("message").GetString()!.Contains(expectedRcId, StringComparison.OrdinalIgnoreCase));
+            Assert.NotEqual(default, matchingCheck);
+            Assert.Equal("fail", matchingCheck.GetProperty("status").GetString());
+            Assert.Equal("error", matchingCheck.GetProperty("severity").GetString());
+            Assert.Contains("runner-cli-requirements-v4-to-v5-trace.md", matchingCheck.GetProperty("evidence").GetString(), StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("runner-cli-requirements-v5-acceptance.md", matchingCheck.GetProperty("evidence").GetString(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        var coverageReportPath = Path.Combine(fixtureRoot, coverageReportRelative);
+        Assert.True(File.Exists(coverageReportPath), "coverage report for gap run was not created");
+        using var gapReportDoc = JsonDocument.Parse(File.ReadAllText(coverageReportPath));
+        var reportUncovered = gapReportDoc.RootElement
+            .GetProperty("coverage")
+            .GetProperty("uncovered_rc_ids")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .ToArray();
+        Assert.Equal(expectedUncoveredRcIds, reportUncovered);
+    }
+
+    [Fact]
     public void PylaviSummarize_writes_output_even_with_json()
     {
         var repoRoot = FindRepoRoot();
@@ -564,25 +678,14 @@ public class RunnerCliCliTests
             Path.Combine(repoRoot, "Tooling", "runner-cli", "RunnerCli", "bin", "Release", "net8.0")
         };
 
-        foreach (var outputRoot in outputRoots)
-        {
-            if (!Directory.Exists(outputRoot))
-            {
-                continue;
-            }
+        var candidates = outputRoots
+            .Where(Directory.Exists)
+            .SelectMany(outputRoot => new DirectoryInfo(outputRoot).GetFiles("runner-cli.dll", SearchOption.AllDirectories))
+            .OrderByDescending(file => file.LastWriteTimeUtc)
+            .Select(file => file.FullName)
+            .ToList();
 
-            var dll = new DirectoryInfo(outputRoot)
-                .GetFiles("runner-cli.dll", SearchOption.AllDirectories)
-                .OrderByDescending(file => file.LastWriteTimeUtc)
-                .Select(file => file.FullName)
-                .FirstOrDefault();
-            if (!string.IsNullOrWhiteSpace(dll))
-            {
-                return dll;
-            }
-        }
-
-        return null;
+        return candidates.FirstOrDefault();
     }
 
     private static string EnsurePublishedBinary(string repoRoot)
@@ -699,6 +802,31 @@ public class RunnerCliCliTests
             throw new InvalidOperationException($"chmod failed for vi_validate stub: {stderr}");
         }
         return dir;
+    }
+
+    private static string CreateConformanceCoverageGapFixture(string repoRoot, out string[] expectedUncoveredRcIds)
+    {
+        var fixtureRoot = Directory.CreateTempSubdirectory("lvie-cli-conformance-gap").FullName;
+        var docsRoot = Path.Combine(fixtureRoot, "docs");
+        Directory.CreateDirectory(docsRoot);
+
+        var requirementsSource = Path.Combine(repoRoot, "docs", "runner-cli-requirements.md");
+        var acceptanceSource = Path.Combine(repoRoot, "docs", "runner-cli-requirements-v5-acceptance.md");
+        var traceSource = Path.Combine(repoRoot, "docs", "runner-cli-requirements-v4-to-v5-trace.md");
+
+        var requirementsDest = Path.Combine(docsRoot, "runner-cli-requirements.md");
+        var acceptanceDest = Path.Combine(docsRoot, "runner-cli-requirements-v5-acceptance.md");
+        var traceDest = Path.Combine(docsRoot, "runner-cli-requirements-v4-to-v5-trace.md");
+
+        File.Copy(requirementsSource, requirementsDest, overwrite: true);
+        File.Copy(acceptanceSource, acceptanceDest, overwrite: true);
+        File.Copy(traceSource, traceDest, overwrite: true);
+
+        var syntheticGapRow = "| V5.1-Z9 | none | RC-ZZZ-999, RC-AAA-111 | Extended | Clarifying | synthetic uncovered RC fixture | synthetic coverage fixture |";
+        File.AppendAllText(traceDest, $"{Environment.NewLine}{syntheticGapRow}{Environment.NewLine}");
+
+        expectedUncoveredRcIds = new[] { "RC-AAA-111", "RC-ZZZ-999" };
+        return fixtureRoot;
     }
 
     private static void AssertItemOrder(JsonElement array, params string[] expectedItems)

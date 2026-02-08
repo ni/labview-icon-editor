@@ -14,6 +14,8 @@ namespace RunnerCli;
 [JsonSerializable(typeof(ConformanceCheckResult))]
 [JsonSerializable(typeof(ConformanceCheckSummary))]
 [JsonSerializable(typeof(ConformanceCheckEntry))]
+[JsonSerializable(typeof(CoverageSummary))]
+[JsonSerializable(typeof(ConformanceCoverageReport))]
 internal partial class RunnerCliJsonContext : JsonSerializerContext
 {
 }
