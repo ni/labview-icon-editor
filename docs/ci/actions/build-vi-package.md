@@ -94,7 +94,7 @@ It eliminates confusion around versioning, keeps everything in one pipeline, and
 
 ### 3.1 How the Action Is Triggered
 The `build-vi-package` directory defines a **composite action**. It does not listen for events on its own; instead, the CI workflow in [`ci-composite.yml`](../../../.github/workflows/ci-composite.yml) invokes it.
-That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Early jobs like `run-metadata`, `version-gate`, and `changes` run on GitHub-hosted `ubuntu-latest`. Subsequent jobs that require LabVIEW—`apply-deps`, `version`, `test`, `build-ppl`, and `build-vi-package`—execute on a self-hosted Windows runner (`self-hosted-windows-lv-ie`). Only Windows-specific jobs (e.g., `test`, `build-ppl`, `build-vi-package`) require the self-hosted runner. Linux support is considered a future or custom expansion: you would need to extend the matrix and provide a corresponding runner label (for example, `self-hosted-linux-lv`). The branch filters for push/PR triggers live in `ci-composite.yml` (see `on.push.branches` and `on.pull_request.branches`).
+That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Early jobs like `run-metadata`, `version-gate`, and `changes` run on GitHub-hosted `ubuntu-latest`. Windows self-hosted jobs still handle LabVIEW testing and PPL generation (`apply-deps`, `version`, `test`, `build-ppl`). In phase 1, VI Package packaging is split by event: `build-vip-linux` runs on hosted Linux (containerized LabVIEW, `2026q1`) for pull requests and `develop` pushes, while the existing Windows `build-vip` path is retained for non-PR release-authoritative runs (`push` and `workflow_dispatch`). The branch filters for push/PR triggers live in `ci-composite.yml` (see `on.push.branches` and `on.pull_request.branches`).
 
 ### 3.2 Configurable Inputs / Parameters
 `ci-composite.yml` calls this action and provides all required inputs automatically. When invoking
@@ -156,11 +156,13 @@ components remain unchanged and only the build number increases.
 
 5. **Build the Icon Editor VI Package**
    - Uses the `build-lvlibp` action to compile the packed libraries.
+   - Downloads both packed libraries (`lv_icon_x86.lvlibp`, `lv_icon_x64.lvlibp`) as required inputs for packaging.
    - Generates a display-information JSON blob that now includes:
      - semantic-version components (`major`, `minor`, `patch`, `build`),
      - repository-derived metadata (company/author names, homepage URL, and description), and
      - the markdown release notes captured from `Tooling/deployment/release_notes.md`.
-   - Runs the `build-vi-package` action to generate the final `.vip` file with those values embedded.
+   - For PR and `develop` push validation, runs Linux packaging inside `nationalinstruments/labview:2026q1-linux` via `Tooling/container-parity/build-vip-linux.sh`.
+   - For non-PR release-authoritative runs, keeps the Windows `build-vip` packaging path.
 
 6. **Capture & Upload Artifacts**
    - Uploads the generated `.vip` as an ephemeral artifact for the current Actions run.
@@ -238,7 +240,7 @@ components remain unchanged and only the build number increases.
 ### 7.2 Direct Push to Main or Develop
 - **Scenario**: You quickly push a fix to `develop` without opening a PR.
 - **Action**: With no pull request labels available, major/minor/patch remain unchanged while the build number increments automatically.
-- **Result**: The version might progress from `v1.2.3-build46` to `v1.2.3-build47`.
+- **Result**: The version might progress from `v1.2.3-build46` to `v1.2.3-build47`, and the pipeline runs Linux VI Package packaging plus the non-PR Windows packaging path.
 
 ### 7.3 Working on a Release Branch
 - **Scenario**: You branch off `release-rc/1.2`.

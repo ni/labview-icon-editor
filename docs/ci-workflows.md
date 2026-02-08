@@ -1,6 +1,6 @@
 # Local CI/CD Workflows
 
-**Last updated:** 2026-02-07
+**Last updated:** 2026-02-08
 
 Quick link: `.github/workflows/runner-cli.yml` (Runner CLI consolidated workflow).
 
@@ -56,7 +56,9 @@ Automating your Icon Editor builds and tests:
      - A concurrency group cancels any previous run on the same branch, ensuring only the latest pipeline execution continues.
 
 5. **Build VI Package**
-   - Produces `.vip` artifacts automatically. By default, the workflow populates the **“Company Name”** with `github.repository_owner` and the **“Author Name”** with `github.event.repository.name`, so each build is branded with your GitHub account and repository.
+   - Produces `.vip` artifacts automatically. On PR and `develop` pushes, packaging runs in Linux (`build-vip-linux`) using the `nationalinstruments/labview:2026q1-linux` container and consumes both PPL artifacts (`lv_icon_x86.lvlibp`, `lv_icon_x64.lvlibp`).
+   - The existing Windows `build-vip` job is retained as the release-authoritative path for non-PR events (`push`/`workflow_dispatch`).
+   - By default, the workflow populates the **“Company Name”** with `github.repository_owner` and the **“Author Name”** with `github.event.repository.name`, so each build is branded with your GitHub account and repository.
    - To use different branding, edit the **“Generate display information JSON”** step in [`.github/workflows/ci-composite.yml`](../.github/workflows/ci-composite.yml) and supply custom values for these fields.
    - Uses **label-based** version bumping (major/minor/patch) on pull requests.
    - Generates `Tooling/deployment/release_notes.md` summarizing recent commits. Use this file to draft changelogs or release notes.
@@ -116,11 +118,22 @@ The [`ci-composite.yml`](../.github/workflows/ci-composite.yml) pipeline breaks 
 - **missing-in-project-check** – verifies every source file is referenced in the `.lvproj`.
 - **test** – runs LabVIEW unit tests on Windows in LabVIEW 2021 (32- and 64-bit).
 - **build-ppl** – uses a matrix to build 32-bit and 64-bit packed libraries, then uses the `rename-file` action to append the bitness to each library’s filename.
-- **build-vi-package** – packages the final VI Package using the built libraries and version information. In `ci-composite.yml` this job passes `supported_bitness: 64`, so it produces only a 64-bit `.vip`.
+- **build-vip-linux** – packages the VI Package on `ubuntu-latest` by running `Tooling/container-parity/build-vip-linux.sh` inside `nationalinstruments/labview:2026q1-linux`. This job requires both PPL artifacts (`lv_icon_x86.lvlibp`, `lv_icon_x64.lvlibp`).
+- **build-vip** – existing Windows/self-hosted VI Package packaging path. It is retained for non-PR release-authoritative builds and is skipped for pull requests.
 
-Both `build-ppl` and `build-vi-package` run a `close-labview` step after their build actions finish but before any steps that rename files or upload artifacts, so it isn't the job's final step.
+Windows self-hosted build jobs (`build-ppl-*` and `build-vip`) run a `close-labview` step after their build actions finish but before any steps that rename files or upload artifacts, so it is not the final step.
 
 The `build-ppl` job uses a matrix to produce both bitnesses rather than distinct jobs.
+
+#### Event matrix (VIP packaging)
+
+| Event | `build-vip-linux` | `build-vip` (Windows) |
+| --- | --- | --- |
+| `pull_request` | Runs (required) | Skipped |
+| `push` to `develop` | Runs (required) | Runs |
+| `workflow_dispatch` | Runs (required) | Runs |
+
+Branch protection recommendation: require `CI Pipeline (Composite) / Build VI Package (Linux)` for pull requests, and keep Docker parity checks required as configured.
 
 *(The **Run Unit Tests** workflow has been consolidated into the main CI process.)*
 

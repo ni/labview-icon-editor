@@ -31,6 +31,7 @@ on:
   pull_request:
     branches:
       - main
+      - develop
       - release/*
       - feature/*
       - hotfix/*
@@ -906,8 +907,98 @@ jobs:
           close_labview: 'true'
           close_bitness: 64
 
+  build-vip-linux:
+    name: Build VI Package (Linux)
+    needs: [run-metadata, version-gate, build-ppl-x86, version]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Generate release notes
+        shell: pwsh
+        run: |
+          & ".github/actions/generate-release-notes/GenerateReleaseNotes.ps1" -OutputPath "Tooling/deployment/release_notes.md"
+      - name: Download packed library artifact (32-bit)
+        uses: actions/download-artifact@v4
+        with:
+          name: lv_icon_x86.lvlibp
+          path: ${{ github.workspace }}/resource/plugins
+      - name: Download packed library artifact (64-bit)
+        uses: actions/download-artifact@v4
+        with:
+          name: lv_icon_x64.lvlibp
+          path: ${{ github.workspace }}/resource/plugins
+      - name: Pull LabVIEW Linux image
+        shell: bash
+        run: |
+          set -euo pipefail
+          LV_RELEASE="2026q1"
+          IMAGE="nationalinstruments/labview:${LV_RELEASE}-linux"
+          echo "Using image: ${IMAGE}"
+          docker pull "${IMAGE}"
+          echo "LV_RELEASE=${LV_RELEASE}" >> "$GITHUB_ENV"
+          echo "IMAGE=${IMAGE}" >> "$GITHUB_ENV"
+      - name: Build VI Package in Linux container
+        shell: bash
+        run: |
+          set -euo pipefail
+          VIP_VERSION="${{ needs.version.outputs.MAJOR }}.${{ needs.version.outputs.MINOR }}.${{ needs.version.outputs.PATCH }}.${{ needs.version.outputs.BUILD }}"
+          LV_YEAR="${LV_RELEASE:0:4}"
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}:/workspace" \
+            -e WORKSPACE_ROOT=/workspace \
+            -e "LV_RELEASE=${LV_RELEASE}" \
+            -e "LV_YEAR=${LV_YEAR}" \
+            -e "CONTAINER_VIPB_PATH=Tooling/deployment/NI Icon editor.vipb" \
+            -e "CONTAINER_VIP_VERSION=${VIP_VERSION}" \
+            -e "CONTAINER_RELEASE_NOTES_PATH=Tooling/deployment/release_notes.md" \
+            -e "CONTAINER_VIPM_TIMEOUT_SECONDS=900" \
+            "${IMAGE}" \
+            bash -lc "chmod +x /workspace/Tooling/container-parity/build-vip-linux.sh && /workspace/Tooling/container-parity/build-vip-linux.sh"
+      - name: Locate built VI package
+        id: locate-vip-linux
+        shell: bash
+        run: |
+          set -euo pipefail
+          VIP_DIR="${GITHUB_WORKSPACE}/builds/VI Package"
+          if [[ ! -d "${VIP_DIR}" ]]; then
+            echo "VI Package directory not found: ${VIP_DIR}" >&2
+            exit 1
+          fi
+          latest_line="$(
+            find "${VIP_DIR}" -type f -name '*.vip' -printf '%T@|%p\n' \
+              | sort -nr \
+              | head -n 1
+          )"
+          if [[ -z "${latest_line}" ]]; then
+            echo "No .vip file found under ${VIP_DIR}" >&2
+            exit 1
+          fi
+          vip_path="${latest_line#*|}"
+          version="${{ needs.version.outputs.MAJOR }}.${{ needs.version.outputs.MINOR }}.${{ needs.version.outputs.PATCH }}.${{ needs.version.outputs.BUILD }}"
+          echo "Selected .vip: ${vip_path}"
+          echo "vip_path=${vip_path}" >> "$GITHUB_OUTPUT"
+          echo "vip_name=$(basename "${vip_path}")" >> "$GITHUB_OUTPUT"
+          echo "vip_artifact=vip-linux-${version}" >> "$GITHUB_OUTPUT"
+      - name: Upload VI Package (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.locate-vip-linux.outputs.vip_artifact }}
+          path: ${{ steps.locate-vip-linux.outputs.vip_path }}
+          if-no-files-found: error
+      - name: Upload g-cli logs (Linux VIP)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gcli-logs-linux-vip
+          path: ${{ github.workspace }}/builds/logs
+          if-no-files-found: warn
+
   build-vip:
     name: Build VI Package
+    if: ${{ github.event_name != 'pull_request' }}
     # Chain after 32-bit PPL build (which depends on 64-bit PPL build).
     needs: [run-metadata, version-gate, build-ppl-x86, version]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
@@ -1169,6 +1260,7 @@ jobs:
       - unit-tests
       - build-ppl-x64
       - build-ppl-x86
+      - build-vip-linux
       - build-vip
       - version
       - conformance-full
@@ -1196,10 +1288,13 @@ jobs:
             'unit-tests',
             'build-ppl-x64',
             'build-ppl-x86',
-            'build-vip',
+            'build-vip-linux',
             'version',
             'conformance-full'
           )
+          if ('${{ github.event_name }}' -ne 'pull_request') {
+            $required += 'build-vip'
+          }
           $needs = ConvertFrom-Json -InputObject '${{ toJson(needs) }}'
           $needsProps = $needs.PSObject.Properties
           $failed = @()
