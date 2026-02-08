@@ -1,0 +1,402 @@
+name: VIP Linux Harness
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: "Optional CI Pipeline (Composite) run ID to source x86/x64 PPL artifacts from."
+        required: false
+        type: string
+        default: ""
+      source_branch:
+        description: "Branch used when source_run_id is empty."
+        required: false
+        type: string
+        default: "develop"
+      lookback_limit:
+        description: "Maximum successful ci-composite runs to scan for both PPL artifacts."
+        required: false
+        type: number
+        default: 15
+      lv_release:
+        description: "LabVIEW container release tag."
+        required: false
+        type: string
+        default: "2026q1"
+      vip_version:
+        description: "Optional VIP version override (major.minor.patch.build)."
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  vip-linux-harness:
+    name: VIP Linux Harness
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Resolve source run and download PPL artifacts
+        id: source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          function Download-ArtifactFile {
+            param(
+              [Parameter(Mandatory = $true)][string]$Repo,
+              [Parameter(Mandatory = $true)][string]$RunId,
+              [Parameter(Mandatory = $true)][string]$ArtifactName,
+              [Parameter(Mandatory = $true)][string]$ExpectedFileName,
+              [Parameter(Mandatory = $true)][string]$DestinationDir
+            )
+
+            New-Item -Path $DestinationDir -ItemType Directory -Force | Out-Null
+            try {
+              & gh run download $RunId -R $Repo -n $ArtifactName -D $DestinationDir | Out-Null
+            } catch {
+              return $null
+            }
+            if ($LASTEXITCODE -ne 0) {
+              return $null
+            }
+
+            $match = Get-ChildItem -Path $DestinationDir -Recurse -File -ErrorAction SilentlyContinue |
+              Where-Object { $_.Name -eq $ExpectedFileName } |
+              Select-Object -First 1
+            if ($match) {
+              return $match.FullName
+            }
+            return $null
+          }
+
+          $repo = "${{ github.repository }}"
+          $sourceRunIdInput = "${{ inputs.source_run_id }}".Trim()
+          $sourceBranch = "${{ inputs.source_branch }}".Trim()
+          if ([string]::IsNullOrWhiteSpace($sourceBranch)) {
+            $sourceBranch = 'develop'
+          }
+
+          $lookbackRaw = "${{ inputs.lookback_limit }}"
+          $lookback = 15
+          if (-not [int]::TryParse($lookbackRaw, [ref]$lookback) -or $lookback -lt 1) {
+            throw "lookback_limit must be a positive integer. Received '$lookbackRaw'."
+          }
+
+          $tempRoot = Join-Path $env:RUNNER_TEMP 'vip-linux-harness'
+          $artifactRoot = Join-Path $tempRoot 'artifacts'
+          $selectedRoot = Join-Path $tempRoot 'selected'
+          New-Item -Path $artifactRoot -ItemType Directory -Force | Out-Null
+          New-Item -Path $selectedRoot -ItemType Directory -Force | Out-Null
+          $probeLogPath = Join-Path $tempRoot 'artifact-probe.log'
+          $probeLines = New-Object 'System.Collections.Generic.List[string]'
+
+          $candidates = @()
+          if (-not [string]::IsNullOrWhiteSpace($sourceRunIdInput)) {
+            $runJson = & gh run view $sourceRunIdInput -R $repo --json databaseId,headSha,headBranch,conclusion,status,displayTitle
+            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($runJson)) {
+              throw "Unable to resolve source_run_id '$sourceRunIdInput' in $repo."
+            }
+            $run = $runJson | ConvertFrom-Json
+            if ($run.conclusion -ne 'success') {
+              throw "source_run_id '$sourceRunIdInput' has conclusion '$($run.conclusion)'; expected 'success'."
+            }
+            $candidates = @($run)
+            $probeLines.Add("source_run_id provided: $sourceRunIdInput")
+          } else {
+            $runsJson = & gh run list -R $repo -w ci-composite.yml -b $sourceBranch -s success -L $lookback --json databaseId,headSha,headBranch,displayTitle
+            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($runsJson)) {
+              throw "Failed to query successful ci-composite runs for branch '$sourceBranch'."
+            }
+            $runs = $runsJson | ConvertFrom-Json
+            if ($runs -isnot [array]) {
+              $runs = @($runs)
+            }
+            if (-not $runs -or $runs.Count -eq 0) {
+              throw "No successful ci-composite runs found for branch '$sourceBranch' (lookback=$lookback)."
+            }
+            $candidates = $runs
+            $probeLines.Add("Auto-select mode: branch=$sourceBranch lookback=$lookback candidate_count=$($runs.Count)")
+          }
+
+          $selectedRun = $null
+          $selectedX86 = $null
+          $selectedX64 = $null
+
+          foreach ($candidate in $candidates) {
+            $runId = [string]$candidate.databaseId
+            if ([string]::IsNullOrWhiteSpace($runId)) {
+              continue
+            }
+            $runDir = Join-Path $artifactRoot ("run-" + $runId)
+            $x86Dir = Join-Path $runDir 'x86'
+            $x64Dir = Join-Path $runDir 'x64'
+
+            $x86Path = Download-ArtifactFile `
+              -Repo $repo `
+              -RunId $runId `
+              -ArtifactName 'lv_icon_x86.lvlibp' `
+              -ExpectedFileName 'lv_icon_x86.lvlibp' `
+              -DestinationDir $x86Dir
+            $x64Path = Download-ArtifactFile `
+              -Repo $repo `
+              -RunId $runId `
+              -ArtifactName 'lv_icon_x64.lvlibp' `
+              -ExpectedFileName 'lv_icon_x64.lvlibp' `
+              -DestinationDir $x64Dir
+
+            $probeLines.Add(("run={0} head={1} x86={2} x64={3}" -f $runId, $candidate.headSha, [bool]$x86Path, [bool]$x64Path))
+
+            if ($x86Path -and $x64Path) {
+              $selectedRun = $candidate
+              $selectedX86 = $x86Path
+              $selectedX64 = $x64Path
+              break
+            }
+          }
+
+          $probeLines | Set-Content -Path $probeLogPath -Encoding utf8
+
+          if (-not $selectedRun) {
+            throw "No eligible source run found with both lv_icon_x86.lvlibp and lv_icon_x64.lvlibp artifacts. See probe log at $probeLogPath."
+          }
+
+          $selectedRunId = [string]$selectedRun.databaseId
+          $selectedHeadSha = [string]$selectedRun.headSha
+          $selectedHeadBranch = [string]$selectedRun.headBranch
+          if ([string]::IsNullOrWhiteSpace($selectedHeadSha)) {
+            throw "Selected run $selectedRunId did not provide headSha."
+          }
+          if ([string]::IsNullOrWhiteSpace($selectedHeadBranch)) {
+            $selectedHeadBranch = $sourceBranch
+          }
+
+          $selectedX86Dest = Join-Path $selectedRoot 'lv_icon_x86.lvlibp'
+          $selectedX64Dest = Join-Path $selectedRoot 'lv_icon_x64.lvlibp'
+          Copy-Item -Path $selectedX86 -Destination $selectedX86Dest -Force
+          Copy-Item -Path $selectedX64 -Destination $selectedX64Dest -Force
+
+          "selected_run_id=$selectedRunId" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "selected_head_sha=$selectedHeadSha" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "selected_branch=$selectedHeadBranch" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "artifact_probe_log=$probeLogPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "ppl_x86_path=$selectedX86Dest" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "ppl_x64_path=$selectedX64Dest" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "selected_run_url=https://github.com/$repo/actions/runs/$selectedRunId" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Checkout selected source commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.source.outputs.selected_head_sha }}
+
+      - name: Stage PPL artifacts for packaging
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $pluginsDir = Join-Path $env:GITHUB_WORKSPACE 'resource/plugins'
+          New-Item -Path $pluginsDir -ItemType Directory -Force | Out-Null
+
+          $x86Source = "${{ steps.source.outputs.ppl_x86_path }}"
+          $x64Source = "${{ steps.source.outputs.ppl_x64_path }}"
+          if (-not (Test-Path -Path $x86Source -PathType Leaf)) {
+            throw "x86 PPL source not found: $x86Source"
+          }
+          if (-not (Test-Path -Path $x64Source -PathType Leaf)) {
+            throw "x64 PPL source not found: $x64Source"
+          }
+
+          Copy-Item -Path $x86Source -Destination (Join-Path $pluginsDir 'lv_icon_x86.lvlibp') -Force
+          Copy-Item -Path $x64Source -Destination (Join-Path $pluginsDir 'lv_icon_x64.lvlibp') -Force
+
+      - name: Generate release notes
+        shell: pwsh
+        run: |
+          & ".github/actions/generate-release-notes/GenerateReleaseNotes.ps1" -OutputPath "Tooling/deployment/release_notes.md"
+
+      - name: Resolve VIP version
+        id: version
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $rawVersion = "${{ inputs.vip_version }}".Trim()
+          if ([string]::IsNullOrWhiteSpace($rawVersion)) {
+            $rawVersion = "0.0.0.${{ github.run_number }}"
+          }
+          if ($rawVersion -notmatch '^\d+\.\d+\.\d+\.\d+$') {
+            throw "vip_version must match major.minor.patch.build. Received '$rawVersion'."
+          }
+          "vip_version=$rawVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Pull LabVIEW Linux image
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          LV_RELEASE="${{ inputs.lv_release }}"
+          if [[ -z "$LV_RELEASE" ]]; then
+            LV_RELEASE="2026q1"
+          fi
+          IMAGE="nationalinstruments/labview:${LV_RELEASE}-linux"
+          echo "Using image: ${IMAGE}"
+          docker pull "${IMAGE}"
+          echo "lv_release=${LV_RELEASE}" >> "$GITHUB_OUTPUT"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Build VI Package in Linux container
+        shell: bash
+        run: |
+          set -euo pipefail
+          LV_RELEASE="${{ steps.image.outputs.lv_release }}"
+          if [[ ! "$LV_RELEASE" =~ ^[0-9]{4} ]]; then
+            echo "Invalid lv_release '$LV_RELEASE'. Expected to start with four-digit year." >&2
+            exit 1
+          fi
+          LV_YEAR="${LV_RELEASE:0:4}"
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}:/workspace" \
+            -e WORKSPACE_ROOT=/workspace \
+            -e "LV_RELEASE=${LV_RELEASE}" \
+            -e "LV_YEAR=${LV_YEAR}" \
+            -e "CONTAINER_VIPB_PATH=Tooling/deployment/NI Icon editor.vipb" \
+            -e "CONTAINER_VIP_VERSION=${{ steps.version.outputs.vip_version }}" \
+            -e "CONTAINER_RELEASE_NOTES_PATH=Tooling/deployment/release_notes.md" \
+            -e "CONTAINER_VIPM_TIMEOUT_SECONDS=900" \
+            "${{ steps.image.outputs.image }}" \
+            bash -lc "chmod +x /workspace/Tooling/container-parity/build-vip-linux.sh && /workspace/Tooling/container-parity/build-vip-linux.sh"
+
+      - name: Locate built VI package
+        id: locate
+        shell: bash
+        run: |
+          set -euo pipefail
+          VIP_DIR="${GITHUB_WORKSPACE}/builds/VI Package"
+          if [[ ! -d "${VIP_DIR}" ]]; then
+            echo "VI Package directory not found: ${VIP_DIR}" >&2
+            exit 1
+          fi
+
+          latest_line="$(
+            find "${VIP_DIR}" -type f -name '*.vip' -printf '%T@|%p\n' \
+              | sort -nr \
+              | head -n 1
+          )"
+          if [[ -z "${latest_line}" ]]; then
+            echo "No .vip file found under ${VIP_DIR}" >&2
+            exit 1
+          fi
+
+          vip_path="${latest_line#*|}"
+          vip_size="$(wc -c < "${vip_path}" | xargs)"
+          echo "Selected .vip: ${vip_path} (${vip_size} bytes)"
+
+          {
+            echo 'vip_path<<EOF'
+            echo "${vip_path}"
+            echo 'EOF'
+            echo "vip_size=${vip_size}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Inspect VI Package contents
+        id: inspect
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $logsDir = Join-Path $env:GITHUB_WORKSPACE 'builds/logs'
+          New-Item -Path $logsDir -ItemType Directory -Force | Out-Null
+          $reportPath = Join-Path $logsDir 'vip-inspect-report.txt'
+
+          & "$env:GITHUB_WORKSPACE/Tooling/Inspect-VipPackage.ps1" `
+            -VipPath "${{ steps.locate.outputs.vip_path }}" `
+            -WriteSummary *>&1 | Tee-Object -FilePath $reportPath
+
+          "report_path=$reportPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Write harness source metadata
+        id: metadata
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $logsDir = Join-Path $env:GITHUB_WORKSPACE 'builds/logs'
+          New-Item -Path $logsDir -ItemType Directory -Force | Out-Null
+
+          $metadataPath = Join-Path $logsDir 'vip-linux-harness-source-metadata.json'
+          $probeLogSource = "${{ steps.source.outputs.artifact_probe_log }}"
+          $probeLogTarget = Join-Path $logsDir 'vip-linux-harness-artifact-probe.log'
+          if (Test-Path -Path $probeLogSource -PathType Leaf) {
+            Copy-Item -Path $probeLogSource -Destination $probeLogTarget -Force
+          }
+
+          $payload = [ordered]@{
+            repository = "${{ github.repository }}"
+            workflow_run_id = "${{ github.run_id }}"
+            workflow_run_attempt = "${{ github.run_attempt }}"
+            selected_source_run_id = "${{ steps.source.outputs.selected_run_id }}"
+            selected_source_run_url = "${{ steps.source.outputs.selected_run_url }}"
+            selected_head_sha = "${{ steps.source.outputs.selected_head_sha }}"
+            selected_branch = "${{ steps.source.outputs.selected_branch }}"
+            lv_release = "${{ steps.image.outputs.lv_release }}"
+            vip_version = "${{ steps.version.outputs.vip_version }}"
+            vip_path = "${{ steps.locate.outputs.vip_path }}"
+            vip_size_bytes = "${{ steps.locate.outputs.vip_size }}"
+            generated_utc = (Get-Date).ToUniversalTime().ToString('o')
+          }
+          $payload | ConvertTo-Json -Depth 8 | Set-Content -Path $metadataPath -Encoding utf8
+
+          "metadata_path=$metadataPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "probe_path=$probeLogTarget" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Upload VI Package (harness)
+        uses: actions/upload-artifact@v4
+        with:
+          name: vip-linux-harness-${{ steps.version.outputs.vip_version }}
+          path: ${{ steps.locate.outputs.vip_path }}
+          if-no-files-found: error
+
+      - name: Upload g-cli logs (harness)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gcli-logs-linux-vip-harness
+          path: ${{ github.workspace }}/builds/logs
+          if-no-files-found: warn
+
+      - name: Upload inspect report (harness)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vip-linux-harness-inspect-report
+          path: ${{ steps.inspect.outputs.report_path }}
+          if-no-files-found: warn
+
+      - name: Upload source metadata (harness)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vip-linux-harness-source-metadata
+          path: |
+            ${{ steps.metadata.outputs.metadata_path }}
+            ${{ steps.metadata.outputs.probe_path }}
+          if-no-files-found: warn
+
+      - name: Write harness summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## VIP Linux Harness"
+            echo ""
+            echo "- Selected source run: [${{ steps.source.outputs.selected_run_id }}](${{ steps.source.outputs.selected_run_url }})"
+            echo "- Selected source SHA: \`${{ steps.source.outputs.selected_head_sha }}\`"
+            echo "- Selected source branch: \`${{ steps.source.outputs.selected_branch }}\`"
+            echo "- LV release: \`${{ steps.image.outputs.lv_release }}\`"
+            echo "- VIP version: \`${{ steps.version.outputs.vip_version }}\`"
+            echo "- VIP path: \`${{ steps.locate.outputs.vip_path }}\`"
+            echo "- VIP size (bytes): \`${{ steps.locate.outputs.vip_size }}\`"
+            echo "- Artifacts downloaded: \`lv_icon_x86.lvlibp\`, \`lv_icon_x64.lvlibp\`"
+          } >> "$GITHUB_STEP_SUMMARY"

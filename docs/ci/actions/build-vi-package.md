@@ -252,6 +252,27 @@ components remain unchanged and only the build number increases.
 - **Action**: Provide any input parameters (if configured), or rely on defaults like `none` for version bump.
 - **Result**: The script runs as if it were a push event and produces a `.vip` artifact. Creating tags or releases requires additional steps.
 
+### 7.5 Fast Linux VIP Harness
+- **Workflow**: [`.github/workflows/vip-linux-harness.yml`](../../../.github/workflows/vip-linux-harness.yml)
+- **Purpose**: Rapidly validate Linux VIP packaging by reusing already-built PPL artifacts (`lv_icon_x86.lvlibp`, `lv_icon_x64.lvlibp`) from successful `ci-composite.yml` runs.
+- **Trigger**: `workflow_dispatch` only (manual, non-gating).
+- **Default behavior**:
+  1. Query successful `CI Pipeline (Composite)` runs on `develop`.
+  2. Probe newest-to-oldest (bounded by `lookback_limit`) until both required PPL artifacts are found.
+  3. Checkout the selected source run's `head_sha` for reproducibility.
+  4. Build the Linux `.vip` via `Tooling/container-parity/build-vip-linux.sh` in `nationalinstruments/labview:<lv_release>-linux`.
+- **Inputs**:
+  - `source_run_id` (optional): exact run ID to use directly.
+  - `source_branch` (default `develop`): branch used when `source_run_id` is omitted.
+  - `lookback_limit` (default `15`): number of successful runs to scan.
+  - `lv_release` (default `2026q1`): LabVIEW container release tag.
+  - `vip_version` (optional): explicit `major.minor.patch.build`; defaults to `0.0.0.<github.run_number>`.
+- **Outputs (artifacts)**:
+  - `vip-linux-harness-<version>`
+  - `gcli-logs-linux-vip-harness`
+  - `vip-linux-harness-inspect-report`
+  - `vip-linux-harness-source-metadata`
+
 
 
 ## 8. **Testing & Verification**
