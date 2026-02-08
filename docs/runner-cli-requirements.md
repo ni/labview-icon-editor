@@ -9,6 +9,7 @@
 | Product | runner-cli |
 | Scope | Progressive scope expansion (core -> extended -> full) |
 | Status | Draft v5.1 (ISO 29148 remediation) |
+| Next planned set | v6 candidate C1 (conformance coverage automation) |
 
 ## Scope Expansion Model (Normative)
 
@@ -47,6 +48,17 @@ v5.1 is a clarifying revision that preserves the v5 command surface while tighte
 | Add `conformance check` command and JSON types | RC-CONF-001, RC-CONF-002, RC-CONF-003, RC-JSN-080, RC-JSN-090 | Contract-expanding | Provide profile-scoped, machine-readable conformance result surface | V5-C5 |
 | Add governance and deprecation lifecycle controls | RC-GOV-001, RC-GOV-002, RC-GOV-003, RC-GOV-004, RC-GOV-005 | Clarifying | Standardize release/change/deprecation evidence requirements | V5-C6 |
 | Clarify requirement quality and governance linkage for ISO 29148 | RC-SCOPE-004, RC-JSN-004, RC-GOV-006 | Clarifying | Make conformance applicability, JSON compatibility, and breaking-change governance explicit | V5.1-C1 |
+
+## v6 Candidate C1 Summary (Draft, Non-active)
+
+The v6 candidate C1 set introduces machine-verifiable RC coverage automation for `conformance check`.
+These draft requirements are not required for v5.1 conformance claims until the semantic revision is advanced to v6.
+
+| Planned change | RC IDs | Impact | Reason | Planned trace row |
+|---|---|---|---|---|
+| Add coverage automation to `conformance check` | RC-CONF-013, RC-CONF-014, RC-CONF-015, RC-CONF-016, RC-CONF-017, RC-CONF-018 | Contract-expanding | Make RC-to-acceptance/trace coverage machine-checkable in the command itself | V6-C1 |
+| Add coverage JSON contracts | RC-JSN-100, RC-JSN-101, RC-JSN-102, RC-JSN-103 | Contract-expanding | Standardize coverage summary/report fields for CI parsing and policy gates | V6-C1 |
+| Require machine-parseable trace RC IDs for automation | RC-GOV-007 | Clarifying | Ensure coverage automation has deterministic governance input artifacts | V6-C1 |
 
 ## 1. Scope Profiles
 
@@ -337,6 +349,38 @@ Table 6-9: ConformanceCheckEntry fields
 | severity | Yes | `info`, `warning`, or `error`. |
 | message | Yes | Human-readable result detail. |
 | evidence | Yes | Short evidence string for traceability. |
+
+### 6.11 CoverageSummary (v6 draft)
+
+RC-JSN-100: CoverageSummary JSON shall include the fields listed in Table 6-10.
+
+Table 6-10: CoverageSummary fields
+
+| Field | Required | Notes |
+|---|---|---|
+| rc_total | Yes | Total RC IDs in the evaluated coverage set. |
+| rc_covered | Yes | RC IDs covered by acceptance + trace evidence rules. |
+| rc_uncovered | Yes | RC IDs not covered by acceptance + trace evidence rules. |
+| coverage_percent | Yes | Percentage `rc_covered / rc_total * 100`. |
+| uncovered_rc_ids | Yes | Array of uncovered RC IDs; empty array when none. |
+
+### 6.12 ConformanceCoverageReport (v6 draft)
+
+RC-JSN-101: ConformanceCoverageReport JSON shall include the fields listed in Table 6-11.
+RC-JSN-102: uncovered_rc_ids in CoverageSummary and ConformanceCoverageReport JSON shall be sorted by ascending RC ID using case-insensitive ordinal comparison.
+RC-JSN-103: CoverageSummary and ConformanceCoverageReport JSON may include additional fields not specified in this document.
+
+Table 6-11: ConformanceCoverageReport fields
+
+| Field | Required | Notes |
+|---|---|---|
+| profile | Yes | Evaluated profile (`core`, `extended`, or `full`). |
+| generated_utc | Yes | UTC timestamp formatted per RC-TIME-001. |
+| semantic_revision | Yes | Semantic revision label used for coverage evaluation. |
+| requirements_path | Yes | Requirements document path used for RC enumeration. |
+| acceptance_path | Yes | Acceptance matrix path used for RC coverage mapping. |
+| trace_path | Yes | Trace matrix path used for RC coverage mapping. |
+| coverage | Yes | CoverageSummary object. |
 
 ## 7. Command Requirements
 
@@ -682,6 +726,30 @@ RC-CONF-010: For Core profile checks targeting commands supported on Windows, Li
 RC-CONF-011: For Core profile checks targeting Windows-only commands, non-Windows platforms shall be reported as not applicable.
 RC-CONF-012: For Core profile checks targeting Windows-only commands, non-Windows not-applicable results shall not be treated as failures.
 
+v6 draft delta (non-active for v5.1 claims)
+
+Usage delta
+
+```text
+runner-cli conformance check ... [--coverage-report <path>] [--coverage-fail-on-gap]
+```
+
+Options delta
+
+| Option | Required | Default | Notes |
+|---|---|---|---|
+| --coverage-report | No | none | Writes ConformanceCoverageReport JSON per RC-JSN-101. |
+| --coverage-fail-on-gap | No | false | Fails when uncovered RC IDs remain after evaluation. |
+
+Behavior delta
+
+RC-CONF-013: The command shall compute an RC coverage set for the selected profile using RC IDs listed in trace rows for the current semantic revision.
+RC-CONF-014: The command shall classify each RC ID in the coverage set as covered when at least one acceptance scenario target list references that RC ID.
+RC-CONF-015: When --json is set, ConformanceCheckResult summary shall include a CoverageSummary object conforming to RC-JSN-100.
+RC-CONF-016: When --coverage-report is provided, the command shall write a ConformanceCoverageReport JSON file conforming to RC-JSN-101 at the specified path.
+RC-CONF-017: When --coverage-fail-on-gap is set and rc_uncovered is greater than zero, the command shall exit with code 2.
+RC-CONF-018: For each uncovered RC ID, the command shall emit one ConformanceCheckEntry with status fail, severity error, and evidence referencing the acceptance and trace artifacts used for coverage evaluation.
+
 ## 8. Environment Variables
 
 RC-ENV-001: emit-env shall use GITHUB_ENV when --github-env is not provided.
@@ -709,6 +777,7 @@ RC-GOV-003: Deprecated behavior shall follow the lifecycle phases announce, warn
 RC-GOV-004: Deprecation records shall include explicit first-version and removal-version boundaries.
 RC-GOV-005: Each released requirement revision shall include a trace artifact mapping changed RC IDs to tests or evidence scenarios.
 RC-GOV-006: Breaking changes to command-line options or required JSON fields shall occur only in a major specification version and include migration notes in release documentation.
+RC-GOV-007: Trace artifacts used for conformance automation shall list RC IDs using the canonical RC-<PREFIX>-<NNN> pattern.
 
 ### 10.1 Inline attributes for v5.1 delta requirements
 
@@ -732,12 +801,33 @@ RC-GOV-006: Breaking changes to command-line options or required JSON fields sha
 | RC-COMP-002 | Full | Inspection (governance linkage check) |
 | RC-GOV-006 | Full | Inspection (release governance audit) |
 
+### 10.2 Inline attributes for v6 draft C1 delta requirements
+
+| RC ID | Profile | Verification method |
+|---|---|---|
+| RC-CONF-013 | Extended | Test (coverage-set derivation against trace rows) |
+| RC-CONF-014 | Extended | Test (acceptance-reference coverage classification) |
+| RC-CONF-015 | Extended | Test (coverage summary present in JSON output) |
+| RC-CONF-016 | Extended | Test (coverage report file contract and schema validation) |
+| RC-CONF-017 | Full | Test (coverage-fail-on-gap exit-code behavior) |
+| RC-CONF-018 | Full | Test (uncovered RC entries emitted in checks array) |
+| RC-JSN-100 | Extended | Test (CoverageSummary schema validation) |
+| RC-JSN-101 | Extended | Test (ConformanceCoverageReport schema validation) |
+| RC-JSN-102 | Extended | Test (deterministic uncovered RC ordering) |
+| RC-JSN-103 | Extended | Inspection (forward-compatible schema extensibility) |
+| RC-GOV-007 | Full | Inspection (trace artifact format lint) |
+
 ## 11. Migration Note
 
 v5.1 migration by profile:
 1. Core: align conformance applicability and requirement atomicity language to v5.1 rules.
 2. Extended: keep `manifest` and `conformance check` command surfaces unchanged while clarifying environment variable naming and manifest compatibility wording.
 3. Full: enforce explicit major-version governance for breaking option/required-field changes.
+
+v6 draft C1 migration objective:
+1. Extended: add coverage automation output to `conformance check` JSON and optional coverage report file generation.
+2. Full: enable policy gating on uncovered RC IDs via `--coverage-fail-on-gap`.
+3. Governance: enforce machine-parseable RC identifier formatting in trace artifacts used for coverage automation.
 
 ## 12. References
 

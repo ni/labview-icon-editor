@@ -1,6 +1,6 @@
-# Runner CLI Requirements v5.1 Acceptance Matrix
+# Runner CLI Requirements v5.1 Acceptance Matrix (+ v6 draft planning scenarios)
 
-This matrix defines executable acceptance scenarios and pass criteria for the v5.1 requirement contract.
+This matrix defines executable acceptance scenarios and pass criteria for the v5.1 requirement contract, and includes planned v6 draft scenarios for conformance coverage automation.
 
 | Scenario ID | Scope/Profile | Target RC IDs | Setup | Execution | Pass Criteria |
 |---|---|---|---|---|---|
@@ -19,12 +19,16 @@ This matrix defines executable acceptance scenarios and pass criteria for the v5
 | A-013 | Core | RC-PLAT-009, RC-PLAT-010, RC-CONF-010, RC-CONF-011, RC-CONF-012 | Prepare hosted Linux and hosted Windows CI lanes at the same source revision. | Run Core JSON checks (`version-gate --json`, `pylavi summarize --json`) on both lanes; evaluate `missing-in-project` on Windows only and inspect non-Windows treatment in conformance output. | Core cross-platform checks pass on both hosted lanes; Windows-only command checks are recorded as not applicable on non-Windows and do not fail Core conformance. |
 | A-014 | Core/Extended/Full | RC-PUR-001, RC-PUR-002, RC-PUR-003, RC-PUR-004, RC-PUR-005, RC-CONV-004, RC-SCOPE-001, RC-SCOPE-002, RC-SCOPE-003, RC-SCOPE-004, RC-GEN-009, RC-PS-008, RC-PS-017, RC-VG-007, RC-VG-008, RC-PS-018, RC-PS-019, RC-PS-020, RC-PS-021, RC-PS-022, RC-PS-023, RC-PSUM-021, RC-PF-014, RC-PF-015, RC-PF-016, RC-PF-017, RC-PF-018, RC-PLAT-007, RC-CONF-005, RC-CONF-009, RC-PLAT-008, RC-PLAT-001, RC-PLAT-002, RC-COMP-001, RC-COMP-002 | Prepare repo with current v5.1 requirements and runner-cli implementation. | Execute profile-specific static/dynamic checks covering command presence, conformance language semantics, failure semantics, platform declarations, and compatibility/governance clauses referenced by the listed RC IDs. | All listed RC IDs are explicitly covered by at least one executable or static acceptance check and produce verifiable evidence artifacts. |
 | A-015 | Core | RC-CONV-001, RC-SCOPE-002, RC-SCOPE-003, RC-SCOPE-004 | Load `docs/runner-cli-requirements.md` and sample conformance outputs. | Evaluate conformance claim language and verify blocking behavior is tied to shall requirements only. | Conformance claim semantics treat shall requirements as blocking and treat should/may requirements as non-blocking. |
+| A-016 | Extended (v6 draft) | RC-CONF-013, RC-CONF-014, RC-GOV-007 | Prepare requirements, trace, and acceptance artifacts with at least one synthetic uncovered RC fixture. | Execute `runner-cli conformance check --profile extended --json` with v6 draft coverage automation enabled. | Coverage set is derived from semantic-revision trace rows; each target RC is classified covered/uncovered using acceptance scenario references; trace parsing accepts only canonical RC IDs. |
+| A-017 | Extended (v6 draft) | RC-CONF-015, RC-CONF-016, RC-JSN-100, RC-JSN-101, RC-JSN-102, RC-JSN-103 | Provide writable output location for coverage report and run command in JSON mode. | Execute `runner-cli conformance check --profile full --json --coverage-report <path>`. | JSON result summary includes CoverageSummary schema; report file contains ConformanceCoverageReport schema; uncovered RC arrays are deterministically sorted. |
+| A-018 | Full (v6 draft) | RC-CONF-017, RC-CONF-018 | Prepare one fixture with uncovered RC IDs and one fixture with complete RC coverage. | Execute conformance checks with and without `--coverage-fail-on-gap`. | Gap fixture exits with code 2 and emits one fail/error check entry per uncovered RC ID; complete fixture exits successfully and has zero uncovered IDs. |
 
 Acceptance coverage summary:
 - Profiles covered: `core`, `extended`, `full`
 - New command surfaces covered: `manifest`, `conformance check`
 - New JSON types covered: `RunnerCliManifest`, `ConformanceCheckResult`, `ConformanceCheckEntry`
 - Conformance gating semantics covered: `shall` is blocking; `should`/`may` are non-blocking.
+- Planned v6 draft coverage automation scenarios: `A-016`, `A-017`, `A-018`.
 
 ## Evidence Records
 
@@ -44,3 +48,6 @@ Acceptance coverage summary:
 | A-012 | Pass | `9cb257a8fdc739b4ec985b4e55d22a0d490150d2` | `local` | Revalidated on 2026-02-07 via static cross-check of `docs/runner-cli-requirements-v4-to-v5-trace.md` and this matrix; all trace row RC IDs map to at least one acceptance scenario (`trace_ids=71`, `acceptance_ids=76`, `missing=0`). |
 | A-014 | Pass | `e70e010783c4a33e8730da610be8ecbe3af08e78` | `21786875251` | Revalidated on 2026-02-08 via `CI Pipeline (Composite)` (`Conformance Check (Full, Strict)` and `Core Conformance Evidence` hosted lanes) plus static A-014 RC integrity check (`35/35` target IDs defined in `docs/runner-cli-requirements.md`). |
 | A-015 | Pass | `9cb257a8fdc739b4ec985b4e55d22a0d490150d2` | `local` | Revalidated on 2026-02-07 via targeted requirements semantic check for `RC-CONV-001` and `RC-SCOPE-002/003/004`; confirms shall-only blocking semantics and non-blocking `should`/`may`, with legacy ambiguous gating text absent. |
+| A-016 | Planned-v6 | `N/A` | `N/A` | Planned for v6 draft C1 implementation (coverage-set derivation and trace/acceptance RC mapping automation). |
+| A-017 | Planned-v6 | `N/A` | `N/A` | Planned for v6 draft C1 implementation (CoverageSummary/ConformanceCoverageReport JSON contract validation). |
+| A-018 | Planned-v6 | `N/A` | `N/A` | Planned for v6 draft C1 implementation (`--coverage-fail-on-gap` policy behavior and uncovered RC check-entry emission). |

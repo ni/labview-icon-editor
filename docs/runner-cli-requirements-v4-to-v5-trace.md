@@ -1,8 +1,8 @@
-# Runner CLI Requirements Trace Matrix (v4 -> v5/v5.1)
+# Runner CLI Requirements Trace Matrix (v4 -> v5/v5.1 + v6 draft)
 
-This trace matrix maps v5 and v5.1 changes to affected v4/v5 requirements and verification scenarios.
+This trace matrix maps v5 and v5.1 released changes, plus v6 draft changes, to affected prior requirements and verification scenarios.
 
-| Change ID | Affected prior RC IDs | v5/v5.1 RC IDs | Profile | Change Type | Rationale | Verification |
+| Change ID | Affected prior RC IDs | v5/v5.1/v6 RC IDs | Profile | Change Type | Rationale | Verification |
 |---|---|---|---|---|---|---|
 | V5-C1 | RC-PUR-001, RC-PUR-002, RC-CONV-004 | RC-SCOPE-001, RC-SCOPE-002, RC-SCOPE-003 | Core | Clarifying | Introduce progressive scope model and conformance hierarchy. | Validate profile section defines `core`, `extended`, `full` and implication rules. |
 | V5-C2 | RC-GEN-008, RC-GEN-009, RC-GEN-010 | RC-GEN-008, RC-GEN-009, RC-GEN-010, RC-GEN-011 | Core | Breaking | Guarantee strict JSON stdout purity with explicit stream matrix. | Execute JSON mode command checks and assert stdout is JSON-only while diagnostics route to stderr. |
@@ -14,5 +14,7 @@ This trace matrix maps v5 and v5.1 changes to affected v4/v5 requirements and ve
 | V5.1-C1 | RC-SCOPE-002, RC-SCOPE-003, RC-PUR-003, RC-PUR-004, RC-PUR-005 | RC-SCOPE-002, RC-SCOPE-003, RC-SCOPE-004, RC-PUR-003, RC-PUR-004, RC-PUR-005 | Core | Clarifying | Make conformance applicability explicit and convert boundary statements to verifiable product constraints with singular obligations. | Static requirements lint validates one independently testable obligation per changed RC and confirms shall-only conformance gating language. |
 | V5.1-C2 | RC-JSN-003, RC-MAN-004, RC-COMP-001, RC-COMP-002 | RC-JSN-003, RC-JSN-004, RC-MAN-004, RC-COMP-001, RC-COMP-002, RC-GOV-006 | Core/Extended/Full | Clarifying | Define required-field compatibility semantics and move breaking-change policy to governance. | Validate manifest compatibility wording, governance cross-reference integrity, and major-version breaking-change criteria. |
 | V5.1-C3 | RC-GEN-009, RC-PS-008, RC-PS-017, RC-ENV-010, RC-ENV-011 | RC-GEN-009, RC-PS-008, RC-PS-017, RC-ENV-010, RC-ENV-011 | Core/Extended | Clarifying | Standardize environment-variable language and remove redundant conformance/env duplication. | Execute pylavi warning-format tests for `GITHUB_ACTIONS=true/TRUE` and inspect canonical env-variable naming requirements. |
+| V6-C1 (draft) | RC-CONF-001, RC-CONF-004, RC-CONF-009, RC-JSN-080, RC-GOV-005 | RC-CONF-013, RC-CONF-014, RC-CONF-015, RC-CONF-016, RC-CONF-017, RC-CONF-018, RC-JSN-100, RC-JSN-101, RC-JSN-102, RC-JSN-103, RC-GOV-007 | Extended/Full | Contract-expanding | Add machine-checkable RC coverage automation to conformance evaluation and policy gating. | Validate coverage-set derivation, coverage summary/report schemas, deterministic uncovered RC ordering, and fail-on-gap behavior (A-016, A-017, A-018). |
 
-Coverage: 100% of listed changed/new v5 and v5.1 RC IDs are mapped to at least one trace row.
+Coverage (released sets): 100% of listed changed/new v5 and v5.1 RC IDs are mapped to at least one trace row.
+Coverage (draft set): v6-C1 is mapped to planned acceptance scenarios A-016, A-017, and A-018.
