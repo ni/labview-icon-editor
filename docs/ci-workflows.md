@@ -107,6 +107,16 @@ Below are the **key GitHub Actions** provided in this repository:
    - It builds/tests the .NET CLI, publishes multi-RID artifacts on pushes, runs cross-platform smoke tests, and validates pylavi inside the Linux Docker image.
    - `ci-composite.yml` still uses `runner-cli-reusable.yml` as an internal helper to publish a Linux artifact for version-gate usage; `runner-audit.yml` downloads the latest artifact when available.
 
+4. **VIP Linux Harness (Manual Fast Loop)**
+   - [`vip-linux-harness.yml`](../.github/workflows/vip-linux-harness.yml) is a manual-only (`workflow_dispatch`) harness that rebuilds the Linux `.vip` from previously produced PPL artifacts.
+   - By default it scans successful `ci-composite.yml` runs on `develop`, selects the first run containing both `lv_icon_x86.lvlibp` and `lv_icon_x64.lvlibp`, and checks out that run's `head_sha` for reproducibility.
+   - It runs `Tooling/container-parity/build-vip-linux.sh` inside `nationalinstruments/labview:<lv_release>-linux`.
+   - It uploads:
+     - `vip-linux-harness-<version>`
+     - `gcli-logs-linux-vip-harness`
+     - `vip-linux-harness-inspect-report`
+     - `vip-linux-harness-source-metadata`
+
 #### Jobs in CI workflow
 
 The [`ci-composite.yml`](../.github/workflows/ci-composite.yml) pipeline breaks the build into several jobs:
@@ -134,6 +144,16 @@ The `build-ppl` job uses a matrix to produce both bitnesses rather than distinct
 | `workflow_dispatch` | Runs (required) | Runs |
 
 Branch protection recommendation: require `CI Pipeline (Composite) / Build VI Package (Linux)` for pull requests, and keep Docker parity checks required as configured.
+
+#### Manual harness inputs (VIP Linux Harness)
+
+`vip-linux-harness.yml` supports the following dispatch inputs:
+
+- `source_run_id` (optional): exact source `ci-composite` run ID.
+- `source_branch` (default `develop`): branch scanned when `source_run_id` is omitted.
+- `lookback_limit` (default `15`): maximum successful runs to probe.
+- `lv_release` (default `2026q1`): container release tag.
+- `vip_version` (optional): explicit `major.minor.patch.build`; default `0.0.0.<github.run_number>`.
 
 *(The **Run Unit Tests** workflow has been consolidated into the main CI process.)*
 
