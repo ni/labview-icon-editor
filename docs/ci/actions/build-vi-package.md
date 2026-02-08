@@ -94,7 +94,7 @@ It eliminates confusion around versioning, keeps everything in one pipeline, and
 
 ### 3.1 How the Action Is Triggered
 The `build-vi-package` directory defines a **composite action**. It does not listen for events on its own; instead, the CI workflow in [`ci-composite.yml`](../../../.github/workflows/ci-composite.yml) invokes it.
-That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Early jobs like `run-metadata`, `version-gate`, and `changes` run on GitHub-hosted `ubuntu-latest`. Windows self-hosted jobs still handle LabVIEW testing and PPL generation (`apply-deps`, `version`, `test`, `build-ppl`). In phase 1, VI Package packaging is split by event: `build-vip-linux` runs on hosted Linux (containerized LabVIEW, `2026q1`) for pull requests and `develop` pushes, while the existing Windows `build-vip` path is retained for non-PR release-authoritative runs (`push` and `workflow_dispatch`). The branch filters for push/PR triggers live in `ci-composite.yml` (see `on.push.branches` and `on.pull_request.branches`).
+That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Early jobs like `run-metadata`, `version-gate`, and `changes` run on GitHub-hosted `ubuntu-latest`. Windows self-hosted jobs handle LabVIEW testing, PPL generation, and VI Package packaging (`apply-deps`, `version`, `test`, `build-ppl`, `build-vip`). The branch filters for push/PR triggers live in `ci-composite.yml` (see `on.push.branches` and `on.pull_request.branches`).
 
 ### 3.2 Configurable Inputs / Parameters
 `ci-composite.yml` calls this action and provides all required inputs automatically. When invoking
@@ -126,7 +126,7 @@ components remain unchanged and only the build number increases.
 - **Fork Setup**:
   1. **Copy** the workflow file (`.github/workflows/ci-composite.yml`) into your fork.
   2. **Update** any references to the official repo name (`ni/labview-icon-editor`) if your fork is named differently.
- 3. **Self-Hosted Runner**: Confirm your runner uses the `self-hosted-windows-lv-ie` label (or `self-hosted-linux-lv` for Linux jobs) or update `runs-on` to match your runner’s labels.
+ 3. **Self-Hosted Runner**: Confirm your runner uses the `self-hosted-windows-lv-ie` label (or the value set in `LVIE_RUNNER_LABEL`) or update `runs-on` to match your runner’s labels.
   4. **Write Permissions**: In fork settings → Actions → General, ensure “Workflow Permissions” = “Read and write.”
 
 ### 3.4 Artifact Publication
@@ -161,8 +161,7 @@ components remain unchanged and only the build number increases.
      - semantic-version components (`major`, `minor`, `patch`, `build`),
      - repository-derived metadata (company/author names, homepage URL, and description), and
      - the markdown release notes captured from `Tooling/deployment/release_notes.md`.
-   - For PR and `develop` push validation, runs Linux packaging inside `nationalinstruments/labview:2026q1-linux` via `Tooling/container-parity/build-vip-linux.sh`.
-   - For non-PR release-authoritative runs, keeps the Windows `build-vip` packaging path.
+   - Runs the Windows/self-hosted `build-vip` packaging path for PR, push, and manual workflow-dispatch runs.
 
 6. **Capture & Upload Artifacts**
    - Uploads the generated `.vip` as an ephemeral artifact for the current Actions run.
@@ -210,7 +209,7 @@ components remain unchanged and only the build number increases.
    - Ensure your self-hosted runner OS is patched and has any new LabVIEW versions if your project updates.
 
 ### 6.2 Runner Management
-- **Labels**: The workflow uses `runs-on: self-hosted-windows-lv-ie` (and `self-hosted-linux-lv` where applicable). Confirm your runner has the required label.
+- **Labels**: The workflow uses `runs-on` with `LVIE_RUNNER_LABEL` fallback to `self-hosted-windows-lv`. Confirm your runner has the required Windows label(s).
 - **Resource Monitoring**: If the build is large or slow, upgrade the machine specs or add more runners to handle parallel tasks.
 
 ### 6.3 Adding New Features
@@ -240,7 +239,7 @@ components remain unchanged and only the build number increases.
 ### 7.2 Direct Push to Main or Develop
 - **Scenario**: You quickly push a fix to `develop` without opening a PR.
 - **Action**: With no pull request labels available, major/minor/patch remain unchanged while the build number increments automatically.
-- **Result**: The version might progress from `v1.2.3-build46` to `v1.2.3-build47`, and the pipeline runs Linux VI Package packaging plus the non-PR Windows packaging path.
+- **Result**: The version might progress from `v1.2.3-build46` to `v1.2.3-build47`, and the pipeline runs the Windows VI Package packaging path.
 
 ### 7.3 Working on a Release Branch
 - **Scenario**: You branch off `release-rc/1.2`.
@@ -251,29 +250,6 @@ components remain unchanged and only the build number increases.
 - **Scenario**: A maintainer manually runs the workflow from the Actions tab (if enabled).
 - **Action**: Provide any input parameters (if configured), or rely on defaults like `none` for version bump.
 - **Result**: The script runs as if it were a push event and produces a `.vip` artifact. Creating tags or releases requires additional steps.
-
-### 7.5 Fast Linux VIP Harness
-- **Workflow**: [`.github/workflows/vip-linux-harness.yml`](../../../.github/workflows/vip-linux-harness.yml)
-- **Purpose**: Rapidly validate Linux VIP packaging by reusing already-built PPL artifacts (`lv_icon_x86.lvlibp`, `lv_icon_x64.lvlibp`) from successful `ci-composite.yml` runs.
-- **Trigger**: `workflow_dispatch` only (manual, non-gating).
-- **Default behavior**:
-  1. Query successful `CI Pipeline (Composite)` runs on `develop`.
-  2. Probe newest-to-oldest (bounded by `lookback_limit`) until both required PPL artifacts are found.
-  3. Checkout the selected source run's `head_sha` for reproducibility.
-  4. Build the Linux `.vip` via `Tooling/container-parity/build-vip-linux.sh` in `nationalinstruments/labview:<lv_release>-linux`.
-- **Inputs**:
-  - `source_run_id` (optional): exact run ID to use directly.
-  - `source_branch` (default `develop`): branch used when `source_run_id` is omitted.
-  - `lookback_limit` (default `15`): number of successful runs to scan.
-  - `lv_release` (default `2026q1`): LabVIEW container release tag.
-  - `vip_version` (optional): explicit `major.minor.patch.build`; defaults to `0.0.0.<github.run_number>`.
-- **Outputs (artifacts)**:
-  - `vip-linux-harness-<version>`
-  - `gcli-logs-linux-vip-harness`
-  - `vip-linux-harness-inspect-report`
-  - `vip-linux-harness-source-metadata`
-
-
 
 ## 8. **Testing & Verification**
 

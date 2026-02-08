@@ -56,8 +56,8 @@ Automating your Icon Editor builds and tests:
      - A concurrency group cancels any previous run on the same branch, ensuring only the latest pipeline execution continues.
 
 5. **Build VI Package**
-   - Produces `.vip` artifacts automatically. On PR and `develop` pushes, packaging runs in Linux (`build-vip-linux`) using the `nationalinstruments/labview:2026q1-linux` container and consumes both PPL artifacts (`lv_icon_x86.lvlibp`, `lv_icon_x64.lvlibp`).
-   - The existing Windows `build-vip` job is retained as the release-authoritative path for non-PR events (`push`/`workflow_dispatch`).
+   - Produces `.vip` artifacts automatically using the Windows/self-hosted `build-vip` job in `ci-composite.yml`.
+   - The `build-vip` job runs for pull requests, pushes, and manual `workflow_dispatch` runs.
    - By default, the workflow populates the **“Company Name”** with `github.repository_owner` and the **“Author Name”** with `github.event.repository.name`, so each build is branded with your GitHub account and repository.
    - To use different branding, edit the **“Generate display information JSON”** step in [`.github/workflows/ci-composite.yml`](../.github/workflows/ci-composite.yml) and supply custom values for these fields.
    - Uses **label-based** version bumping (major/minor/patch) on pull requests.
@@ -107,16 +107,6 @@ Below are the **key GitHub Actions** provided in this repository:
    - It builds/tests the .NET CLI, publishes multi-RID artifacts on pushes, runs cross-platform smoke tests, and validates pylavi inside the Linux Docker image.
    - `ci-composite.yml` still uses `runner-cli-reusable.yml` as an internal helper to publish a Linux artifact for version-gate usage; `runner-audit.yml` downloads the latest artifact when available.
 
-4. **VIP Linux Harness (Manual Fast Loop)**
-   - [`vip-linux-harness.yml`](../.github/workflows/vip-linux-harness.yml) is a manual-only (`workflow_dispatch`) harness that rebuilds the Linux `.vip` from previously produced PPL artifacts.
-   - By default it scans successful `ci-composite.yml` runs on `develop`, selects the first run containing both `lv_icon_x86.lvlibp` and `lv_icon_x64.lvlibp`, and checks out that run's `head_sha` for reproducibility.
-   - It runs `Tooling/container-parity/build-vip-linux.sh` inside `nationalinstruments/labview:<lv_release>-linux`.
-   - It uploads:
-     - `vip-linux-harness-<version>`
-     - `gcli-logs-linux-vip-harness`
-     - `vip-linux-harness-inspect-report`
-     - `vip-linux-harness-source-metadata`
-
 #### Jobs in CI workflow
 
 The [`ci-composite.yml`](../.github/workflows/ci-composite.yml) pipeline breaks the build into several jobs:
@@ -128,8 +118,7 @@ The [`ci-composite.yml`](../.github/workflows/ci-composite.yml) pipeline breaks 
 - **missing-in-project-check** – verifies every source file is referenced in the `.lvproj`.
 - **test** – runs LabVIEW unit tests on Windows in LabVIEW 2021 (32- and 64-bit).
 - **build-ppl** – uses a matrix to build 32-bit and 64-bit packed libraries, then uses the `rename-file` action to append the bitness to each library’s filename.
-- **build-vip-linux** – packages the VI Package on `ubuntu-latest` by running `Tooling/container-parity/build-vip-linux.sh` inside `nationalinstruments/labview:2026q1-linux`. This job requires both PPL artifacts (`lv_icon_x86.lvlibp`, `lv_icon_x64.lvlibp`).
-- **build-vip** – existing Windows/self-hosted VI Package packaging path. It is retained for non-PR release-authoritative builds and is skipped for pull requests.
+- **build-vip** – Windows/self-hosted VI Package packaging path. This job requires both PPL artifacts (`lv_icon_x86.lvlibp`, `lv_icon_x64.lvlibp`) and runs for pull requests, pushes, and manual dispatch.
 
 Windows self-hosted build jobs (`build-ppl-*` and `build-vip`) run a `close-labview` step after their build actions finish but before any steps that rename files or upload artifacts, so it is not the final step.
 
@@ -137,23 +126,13 @@ The `build-ppl` job uses a matrix to produce both bitnesses rather than distinct
 
 #### Event matrix (VIP packaging)
 
-| Event | `build-vip-linux` | `build-vip` (Windows) |
-| --- | --- | --- |
-| `pull_request` | Runs (required) | Skipped |
-| `push` to `develop` | Runs (required) | Runs |
-| `workflow_dispatch` | Runs (required) | Runs |
+| Event | `build-vip` (Windows) |
+| --- | --- |
+| `pull_request` | Runs (required) |
+| `push` | Runs (required) |
+| `workflow_dispatch` | Runs (required) |
 
-Branch protection recommendation: require `CI Pipeline (Composite) / Build VI Package (Linux)` for pull requests, and keep Docker parity checks required as configured.
-
-#### Manual harness inputs (VIP Linux Harness)
-
-`vip-linux-harness.yml` supports the following dispatch inputs:
-
-- `source_run_id` (optional): exact source `ci-composite` run ID.
-- `source_branch` (default `develop`): branch scanned when `source_run_id` is omitted.
-- `lookback_limit` (default `15`): maximum successful runs to probe.
-- `lv_release` (default `2026q1`): container release tag.
-- `vip_version` (optional): explicit `major.minor.patch.build`; default `0.0.0.<github.run_number>`.
+Branch protection recommendation: require `CI Pipeline (Composite) / Build VI Package` for pull requests, and keep Docker parity checks required as configured.
 
 *(The **Run Unit Tests** workflow has been consolidated into the main CI process.)*
 
