@@ -43,4 +43,4 @@ Acceptance coverage summary:
 | A-011 | Pending-Revalidation | `N/A` | `N/A` | Required due v5.1 ISO remediation (RC-GOV-006 major-version governance criterion). |
 | A-012 | Pending-Revalidation | `N/A` | `N/A` | Required due v5.1 ISO remediation (traceability coverage expanded to v5.1 RC IDs). |
 | A-014 | Pending-Revalidation | `N/A` | `N/A` | Required due v5.1 ISO remediation (target RC list revised for updated compatibility/scope clauses). |
-| A-015 | Pending-Revalidation | `N/A` | `N/A` | Required due v5.1 ISO remediation (new conformance-gating semantics scenario). |
+| A-015 | Pass | `9cb257a8fdc739b4ec985b4e55d22a0d490150d2` | `local` | Revalidated on 2026-02-07 via targeted requirements semantic check for `RC-CONV-001` and `RC-SCOPE-002/003/004`; confirms shall-only blocking semantics and non-blocking `should`/`may`, with legacy ambiguous gating text absent. |
