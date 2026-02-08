@@ -95,7 +95,7 @@ function Add-Finding {
     }
 }
 
-function Get-RequirementEntries {
+function Get-RequirementEntry {
     param([string]$FilePath)
 
     $entries = New-Object System.Collections.Generic.List[object]
@@ -123,7 +123,7 @@ function Get-RequirementEntries {
     return ,$entries.ToArray()
 }
 
-function Test-AtomicityHeuristics {
+function Test-AtomicityRule {
     param([string]$RequirementText)
 
     $reasons = New-Object System.Collections.Generic.List[string]
@@ -216,7 +216,7 @@ try {
     }
 
     if ($script:findings.Count -eq 0) {
-        $requirements = Get-RequirementEntries -FilePath $requirementsFile
+        $requirements = Get-RequirementEntry -FilePath $requirementsFile
         if (-not $requirements -or $requirements.Count -eq 0) {
             Add-Finding -FilePath $requirementsFile -LineNumber 1 -Message 'No VR requirement IDs were found.'
         }
@@ -240,7 +240,7 @@ try {
         }
 
         foreach ($entry in $requirements) {
-            $reasons = Test-AtomicityHeuristics -RequirementText $entry.text
+            $reasons = Test-AtomicityRule -RequirementText $entry.text
             foreach ($reason in $reasons) {
                 Add-Finding -FilePath $requirementsFile -LineNumber $entry.line -Message ("{0} {1}" -f $entry.id, $reason)
             }
