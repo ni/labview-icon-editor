@@ -17,10 +17,17 @@ This repository defines several reusable [composite actions](https://docs.github
 | [rename-file](../../../.github/actions/rename-file) | Renames a file on disk. |
 | [restore-setup-lv-source](../../../.github/actions/restore-setup-lv-source) | Reverts prepared sources back to their packaged state. |
 | [revert-development-mode](../../../.github/actions/revert-development-mode) | Restores the repository after development mode. |
-| [run-unit-tests](../../../.github/actions/run-unit-tests) | Executes LabVIEW unit tests via g-cli. |
+| [run-unit-tests](../../../.github/actions/run-unit-tests) | Executes LabVIEW unit tests via LabVIEWCLI LUnit operation with optional g-cli fallback and dynamic port resolution. |
 | [set-development-mode](../../../.github/actions/set-development-mode) | Configures the repository for development mode. |
 
 Each action directory includes a `README.md` and `action.yml` with full usage details.
 
 > [!NOTE]
 > Several actions now prefer `runner-cli` subcommands when available (for example, `pylavi-validate`, `missing-in-project`, and `.lvversion` version-gate usage in workflows). They fall back to PowerShell scripts if `runner-cli` is unavailable, so behavior remains backward-compatible during the migration. Set `LVIE_REQUIRE_RUNNER_CLI=1` to make runner-cli mandatory.
+
+> [!NOTE]
+> `lvie-job-setup` supports a hybrid worktree-root mode via input `worktree_root_mode`:
+> - `contract` (default): use runner-contract `LVIE_WORKTREE_ROOT`.
+> - `runner_temp`: use `$env:RUNNER_TEMP\lvie\w` for job worktrees.
+>
+> In both modes, runner-contract roots for artifacts/locks/logs remain unchanged. The action exports `LVIE_WORKTREE_ROOT_SOURCE` (`explicit`, `runner_temp`, `contract`) for diagnostics.

@@ -620,6 +620,7 @@ jobs:
           checkout: 'false'
           bitness: ${{ matrix.bitness }}
           create_worktree: 'true'
+          worktree_root_mode: runner_temp
       - name: Initialize VerifyIEPaths archive folder
         shell: pwsh
         run: |
@@ -692,6 +693,7 @@ jobs:
           checkout: 'false'
           bitness: 64
           create_worktree: 'true'
+          worktree_root_mode: runner_temp
       - name: Apply VIPC (LV x64)
         if: needs.changes.outputs.vipc == 'true'
         shell: pwsh
@@ -744,6 +746,7 @@ jobs:
           checkout: 'false'
           bitness: 32
           create_worktree: 'true'
+          worktree_root_mode: runner_temp
       - name: Apply VIPC (LV x86)
         if: needs.changes.outputs.vipc == 'true'
         shell: pwsh
@@ -848,6 +851,7 @@ jobs:
           checkout: 'false'
           bitness: ${{ matrix.bitness }}
           create_worktree: 'true'
+          worktree_root_mode: runner_temp
       - name: Enable Development Mode (LV ${{ matrix.bitness }}-bit)
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
@@ -935,6 +939,7 @@ jobs:
           checkout: 'false'
           bitness: ${{ matrix.bitness }}
           create_worktree: 'true'
+          worktree_root_mode: runner_temp
       - name: Enable Development Mode (LV ${{ matrix.bitness }}-bit)
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
@@ -987,6 +992,7 @@ jobs:
           checkout: 'false'
           bitness: 32
           create_worktree: 'true'
+          worktree_root_mode: runner_temp
       - name: Enable Development Mode (LV 32-bit)
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
@@ -1048,6 +1054,7 @@ jobs:
           checkout: 'false'
           bitness: 64
           create_worktree: 'true'
+          worktree_root_mode: runner_temp
       - name: Enable Development Mode (LV 64-bit)
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
@@ -1119,6 +1126,7 @@ jobs:
           checkout: 'false'
           bitness: 64
           create_worktree: 'true'
+          worktree_root_mode: runner_temp
       - name: Generate release notes
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}

@@ -4,6 +4,8 @@ This document lists the PowerShell scripts used to build, test, and distribute t
 
 Local entrypoints enforce short-path worktree usage by default. If a script fails because the repo is not under the worktree root, use `Tooling\New-CIWorktree.ps1` or `Tooling\Invoke-InWorktree.ps1`. Set `LVIE_SKIP_WORKTREE_ROOT_CHECK=1` or pass `-SkipWorktreeRootCheck` only when you intentionally want to bypass the guard.
 
+CI workflows can use a hybrid worktree model where `lvie-job-setup` resolves `LVIE_WORKTREE_ROOT` from `RUNNER_TEMP` (`worktree_root_mode: runner_temp`) while keeping runner contract roots (`LVIE_ARTIFACT_ROOT`, `LVIE_LOCK_ROOT`, `LVIE_LOG_ROOT`) under the stable runner work root. Local runs remain unchanged by default and continue to use `LVIE_WORKTREE_ROOT` or the local fallback (`C:\dev`).
+
 Per-run artifacts are written under `$WORKTREE_ROOT\artifacts\<runid>` when guardrails are active. Use `-RunId` or `-ArtifactRoot` to override, and `-CleanRoom` to purge known output folders before and after a run. Artifact roots are disabled by default inside GitHub Actions unless `LVIE_ENABLE_ARTIFACT_ROOT=1` (or an explicit `-ArtifactRoot`/`-RunId` is provided).
 
 ## Table of Contents
@@ -69,7 +71,7 @@ Configures the repository for development by invoking `Prepare_LabVIEW_source.ps
 Undoes development mode by invoking `RestoreSetupLVSource.ps1` for both bitnesses. Helpful when leaving development or before distributing a build. Accepts `-ConnectTimeoutMs` and `-ProcessTimeoutMs` to pass through to g-cli.
 
 ## RunUnitTests.ps1
-Runs unit tests through g-cli and outputs a table of results. Requires an explicit `.lvproj` path via `-ProjectPath`. Ensure the LUnit dependency is installed for the selected bitness (apply `runner_dependencies.vipc` for both 32-bit and 64-bit). Used in CI workflows.
+Runs unit tests through LabVIEWCLI (`-OperationName LUnit`) and outputs a table of results. Requires an explicit `.lvproj` path via `-ProjectPath`. Optional g-cli fallback can be enabled with `-EnableGcliFallback`. The script resolves LabVIEWCLI `-PortNumber` from `LVIE_LUNIT_PORT_<BITNESS>`, then `LVIE_LUNIT_PORT`, then `LabVIEW.ini` (`server.tcp.port`), then default `3363`. Ensure `astemes_lib_lunit` and `astemes_lib_lunit_cli` are installed for LabVIEWCLI mode; install `sas_workshops_lib_lunit_for_g_cli` only if fallback mode is enabled (apply `runner_dependencies.vipc` for both 32-bit and 64-bit). Used in CI workflows.
 
 ## Run-CICompositeLocal.ps1
 Runs a local CI parity sequence based on `ci-composite.yml`. This script validates Verify IE Paths, applies VIPC dependencies, runs missing-in-project checks and unit tests for the LabVIEW version declared in `.lvversion` (defaulting to 2021/21.0), 32- and 64-bit, builds packed libraries, and produces the VI package using the 64-bit install of that version. The script always runs both 64-bit and 32-bit steps for the selected LabVIEW version, and most steps can be skipped via switches. Outputs are stored under `TestResults/ci-local`. Use `-ConnectTimeoutMs`, `-ProcessTimeoutMs`, and `-StatusFileTimeoutMs` to tune g-cli and status-file timing for your machine.

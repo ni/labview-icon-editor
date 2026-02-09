@@ -42,6 +42,10 @@ inputs:
   worktree_root:
     description: Optional override for worktree root.
     required: false
+  worktree_root_mode:
+    description: Worktree root resolution mode (`contract` or `runner_temp`).
+    required: false
+    default: contract
   repo_root:
     description: Optional override for base repo root.
     required: false
@@ -177,19 +181,43 @@ runs:
       shell: pwsh
       run: |
         $worktreeScript = Join-Path $env:GITHUB_WORKSPACE 'Tooling\New-CIWorktreeForJob.ps1'
+        $resolverScript = Join-Path $env:GITHUB_WORKSPACE 'Tooling\Resolve-CIWorktreeRoot.ps1'
         if (-not (Test-Path $worktreeScript)) {
           Write-Warning "New-CIWorktreeForJob.ps1 not found at $worktreeScript; skipping worktree creation."
           exit 0
+        }
+        if (-not (Test-Path $resolverScript)) {
+          throw "Resolve-CIWorktreeRoot.ps1 not found at $resolverScript"
         }
         $bitness = '${{ inputs.bitness }}'
         if ([string]::IsNullOrWhiteSpace($bitness)) {
           throw "bitness input is required when create_worktree is true."
         }
+        $worktreeRootMode = '${{ inputs.worktree_root_mode }}'
+        if ([string]::IsNullOrWhiteSpace($worktreeRootMode)) {
+          $worktreeRootMode = 'contract'
+        }
         $variant = '${{ inputs.variant }}'
         $worktreeRoot = '${{ inputs.worktree_root }}'
         $repoRoot = '${{ inputs.repo_root }}'
+        $worktreeResolution = & $resolverScript `
+          -Mode $worktreeRootMode `
+          -ExplicitWorktreeRoot $worktreeRoot `
+          -RunnerTemp $env:RUNNER_TEMP `
+          -ContractWorktreeRoot $env:LVIE_WORKTREE_ROOT
+        $resolvedWorktreeRoot = $worktreeResolution.Path
+        $worktreeRootSource = $worktreeResolution.Source
+        if ([string]::IsNullOrWhiteSpace($resolvedWorktreeRoot)) {
+          throw "Resolved worktree root was empty."
+        }
+        New-Item -Path $resolvedWorktreeRoot -ItemType Directory -Force | Out-Null
+        Write-Host ("Resolved worktree root: {0} (source: {1})" -f $resolvedWorktreeRoot, $worktreeRootSource)
+        if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_ENV)) {
+          "LVIE_WORKTREE_ROOT=$resolvedWorktreeRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
+          "LVIE_WORKTREE_ROOT_SOURCE=$worktreeRootSource" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
+        }
         & $worktreeScript `
           -Bitness $bitness `
           -Variant $variant `
-          -WorktreeRoot $worktreeRoot `
+          -WorktreeRoot $resolvedWorktreeRoot `
           -RepoRoot $repoRoot

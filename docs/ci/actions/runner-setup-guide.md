@@ -159,6 +159,10 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
      - `pwsh -NoProfile -File .\Tooling\Setup-Runner.ps1 -RunnerRoot C:\actions-runner -Scope Machine`
    - This writes `<runner-root>\_work\lvie\runner-contract.json` and sets `LVIE_WORKTREE_ROOT`, `LVIE_ARTIFACT_ROOT`, `LVIE_LOCK_ROOT`, and `LVIE_LOG_ROOT`.
    - Restart the runner service after setting Machine/User environment variables.
+   - Hybrid CI mode: jobs that call `lvie-job-setup` with `worktree_root_mode: runner_temp` resolve worktrees under `$env:RUNNER_TEMP\lvie\w` for that job only, and export:
+     - `LVIE_WORKTREE_ROOT=<resolved path>`
+     - `LVIE_WORKTREE_ROOT_SOURCE=runner_temp|contract|explicit`
+   - In hybrid mode, `LVIE_ARTIFACT_ROOT`, `LVIE_LOCK_ROOT`, and `LVIE_LOG_ROOT` continue to come from runner contract paths under `<runner-root>\_work\lvie\...`.
 
 7. **Stateless runner bootstrap (no service restart)**
    - Workflows call the `runner-bootstrap` action, which runs `Tooling/Initialize-Runner.ps1` at job start to refresh the runner contract and export `LVIE_*` variables into the job environment.
@@ -202,12 +206,14 @@ CI jobs run from short-path worktrees to avoid Windows path limits. Each job cre
 - `ci-<jobhash>-<bitness>-<runid>-<attempt>`
 - `jobhash` = first 8 chars of SHA1(`GITHUB_JOB`) to keep job names unique.
 - Some workflows insert an extra variant token (e.g. LabVIEW version) between `<jobhash>` and `<bitness>`.
-- Example: `C:\dev\ci-D170BDEE-64-21534416929-1`
+- Example (contract mode): `C:\actions-runner\_work\lvie\w\ci-D170BDEE-64-21534416929-1`
+- Example (runner_temp mode): `<RUNNER_TEMP>\lvie\w\ci-D170BDEE-64-21534416929-1`
 
 The workflow exports:
 - `REPO_ROOT` → worktree path (authoritative for scripts)
 - `PROJECT_PATH` → `$REPO_ROOT\lv_icon_editor.lvproj`
 - `LABVIEW_VERSION_YEAR` / `LABVIEW_MINOR_REVISION` → derived from `.lvversion` (e.g., `21.0` → `2021` and minor `0`)
+- `LVIE_WORKTREE_ROOT_SOURCE` → `explicit`, `runner_temp`, or `contract`
 
 CI treats `.lvversion` in `REPO_ROOT` as the canonical LabVIEW version for the run.
 
