@@ -12,8 +12,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$VIPBPath,
 
-    [ValidateRange(2000, 2100)]
-    [int]$LabVIEWVersion,
+    [string]$LabVIEWVersion,
 
     [ValidateRange(0, 99)]
     [int]$LabVIEWMinorRevision = 0,
@@ -180,12 +179,12 @@ $versionHelper = Join-Path $resolvedRepoRoot 'Tooling/support/LabVIEWVersion.ps1
 if (Test-Path -Path $versionHelper) {
     . $versionHelper
     $repoInfo = Get-LabVIEWVersionInfo -RepoRoot $resolvedRepoRoot
-    $inputProvided = $PSBoundParameters.ContainsKey('LabVIEWVersion') -and $LabVIEWVersion -ne 0
+    $inputProvided = $PSBoundParameters.ContainsKey('LabVIEWVersion') -and -not [string]::IsNullOrWhiteSpace([string]$LabVIEWVersion)
     if ($inputProvided) {
         $inputInfo = Get-LabVIEWVersionInfo -VersionInput $LabVIEWVersion -RepoRoot $resolvedRepoRoot
-        $LabVIEWVersion = [int]$inputInfo.Year
+        $LabVIEWVersion = [string]$inputInfo.Raw
     } else {
-        $LabVIEWVersion = [int]$repoInfo.Year
+        $LabVIEWVersion = [string]$repoInfo.Raw
         Write-Warning "LabVIEWVersion not provided; defaulting to .lvversion ($($repoInfo.Raw))."
     }
 

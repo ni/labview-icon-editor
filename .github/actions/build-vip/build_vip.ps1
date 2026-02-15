@@ -53,8 +53,7 @@ param (
     [string]$WorktreeRoot,
     [switch]$SkipWorktreeRootCheck,
 
-    [ValidateRange(2000, 2100)]
-    [int]$LabVIEWVersion,
+    [string]$LabVIEWVersion,
 
     [ValidateRange(0, 99)]
     [int]$LabVIEWMinorRevision = 0,
@@ -114,7 +113,7 @@ $versionHelper = Join-Path $ResolvedRepoRoot 'Tooling\support\LabVIEWVersion.ps1
 if (Test-Path -Path $versionHelper) {
     . $versionHelper
     $repoInfo = Get-LabVIEWVersionInfo -RepoRoot $ResolvedRepoRoot
-    $inputProvided = $PSBoundParameters.ContainsKey('LabVIEWVersion') -and $LabVIEWVersion -ne 0
+    $inputProvided = $PSBoundParameters.ContainsKey('LabVIEWVersion') -and -not [string]::IsNullOrWhiteSpace([string]$LabVIEWVersion)
     if ($inputProvided) {
         $inputInfo = Get-LabVIEWVersionInfo -VersionInput $LabVIEWVersion -RepoRoot $ResolvedRepoRoot
         $LabVIEWVersion = [int]$inputInfo.Year
