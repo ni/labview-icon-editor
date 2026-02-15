@@ -10,6 +10,9 @@ env:
   LVIE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
   LVIE_EXPECTED_RUNNER_LABEL: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
   LVIE_CANONICAL_RUNNER_LABEL: self-hosted-windows-lv
+  LVIE_UNIT_TEST_TARGET_YEAR: ${{ vars.LVIE_UNIT_TEST_TARGET_YEAR || '2026' }}
+  LVIE_UNIT_TEST_TARGET_LVVERSION: ${{ vars.LVIE_UNIT_TEST_TARGET_LVVERSION || '26.0' }}
+  LVIE_RUN_LV2020_EDGE_SMOKE: ${{ vars.LVIE_RUN_LV2020_EDGE_SMOKE || '0' }}
   LVIE_FORCE_NO_LABVIEW_DEVMODE: 1
   LVIE_RUNNER_ACL_CHECK: 1
   LVIE_RUNNER_ACL_AUTOFIX: 1
@@ -671,17 +674,23 @@ jobs:
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
         run: |
+          $unitTestYear = if ([string]::IsNullOrWhiteSpace($env:LVIE_UNIT_TEST_TARGET_YEAR)) { $env:LABVIEW_VERSION_YEAR } else { $env:LVIE_UNIT_TEST_TARGET_YEAR }
+          $unitTestLvversion = if ([string]::IsNullOrWhiteSpace($env:LVIE_UNIT_TEST_TARGET_LVVERSION)) { $unitTestYear } else { $env:LVIE_UNIT_TEST_TARGET_LVVERSION }
+          Write-Host ("Unit-test LabVIEW target year: {0}" -f $unitTestYear)
+          Write-Host ("Unit-test LabVIEW target .lvversion: {0}" -f $unitTestLvversion)
+          Write-Host ("Source .lvversion year from job setup: {0}" -f $env:LABVIEW_VERSION_YEAR)
+
           $reportPath = Join-Path $env:REPO_ROOT '.github/actions/run-unit-tests/UnitTestReport.xml'
           if (Test-Path -Path $reportPath) {
             Remove-Item -Path $reportPath -Force -ErrorAction SilentlyContinue
           }
 
-          & g-cli --lv-ver $env:LABVIEW_VERSION_YEAR --arch ${{ matrix.bitness }} lunit -- -r $reportPath "$env:PROJECT_PATH"
+          & g-cli --lv-ver $unitTestYear --arch ${{ matrix.bitness }} lunit -- -r $reportPath "$env:PROJECT_PATH"
           $gcliExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
           Write-Host ("g-cli lunit exit code: {0}" -f $gcliExitCode)
 
           & pwsh -NoProfile -File ".github/actions/run-unit-tests/RunUnitTests.ps1" `
-            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $unitTestLvversion `
             -SupportedBitness ${{ matrix.bitness }} `
             -SkipGcli `
             -ReportPath $reportPath
@@ -697,7 +706,8 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          $summaryLine = "- Unit Tests (LV {0}-bit): LUnit executor = g-cli" -f '${{ matrix.bitness }}'
+          $targetYear = if ([string]::IsNullOrWhiteSpace($env:LVIE_UNIT_TEST_TARGET_YEAR)) { $env:LABVIEW_VERSION_YEAR } else { $env:LVIE_UNIT_TEST_TARGET_YEAR }
+          $summaryLine = "- Unit Tests (LV {0}-bit): LUnit executor = g-cli (target={1}; source={2})" -f '${{ matrix.bitness }}', $targetYear, $env:LABVIEW_VERSION_YEAR
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summaryLine
       - name: Upload unit test report (LV ${{ matrix.bitness }}-bit)
         if: failure()
@@ -713,6 +723,76 @@ jobs:
           revert_bitness: ${{ matrix.bitness }}
           close_labview: 'true'
           close_bitness: ${{ matrix.bitness }}
+
+  unit-tests-lv2020-edge:
+    name: Test Source Using LV 64-bit (edge 2020)
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' && (vars.LVIE_RUN_LV2020_EDGE_SMOKE == '1' || vars.LVIE_RUN_LV2020_EDGE_SMOKE == 'true') }}
+    continue-on-error: true
+    needs: [run-metadata, prerelease-context, version-gate, changes]
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    env:
+      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
+      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
+      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
+      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Job setup
+        uses: ./.github/actions/lvie-job-setup
+        with:
+          checkout: 'false'
+          bitness: 64
+          create_worktree: 'true'
+          worktree_root_mode: runner_temp
+      - name: Test Source Using LV 64-bit (edge 2020)
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          $reportPath = Join-Path $env:REPO_ROOT '.github/actions/run-unit-tests/UnitTestReport.xml'
+          if (Test-Path -Path $reportPath) {
+            Remove-Item -Path $reportPath -Force -ErrorAction SilentlyContinue
+          }
+
+          & g-cli --lv-ver 2020 --arch 64 lunit -- -r $reportPath "$env:PROJECT_PATH"
+          $gcliExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+          Write-Host ("g-cli lunit exit code: {0}" -f $gcliExitCode)
+
+          & pwsh -NoProfile -File ".github/actions/run-unit-tests/RunUnitTests.ps1" `
+            -LabVIEWVersion 20.0 `
+            -SupportedBitness 64 `
+            -SkipGcli `
+            -ReportPath $reportPath
+          $parserExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+          Write-Host ("RunUnitTests parser exit code: {0}" -f $parserExitCode)
+
+          if ($gcliExitCode -ne 0) {
+            exit $gcliExitCode
+          }
+
+          exit $parserExitCode
+      - name: Summarize LV2020 edge unit-test executor
+        if: always()
+        shell: pwsh
+        run: |
+          $summaryLine = "- Unit Tests Edge (LV 64-bit): LUnit executor = g-cli (target=2020; source=$env:LABVIEW_VERSION_YEAR)"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summaryLine
+      - name: Upload unit test report edge artifact (LV 64-bit)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-tests-64-bit-report-edge-2020
+          path: ${{ env.REPO_ROOT }}/.github/actions/run-unit-tests/UnitTestReport.xml
+          if-no-files-found: warn
+      - name: Job teardown
+        if: always()
+        uses: ./.github/actions/lvie-job-teardown
+        with:
+          revert_bitness: 64
+          close_labview: 'true'
+          close_bitness: 64
 
   build-ppl-x86:
     name: Build 32-bit Packed Library
