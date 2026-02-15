@@ -7,6 +7,7 @@ namespace RunnerCli;
 public static class ParityService
 {
     private static readonly Regex ReleaseYearRegex = new(@"^(?<year>\d{4})", RegexOptions.Compiled);
+    private const string DefaultContainerFallbackRelease = "2026q1";
 
     public static ParityContext BuildContext(string? repoRootOverride, string? lvReleaseInput, string? contractPathOverride)
     {
@@ -148,9 +149,11 @@ public static class ParityService
 
     private static void RunLinuxContainer(ParityContext context, bool buildSpecEnabled)
     {
-        var image = $"nationalinstruments/labview:{context.LvReleaseResolved}-linux";
+        var selectedRelease = ResolveContainerRelease(context.LvReleaseResolved, "linux", context.RepoRoot);
+        var containerYear = ResolveReleaseYear(selectedRelease, context.LabVIEWYear);
+        var image = $"nationalinstruments/labview:{selectedRelease}-linux";
         Console.WriteLine($"Using image: {image}");
-        RunProcess("docker", new[] { "pull", image }, context.RepoRoot);
+        Console.WriteLine($"Container parity LabVIEW year: {containerYear} (source .lvversion year: {context.LabVIEWYear})");
 
         var runArgs = new List<string>
         {
@@ -175,7 +178,7 @@ public static class ParityService
             "-e",
             $"TARGET_DIR_REL={ToUnixRelativePath(context.TargetDirRel)}",
             "-e",
-            $"LV_YEAR={context.LabVIEWYear}",
+            $"LV_YEAR={containerYear}",
             "-e",
             $"CONTAINER_PARITY_EXCLUDE_FILES={string.Join(';', context.ExcludeFiles)}",
             "-e",
@@ -187,7 +190,7 @@ public static class ParityService
             "-e",
             $"CONTAINER_PARITY_BUILD_OUTPUT_RELATIVE_PATH={ToUnixRelativePath(context.BuildOutputRelativePath)}",
             "-e",
-            $"CONTAINER_PARITY_LABVIEW_VERSION={context.LabVIEWYear}",
+            $"CONTAINER_PARITY_LABVIEW_VERSION={containerYear}",
             image,
             "bash",
             "-lc",
@@ -217,9 +220,11 @@ public static class ParityService
             },
             context.RepoRoot);
 
-        var image = $"nationalinstruments/labview:{context.LvReleaseResolved}-windows";
+        var selectedRelease = ResolveContainerRelease(context.LvReleaseResolved, "windows", context.RepoRoot);
+        var containerYear = ResolveReleaseYear(selectedRelease, context.LabVIEWYear);
+        var image = $"nationalinstruments/labview:{selectedRelease}-windows";
         Console.WriteLine($"Using image: {image}");
-        RunProcess("docker", new[] { "pull", image }, context.RepoRoot);
+        Console.WriteLine($"Container parity LabVIEW year: {containerYear} (source .lvversion year: {context.LabVIEWYear})");
 
         var runArgs = new List<string>
         {
@@ -254,7 +259,7 @@ public static class ParityService
             "-e",
             $"CONTAINER_PARITY_BUILD_OUTPUT_RELATIVE_PATH={ToWindowsRelativePath(context.BuildOutputRelativePath)}",
             "-e",
-            $"CONTAINER_PARITY_LABVIEW_VERSION={context.LabVIEWYear}",
+            $"CONTAINER_PARITY_LABVIEW_VERSION={containerYear}",
             image,
             "powershell",
             "-NoProfile",
@@ -561,6 +566,58 @@ public static class ParityService
         }
 
         return new ProcessResult(process.ExitCode, stdOut, stdErr);
+    }
+
+    private static string ResolveContainerRelease(string requestedRelease, string osSuffix, string workingDirectory)
+    {
+        var fallbackRelease = Environment.GetEnvironmentVariable("LVIE_CONTAINER_PARITY_FALLBACK_RELEASE");
+        if (string.IsNullOrWhiteSpace(fallbackRelease))
+        {
+            fallbackRelease = DefaultContainerFallbackRelease;
+        }
+        else
+        {
+            fallbackRelease = fallbackRelease.Trim();
+        }
+
+        var candidates = new List<string> { requestedRelease };
+        if (!string.Equals(requestedRelease, fallbackRelease, StringComparison.OrdinalIgnoreCase))
+        {
+            candidates.Add(fallbackRelease);
+        }
+
+        var failures = new List<string>();
+        foreach (var candidate in candidates)
+        {
+            var image = $"nationalinstruments/labview:{candidate}-{osSuffix}";
+            var pullResult = RunProcess(
+                "docker",
+                new[] { "pull", image },
+                workingDirectory,
+                throwOnError: false);
+
+            if (pullResult.ExitCode == 0)
+            {
+                if (!string.Equals(candidate, requestedRelease, StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.Error.WriteLine(
+                        $"WARNING: Requested container release '{requestedRelease}' is unavailable. Falling back to '{candidate}'.");
+                }
+
+                return candidate;
+            }
+
+            failures.Add($"{image} (exit={pullResult.ExitCode})");
+        }
+
+        throw new InvalidOperationException(
+            $"Unable to pull LabVIEW container image for '{requestedRelease}'. Tried: {string.Join(", ", failures)}.");
+    }
+
+    private static string ResolveReleaseYear(string release, string defaultYear)
+    {
+        var match = ReleaseYearRegex.Match(release ?? string.Empty);
+        return match.Success ? match.Groups["year"].Value : defaultYear;
     }
 
     private static string EscapePwshSingleQuoted(string input) =>

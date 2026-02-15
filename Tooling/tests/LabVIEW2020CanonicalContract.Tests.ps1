@@ -39,15 +39,15 @@ Describe 'LabVIEW 2020 canonical migration contract' {
     }
 
     It 'active workflow/script/docs surfaces do not reintroduce zip codex asset contract' {
-        $matches = @()
+        $matchList = @()
         foreach ($filePath in $script:activeContractFiles) {
             if (-not (Test-Path -LiteralPath $filePath -PathType Leaf)) {
                 continue
             }
-            $matches += Select-String -Path $filePath -Pattern 'lvie-codex-skill-layer\.zip' -SimpleMatch:$false
+            $matchList += Select-String -Path $filePath -Pattern 'lvie-codex-skill-layer\.zip' -SimpleMatch:$false
         }
 
-        $matches.Count | Should -Be 0
+        $matchList.Count | Should -Be 0
     }
 
     It 'active workflow/script/docs surfaces avoid legacy 2021/2026 canonical defaults' {
@@ -60,31 +60,31 @@ Describe 'LabVIEW 2020 canonical migration contract' {
             '2026q1-(linux|windows)'
         )
 
-        $matches = @()
+        $matchList = @()
         foreach ($filePath in $script:activeContractFiles) {
             if (-not (Test-Path -LiteralPath $filePath -PathType Leaf)) {
                 continue
             }
             foreach ($pattern in $legacyPatterns) {
-                $matches += Select-String -Path $filePath -Pattern $pattern -SimpleMatch:$false
+                $matchList += Select-String -Path $filePath -Pattern $pattern -SimpleMatch:$false
             }
         }
 
-        $matches.Count | Should -Be 0
+        $matchList.Count | Should -Be 0
     }
 
     It 'non-historical docs do not claim LabVIEW 2021 as canonical baseline' {
         $docRoot = Join-Path $script:repoRoot 'docs'
-        $matches = @()
+        $matchList = @()
         $docFiles = Get-ChildItem -Path $docRoot -Recurse -File -Filter *.md
         foreach ($doc in $docFiles) {
             if ($script:historicalDocsAllowList -contains $doc.FullName.ToLowerInvariant()) {
                 continue
             }
-            $matches += Select-String -Path $doc.FullName -Pattern 'LabVIEW 2021|21\.0' -SimpleMatch:$false
+            $matchList += Select-String -Path $doc.FullName -Pattern 'LabVIEW 2021|21\.0' -SimpleMatch:$false
         }
 
-        $matches.Count | Should -Be 0
+        $matchList.Count | Should -Be 0
     }
 
     It 'canonical guidance documents explicitly call out LabVIEW 2020 baseline' {
