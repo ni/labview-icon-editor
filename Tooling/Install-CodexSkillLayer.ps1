@@ -38,6 +38,7 @@ if ($result.Installed) {
     tag = [string]$state.Lock.tag
     asset_name = [string]$state.Lock.asset_name
     sha256 = [string]$state.Lock.sha256
+    distribution_type = if ($state.Lock.PSObject.Properties.Name -contains 'distribution') { [string]$state.Lock.distribution.type } else { '' }
     version_root = $result.VersionRoot
     installed = [bool]$result.Installed
 }

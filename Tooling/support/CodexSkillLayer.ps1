@@ -188,6 +188,80 @@ function Test-CodexSkillLayerVersionRoot {
     }
 }
 
+function Expand-CodexSkillLayerAsset {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$AssetPath,
+
+        [Parameter(Mandatory = $true)]
+        [object]$Lock,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ExtractRoot
+    )
+
+    if (-not (Test-Path -LiteralPath $AssetPath -PathType Leaf)) {
+        throw "Codex skill layer asset is missing: $AssetPath"
+    }
+
+    if (Test-Path -LiteralPath $ExtractRoot) {
+        Remove-Item -LiteralPath $ExtractRoot -Recurse -Force
+    }
+    New-Item -Path $ExtractRoot -ItemType Directory -Force | Out-Null
+
+    $distributionType = ''
+    if ($Lock.PSObject.Properties.Name -contains 'distribution' -and $null -ne $Lock.distribution) {
+        $distributionType = [string]$Lock.distribution.type
+    }
+    if ([string]::IsNullOrWhiteSpace($distributionType)) {
+        $extension = [System.IO.Path]::GetExtension([string]$Lock.asset_name).ToLowerInvariant()
+        if ($extension -eq '.zip') {
+            $distributionType = 'zip'
+        } elseif ($extension -eq '.exe') {
+            $distributionType = 'nsis-installer'
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($distributionType)) {
+        throw "Unable to infer codex skill layer distribution type from lock file."
+    }
+
+    if ($distributionType -eq 'zip') {
+        Expand-Archive -Path $AssetPath -DestinationPath $ExtractRoot -Force
+        return [pscustomobject]@{
+            distribution_type = 'zip'
+            install_exit_code = 0
+        }
+    }
+
+    if ($distributionType -eq 'nsis-installer') {
+        if (-not $IsWindows) {
+            throw "NSIS installer assets require Windows execution. Current platform cannot install '$AssetPath'."
+        }
+
+        $silentArgs = @('/S')
+        if ($Lock.PSObject.Properties.Name -contains 'distribution' -and $null -ne $Lock.distribution -and $Lock.distribution.PSObject.Properties.Name -contains 'silent_args') {
+            $candidateSilentArgs = @($Lock.distribution.silent_args | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            if ($candidateSilentArgs.Count -gt 0) {
+                $silentArgs = $candidateSilentArgs
+            }
+        }
+
+        $arguments = @($silentArgs + @("/D=$ExtractRoot"))
+        $process = Start-Process -FilePath $AssetPath -ArgumentList $arguments -PassThru -Wait
+        if ($process.ExitCode -ne 0) {
+            throw ("Codex skill layer installer failed with exit code {0}." -f $process.ExitCode)
+        }
+
+        return [pscustomobject]@{
+            distribution_type = 'nsis-installer'
+            install_exit_code = [int]$process.ExitCode
+        }
+    }
+
+    throw ("Unsupported codex skill layer distribution type '{0}'." -f $distributionType)
+}
+
 function Install-CodexSkillLayerInternal {
     param(
         [Parameter(Mandatory = $true)]
@@ -247,7 +321,7 @@ function Install-CodexSkillLayerInternal {
         }
 
         $extractRoot = Join-Path $tempRoot 'extract'
-        Expand-Archive -Path $assetPath -DestinationPath $extractRoot -Force
+        $installMetadata = Expand-CodexSkillLayerAsset -AssetPath $assetPath -Lock $State.Lock -ExtractRoot $extractRoot
 
         $extractState = [pscustomobject]@{
             RepoRoot = $State.RepoRoot
@@ -271,6 +345,8 @@ function Install-CodexSkillLayerInternal {
             VersionRoot = $State.VersionRoot
             AssetPath = $assetPath
             Sha256 = $actualHash
+            DistributionType = [string]$installMetadata.distribution_type
+            InstallExitCode = [int]$installMetadata.install_exit_code
         }
     } finally {
         Remove-Item -Path $tempRoot -Recurse -Force -ErrorAction SilentlyContinue

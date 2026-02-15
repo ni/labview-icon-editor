@@ -1686,7 +1686,7 @@ jobs:
   codex-skill-layer-asset:
     name: Resolve Codex Skill Layer Asset
     needs: [run-metadata, prerelease-context]
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     permissions:
       contents: read
     outputs:
@@ -1698,7 +1698,7 @@ jobs:
         shell: pwsh
         run: |
           "artifact_name=codex-skill-layer" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
-          "asset_file_name=lvie-codex-skill-layer.zip" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "asset_file_name=lvie-codex-skill-layer-installer.exe" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
 
       - name: Checkout code
         if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
@@ -1743,10 +1743,26 @@ jobs:
             throw ("Codex skill layer hash mismatch. expected={0} actual={1}" -f $expectedHash, $actualHash)
           }
 
-          $extractDir = Join-Path $destDir 'extract'
-          Expand-Archive -Path $assetPath -DestinationPath $extractDir -Force
+          $installDir = Join-Path $destDir 'install'
+          if (Test-Path -Path $installDir) {
+            Remove-Item -Path $installDir -Recurse -Force
+          }
+          New-Item -Path $installDir -ItemType Directory -Force | Out-Null
 
-          $manifestPath = Join-Path $extractDir 'manifest.json'
+          $silentArgs = @('/S')
+          if ($lock.PSObject.Properties.Name -contains 'distribution' -and $null -ne $lock.distribution -and $lock.distribution.PSObject.Properties.Name -contains 'silent_args') {
+            $candidateSilentArgs = @($lock.distribution.silent_args | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            if ($candidateSilentArgs.Count -gt 0) {
+              $silentArgs = $candidateSilentArgs
+            }
+          }
+          $arguments = @($silentArgs + @("/D=$installDir"))
+          $installProcess = Start-Process -FilePath $assetPath -ArgumentList $arguments -PassThru -Wait
+          if ($installProcess.ExitCode -ne 0) {
+            throw ("Codex skill layer installer failed with exit code {0}." -f $installProcess.ExitCode)
+          }
+
+          $manifestPath = Join-Path $installDir 'manifest.json'
           if (-not (Test-Path -Path $manifestPath -PathType Leaf)) {
             throw "Codex skill layer manifest missing: $manifestPath"
           }
@@ -1757,7 +1773,7 @@ jobs:
           }
 
           foreach ($relative in @($lock.required_files)) {
-            $requiredPath = Join-Path $extractDir ([string]$relative)
+            $requiredPath = Join-Path $installDir ([string]$relative)
             if (-not (Test-Path -Path $requiredPath)) {
               throw ("Codex skill layer required file missing: {0}" -f $relative)
             }

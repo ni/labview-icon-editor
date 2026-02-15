@@ -6,8 +6,41 @@ $ErrorActionPreference = 'Stop'
 BeforeAll {
     $script:toolingRoot = Split-Path -Parent $PSScriptRoot
     $script:supportScript = Join-Path $script:toolingRoot 'support/CodexSkillLayer.ps1'
-    $script:fixtureLayerRoot = Join-Path $script:toolingRoot 'tests/fixtures/codex-skill-layer'
     . $script:supportScript
+
+    function script:New-MinimalLayerContent {
+        param(
+            [Parameter(Mandatory = $true)]
+            [string]$VersionRoot,
+
+            [Parameter(Mandatory = $true)]
+            [string[]]$RequiredFiles,
+
+            [Parameter(Mandatory = $true)]
+            [string]$License
+        )
+
+        foreach ($relative in $RequiredFiles) {
+            $targetPath = Join-Path $VersionRoot $relative
+            $parent = Split-Path -Parent $targetPath
+            if (-not [string]::IsNullOrWhiteSpace($parent) -and -not (Test-Path -Path $parent -PathType Container)) {
+                New-Item -Path $parent -ItemType Directory -Force | Out-Null
+            }
+
+            if ($relative -eq 'manifest.json') {
+                $manifest = [ordered]@{
+                    name = 'lvie-codex-skill-layer'
+                    version = '0.4.1'
+                    license_spdx = $License
+                }
+                $manifest | ConvertTo-Json -Depth 4 | Set-Content -Path $targetPath -Encoding utf8
+            } elseif ($relative.EndsWith('.json')) {
+                Set-Content -Path $targetPath -Value '{}' -Encoding utf8
+            } else {
+                Set-Content -Path $targetPath -Value '# fixture' -Encoding utf8
+            }
+        }
+    }
 }
 
 Describe 'Codex skill layer helpers' {
@@ -18,48 +51,29 @@ Describe 'Codex skill layer helpers' {
 
     It 'fails when manifest license_spdx is missing or wrong' {
         $layerRoot = Join-Path $TestDrive 'layer'
-        $versionRoot = Join-Path $layerRoot 'v0.1.0'
-        New-Item -Path (Join-Path $versionRoot 'ci-debt') -ItemType Directory -Force | Out-Null
-        Set-Content -Path (Join-Path $versionRoot 'manifest.json') -Value '{"license_spdx":"MIT"}' -Encoding utf8
-        Set-Content -Path (Join-Path $versionRoot 'LICENSE') -Value 'placeholder' -Encoding utf8
-        Set-Content -Path (Join-Path $versionRoot 'ci-debt/Invoke-CiDebtAnalysis.ps1') -Value '# fixture' -Encoding utf8
-        Set-Content -Path (Join-Path $versionRoot 'ci-debt/Test-CiDebtPolicyGate.ps1') -Value '# fixture' -Encoding utf8
-        Set-Content -Path (Join-Path $versionRoot 'ci-debt/signatures.json') -Value '{"signatures":[]}' -Encoding utf8
-        Set-Content -Path (Join-Path $versionRoot 'ci-debt/playbook.md') -Value '# fixture' -Encoding utf8
-        New-Item -Path (Join-Path $versionRoot 'ci-debt/fixtures') -ItemType Directory -Force | Out-Null
-        Set-Content -Path (Join-Path $versionRoot 'ci-debt/fixtures/run-21840801109.json') -Value '{}' -Encoding utf8
-
         $state = Get-CodexSkillLayerState -RepoRoot (Split-Path -Parent $script:toolingRoot) -LayerRoot $layerRoot
+        New-MinimalLayerContent -VersionRoot $state.VersionRoot -RequiredFiles @($state.Lock.required_files) -License 'MIT'
         { Test-CodexSkillLayerVersionRoot -State $state } | Should -Throw '*license mismatch*'
     }
 
-    It 'succeeds when fixture layer contains required files and 0BSD manifest' {
-        $state = Get-CodexSkillLayerState -RepoRoot (Split-Path -Parent $script:toolingRoot) -LayerRoot $script:fixtureLayerRoot
+    It 'succeeds when layer contains required files and 0BSD manifest' {
+        $layerRoot = Join-Path $TestDrive 'layer-ok'
+        $state = Get-CodexSkillLayerState -RepoRoot (Split-Path -Parent $script:toolingRoot) -LayerRoot $layerRoot
+        New-MinimalLayerContent -VersionRoot $state.VersionRoot -RequiredFiles @($state.Lock.required_files) -License '0BSD'
         { Test-CodexSkillLayerVersionRoot -State $state } | Should -Not -Throw
     }
 
     It 'fails install when downloaded asset hash does not match lock' {
-        $assetSourceRoot = Join-Path $TestDrive 'asset-src'
-        $assetVersionRoot = Join-Path $assetSourceRoot 'v0.1.0'
-        New-Item -Path (Join-Path $assetVersionRoot 'ci-debt/fixtures') -ItemType Directory -Force | Out-Null
-        Set-Content -Path (Join-Path $assetVersionRoot 'manifest.json') -Value '{"license_spdx":"0BSD"}' -Encoding utf8
-        Set-Content -Path (Join-Path $assetVersionRoot 'LICENSE') -Value '0BSD' -Encoding utf8
-        Set-Content -Path (Join-Path $assetVersionRoot 'ci-debt/Invoke-CiDebtAnalysis.ps1') -Value '# fixture' -Encoding utf8
-        Set-Content -Path (Join-Path $assetVersionRoot 'ci-debt/Test-CiDebtPolicyGate.ps1') -Value '# fixture' -Encoding utf8
-        Set-Content -Path (Join-Path $assetVersionRoot 'ci-debt/signatures.json') -Value '{"signatures":[{"id":"x","job":"x","containsAny":["x"]}]}' -Encoding utf8
-        Set-Content -Path (Join-Path $assetVersionRoot 'ci-debt/playbook.md') -Value '# fixture' -Encoding utf8
-        Set-Content -Path (Join-Path $assetVersionRoot 'ci-debt/fixtures/run-21840801109.json') -Value '{}' -Encoding utf8
-
-        $assetZip = Join-Path $TestDrive 'lvie-codex-skill-layer.zip'
-        Compress-Archive -Path (Join-Path $assetVersionRoot '*') -DestinationPath $assetZip -Force
+        $assetExe = Join-Path $TestDrive 'lvie-codex-skill-layer-installer.exe'
+        Set-Content -Path $assetExe -Value 'dummy-installer' -Encoding ascii
 
         $state = [pscustomobject]@{
             RepoRoot = (Split-Path -Parent $script:toolingRoot)
             LockPath = Join-Path (Split-Path -Parent $script:toolingRoot) 'Tooling/codex-skill-layer.lock.json'
             Lock = [pscustomobject]@{
                 repo = 'example/repo'
-                tag = 'v0.1.0'
-                asset_name = 'lvie-codex-skill-layer.zip'
+                tag = 'v0.4.1'
+                asset_name = 'lvie-codex-skill-layer-installer.exe'
                 sha256 = 'deadbeef'
                 license_spdx = '0BSD'
                 required_files = @(
@@ -73,7 +87,7 @@ Describe 'Codex skill layer helpers' {
                 )
             }
             LayerRoot = Join-Path $TestDrive 'installed'
-            VersionRoot = Join-Path (Join-Path $TestDrive 'installed') 'v0.1.0'
+            VersionRoot = Join-Path (Join-Path $TestDrive 'installed') 'v0.4.1'
         }
 
         function global:gh {
@@ -87,7 +101,7 @@ Describe 'Codex skill layer helpers' {
                 $destDir = $Args[$dirIndex + 1]
                 $pattern = $Args[$patternIndex + 1]
                 New-Item -Path $destDir -ItemType Directory -Force | Out-Null
-                Copy-Item -Path $assetZip -Destination (Join-Path $destDir $pattern) -Force
+                Copy-Item -Path $assetExe -Destination (Join-Path $destDir $pattern) -Force
                 $global:LASTEXITCODE = 0
                 return
             }
