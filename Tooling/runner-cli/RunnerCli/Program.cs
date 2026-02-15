@@ -831,6 +831,313 @@ missingCmd.SetHandler((InvocationContext context) =>
     }
 });
 
+// ── lunit run/validate ────────────────────────────────────────────
+var lunitCmd = new Command("lunit", "Run and validate LUnit workflows using existing script contracts.");
+var lunitRunCmd = new Command("run", "Run g-cli LUnit then parse/validate UnitTestReport.xml.");
+var lunitValidateCmd = new Command("validate", "Validate UnitTestReport.xml using RunUnitTests.ps1 parser mode.");
+
+var lunitYearOption = new Option<string>(
+    name: "--year",
+    description: "LabVIEW target year for g-cli LUnit execution (for example: 2026).")
+{ IsRequired = true };
+
+var lunitLabviewVersionOption = new Option<string>(
+    name: "--labview-version",
+    description: "LabVIEW .lvversion/raw value used by parser validation (for example: 26.1).")
+{ IsRequired = true };
+
+var lunitBitnessOption = new Option<string>(
+    name: "--bitness",
+    description: "LabVIEW bitness (32 or 64).")
+{ IsRequired = true };
+
+var lunitProjectPathOption = new Option<string>(
+    name: "--project-path",
+    description: "LabVIEW project path for g-cli LUnit execution.")
+{ IsRequired = true };
+
+var lunitReportPathOption = new Option<string?>(
+    name: "--report-path",
+    description: "Optional UnitTestReport.xml path. Defaults to .github/actions/run-unit-tests/UnitTestReport.xml");
+
+var lunitDryRunOption = new Option<bool>(
+    name: "--dry-run",
+    getDefaultValue: () => false,
+    description: "Emit underlying command lines without executing them.");
+
+lunitRunCmd.AddOption(repoRootOption);
+lunitRunCmd.AddOption(lunitYearOption);
+lunitRunCmd.AddOption(lunitLabviewVersionOption);
+lunitRunCmd.AddOption(lunitBitnessOption);
+lunitRunCmd.AddOption(lunitProjectPathOption);
+lunitRunCmd.AddOption(lunitReportPathOption);
+lunitRunCmd.AddOption(lunitDryRunOption);
+lunitRunCmd.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var repoRoot = RepoLocator.Resolve(
+            context.ParseResult.GetValueForOption(repoRootOption),
+            Environment.CurrentDirectory);
+        var options = new LunitRunOptions(
+            RepoRoot: repoRoot,
+            Year: context.ParseResult.GetValueForOption(lunitYearOption) ?? string.Empty,
+            LabviewVersion: context.ParseResult.GetValueForOption(lunitLabviewVersionOption) ?? string.Empty,
+            Bitness: context.ParseResult.GetValueForOption(lunitBitnessOption) ?? string.Empty,
+            ProjectPath: context.ParseResult.GetValueForOption(lunitProjectPathOption) ?? string.Empty,
+            ReportPath: context.ParseResult.GetValueForOption(lunitReportPathOption),
+            DryRun: context.ParseResult.GetValueForOption(lunitDryRunOption));
+        var exitCode = LunitService.Run(options);
+        Environment.ExitCode = exitCode;
+        context.ExitCode = exitCode;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"ERROR: {ex.Message}");
+        Environment.ExitCode = 1;
+        context.ExitCode = 1;
+    }
+});
+
+lunitValidateCmd.AddOption(repoRootOption);
+lunitValidateCmd.AddOption(lunitLabviewVersionOption);
+lunitValidateCmd.AddOption(lunitBitnessOption);
+lunitValidateCmd.AddOption(lunitReportPathOption);
+lunitValidateCmd.AddOption(lunitDryRunOption);
+lunitValidateCmd.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var repoRoot = RepoLocator.Resolve(
+            context.ParseResult.GetValueForOption(repoRootOption),
+            Environment.CurrentDirectory);
+        var options = new LunitValidateOptions(
+            RepoRoot: repoRoot,
+            LabviewVersion: context.ParseResult.GetValueForOption(lunitLabviewVersionOption) ?? string.Empty,
+            Bitness: context.ParseResult.GetValueForOption(lunitBitnessOption) ?? string.Empty,
+            ReportPath: context.ParseResult.GetValueForOption(lunitReportPathOption),
+            DryRun: context.ParseResult.GetValueForOption(lunitDryRunOption));
+        var exitCode = LunitService.Validate(options);
+        Environment.ExitCode = exitCode;
+        context.ExitCode = exitCode;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"ERROR: {ex.Message}");
+        Environment.ExitCode = 1;
+        context.ExitCode = 1;
+    }
+});
+
+lunitCmd.AddCommand(lunitRunCmd);
+lunitCmd.AddCommand(lunitValidateCmd);
+
+// ── vip build ─────────────────────────────────────────────────────
+var vipCmd = new Command("vip", "VI Package workflow helpers.");
+var vipBuildCmd = new Command("build", "Build VI Package via Tooling/Invoke-VipBuild.ps1.");
+
+var vipBuildBitnessOption = new Option<string>(
+    name: "--supported-bitness",
+    description: "LabVIEW bitness (32 or 64).")
+{ IsRequired = true };
+var vipbPathOption = new Option<string>(
+    name: "--vipb-path",
+    description: "Path to the .vipb file relative to repo root.")
+{ IsRequired = true };
+var vipBuildLabviewVersionOption = new Option<string?>("--labview-version", "LabVIEW version input.");
+var vipBuildLabviewMinorOption = new Option<string?>("--labview-minor-revision", "LabVIEW minor revision.");
+var vipBuildMajorOption = new Option<string?>("--major", "Version major.");
+var vipBuildMinorOption = new Option<string?>("--minor", "Version minor.");
+var vipBuildPatchOption = new Option<string?>("--patch", "Version patch.");
+var vipBuildBuildOption = new Option<string?>("--build", "Version build.");
+var vipBuildCommitOption = new Option<string?>("--commit", "Commit SHA.");
+var vipBuildReleaseNotesOption = new Option<string?>("--release-notes-file", "Release notes markdown path.");
+var vipBuildDisplayInfoOption = new Option<string>(
+    name: "--display-information-json",
+    description: "Display information JSON payload.")
+{ IsRequired = true };
+var vipBuildVipmTimeoutOption = new Option<string?>("--vipm-timeout-seconds", "VIPM timeout in seconds.");
+var vipBuildMaxAttemptsOption = new Option<string?>("--max-attempts", "Max retry attempts.");
+var vipBuildRetryDelayOption = new Option<string?>("--retry-delay-seconds", "Retry delay in seconds.");
+var vipBuildStatusPathOption = new Option<string?>("--status-path", "Optional explicit VIP status JSON output path.");
+var vipBuildWorktreeRootOption = new Option<string?>("--worktree-root", "Optional explicit worktree root.");
+var vipBuildSkipWorktreeCheckOption = new Option<bool>(
+    name: "--skip-worktree-root-check",
+    getDefaultValue: () => false,
+    description: "Skip worktree root guard.");
+var vipBuildDryRunOption = new Option<bool>(
+    name: "--dry-run",
+    getDefaultValue: () => false,
+    description: "Emit underlying command lines without executing them.");
+
+vipBuildCmd.AddOption(repoRootOption);
+vipBuildCmd.AddOption(vipBuildBitnessOption);
+vipBuildCmd.AddOption(vipbPathOption);
+vipBuildCmd.AddOption(vipBuildLabviewVersionOption);
+vipBuildCmd.AddOption(vipBuildLabviewMinorOption);
+vipBuildCmd.AddOption(vipBuildMajorOption);
+vipBuildCmd.AddOption(vipBuildMinorOption);
+vipBuildCmd.AddOption(vipBuildPatchOption);
+vipBuildCmd.AddOption(vipBuildBuildOption);
+vipBuildCmd.AddOption(vipBuildCommitOption);
+vipBuildCmd.AddOption(vipBuildReleaseNotesOption);
+vipBuildCmd.AddOption(vipBuildDisplayInfoOption);
+vipBuildCmd.AddOption(vipBuildVipmTimeoutOption);
+vipBuildCmd.AddOption(vipBuildMaxAttemptsOption);
+vipBuildCmd.AddOption(vipBuildRetryDelayOption);
+vipBuildCmd.AddOption(vipBuildStatusPathOption);
+vipBuildCmd.AddOption(vipBuildWorktreeRootOption);
+vipBuildCmd.AddOption(vipBuildSkipWorktreeCheckOption);
+vipBuildCmd.AddOption(vipBuildDryRunOption);
+vipBuildCmd.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var repoRoot = RepoLocator.Resolve(
+            context.ParseResult.GetValueForOption(repoRootOption),
+            Environment.CurrentDirectory);
+        var options = new VipBuildOptions(
+            RepoRoot: repoRoot,
+            SupportedBitness: context.ParseResult.GetValueForOption(vipBuildBitnessOption) ?? string.Empty,
+            VipbPath: context.ParseResult.GetValueForOption(vipbPathOption) ?? string.Empty,
+            LabviewVersion: context.ParseResult.GetValueForOption(vipBuildLabviewVersionOption),
+            LabviewMinorRevision: context.ParseResult.GetValueForOption(vipBuildLabviewMinorOption),
+            Major: context.ParseResult.GetValueForOption(vipBuildMajorOption),
+            Minor: context.ParseResult.GetValueForOption(vipBuildMinorOption),
+            Patch: context.ParseResult.GetValueForOption(vipBuildPatchOption),
+            Build: context.ParseResult.GetValueForOption(vipBuildBuildOption),
+            Commit: context.ParseResult.GetValueForOption(vipBuildCommitOption),
+            ReleaseNotesFile: context.ParseResult.GetValueForOption(vipBuildReleaseNotesOption),
+            DisplayInformationJson: context.ParseResult.GetValueForOption(vipBuildDisplayInfoOption) ?? string.Empty,
+            VipmTimeoutSeconds: context.ParseResult.GetValueForOption(vipBuildVipmTimeoutOption),
+            MaxAttempts: context.ParseResult.GetValueForOption(vipBuildMaxAttemptsOption),
+            RetryDelaySeconds: context.ParseResult.GetValueForOption(vipBuildRetryDelayOption),
+            StatusPath: context.ParseResult.GetValueForOption(vipBuildStatusPathOption),
+            WorktreeRoot: context.ParseResult.GetValueForOption(vipBuildWorktreeRootOption),
+            SkipWorktreeRootCheck: context.ParseResult.GetValueForOption(vipBuildSkipWorktreeCheckOption),
+            DryRun: context.ParseResult.GetValueForOption(vipBuildDryRunOption));
+        var exitCode = VipBuildService.Run(options);
+        Environment.ExitCode = exitCode;
+        context.ExitCode = exitCode;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"ERROR: {ex.Message}");
+        Environment.ExitCode = 1;
+        context.ExitCode = 1;
+    }
+});
+vipCmd.AddCommand(vipBuildCmd);
+
+// ── vipc apply/assert ─────────────────────────────────────────────
+var vipcCmd = new Command("vipc", "VIPC workflow helpers.");
+var vipcApplyCmd = new Command("apply", "Apply VIPC dependencies via ApplyVIPC.ps1.");
+var vipcAssertCmd = new Command("assert", "Audit VIPC dependencies via Assert-VipcApplied.ps1.");
+
+var vipcBitnessOption = new Option<string>(
+    name: "--supported-bitness",
+    description: "LabVIEW bitness (32 or 64).")
+{ IsRequired = true };
+var vipcPathOption = new Option<string>(
+    name: "--vipc-path",
+    description: "Path to the .vipc file relative to repo root.")
+{ IsRequired = true };
+var vipcLabviewVersionOption = new Option<string?>("--labview-version", "LabVIEW version input.");
+var vipcWorktreeRootOption = new Option<string?>("--worktree-root", "Optional explicit worktree root.");
+var vipcSkipWorktreeCheckOption = new Option<bool>(
+    name: "--skip-worktree-root-check",
+    getDefaultValue: () => false,
+    description: "Skip worktree root guard.");
+var vipcAllowTargetMismatchOption = new Option<bool>(
+    name: "--allow-vipc-target-mismatch",
+    getDefaultValue: () => false,
+    description: "Allow VIPC target/version mismatch.");
+var vipcOutputPathOption = new Option<string>(
+    name: "--output-path",
+    description: "Path to write VIPC audit JSON output.")
+{ IsRequired = true };
+var vipcFailOnMismatchOption = new Option<bool>(
+    name: "--fail-on-mismatch",
+    getDefaultValue: () => true,
+    description: "Fail when expected package/version mismatches are detected.");
+var vipcDryRunOption = new Option<bool>(
+    name: "--dry-run",
+    getDefaultValue: () => false,
+    description: "Emit underlying command lines without executing them.");
+
+vipcApplyCmd.AddOption(repoRootOption);
+vipcApplyCmd.AddOption(vipcBitnessOption);
+vipcApplyCmd.AddOption(vipcPathOption);
+vipcApplyCmd.AddOption(vipcLabviewVersionOption);
+vipcApplyCmd.AddOption(vipcAllowTargetMismatchOption);
+vipcApplyCmd.AddOption(vipcWorktreeRootOption);
+vipcApplyCmd.AddOption(vipcSkipWorktreeCheckOption);
+vipcApplyCmd.AddOption(vipcDryRunOption);
+vipcApplyCmd.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var repoRoot = RepoLocator.Resolve(
+            context.ParseResult.GetValueForOption(repoRootOption),
+            Environment.CurrentDirectory);
+        var options = new VipcApplyOptions(
+            RepoRoot: repoRoot,
+            SupportedBitness: context.ParseResult.GetValueForOption(vipcBitnessOption) ?? string.Empty,
+            VipcPath: context.ParseResult.GetValueForOption(vipcPathOption) ?? string.Empty,
+            LabviewVersion: context.ParseResult.GetValueForOption(vipcLabviewVersionOption),
+            AllowVipcTargetMismatch: context.ParseResult.GetValueForOption(vipcAllowTargetMismatchOption),
+            WorktreeRoot: context.ParseResult.GetValueForOption(vipcWorktreeRootOption),
+            SkipWorktreeRootCheck: context.ParseResult.GetValueForOption(vipcSkipWorktreeCheckOption),
+            DryRun: context.ParseResult.GetValueForOption(vipcDryRunOption));
+        var exitCode = VipcService.Apply(options);
+        Environment.ExitCode = exitCode;
+        context.ExitCode = exitCode;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"ERROR: {ex.Message}");
+        Environment.ExitCode = 1;
+        context.ExitCode = 1;
+    }
+});
+
+vipcAssertCmd.AddOption(repoRootOption);
+vipcAssertCmd.AddOption(vipcBitnessOption);
+vipcAssertCmd.AddOption(vipcPathOption);
+vipcAssertCmd.AddOption(vipcLabviewVersionOption);
+vipcAssertCmd.AddOption(vipcOutputPathOption);
+vipcAssertCmd.AddOption(vipcFailOnMismatchOption);
+vipcAssertCmd.AddOption(vipcDryRunOption);
+vipcAssertCmd.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var repoRoot = RepoLocator.Resolve(
+            context.ParseResult.GetValueForOption(repoRootOption),
+            Environment.CurrentDirectory);
+        var options = new VipcAssertOptions(
+            RepoRoot: repoRoot,
+            SupportedBitness: context.ParseResult.GetValueForOption(vipcBitnessOption) ?? string.Empty,
+            VipcPath: context.ParseResult.GetValueForOption(vipcPathOption) ?? string.Empty,
+            LabviewVersion: context.ParseResult.GetValueForOption(vipcLabviewVersionOption),
+            OutputPath: context.ParseResult.GetValueForOption(vipcOutputPathOption) ?? string.Empty,
+            FailOnMismatch: context.ParseResult.GetValueForOption(vipcFailOnMismatchOption),
+            DryRun: context.ParseResult.GetValueForOption(vipcDryRunOption));
+        var exitCode = VipcService.AssertApplied(options);
+        Environment.ExitCode = exitCode;
+        context.ExitCode = exitCode;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"ERROR: {ex.Message}");
+        Environment.ExitCode = 1;
+        context.ExitCode = 1;
+    }
+});
+
+vipcCmd.AddCommand(vipcApplyCmd);
+vipcCmd.AddCommand(vipcAssertCmd);
+
 // ── parity context/run ────────────────────────────────────────────
 var parityCmd = new Command("parity", "Resolve and execute LabVIEW parity lanes.");
 var parityContextCmd = new Command("context", "Resolve parity context from .lvversion and parity contract.");
@@ -1115,6 +1422,9 @@ rootCmd.AddCommand(emitCmd);
 rootCmd.AddCommand(versionCmd);
 rootCmd.AddCommand(pylaviCmd);
 rootCmd.AddCommand(missingCmd);
+rootCmd.AddCommand(lunitCmd);
+rootCmd.AddCommand(vipCmd);
+rootCmd.AddCommand(vipcCmd);
 rootCmd.AddCommand(parityCmd);
 rootCmd.AddCommand(manifestCmd);
 rootCmd.AddCommand(conformanceCmd);

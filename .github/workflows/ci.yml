@@ -671,6 +671,11 @@ jobs:
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
         run: |
+          $runnerCliProject = Join-Path $env:REPO_ROOT 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+          if (-not (Test-Path -Path $runnerCliProject -PathType Leaf)) {
+            throw "runner-cli project not found at $runnerCliProject"
+          }
+
           $unitTestYear = $env:LABVIEW_VERSION_YEAR
           $unitTestLvversion = if ([string]::IsNullOrWhiteSpace($env:LABVIEW_VERSION)) { $env:LVIE_REQUIRED_LABVIEW_VERSION } else { $env:LABVIEW_VERSION }
           Write-Host ("Unit-test LabVIEW target year: {0}" -f $unitTestYear)
@@ -682,28 +687,24 @@ jobs:
             Remove-Item -Path $reportPath -Force -ErrorAction SilentlyContinue
           }
 
-          & g-cli --lv-ver $unitTestYear --arch ${{ matrix.bitness }} lunit -- -r $reportPath "$env:PROJECT_PATH"
-          $gcliExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
-          Write-Host ("g-cli lunit exit code: {0}" -f $gcliExitCode)
-
-          & pwsh -NoProfile -File ".github/actions/run-unit-tests/RunUnitTests.ps1" `
-            -LabVIEWVersion $unitTestLvversion `
-            -SupportedBitness ${{ matrix.bitness }} `
-            -SkipGcli `
-            -ReportPath $reportPath
-          $parserExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
-          Write-Host ("RunUnitTests parser exit code: {0}" -f $parserExitCode)
-
-          if ($gcliExitCode -ne 0) {
-            exit $gcliExitCode
-          }
-
-          exit $parserExitCode
+          $runnerCliArgs = @(
+            'lunit', 'run',
+            '--repo-root', $env:REPO_ROOT,
+            '--year', $unitTestYear,
+            '--labview-version', $unitTestLvversion,
+            '--bitness', '${{ matrix.bitness }}',
+            '--project-path', $env:PROJECT_PATH,
+            '--report-path', $reportPath
+          )
+          & dotnet run --project $runnerCliProject --configuration Release -- @runnerCliArgs
+          $runnerCliExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+          Write-Host ("runner-cli lunit run exit code: {0}" -f $runnerCliExitCode)
+          exit $runnerCliExitCode
       - name: Summarize unit-test executor
         if: always()
         shell: pwsh
         run: |
-          $summaryLine = "- Unit Tests (LV {0}-bit): LUnit executor = g-cli (target={1}; source={2})" -f '${{ matrix.bitness }}', $env:LABVIEW_VERSION_YEAR, $env:LABVIEW_VERSION_YEAR
+          $summaryLine = "- Unit Tests (LV {0}-bit): LUnit executor = runner-cli (g-cli backend) (target={1}; source={2})" -f '${{ matrix.bitness }}', $env:LABVIEW_VERSION_YEAR, $env:LABVIEW_VERSION_YEAR
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summaryLine
       - name: Upload unit test report (LV ${{ matrix.bitness }}-bit)
         if: failure()
@@ -747,33 +748,34 @@ jobs:
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
         run: |
+          $runnerCliProject = Join-Path $env:REPO_ROOT 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+          if (-not (Test-Path -Path $runnerCliProject -PathType Leaf)) {
+            throw "runner-cli project not found at $runnerCliProject"
+          }
+
           $reportPath = Join-Path $env:REPO_ROOT '.github/actions/run-unit-tests/UnitTestReport.xml'
           if (Test-Path -Path $reportPath) {
             Remove-Item -Path $reportPath -Force -ErrorAction SilentlyContinue
           }
 
-          & g-cli --lv-ver 2020 --arch 64 lunit -- -r $reportPath "$env:PROJECT_PATH"
-          $gcliExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
-          Write-Host ("g-cli lunit exit code: {0}" -f $gcliExitCode)
-
-          & pwsh -NoProfile -File ".github/actions/run-unit-tests/RunUnitTests.ps1" `
-            -LabVIEWVersion 20.0 `
-            -SupportedBitness 64 `
-            -SkipGcli `
-            -ReportPath $reportPath
-          $parserExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
-          Write-Host ("RunUnitTests parser exit code: {0}" -f $parserExitCode)
-
-          if ($gcliExitCode -ne 0) {
-            exit $gcliExitCode
-          }
-
-          exit $parserExitCode
+          $runnerCliArgs = @(
+            'lunit', 'run',
+            '--repo-root', $env:REPO_ROOT,
+            '--year', '2020',
+            '--labview-version', '20.0',
+            '--bitness', '64',
+            '--project-path', $env:PROJECT_PATH,
+            '--report-path', $reportPath
+          )
+          & dotnet run --project $runnerCliProject --configuration Release -- @runnerCliArgs
+          $runnerCliExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+          Write-Host ("runner-cli lunit run exit code: {0}" -f $runnerCliExitCode)
+          exit $runnerCliExitCode
       - name: Summarize LV2020 edge unit-test executor
         if: always()
         shell: pwsh
         run: |
-          $summaryLine = "- Unit Tests Edge (LV 64-bit): LUnit executor = g-cli (target=2020; source=$env:LABVIEW_VERSION_YEAR)"
+          $summaryLine = "- Unit Tests Edge (LV 64-bit): LUnit executor = runner-cli (g-cli backend) (target=2020; source=$env:LABVIEW_VERSION_YEAR)"
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summaryLine
       - name: Upload unit test report edge artifact (LV 64-bit)
         if: always()
@@ -1023,21 +1025,29 @@ jobs:
           DISPLAY_INFORMATION_JSON: |
             ${{ steps.display-info.outputs.json }}
         run: |
+          $runnerCliProject = Join-Path $env:REPO_ROOT 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+          if (-not (Test-Path -Path $runnerCliProject -PathType Leaf)) {
+            throw "runner-cli project not found at $runnerCliProject"
+          }
+
           $displayInformationJson = $Env:DISPLAY_INFORMATION_JSON
-          & "$env:REPO_ROOT\\Tooling\\Invoke-VipBuild.ps1" `
-            -SupportedBitness 64 `
-            -RepoRoot "$env:REPO_ROOT" `
-            -VIPBPath "Tooling/deployment/NI Icon editor.vipb" `
-            -LabVIEWVersion $env:LABVIEW_VERSION_RAW `
-            -LabVIEWMinorRevision $env:LABVIEW_MINOR_REVISION `
-            -Major ${{ needs.version.outputs.MAJOR }} `
-            -Minor ${{ needs.version.outputs.MINOR }} `
-            -Patch ${{ needs.version.outputs.PATCH }} `
-            -Build ${{ needs.version.outputs.BUILD }} `
-            -Commit "${{ github.sha }}" `
-            -ReleaseNotesFile "$env:REPO_ROOT\\Tooling\\deployment\\release_notes.md" `
-            -DisplayInformationJSON $displayInformationJson `
-            -VipmTimeoutSeconds $env:LVIE_VIPM_TIMEOUT_SECONDS
+          $runnerCliArgs = @(
+            'vip', 'build',
+            '--repo-root', $env:REPO_ROOT,
+            '--supported-bitness', '64',
+            '--vipb-path', 'Tooling/deployment/NI Icon editor.vipb',
+            '--labview-version', $env:LABVIEW_VERSION_RAW,
+            '--labview-minor-revision', $env:LABVIEW_MINOR_REVISION,
+            '--major', '${{ needs.version.outputs.MAJOR }}',
+            '--minor', '${{ needs.version.outputs.MINOR }}',
+            '--patch', '${{ needs.version.outputs.PATCH }}',
+            '--build', '${{ needs.version.outputs.BUILD }}',
+            '--commit', '${{ github.sha }}',
+            '--release-notes-file', "$env:REPO_ROOT\\Tooling\\deployment\\release_notes.md",
+            '--display-information-json', $displayInformationJson,
+            '--vipm-timeout-seconds', $env:LVIE_VIPM_TIMEOUT_SECONDS
+          )
+          & dotnet run --project $runnerCliProject --configuration Release -- @runnerCliArgs
       - name: Check VIP build status file
         id: vip-status
         shell: pwsh

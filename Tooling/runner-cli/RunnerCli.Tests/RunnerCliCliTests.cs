@@ -49,6 +49,11 @@ public class RunnerCliCliTests
             .ToArray();
         Assert.Contains("parity context", supportedCommands);
         Assert.Contains("parity run", supportedCommands);
+        Assert.Contains("lunit run", supportedCommands);
+        Assert.Contains("lunit validate", supportedCommands);
+        Assert.Contains("vip build", supportedCommands);
+        Assert.Contains("vipc apply", supportedCommands);
+        Assert.Contains("vipc assert", supportedCommands);
     }
 
     [Fact]
@@ -632,6 +637,94 @@ public class RunnerCliCliTests
 
         Assert.Equal(1, exitCode);
         Assert.Contains("only supported on Windows", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Lunit_run_dry_run_emits_gcli_and_parser_commands()
+    {
+        var repoRoot = FindRepoRoot();
+        var projectPath = Path.Combine(repoRoot, "lv_icon_editor.lvproj");
+        var reportPath = Path.Combine(repoRoot, ".github", "actions", "run-unit-tests", "UnitTestReport.xml");
+
+        var args = $"lunit run --repo-root \"{repoRoot}\" --year 2026 --labview-version 26.1 --bitness 64 --project-path \"{projectPath}\" --report-path \"{reportPath}\" --dry-run";
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(0, exitCode);
+        Assert.Contains("g-cli lunit exit code: 0", stdout, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("RunUnitTests parser exit code: 0", stdout, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("lunit run g-cli command:", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("lunit validate command:", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Lunit_validate_dry_run_emits_parser_command()
+    {
+        var repoRoot = FindRepoRoot();
+        var reportPath = Path.Combine(repoRoot, ".github", "actions", "run-unit-tests", "UnitTestReport.xml");
+
+        var args = $"lunit validate --repo-root \"{repoRoot}\" --labview-version 26.1 --bitness 64 --report-path \"{reportPath}\" --dry-run";
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stdout), $"stdout: {stdout}");
+        Assert.Contains("lunit validate command:", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Vip_build_dry_run_emits_invoke_vip_build_command()
+    {
+        var repoRoot = FindRepoRoot();
+        var args = string.Join(' ', new[]
+        {
+            "vip build",
+            $"--repo-root \"{repoRoot}\"",
+            "--supported-bitness 64",
+            "--vipb-path \"Tooling/deployment/NI Icon editor.vipb\"",
+            "--labview-version 26.1",
+            "--labview-minor-revision 1",
+            "--major 0",
+            "--minor 0",
+            "--patch 0",
+            "--build 1",
+            "--commit deadbeef",
+            "--release-notes-file \"Tooling/deployment/release_notes.md\"",
+            "--display-information-json \"{}\"",
+            "--vipm-timeout-seconds 900",
+            "--dry-run"
+        });
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stdout), $"stdout: {stdout}");
+        Assert.Contains("vip build command:", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Invoke-VipBuild.ps1", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Vipc_assert_dry_run_emits_assert_vipc_command()
+    {
+        var repoRoot = FindRepoRoot();
+        var outputPath = Path.Combine(repoRoot, "builds", "status", "vipc-audit-64.json");
+        var args = $"vipc assert --repo-root \"{repoRoot}\" --supported-bitness 64 --vipc-path \".github/actions/apply-vipc/runner_dependencies.vipc\" --output-path \"{outputPath}\" --dry-run";
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stdout), $"stdout: {stdout}");
+        Assert.Contains("vipc assert command:", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Assert-VipcApplied.ps1", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Vipc_apply_dry_run_emits_apply_vipc_command()
+    {
+        var repoRoot = FindRepoRoot();
+        var args = $"vipc apply --repo-root \"{repoRoot}\" --supported-bitness 32 --vipc-path \".github/actions/apply-vipc/runner_dependencies.vipc\" --dry-run";
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stdout), $"stdout: {stdout}");
+        Assert.Contains("vipc apply command:", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("ApplyVIPC.ps1", stderr, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
