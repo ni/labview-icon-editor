@@ -932,6 +932,113 @@ lunitValidateCmd.SetHandler((InvocationContext context) =>
 lunitCmd.AddCommand(lunitRunCmd);
 lunitCmd.AddCommand(lunitValidateCmd);
 
+// ── ppl build ─────────────────────────────────────────────────────
+var pplCmd = new Command("ppl", "Packed Library workflow helpers.");
+var pplBuildCmd = new Command("build", "Build packed libraries via BuildProjectSpec.ps1.");
+
+var pplBuildLabviewVersionOption = new Option<string>(
+    name: "--labview-version",
+    description: "LabVIEW version input (for example 2026 or 26.1).")
+{ IsRequired = true };
+var pplBuildBitnessOption = new Option<string>(
+    name: "--supported-bitness",
+    description: "LabVIEW bitness (32 or 64).")
+{ IsRequired = true };
+var pplBuildMajorOption = new Option<string>(
+    name: "--major",
+    description: "Semantic version major.")
+{ IsRequired = true };
+var pplBuildMinorOption = new Option<string>(
+    name: "--minor",
+    description: "Semantic version minor.")
+{ IsRequired = true };
+var pplBuildPatchOption = new Option<string>(
+    name: "--patch",
+    description: "Semantic version patch.")
+{ IsRequired = true };
+var pplBuildBuildOption = new Option<string>(
+    name: "--build",
+    description: "Semantic version build.")
+{ IsRequired = true };
+var pplBuildCommitOption = new Option<string>(
+    name: "--commit",
+    description: "Commit hash or identifier.")
+{ IsRequired = true };
+var pplBuildProjectSpecTypeOption = new Option<string?>(
+    name: "--project-spec-type",
+    description: "Optional project spec type override (PackedLibrary|SourceDistribution).");
+var pplBuildSpecNameOption = new Option<string?>(
+    name: "--build-spec-name",
+    description: "Optional LabVIEW build specification name.");
+var pplBuildOutputPathOption = new Option<string?>(
+    name: "--output-relative-path",
+    description: "Optional output path relative to repo root.");
+var pplBuildTargetNameOption = new Option<string?>(
+    name: "--target-name",
+    description: "Optional LabVIEW target name.");
+var pplBuildWorktreeRootOption = new Option<string?>(
+    name: "--worktree-root",
+    description: "Optional explicit worktree root.");
+var pplBuildSkipWorktreeCheckOption = new Option<bool>(
+    name: "--skip-worktree-root-check",
+    getDefaultValue: () => false,
+    description: "Skip worktree root guard.");
+var pplBuildDryRunOption = new Option<bool>(
+    name: "--dry-run",
+    getDefaultValue: () => false,
+    description: "Emit underlying command line without executing it.");
+
+pplBuildCmd.AddOption(repoRootOption);
+pplBuildCmd.AddOption(pplBuildLabviewVersionOption);
+pplBuildCmd.AddOption(pplBuildBitnessOption);
+pplBuildCmd.AddOption(pplBuildMajorOption);
+pplBuildCmd.AddOption(pplBuildMinorOption);
+pplBuildCmd.AddOption(pplBuildPatchOption);
+pplBuildCmd.AddOption(pplBuildBuildOption);
+pplBuildCmd.AddOption(pplBuildCommitOption);
+pplBuildCmd.AddOption(pplBuildProjectSpecTypeOption);
+pplBuildCmd.AddOption(pplBuildSpecNameOption);
+pplBuildCmd.AddOption(pplBuildOutputPathOption);
+pplBuildCmd.AddOption(pplBuildTargetNameOption);
+pplBuildCmd.AddOption(pplBuildWorktreeRootOption);
+pplBuildCmd.AddOption(pplBuildSkipWorktreeCheckOption);
+pplBuildCmd.AddOption(pplBuildDryRunOption);
+pplBuildCmd.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var repoRoot = RepoLocator.Resolve(
+            context.ParseResult.GetValueForOption(repoRootOption),
+            Environment.CurrentDirectory);
+        var options = new PplBuildOptions(
+            RepoRoot: repoRoot,
+            LabviewVersion: context.ParseResult.GetValueForOption(pplBuildLabviewVersionOption) ?? string.Empty,
+            SupportedBitness: context.ParseResult.GetValueForOption(pplBuildBitnessOption) ?? string.Empty,
+            Major: context.ParseResult.GetValueForOption(pplBuildMajorOption) ?? string.Empty,
+            Minor: context.ParseResult.GetValueForOption(pplBuildMinorOption) ?? string.Empty,
+            Patch: context.ParseResult.GetValueForOption(pplBuildPatchOption) ?? string.Empty,
+            Build: context.ParseResult.GetValueForOption(pplBuildBuildOption) ?? string.Empty,
+            Commit: context.ParseResult.GetValueForOption(pplBuildCommitOption) ?? string.Empty,
+            ProjectSpecType: context.ParseResult.GetValueForOption(pplBuildProjectSpecTypeOption),
+            BuildSpecName: context.ParseResult.GetValueForOption(pplBuildSpecNameOption),
+            OutputRelativePath: context.ParseResult.GetValueForOption(pplBuildOutputPathOption),
+            TargetName: context.ParseResult.GetValueForOption(pplBuildTargetNameOption),
+            WorktreeRoot: context.ParseResult.GetValueForOption(pplBuildWorktreeRootOption),
+            SkipWorktreeRootCheck: context.ParseResult.GetValueForOption(pplBuildSkipWorktreeCheckOption),
+            DryRun: context.ParseResult.GetValueForOption(pplBuildDryRunOption));
+        var exitCode = PplBuildService.Run(options);
+        Environment.ExitCode = exitCode;
+        context.ExitCode = exitCode;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"ERROR: {ex.Message}");
+        Environment.ExitCode = 1;
+        context.ExitCode = 1;
+    }
+});
+pplCmd.AddCommand(pplBuildCmd);
+
 // ── vip build ─────────────────────────────────────────────────────
 var vipCmd = new Command("vip", "VI Package workflow helpers.");
 var vipBuildCmd = new Command("build", "Build VI Package via Tooling/Invoke-VipBuild.ps1.");
@@ -1423,6 +1530,7 @@ rootCmd.AddCommand(versionCmd);
 rootCmd.AddCommand(pylaviCmd);
 rootCmd.AddCommand(missingCmd);
 rootCmd.AddCommand(lunitCmd);
+rootCmd.AddCommand(pplCmd);
 rootCmd.AddCommand(vipCmd);
 rootCmd.AddCommand(vipcCmd);
 rootCmd.AddCommand(parityCmd);

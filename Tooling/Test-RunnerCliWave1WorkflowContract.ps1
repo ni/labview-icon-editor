@@ -144,6 +144,19 @@ if ($script:findings.Count -eq 0) {
         -Message 'ci-composite.yml apply-deps informational lanes must invoke runner-cli vipc apply.'
 
     Test-Pattern -FilePath $ciPath -Content $ciContent `
+        -Pattern "'ppl', 'build'" `
+        -Code 'missing-required-pattern' `
+        -Message 'ci.yml build-ppl lanes must invoke runner-cli ppl build.'
+    Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
+        -Pattern "'ppl', 'build'" `
+        -Code 'missing-required-pattern' `
+        -Message 'ci-composite.yml build-ppl lanes must invoke runner-cli ppl build.'
+    Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
+        -Pattern "parity\s+run" `
+        -Code 'missing-required-pattern' `
+        -Message 'ci-composite.yml container PPL lanes must invoke runner-cli parity run.'
+
+    Test-Pattern -FilePath $ciPath -Content $ciContent `
         -Pattern 'Invoke-VipBuild\.ps1' `
         -Code 'forbidden-legacy-call' `
         -Message 'ci.yml must not call Invoke-VipBuild.ps1 directly after Wave 1 migration.' `
@@ -169,6 +182,32 @@ if ($script:findings.Count -eq 0) {
         -Pattern 'ApplyVIPC\.ps1' `
         -Code 'forbidden-legacy-call' `
         -Message 'ci-composite.yml must not call ApplyVIPC.ps1 directly in apply-deps lanes after Wave 1 migration.' `
+        -MustNotExist
+
+    Test-Pattern -FilePath $ciPath -Content $ciContent `
+        -Pattern 'BuildProjectSpec\.ps1' `
+        -Code 'forbidden-legacy-call' `
+        -Message 'ci.yml must not call BuildProjectSpec.ps1 directly in build-ppl lanes after Wave 2 migration.' `
+        -MustNotExist
+    Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
+        -Pattern 'BuildProjectSpec\.ps1' `
+        -Code 'forbidden-legacy-call' `
+        -Message 'ci-composite.yml must not call BuildProjectSpec.ps1 directly in build-ppl lanes after Wave 2 migration.' `
+        -MustNotExist
+    Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
+        -Pattern 'runlabview-linux\.sh' `
+        -Code 'forbidden-legacy-call' `
+        -Message 'ci-composite.yml must not directly invoke runlabview-linux.sh in container PPL lanes after Wave 2 migration.' `
+        -MustNotExist
+    Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
+        -Pattern 'runlabview-windows\.ps1' `
+        -Code 'forbidden-legacy-call' `
+        -Message 'ci-composite.yml must not directly invoke runlabview-windows.ps1 in container PPL lanes after Wave 2 migration.' `
+        -MustNotExist
+    Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
+        -Pattern '-ExecutionPolicy\s+Bypass' `
+        -Code 'forbidden-legacy-call' `
+        -Message 'ci-composite.yml must not directly invoke powershell -ExecutionPolicy Bypass for container PPL lanes after Wave 2 migration.' `
         -MustNotExist
 }
 

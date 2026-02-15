@@ -37,6 +37,7 @@ public static class ConformanceService
                 "missing-in-project",
                 "lunit run",
                 "lunit validate",
+                "ppl build",
                 "vip build",
                 "vipc apply",
                 "vipc assert",

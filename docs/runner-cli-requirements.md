@@ -103,6 +103,7 @@ This table applies to commands in scope for v5.1 Core and Extended profiles.
 | pylavi summarize | Windows, Linux, macOS | none (reads offenders JSON). |
 | pylavi fetch | Windows, Linux, macOS | Requires GitHub API token via --token, GH_TOKEN, or GITHUB_TOKEN. |
 | missing-in-project | Windows only | Requires pwsh on PATH; .github/actions/missing-in-project/Invoke-MissingInProjectCLI.ps1 is required to exist; LabVIEW + g-cli are required by the PowerShell script. |
+| ppl build | Windows only | Requires pwsh on PATH; .github/actions/build-lvlibp/BuildProjectSpec.ps1 is required to exist; LabVIEWCLI is required by the PowerShell script. |
 | manifest | Windows, Linux, macOS | none |
 | conformance check | Windows, Linux, macOS | none (uses local requirement and trace artifacts). |
 

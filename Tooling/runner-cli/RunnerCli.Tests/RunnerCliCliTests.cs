@@ -51,6 +51,7 @@ public class RunnerCliCliTests
         Assert.Contains("parity run", supportedCommands);
         Assert.Contains("lunit run", supportedCommands);
         Assert.Contains("lunit validate", supportedCommands);
+        Assert.Contains("ppl build", supportedCommands);
         Assert.Contains("vip build", supportedCommands);
         Assert.Contains("vipc apply", supportedCommands);
         Assert.Contains("vipc assert", supportedCommands);
@@ -698,6 +699,31 @@ public class RunnerCliCliTests
         Assert.True(string.IsNullOrWhiteSpace(stdout), $"stdout: {stdout}");
         Assert.Contains("vip build command:", stderr, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Invoke-VipBuild.ps1", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Ppl_build_dry_run_emits_build_project_spec_command()
+    {
+        var repoRoot = FindRepoRoot();
+        var args = string.Join(' ', new[]
+        {
+            "ppl build",
+            $"--repo-root \"{repoRoot}\"",
+            "--labview-version 26.1",
+            "--supported-bitness 64",
+            "--major 0",
+            "--minor 0",
+            "--patch 0",
+            "--build 1",
+            "--commit deadbeef",
+            "--dry-run"
+        });
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stdout), $"stdout: {stdout}");
+        Assert.Contains("ppl build command:", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("BuildProjectSpec.ps1", stderr, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

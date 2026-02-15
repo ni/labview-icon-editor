@@ -182,9 +182,9 @@ The [`ci-composite.yml`](../.github/workflows/ci-composite.yml) pipeline breaks 
 - **unit-tests** – runs LabVIEW unit tests on Windows for the `.lvversion` target (canonical baseline `26.1`) after dependency application. Runs 64-bit in `full` and `pr-fast`, and is skipped in `release-priority`.
   - Each matrix job appends a short `GITHUB_STEP_SUMMARY` line stating the fixed executor (`g-cli`).
 - **unit-tests-lv2020-edge** – optional, non-canonical diagnostic lane (`continue-on-error: true`) for LV2020 comparison signal only; it does not define baseline policy.
-- **build-ppl** – uses a matrix to build 32-bit and 64-bit packed libraries, then uses the `rename-file` action to append the bitness to each library’s filename.
-- **build-ppl-linux-container** – builds the Linux container packed library (`lv_icon.lvlibp`) for publish-eligible runs and emits a versioned artifact for prerelease attachment.
-- **build-ppl-windows-container** – builds the Windows container packed library (`lv_icon.lvlibp`) for publish-eligible runs and emits a versioned artifact for prerelease attachment.
+- **build-ppl** – uses a matrix to build 32-bit and 64-bit packed libraries through `runner-cli ppl build`, then uses the `rename-file` action to append the bitness to each library’s filename.
+- **build-ppl-linux-container** – builds the Linux container packed library (`lv_icon.lvlibp`) via `runner-cli parity context/run` for publish-eligible runs and emits a versioned artifact for prerelease attachment.
+- **build-ppl-windows-container** – builds the Windows container packed library (`lv_icon.lvlibp`) via `runner-cli parity context/run` for publish-eligible runs and emits a versioned artifact for prerelease attachment.
 - **codex-skill-layer-asset** – downloads the pinned Codex skill-layer installer asset (`lvie-codex-skill-layer-installer.exe`), validates SHA256, performs silent install into a temp directory, verifies required files + `0BSD` manifest license, and publishes artifact `codex-skill-layer` for prerelease attachment.
 - **build-vip** – Windows/self-hosted VI Package packaging path. This job requires both PPL artifacts (`lv_icon_x86.lvlibp`, `lv_icon_x64.lvlibp`) and runs for `full`/`pr-fast`; it is intentionally skipped in `release-priority`.
 - **publish-gate** – evaluates profile-required prepublish job outcomes and blocks prerelease publication when required checks are missing or non-success.
