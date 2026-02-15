@@ -683,6 +683,7 @@ jobs:
           & pwsh -NoProfile -File ".github/actions/run-unit-tests/RunUnitTests.ps1" `
             -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -SupportedBitness ${{ matrix.bitness }} `
+            -ProjectPath $env:PROJECT_PATH `
             -ReportPath $reportPath
           $parserExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
           Write-Host ("RunUnitTests parser exit code: {0}" -f $parserExitCode)
