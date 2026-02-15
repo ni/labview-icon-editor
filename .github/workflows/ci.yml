@@ -1010,7 +1010,7 @@ jobs:
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
             -VIPBPath "Tooling/deployment/NI Icon editor.vipb" `
-            -LabVIEWVersion $env:LABVIEW_VERSION_RAW `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -LabVIEWMinorRevision $env:LABVIEW_MINOR_REVISION `
             -Major ${{ needs.version.outputs.MAJOR }} `
             -Minor ${{ needs.version.outputs.MINOR }} `
@@ -1036,7 +1036,7 @@ jobs:
             '--repo-root', $env:REPO_ROOT,
             '--supported-bitness', '64',
             '--vipb-path', 'Tooling/deployment/NI Icon editor.vipb',
-            '--labview-version', $env:LABVIEW_VERSION_RAW,
+            '--labview-version', $env:LABVIEW_VERSION_YEAR,
             '--labview-minor-revision', $env:LABVIEW_MINOR_REVISION,
             '--major', '${{ needs.version.outputs.MAJOR }}',
             '--minor', '${{ needs.version.outputs.MINOR }}',
