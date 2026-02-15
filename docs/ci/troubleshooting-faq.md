@@ -58,7 +58,7 @@ Below are 17 possible issues you might encounter, along with suggested steps to 
 - The environment variable or path to LabVIEW isn’t set correctly.
 
 **Solution**:
-1. Ensure you’ve actually installed LabVIEW on the machine (e.g., LabVIEW 2026 (26.0)).
+1. Ensure you’ve actually installed LabVIEW on the machine (e.g., LabVIEW 2026 (26.1)).
 2. Double-check your PATH or environment variables.  
 3. See `runner-setup-guide.md` for details on configuring the runner to locate LabVIEW.
 
@@ -295,7 +295,7 @@ gh workflow run ci-composite.yml --repo $repo `
 - The job logs show missing paths or an archived `missing_IE_paths.txt` file.
 
 **Possible Causes**:
-- One or more LabVIEW Icon API files are missing in the LabVIEW 2026 (26.0) install.
+- One or more LabVIEW Icon API files are missing in the LabVIEW 2026 (26.1) install.
 - The runner is in development mode (missing `LabVIEW Icon API` or `lv_icon.lvlibp`).
 
 **Solution**:
@@ -420,7 +420,7 @@ The Dev Mode Toggle scripts rely on a self-hosted runner context. If you’re tr
 ### Q9: Can I Use a Different LabVIEW Version?
 
 **Answer**:  
-CI usage is standardized on **LabVIEW 2026 (26.0), 32-bit and 64-bit** as the minimum supported baseline. If you want to use a different version locally, keep `.lvversion` and workflow/script overrides aligned.
+CI usage is standardized on **LabVIEW 2026 (26.1), 32-bit and 64-bit** as the minimum supported baseline. If you want to use a different version locally, keep `.lvversion` and workflow/script overrides aligned.
 
 ---
 
@@ -459,3 +459,4 @@ PowerShell **named parameters** typically start with a single dash (`-Parameter`
 
 **Answer**:  
 Absolutely. You can modify `$jsonObject` in your script to include new keys, such as `"Product Description"` or `"Special Internal ID"`. Just be sure that the VI that updates the `.vipb` file (`Modify_VIPB_Display_Information.vi`) knows how to handle those additional fields, or they might be ignored.
+

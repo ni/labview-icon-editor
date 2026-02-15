@@ -143,7 +143,7 @@ jobs:
    2. `build-project-spec` compiles the **32- and 64-bit** packed libraries.
    3. A PowerShell step generates JSON with `CompanyName` and `AuthorName` fields derived from GitHub variables.
    4. `modify-vipb-display-info` merges that JSON into the `.vipb` file.
-   5. `build-vi-package` produces the final **64-bit LabVIEW 2026 (26.0)** Icon Editor `.vip` package.
+   5. `build-vi-package` produces the final **64-bit LabVIEW 2026 (26.1)** Icon Editor `.vip` package.
 4. **Actions** can then upload the resulting `.vip` as an artifact.
 
 ---
@@ -174,4 +174,5 @@ This legacy script produces a `.vip` file that, when inspected in VIPM or LabVIE
 - Each fork or organization can **uniquely** brand its builds.
 - CI/CD with **GitHub Actions** automatically **populates** build metadata, removing manual steps.  
 - You have a **clear**, **traceable** record of each build’s origin—particularly useful in multi-team or open-source projects.
+
 

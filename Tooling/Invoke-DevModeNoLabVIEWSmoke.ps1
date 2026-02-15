@@ -9,7 +9,7 @@
     and enforces integration coverage guards.
 
 .PARAMETER LabVIEWVersion
-    LabVIEW version year (e.g., 2026) or numeric version (e.g., 26.0).
+    LabVIEW version year (e.g., 2026) or numeric version (e.g., 26.1).
 
 .PARAMETER LabVIEWBitness
     Bitness to run: 32, 64, both, all, or auto.
@@ -550,4 +550,5 @@ if ($failures.Count -gt 0) {
 
 Write-Host ("DevMode.NoLabVIEW smoke gate passed (requested depth={0}, bitness={1})." -f $DevModeNoLabVIEWSmokeDepth, ($bitnesses -join ','))
 Write-Host ("Smoke artifacts: {0}" -f $resultsRoot)
+
 

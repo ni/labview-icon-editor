@@ -24,9 +24,9 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
   - Debug locally the same steps used in CI, ensuring consistent results.
 
 - **Prerequisites**:
-  1. **LabVIEW 2026 (26.0), both 32-bit and 64-bit**.
+  1. **LabVIEW 2026 (26.1), both 32-bit and 64-bit**.
   2. **PowerShell 7+** and **Git**.  
-  3. **Apply** `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2026 (26.0), 32-bit & 64-bit**—matching the `apply-deps` matrix in [`../.github/workflows/ci-composite.yml`](../.github/workflows/ci-composite.yml).
+  3. **Apply** `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2026 (26.1), 32-bit & 64-bit**—matching the `apply-deps` matrix in [`../.github/workflows/ci-composite.yml`](../.github/workflows/ci-composite.yml).
 
 ---
 
@@ -40,7 +40,7 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 2. **Clone** the [Icon Editor](https://github.com/ni/labview-icon-editor.git) to your development location.
 
 3. **Apply** dependencies:  
-   `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2026 (26.0), 32-bit & 64-bit**.
+   `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2026 (26.1), 32-bit & 64-bit**.
 
 4. **Open** PowerShell (Admin):
    Navigate to `.github\actions\set-development-mode`
@@ -193,4 +193,5 @@ Passing these metadata fields ensures the final `.vip` clearly identifies **whic
    - Use VIPM to install the `.vip` and confirm final functionality.
 
 All scripts are fully open-source—**collaborators** can debug or extend them locally with minimal friction. By passing organization/repo data in either local builds or GitHub Actions, you ensure your **unique** version of the Icon Editor is **clearly labeled** and **easily traced** to its source.
+
 

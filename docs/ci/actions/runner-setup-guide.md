@@ -28,7 +28,7 @@ This document details how to automate **building**, **testing**, and **packaging
 Additionally, **you can pass metadata fields** (like **organization** or **repository name**) to the **build script**. These fields are embedded into the **VI Package** display information, effectively **branding** the Icon Editor package with a unique identifier. This is especially useful when multiple forks or organizations produce their own versions of the Icon Editor—ensuring each `.vip` is clearly labeled with the correct “author” or “company.”
 
 > **Prerequisites**:
-> - **LabVIEW 2026 (26.0), 32-bit and 64-bit** (minimum supported baseline).
+> - **LabVIEW 2026 (26.1), 32-bit and 64-bit** (minimum supported baseline).
 > - The relevant **VIPC** file is now at `.github/actions/apply-vipc/runner_dependencies.vipc`.
 > - [PowerShell 7+](https://github.com/PowerShell/PowerShell/releases/latest)
 > - [Git for Windows](https://github.com/git-for-windows/git/releases/latest)
@@ -39,12 +39,12 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 **For experienced users**, a brief overview:
 
 1. **Install Required Software**
-   - Ensure **LabVIEW 2026 (26.0) 32-bit and 64-bit** are installed.
+   - Ensure **LabVIEW 2026 (26.1) 32-bit and 64-bit** are installed.
    - [PowerShell 7+](https://github.com/PowerShell/PowerShell/releases/latest)
    - [Git for Windows](https://github.com/git-for-windows/git/releases/latest)
 
 2. **Apply the VIPC**
-  - Apply `.github/actions/apply-vipc/runner_dependencies.vipc` with VIPM in **LabVIEW 2026 (26.0) 32-bit**; repeat for **LabVIEW 2026 (26.0) 64-bit**.
+  - Apply `.github/actions/apply-vipc/runner_dependencies.vipc` with VIPM in **LabVIEW 2026 (26.1) 32-bit**; repeat for **LabVIEW 2026 (26.1) 64-bit**.
    - CI now runs `Assert-VipcApplied` on every run (audit-first hard-stop). Apply VIPC manually on new runners to satisfy the audit before running full CI.
    - Optional diagnostics-only apply can be triggered via `workflow_dispatch` input `vipc_apply_info=true`.
 
@@ -125,7 +125,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 
 **Steps**:
 
-1. **Install LabVIEW 2026 (26.0), 32-bit and 64-bit**  
+1. **Install LabVIEW 2026 (26.1), 32-bit and 64-bit**  
    - Confirm both are present on your Windows machine.  
    - Apply `.github/actions/apply-vipc/runner_dependencies.vipc` to each if needed.
    - **Version contract**: CI treats `.lvversion` as the single source of truth. The runner sanity step validates that the installed LabVIEW version matches `.lvversion` and fails fast if it does not.
@@ -232,7 +232,7 @@ CI jobs run from short-path worktrees to avoid Windows path limits. Each job cre
 The workflow exports:
 - `REPO_ROOT` → worktree path (authoritative for scripts)
 - `PROJECT_PATH` → `$REPO_ROOT\lv_icon_editor.lvproj`
-- `LABVIEW_VERSION_YEAR` / `LABVIEW_MINOR_REVISION` → derived from `.lvversion` (e.g., `26.0` → `2026` and minor `0`)
+- `LABVIEW_VERSION_YEAR` / `LABVIEW_MINOR_REVISION` → derived from `.lvversion` (e.g., `26.1` → `2026` and minor `1`)
 - `LVIE_WORKTREE_ROOT_SOURCE` → `explicit`, `runner_temp`, or `contract`
 
 CI treats `.lvversion` in `REPO_ROOT` as the canonical LabVIEW version for the run.
@@ -290,3 +290,4 @@ Notes:
 - **Troubleshoot**: If manual environment edits are needed, consult `ManualSetup.md` or the original documentation for advanced configuration steps.  
 
 **Happy Building!** By integrating these workflows, you’ll maintain a **robust, automated CI/CD** pipeline for the LabVIEW Icon Editor—complete with **semantic versioning**, **build artifact uploads**, and **metadata branding** (company/repo).
+

@@ -31,12 +31,12 @@ Describe 'LabVIEW 2026 canonical migration contract' {
         ) | ForEach-Object { (Join-Path $script:repoRoot $_).ToLowerInvariant() }
     }
 
-    It '.lvversion is pinned to 26.0' {
+    It '.lvversion is pinned to 26.1' {
         $lvversionPath = Join-Path $script:repoRoot '.lvversion'
         (Test-Path -LiteralPath $lvversionPath -PathType Leaf) | Should -BeTrue
 
         $raw = (Get-Content -LiteralPath $lvversionPath -Raw).Trim()
-        $raw | Should -Be '26.0'
+        $raw | Should -Be '26.1'
     }
 
     It 'active workflow/script/docs surfaces do not reintroduce zip codex asset contract' {
@@ -119,7 +119,8 @@ Describe 'LabVIEW 2026 canonical migration contract' {
         foreach ($filePath in $guidanceFiles) {
             (Test-Path -LiteralPath $filePath -PathType Leaf) | Should -BeTrue
             $content = Get-Content -LiteralPath $filePath -Raw
-            $content | Should -Match 'LabVIEW 2026 \(26\.0\)'
+            $content | Should -Match 'LabVIEW 2026 \(26\.1\)'
         }
     }
 }
+

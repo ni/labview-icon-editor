@@ -12,7 +12,7 @@
     Repository root that contains .lvversion.
 
 .PARAMETER ExpectedVersion
-    Optional expected version (year or numeric, e.g. 2026 or 26.0) to compare
+    Optional expected version (year or numeric, e.g. 2026 or 26.1) to compare
     against .lvversion.
 
 .PARAMETER AllowMismatch
@@ -240,5 +240,6 @@ if ($mismatches.Count -gt 0) {
 }
 
 Write-Output $repoInfo
+
 
 

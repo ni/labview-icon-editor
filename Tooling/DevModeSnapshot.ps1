@@ -8,7 +8,7 @@
     for each supported bitness so dev-mode changes can be restored.
 
 .PARAMETER LabVIEWVersion
-    LabVIEW version year (e.g., 2026) or numeric version (e.g., 26.0).
+    LabVIEW version year (e.g., 2026) or numeric version (e.g., 26.1).
 
 .PARAMETER SupportedBitness
     One or more bitness values ("32", "64") to snapshot (default: both).
@@ -278,6 +278,7 @@ $manifestPath = Join-Path -Path $snapshotRootResolved -ChildPath 'dev-mode-snaps
 $manifest | ConvertTo-Json -Depth 7 | Set-Content -Path $manifestPath -Encoding utf8
 Write-Host ("Dev mode snapshot saved at {0}" -f $snapshotRootResolved)
 Write-Output $snapshotRootResolved
+
 
 
 

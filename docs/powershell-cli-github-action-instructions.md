@@ -104,7 +104,7 @@ For a visual reference, you may consult a **Gitflow diagram** that includes alph
 For **detailed runner configuration**, see **`runner-setup-guide.md`**. Below is a short summary:
 
 1. **Install Prerequisites**
-   - **LabVIEW 2026 (26.0), 32-bit and 64-bit** (minimum supported baseline)
+   - **LabVIEW 2026 (26.1), 32-bit and 64-bit** (minimum supported baseline)
    - **PowerShell 7+**
    - **Git for Windows**
 2. **Add a Self-Hosted Runner**  
@@ -320,5 +320,6 @@ In order to **enforce** the Gitflow approach “hands-off”:
 - **Gitflow Diagram**: [Atlassian Gitflow Workflow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow) or any other standard resource to visualize the overall branching approach (extended with alpha/beta/rc branches).
 
 ---
+
 
 

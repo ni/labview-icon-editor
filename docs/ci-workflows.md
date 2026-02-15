@@ -31,7 +31,7 @@ Automating your Icon Editor builds and tests:
 - **Allows you to brand** each VI Package build with your organization or repository name for unique identification
 
 **Prerequisites**:
-- LabVIEW 2026 (26.0) 32-bit and 64-bit (minimum supported baseline)
+- LabVIEW 2026 (26.1) 32-bit and 64-bit (minimum supported baseline)
 - PowerShell 7+
 - Git for Windows
 
@@ -179,7 +179,7 @@ The [`ci-composite.yml`](../.github/workflows/ci-composite.yml) pipeline breaks 
 - **changes** – checks out the repository and detects `.vipc` file changes for diagnostics/reporting in downstream jobs.
 - **apply-deps** – runs VIPC audit (`Assert-VipcApplied`) for both bitnesses on every run (hard-stop on mismatch), then optionally runs informational VIPC apply diagnostics when manually dispatched with `vipc_apply_info=true`.
 - **version** – computes the semantic version and build number using commit count and PR labels.
-- **unit-tests** – runs LabVIEW unit tests on Windows for the `.lvversion` target (canonical baseline `26.0`) after dependency application. Runs 64-bit in `full` and `pr-fast`, and is skipped in `release-priority`.
+- **unit-tests** – runs LabVIEW unit tests on Windows for the `.lvversion` target (canonical baseline `26.1`) after dependency application. Runs 64-bit in `full` and `pr-fast`, and is skipped in `release-priority`.
   - Each matrix job appends a short `GITHUB_STEP_SUMMARY` line stating the fixed executor (`g-cli`).
 - **unit-tests-lv2020-edge** – optional, non-canonical diagnostic lane (`continue-on-error: true`) for LV2020 comparison signal only; it does not define baseline policy.
 - **build-ppl** – uses a matrix to build 32-bit and 64-bit packed libraries, then uses the `rename-file` action to append the bitness to each library’s filename.
@@ -220,7 +220,7 @@ Branch protection recommendation for solo mode: require only `CI Pipeline (Compo
 ### 3.3 Setting Up a Self-Hosted Runner
 
 1. **Install Prerequisites**:
-   - LabVIEW 2026 (26.0) 32-bit and 64-bit (minimum supported baseline)
+   - LabVIEW 2026 (26.1) 32-bit and 64-bit (minimum supported baseline)
    - PowerShell 7+
    - Git for Windows
 
@@ -303,7 +303,7 @@ Although GitHub Actions primarily run on GitHub-hosted or self-hosted agents, yo
 ## Portability
 
 **What is portable**
-- Any Windows self-hosted runner with LabVIEW 2026 (26.0), PowerShell 7+, and Git installed.
+- Any Windows self-hosted runner with LabVIEW 2026 (26.1), PowerShell 7+, and Git installed.
 - Forks or orgs that keep the canonical runner label `self-hosted-windows-lv`.
 - Environments where the GitHub Actions API is restricted (runner contract fallback is local).
 
@@ -316,3 +316,4 @@ Although GitHub Actions primarily run on GitHub-hosted or self-hosted agents, yo
 - If runner paths differ, use `Tooling/Setup-Runner.ps1` to generate the contract and set paths.
 
 By adopting these workflows—**Development Mode Toggle** and **Build VI Package**—you can maintain a **streamlined, consistent** CI/CD process for the Icon Editor while customizing the VI Package with your own **unique** or **fork-specific** branding.
+

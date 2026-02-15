@@ -15,9 +15,9 @@ This document provides **manual** steps to configure, edit, and distribute the L
 <a name="compatible-labview-versions"></a>
 ## 1. Compatible LabVIEW Versions
 
-- Source is saved in **LabVIEW 2026 (26.0)** format.  
-- Both **LabVIEW 2026 (26.0), 32-bit and 64-bit** are typically required if you plan to build or distribute for both architectures.
-- Editing can be done on any LabVIEW version that can preserve the **2026** file format. It is recommended to use LabVIEW 2026 (26.0) or newer.
+- Source is saved in **LabVIEW 2026 (26.1)** format.  
+- Both **LabVIEW 2026 (26.1), 32-bit and 64-bit** are typically required if you plan to build or distribute for both architectures.
+- Editing can be done on any LabVIEW version that can preserve the **2026** file format. It is recommended to use LabVIEW 2026 (26.1) or newer.
 
 ---
 
@@ -71,3 +71,4 @@ To **manually distribute** your custom Icon Editor:
    - **Copy** your newly built `lv_icon.lvlibp` and `vi.lib\LabVIEW Icon API\*` into the corresponding LabVIEW folders on the target machine.
 
    You now have a custom, manually distributed Icon Editor that can support any LabVIEW version available up until the creation of this document.
+

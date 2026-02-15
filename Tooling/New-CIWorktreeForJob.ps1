@@ -291,7 +291,7 @@ function Resolve-LabVIEWVersionInfo {
     }
 
     if (-not ($raw -match '^(?<major>\d{2,4})(?:\.(?<minor>\d+))?$')) {
-        throw ".lvversion value '$raw' is invalid. Expected formats like '26.0' or '2026.0'."
+        throw ".lvversion value '$raw' is invalid. Expected formats like '26.1' or '2026.1'."
     }
 
     $majorRaw = [int]$Matches['major']
@@ -516,5 +516,6 @@ if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_ENV)) {
 Write-Host ("Worktree created: {0}" -f $worktree)
 Write-Host ("LabVIEW version: {0} (year {1}, minor {2})" -f $lvInfo.Raw, $lvInfo.Year, $lvInfo.MinorRevision)
 Write-Output $worktree
+
 
 

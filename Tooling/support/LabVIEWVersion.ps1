@@ -4,7 +4,7 @@
     Resolve LabVIEW version details from an input string or .lvversion.
 
 .DESCRIPTION
-    Accepts a LabVIEW version input (year like "2026" or numeric like "26.0")
+    Accepts a LabVIEW version input (year like "2026" or numeric like "26.1")
     and returns the corresponding year, numeric version, and minor revision.
     When VersionInput is empty, the function reads .lvversion from RepoRoot.
 #>
@@ -27,7 +27,7 @@ function Get-LabVIEWVersionInfo {
         }
 
         if (-not ($Raw -match '^(?<major>\d{2,4})(?:\.(?<minor>\d+))?$')) {
-            throw "LabVIEW version '$Raw' is invalid. Expected formats like '26.0' or '2026'."
+            throw "LabVIEW version '$Raw' is invalid. Expected formats like '26.1' or '2026'."
         }
 
         $majorRaw = [int]$Matches['major']
@@ -89,4 +89,5 @@ function Get-LabVIEWVersionInfo {
 
     return $info
 }
+
 

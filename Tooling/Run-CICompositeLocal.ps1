@@ -16,7 +16,7 @@
     GitHub-only steps (workflow metadata, artifact upload) are not included.
 
 .PARAMETER LabVIEWVersion
-    LabVIEW version year (e.g., 2026) or numeric version (e.g., 26.0).
+    LabVIEW version year (e.g., 2026) or numeric version (e.g., 26.1).
 
 .PARAMETER LabVIEWBitness
     Bitness to run: both, 32, 64, or installed (auto-detect).
@@ -729,7 +729,7 @@ function Resolve-ViValidateVersion {
     }
     $raw = (Get-Content -Raw -Path $versionPath).Trim()
     if (-not ($raw -match '^(?<major>\\d{2,4})(?:\\.(?<minor>\\d+))?$')) {
-        throw "LabVIEW version '$raw' is invalid. Expected formats like '26.0' or '2026'."
+        throw "LabVIEW version '$raw' is invalid. Expected formats like '26.1' or '2026'."
     }
     $majorRaw = [int]$Matches['major']
     $minor = if ($Matches['minor']) { [int]$Matches['minor'] } else { 0 }
@@ -2448,6 +2448,7 @@ finally {
     "{0},{1},{2},{3}" -f $runTimestamp, $runStatus, $runDuration, ($commandLine -replace ',', ' ') | Add-Content -Path $script:RunHistoryPath
     Pop-Location
 }
+
 
 
 

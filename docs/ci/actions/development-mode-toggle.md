@@ -136,7 +136,7 @@ When development mode fails, the VI error source string prints a **comma-separat
 **To change** how "dev mode" behaves, **edit those scripts** directly. 
 
 ### Integration Tests
-You can run the integration tests locally on a runner that has LabVIEW 2026 (26.0) 32-bit or 64-bit installed. The scripts default to `.lvversion`; if you pass `-LabVIEWVersion`, it must match.
+You can run the integration tests locally on a runner that has LabVIEW 2026 (26.1) 32-bit or 64-bit installed. The scripts default to `.lvversion`; if you pass `-LabVIEWVersion`, it must match.
 
 ```powershell
 pwsh -NoProfile -File .\Test\Pester\Run-Pester.ps1 -LabVIEWBitness 32 -ConnectTimeoutMs 180000 -ProcessTimeoutMs 300000
@@ -165,4 +165,5 @@ Collaborators are free to:
 - GitHub Docs: https://docs.github.com/en/actions/using-workflows/reusing-workflows#calling-a-reusable-workflow
 
 ---
+
 

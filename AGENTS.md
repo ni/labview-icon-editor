@@ -5,7 +5,7 @@ This repository uses LabVIEW, g-cli, and PowerShell tooling. Follow the steps be
 ## Prerequisites
 - Windows with PowerShell 7+ available as `pwsh`.
 - `g-cli` available on PATH.
-- LabVIEW 2026 (26.0) 32-bit and 64-bit installed (minimum supported baseline).
+- LabVIEW 2026 (26.1) 32-bit and 64-bit installed (minimum supported baseline).
 - VIPM/VIPC installed (required for dependency application).
 - Python 3 with `pylavi` installed so `vi_validate` is on PATH.
 
@@ -197,7 +197,7 @@ Troubleshooting:
 The workflow exports:
 - `REPO_ROOT` → worktree path (authoritative for all scripts)
 - `PROJECT_PATH` → `$REPO_ROOT\lv_icon_editor.lvproj`
-- `LABVIEW_VERSION_YEAR` / `LABVIEW_MINOR_REVISION` → derived from `.lvversion` (e.g., `26.0` → `2026` and minor `0`)
+- `LABVIEW_VERSION_YEAR` / `LABVIEW_MINOR_REVISION` → derived from `.lvversion` (e.g., `26.1` → `2026` and minor `1`)
 
 Note: CI reads `.lvversion` from `REPO_ROOT` as the canonical LabVIEW version for runs.
 
@@ -225,7 +225,7 @@ pwsh -NoProfile -File .\Tooling\Invoke-WorktreeOrchestrator.ps1 `
 Notes:
 - Outputs go to `$WORKTREE_ROOT\artifacts\<runid>\ci-local` when guardrails are active (default for local runs).
 - GitHub Actions disables artifact roots by default unless `LVIE_ENABLE_ARTIFACT_ROOT=1` or an explicit `-RunId`/`-ArtifactRoot` is passed.
-- The script always runs both 64-bit and 32-bit steps for the `.lvversion` target (canonical baseline: `26.0`).
+- The script always runs both 64-bit and 32-bit steps for the `.lvversion` target (canonical baseline: `26.1`).
 - The script handles Verify IE Paths, VIPC audit, unit tests, PPL builds, and VIP build.
 - VIPC default behavior is audit-first (`-VipcMode audit`); optional diagnostics are available via `-VipcMode apply-info` or strict apply via `-VipcMode apply-enforce`.
 - The script runs `vi_validate` (pylavi) and uses `.lvversion` as the canonical LabVIEW version. Skip with `-SkipViValidate`.
@@ -362,4 +362,5 @@ Notes:
 - Release note generation can log `git describe` errors in shallow or tagless repos; VIP builds may still complete, but fetch tags if you need accurate version strings.
 - If `vi_validate` is missing, confirm `py -m pip show pylavi` and ensure the Python Scripts directory is on PATH.
 - If Windows container parity fails with `ScriptRequiresUnmatchedPSVersion`, run `pwsh -NoProfile -File .\Tooling\Test-PathContract.ps1 -WriteSummary` and remove any file-scope `#Requires -Version` from `Tooling\support\PathContract.ps1`.
+
 

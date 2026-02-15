@@ -12,7 +12,7 @@
     Dev mode action: enable or disable.
 
 .PARAMETER LabVIEWVersion
-    LabVIEW version year (e.g., 2026) or numeric version (e.g., 26.0).
+    LabVIEW version year (e.g., 2026) or numeric version (e.g., 26.1).
 
 .PARAMETER SupportedBitness
     One or more bitness values ("32", "64") to run (default: both).
@@ -357,4 +357,5 @@ try {
     $logPath = Resolve-LogPath -ResolvedRepoRoot $resolvedRepoRoot -SnapshotRootResolved $snapshotRootResolved
     $toggleRecord | ConvertTo-Json -Depth 7 | Set-Content -Path $logPath -Encoding utf8
 }
+
 
