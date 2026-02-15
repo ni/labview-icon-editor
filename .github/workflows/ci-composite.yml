@@ -427,7 +427,7 @@ jobs:
           $repoRoot = $env:GITHUB_WORKSPACE
           $cliPath = Join-Path $env:RUNNER_TEMP 'runner-cli' 'runner-cli'
           if (Test-Path $cliPath) {
-            Write-Host "Using prebuilt runner-cli artifact (incremental migration)."
+            Write-Host "Using prebuilt runner-cli artifact."
             chmod +x $cliPath
             $json = & $cliPath version-gate --repo-root $repoRoot --json
             $exitCode = $LASTEXITCODE
@@ -439,7 +439,7 @@ jobs:
             $runnerCliProject = Join-Path $repoRoot 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
             $canUseRunnerCli = (Get-Command dotnet -ErrorAction SilentlyContinue) -and (Test-Path $runnerCliProject)
             if ($canUseRunnerCli) {
-            Write-Host "Using runner-cli version-gate (incremental migration)."
+            Write-Host "Using runner-cli version-gate."
             dotnet build $runnerCliProject --configuration Release | Out-Host
             if ($LASTEXITCODE -ne 0) {
               exit $LASTEXITCODE

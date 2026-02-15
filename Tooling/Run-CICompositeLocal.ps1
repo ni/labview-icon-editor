@@ -1522,6 +1522,47 @@ function Resolve-RunnerCliPath {
     return $null
 }
 
+function Format-RunnerCliArgument {
+    param([string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return '""'
+    }
+
+    if ($Value.Contains(' ')) {
+        return ('"{0}"' -f $Value)
+    }
+
+    return $Value
+}
+
+function Invoke-RunnerCliCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [string]$Label,
+        [string]$ExplicitRunnerCliPath
+    )
+
+    $cliPath = Resolve-RunnerCliPath -ExplicitPath $ExplicitRunnerCliPath -RepoRoot $RepoRoot
+    if ($cliPath -and (Test-Path -Path $cliPath -PathType Leaf)) {
+        Write-Host ("{0}: runner-cli {1}" -f $Label, (($Arguments | ForEach-Object { Format-RunnerCliArgument -Value $_ }) -join ' '))
+        & $cliPath @Arguments
+        return
+    }
+
+    $runnerCliProject = Join-Path $RepoRoot 'Tooling\runner-cli\RunnerCli\RunnerCli.csproj'
+    if (-not (Test-Path -Path $runnerCliProject -PathType Leaf)) {
+        throw "runner-cli was not found and project fallback is unavailable at $runnerCliProject"
+    }
+
+    Write-Host ("{0}: dotnet run --project {1} -- {2}" -f $Label, (Format-RunnerCliArgument -Value $runnerCliProject), (($Arguments | ForEach-Object { Format-RunnerCliArgument -Value $_ }) -join ' '))
+    & dotnet run --project $runnerCliProject --configuration Release -- @Arguments
+}
+
 function Initialize-RunnerContractIfNeeded {
     param(
         [string]$RepoRoot,
@@ -1889,10 +1930,25 @@ try {
         foreach ($bitness in $bitnessList) {
             try {
                 Invoke-Checked -Label "Missing-in-project ($bitness-bit)" -Action {
-                    & (Join-Path $repoRoot '.github/actions/missing-in-project/Invoke-MissingInProjectCLI.ps1') `
-                        -LVVersion $LabVIEWVersion `
-                        -Arch $bitness `
-                        -ProjectFile $projectFile
+                    $runnerCliArgs = @(
+                        'missing-in-project',
+                        '--repo-root', $repoRoot,
+                        '--arch', $bitness,
+                        '--project-file', $projectFile,
+                        '--labview', $LabVIEWVersion,
+                        '--skip-worktree-root-check'
+                    )
+                    if ($ConnectTimeoutMs -gt 0) {
+                        $runnerCliArgs += @('--connect-timeout-ms', [string]$ConnectTimeoutMs)
+                    }
+                    Invoke-RunnerCliCommand `
+                        -RepoRoot $repoRoot `
+                        -Arguments $runnerCliArgs `
+                        -Label ("Missing-in-project ({0}-bit)" -f $bitness) `
+                        -ExplicitRunnerCliPath $RunnerCliPath
+                    if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
+                        throw ("runner-cli missing-in-project failed with exit code {0}." -f $LASTEXITCODE)
+                    }
                 }
             }
             finally {
@@ -2016,15 +2072,26 @@ try {
         } else {
             try {
                 $buildPass1Result = Invoke-CheckedWithResult -Label $buildPass1Label -Action {
-                    & (Join-Path $repoRoot '.github/actions/build-lvlibp/BuildProjectSpec.ps1') `
-                        -LabVIEWVersion $LabVIEWVersion `
-                        -SupportedBitness $sequenceBitness `
+                    $runnerCliArgs = @(
+                        'ppl', 'build',
+                        '--repo-root', $repoRoot,
+                        '--labview-version', $LabVIEWVersion,
+                        '--supported-bitness', $sequenceBitness,
+                        '--major', [string]$versionInfo.Major,
+                        '--minor', [string]$versionInfo.Minor,
+                        '--patch', [string]$versionInfo.Patch,
+                        '--build', [string]$versionInfo.Build,
+                        '--commit', [string]$versionInfo.Commit,
+                        '--skip-worktree-root-check'
+                    )
+                    Invoke-RunnerCliCommand `
                         -RepoRoot $repoRoot `
-                        -Major $versionInfo.Major `
-                        -Minor $versionInfo.Minor `
-                        -Patch $versionInfo.Patch `
-                        -Build $versionInfo.Build `
-                        -Commit $versionInfo.Commit
+                        -Arguments $runnerCliArgs `
+                        -Label ("PPL build pass1 ({0}-bit)" -f $sequenceBitness) `
+                        -ExplicitRunnerCliPath $RunnerCliPath
+                    if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
+                        throw ("runner-cli ppl build failed with exit code {0}." -f $LASTEXITCODE)
+                    }
                 }
             }
             finally {
@@ -2133,15 +2200,26 @@ try {
         } else {
             try {
                 $buildPass2Result = Invoke-CheckedWithResult -Label $buildPass2Label -Action {
-                    & (Join-Path $repoRoot '.github/actions/build-lvlibp/BuildProjectSpec.ps1') `
-                        -LabVIEWVersion $LabVIEWVersion `
-                        -SupportedBitness $sequenceBitness `
+                    $runnerCliArgs = @(
+                        'ppl', 'build',
+                        '--repo-root', $repoRoot,
+                        '--labview-version', $LabVIEWVersion,
+                        '--supported-bitness', $sequenceBitness,
+                        '--major', [string]$versionInfo.Major,
+                        '--minor', [string]$versionInfo.Minor,
+                        '--patch', [string]$versionInfo.Patch,
+                        '--build', [string]$versionInfo.Build,
+                        '--commit', [string]$versionInfo.Commit,
+                        '--skip-worktree-root-check'
+                    )
+                    Invoke-RunnerCliCommand `
                         -RepoRoot $repoRoot `
-                        -Major $versionInfo.Major `
-                        -Minor $versionInfo.Minor `
-                        -Patch $versionInfo.Patch `
-                        -Build $versionInfo.Build `
-                        -Commit $versionInfo.Commit
+                        -Arguments $runnerCliArgs `
+                        -Label ("PPL build pass2 ({0}-bit)" -f $sequenceBitness) `
+                        -ExplicitRunnerCliPath $RunnerCliPath
+                    if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
+                        throw ("runner-cli ppl build failed with exit code {0}." -f $LASTEXITCODE)
+                    }
                 }
             }
             finally {
@@ -2228,15 +2306,26 @@ try {
                 $buildPplResult = $null
                 try {
                     $buildPplResult = Invoke-CheckedWithResult -Label $buildPplLabel -Action {
-                        & (Join-Path $repoRoot '.github/actions/build-lvlibp/BuildProjectSpec.ps1') `
-                            -LabVIEWVersion $LabVIEWVersion `
-                            -SupportedBitness $bitness `
+                        $runnerCliArgs = @(
+                            'ppl', 'build',
+                            '--repo-root', $repoRoot,
+                            '--labview-version', $LabVIEWVersion,
+                            '--supported-bitness', $bitness,
+                            '--major', [string]$versionInfo.Major,
+                            '--minor', [string]$versionInfo.Minor,
+                            '--patch', [string]$versionInfo.Patch,
+                            '--build', [string]$versionInfo.Build,
+                            '--commit', [string]$versionInfo.Commit,
+                            '--skip-worktree-root-check'
+                        )
+                        Invoke-RunnerCliCommand `
                             -RepoRoot $repoRoot `
-                            -Major $versionInfo.Major `
-                            -Minor $versionInfo.Minor `
-                            -Patch $versionInfo.Patch `
-                            -Build $versionInfo.Build `
-                            -Commit $versionInfo.Commit
+                            -Arguments $runnerCliArgs `
+                            -Label ("PPL build ({0}-bit)" -f $bitness) `
+                            -ExplicitRunnerCliPath $RunnerCliPath
+                        if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) {
+                            throw ("runner-cli ppl build failed with exit code {0}." -f $LASTEXITCODE)
+                        }
                     }
                 }
                 finally {

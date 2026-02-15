@@ -55,6 +55,8 @@ public class RunnerCliCliTests
         Assert.Contains("vip build", supportedCommands);
         Assert.Contains("vipc apply", supportedCommands);
         Assert.Contains("vipc assert", supportedCommands);
+        Assert.Contains("dev-mode prepare-source", supportedCommands);
+        Assert.Contains("dev-mode restore-source", supportedCommands);
     }
 
     [Fact]
@@ -724,6 +726,50 @@ public class RunnerCliCliTests
         Assert.True(string.IsNullOrWhiteSpace(stdout), $"stdout: {stdout}");
         Assert.Contains("ppl build command:", stderr, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("BuildProjectSpec.ps1", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void DevMode_prepare_source_dry_run_emits_prepare_script_command()
+    {
+        var repoRoot = FindRepoRoot();
+        var args = string.Join(' ', new[]
+        {
+            "dev-mode prepare-source",
+            $"--repo-root \"{repoRoot}\"",
+            "--labview-version 26.1",
+            "--supported-bitness 64",
+            "--connect-timeout-ms 120000",
+            "--process-timeout-ms 300000",
+            "--dry-run"
+        });
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stdout), $"stdout: {stdout}");
+        Assert.Contains("dev-mode prepare-source command:", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Prepare_LabVIEW_source.ps1", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void DevMode_restore_source_dry_run_emits_restore_script_command()
+    {
+        var repoRoot = FindRepoRoot();
+        var args = string.Join(' ', new[]
+        {
+            "dev-mode restore-source",
+            $"--repo-root \"{repoRoot}\"",
+            "--labview-version 26.1",
+            "--supported-bitness 32",
+            "--connect-timeout-ms 120000",
+            "--process-timeout-ms 300000",
+            "--dry-run"
+        });
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stdout), $"stdout: {stdout}");
+        Assert.Contains("dev-mode restore-source command:", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("RestoreSetupLVSource.ps1", stderr, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

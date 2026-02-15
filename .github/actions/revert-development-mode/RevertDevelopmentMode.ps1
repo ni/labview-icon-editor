@@ -348,22 +348,23 @@ function Invoke-RestoreLabviewSource {
     )
 
     Write-Host "Restoring LabVIEW sources for $Bitness-bit."
-    # RestoreSetupLVSource.ps1 closes LabVIEW after the VI runs.
-    $scriptArgs = @{
-        LabVIEWVersion            = $labviewYear
-        SupportedBitness          = $Bitness
-        ConnectTimeoutMs          = $ConnectTimeoutMs
-        ProcessTimeoutMs          = $ProcessTimeoutMs
+    $runnerCliProject = Join-Path $resolvedRepoRoot 'Tooling\runner-cli\RunnerCli\RunnerCli.csproj'
+    if (-not (Test-Path -Path $runnerCliProject -PathType Leaf)) {
+        throw "runner-cli project not found at $runnerCliProject"
     }
 
-    if ($resolvedRepoRoot) {
-        $scriptArgs.RepoRoot = $resolvedRepoRoot
-    }
-
-    & $RestoreScript @scriptArgs
+    $runnerCliArgs = @(
+        'dev-mode', 'restore-source',
+        '--repo-root', $resolvedRepoRoot,
+        '--labview-version', $labviewYear,
+        '--supported-bitness', $Bitness,
+        '--connect-timeout-ms', [string]$ConnectTimeoutMs,
+        '--process-timeout-ms', [string]$ProcessTimeoutMs
+    )
+    & dotnet run --project $runnerCliProject --configuration Release -- @runnerCliArgs
 
     if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
-        throw "RestoreSetupLVSource.ps1 failed for $Bitness-bit with exit code $LASTEXITCODE."
+        throw "runner-cli dev-mode restore-source failed for $Bitness-bit with exit code $LASTEXITCODE."
     }
 
     Write-CloseMetricsHint -Bitness $Bitness -Context 'revert' -ExpectedVersion $labviewYear

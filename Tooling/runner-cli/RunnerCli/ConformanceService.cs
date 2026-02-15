@@ -43,6 +43,8 @@ public static class ConformanceService
                 "vipc assert",
                 "parity context",
                 "parity run",
+                "dev-mode prepare-source",
+                "dev-mode restore-source",
                 "manifest",
                 "conformance check"
             },

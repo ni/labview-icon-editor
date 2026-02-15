@@ -1386,6 +1386,97 @@ parityRunCmd.SetHandler((InvocationContext context) =>
 parityCmd.AddCommand(parityContextCmd);
 parityCmd.AddCommand(parityRunCmd);
 
+// ── dev-mode prepare-source/restore-source ───────────────────────
+var devModeCmd = new Command("dev-mode", "Development mode source orchestration helpers.");
+var devModePrepareSourceCmd = new Command("prepare-source", "Prepare LabVIEW source overlays via Prepare_LabVIEW_source.ps1.");
+var devModeRestoreSourceCmd = new Command("restore-source", "Restore LabVIEW source overlays via RestoreSetupLVSource.ps1.");
+
+var devModeLabviewVersionOption = new Option<string>(
+    name: "--labview-version",
+    description: "LabVIEW version input (for example 2026 or 26.1).")
+{ IsRequired = true };
+var devModeBitnessOption = new Option<string>(
+    name: "--supported-bitness",
+    description: "LabVIEW bitness (32 or 64).")
+{ IsRequired = true };
+var devModeConnectTimeoutOption = new Option<string?>(
+    name: "--connect-timeout-ms",
+    description: "Optional g-cli connect timeout in milliseconds.");
+var devModeProcessTimeoutOption = new Option<string?>(
+    name: "--process-timeout-ms",
+    description: "Optional g-cli process timeout in milliseconds.");
+var devModeDryRunOption = new Option<bool>(
+    name: "--dry-run",
+    getDefaultValue: () => false,
+    description: "Emit underlying command line without executing it.");
+
+devModePrepareSourceCmd.AddOption(repoRootOption);
+devModePrepareSourceCmd.AddOption(devModeLabviewVersionOption);
+devModePrepareSourceCmd.AddOption(devModeBitnessOption);
+devModePrepareSourceCmd.AddOption(devModeConnectTimeoutOption);
+devModePrepareSourceCmd.AddOption(devModeProcessTimeoutOption);
+devModePrepareSourceCmd.AddOption(devModeDryRunOption);
+devModePrepareSourceCmd.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var repoRoot = RepoLocator.Resolve(
+            context.ParseResult.GetValueForOption(repoRootOption),
+            Environment.CurrentDirectory);
+        var options = new DevModeSourceOptions(
+            RepoRoot: repoRoot,
+            LabviewVersion: context.ParseResult.GetValueForOption(devModeLabviewVersionOption) ?? string.Empty,
+            SupportedBitness: context.ParseResult.GetValueForOption(devModeBitnessOption) ?? string.Empty,
+            ConnectTimeoutMs: context.ParseResult.GetValueForOption(devModeConnectTimeoutOption),
+            ProcessTimeoutMs: context.ParseResult.GetValueForOption(devModeProcessTimeoutOption),
+            DryRun: context.ParseResult.GetValueForOption(devModeDryRunOption));
+        var exitCode = DevModeSourceService.PrepareSource(options);
+        Environment.ExitCode = exitCode;
+        context.ExitCode = exitCode;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"ERROR: {ex.Message}");
+        Environment.ExitCode = 1;
+        context.ExitCode = 1;
+    }
+});
+
+devModeRestoreSourceCmd.AddOption(repoRootOption);
+devModeRestoreSourceCmd.AddOption(devModeLabviewVersionOption);
+devModeRestoreSourceCmd.AddOption(devModeBitnessOption);
+devModeRestoreSourceCmd.AddOption(devModeConnectTimeoutOption);
+devModeRestoreSourceCmd.AddOption(devModeProcessTimeoutOption);
+devModeRestoreSourceCmd.AddOption(devModeDryRunOption);
+devModeRestoreSourceCmd.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var repoRoot = RepoLocator.Resolve(
+            context.ParseResult.GetValueForOption(repoRootOption),
+            Environment.CurrentDirectory);
+        var options = new DevModeSourceOptions(
+            RepoRoot: repoRoot,
+            LabviewVersion: context.ParseResult.GetValueForOption(devModeLabviewVersionOption) ?? string.Empty,
+            SupportedBitness: context.ParseResult.GetValueForOption(devModeBitnessOption) ?? string.Empty,
+            ConnectTimeoutMs: context.ParseResult.GetValueForOption(devModeConnectTimeoutOption),
+            ProcessTimeoutMs: context.ParseResult.GetValueForOption(devModeProcessTimeoutOption),
+            DryRun: context.ParseResult.GetValueForOption(devModeDryRunOption));
+        var exitCode = DevModeSourceService.RestoreSource(options);
+        Environment.ExitCode = exitCode;
+        context.ExitCode = exitCode;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"ERROR: {ex.Message}");
+        Environment.ExitCode = 1;
+        context.ExitCode = 1;
+    }
+});
+
+devModeCmd.AddCommand(devModePrepareSourceCmd);
+devModeCmd.AddCommand(devModeRestoreSourceCmd);
+
 // ── manifest ──────────────────────────────────────────────────────
 var manifestCmd = new Command("manifest", "Emit runner-cli capability and spec metadata.");
 manifestCmd.AddOption(repoRootOption);
@@ -1534,6 +1625,7 @@ rootCmd.AddCommand(pplCmd);
 rootCmd.AddCommand(vipCmd);
 rootCmd.AddCommand(vipcCmd);
 rootCmd.AddCommand(parityCmd);
+rootCmd.AddCommand(devModeCmd);
 rootCmd.AddCommand(manifestCmd);
 rootCmd.AddCommand(conformanceCmd);
 
