@@ -1454,6 +1454,14 @@ jobs:
           }
 
           $displayInformationJson = $Env:DISPLAY_INFORMATION_JSON
+          if ([string]::IsNullOrWhiteSpace($displayInformationJson)) {
+            throw "DISPLAY_INFORMATION_JSON was empty; cannot run runner-cli vip build."
+          }
+          $displayInfoDirectory = Join-Path $env:RUNNER_TEMP 'lvie-vip-build'
+          New-Item -Path $displayInfoDirectory -ItemType Directory -Force | Out-Null
+          $displayInformationJsonPath = Join-Path $displayInfoDirectory 'display-information.json'
+          Set-Content -Path $displayInformationJsonPath -Value $displayInformationJson -Encoding utf8
+
           $runnerCliArgs = @(
             'vip', 'build',
             '--repo-root', $env:REPO_ROOT,
@@ -1467,7 +1475,7 @@ jobs:
             '--build', '${{ needs.version.outputs.BUILD }}',
             '--commit', '${{ github.sha }}',
             '--release-notes-file', "$env:REPO_ROOT\\Tooling\\deployment\\release_notes.md",
-            '--display-information-json', $displayInformationJson,
+            '--display-information-json-path', $displayInformationJsonPath,
             '--vipm-timeout-seconds', $env:LVIE_VIPM_TIMEOUT_SECONDS
           )
           if ($usePrebuiltRunnerCli) {

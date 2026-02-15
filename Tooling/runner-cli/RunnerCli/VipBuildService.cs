@@ -13,6 +13,7 @@ public sealed record VipBuildOptions(
     string? Commit,
     string? ReleaseNotesFile,
     string DisplayInformationJson,
+    string? DisplayInformationJsonPath,
     string? VipmTimeoutSeconds,
     string? MaxAttempts,
     string? RetryDelaySeconds,
@@ -38,9 +39,12 @@ public static class VipBuildService
         {
             throw new ArgumentException("VipbPath is required.", nameof(options));
         }
-        if (string.IsNullOrWhiteSpace(options.DisplayInformationJson))
+        if (string.IsNullOrWhiteSpace(options.DisplayInformationJson) &&
+            string.IsNullOrWhiteSpace(options.DisplayInformationJsonPath))
         {
-            throw new ArgumentException("DisplayInformationJson is required.", nameof(options));
+            throw new ArgumentException(
+                "Either DisplayInformationJson or DisplayInformationJsonPath is required.",
+                nameof(options));
         }
 
         var repoRoot = Path.GetFullPath(options.RepoRoot);
@@ -48,9 +52,32 @@ public static class VipBuildService
         {
             "-SupportedBitness", options.SupportedBitness,
             "-RepoRoot", repoRoot,
-            "-VIPBPath", options.VipbPath,
-            "-DisplayInformationJSON", options.DisplayInformationJson
+            "-VIPBPath", options.VipbPath
         };
+
+        if (!string.IsNullOrWhiteSpace(options.DisplayInformationJsonPath))
+        {
+            var displayInfoPath = options.DisplayInformationJsonPath!;
+            if (!Path.IsPathRooted(displayInfoPath))
+            {
+                displayInfoPath = Path.Combine(repoRoot, displayInfoPath);
+            }
+            displayInfoPath = Path.GetFullPath(displayInfoPath);
+            if (!File.Exists(displayInfoPath))
+            {
+                throw new FileNotFoundException(
+                    $"Display information JSON file not found at '{displayInfoPath}'.",
+                    displayInfoPath);
+            }
+
+            args.Add("-DisplayInformationJsonPath");
+            args.Add(displayInfoPath);
+        }
+        else
+        {
+            args.Add("-DisplayInformationJSON");
+            args.Add(options.DisplayInformationJson);
+        }
 
         AddValueArg(args, "-LabVIEWVersion", options.LabviewVersion);
         AddValueArg(args, "-LabVIEWMinorRevision", options.LabviewMinorRevision);

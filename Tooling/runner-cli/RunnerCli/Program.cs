@@ -1061,8 +1061,10 @@ var vipBuildCommitOption = new Option<string?>("--commit", "Commit SHA.");
 var vipBuildReleaseNotesOption = new Option<string?>("--release-notes-file", "Release notes markdown path.");
 var vipBuildDisplayInfoOption = new Option<string>(
     name: "--display-information-json",
-    description: "Display information JSON payload.")
-{ IsRequired = true };
+    description: "Display information JSON payload.");
+var vipBuildDisplayInfoPathOption = new Option<string?>(
+    name: "--display-information-json-path",
+    description: "Path to display information JSON payload.");
 var vipBuildVipmTimeoutOption = new Option<string?>("--vipm-timeout-seconds", "VIPM timeout in seconds.");
 var vipBuildMaxAttemptsOption = new Option<string?>("--max-attempts", "Max retry attempts.");
 var vipBuildRetryDelayOption = new Option<string?>("--retry-delay-seconds", "Retry delay in seconds.");
@@ -1089,6 +1091,7 @@ vipBuildCmd.AddOption(vipBuildBuildOption);
 vipBuildCmd.AddOption(vipBuildCommitOption);
 vipBuildCmd.AddOption(vipBuildReleaseNotesOption);
 vipBuildCmd.AddOption(vipBuildDisplayInfoOption);
+vipBuildCmd.AddOption(vipBuildDisplayInfoPathOption);
 vipBuildCmd.AddOption(vipBuildVipmTimeoutOption);
 vipBuildCmd.AddOption(vipBuildMaxAttemptsOption);
 vipBuildCmd.AddOption(vipBuildRetryDelayOption);
@@ -1116,6 +1119,7 @@ vipBuildCmd.SetHandler((InvocationContext context) =>
             Commit: context.ParseResult.GetValueForOption(vipBuildCommitOption),
             ReleaseNotesFile: context.ParseResult.GetValueForOption(vipBuildReleaseNotesOption),
             DisplayInformationJson: context.ParseResult.GetValueForOption(vipBuildDisplayInfoOption) ?? string.Empty,
+            DisplayInformationJsonPath: context.ParseResult.GetValueForOption(vipBuildDisplayInfoPathOption),
             VipmTimeoutSeconds: context.ParseResult.GetValueForOption(vipBuildVipmTimeoutOption),
             MaxAttempts: context.ParseResult.GetValueForOption(vipBuildMaxAttemptsOption),
             RetryDelaySeconds: context.ParseResult.GetValueForOption(vipBuildRetryDelayOption),
