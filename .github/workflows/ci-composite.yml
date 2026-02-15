@@ -1432,12 +1432,25 @@ jobs:
             ${{ steps.display-info.outputs.json }}
         run: |
           $runnerCliPath = $env:LVIE_RUNNER_CLI_PATH
-          $runnerCliProject = Join-Path $env:GITHUB_WORKSPACE 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+          $ensureRunnerCliScript = @(
+            (Join-Path $env:REPO_ROOT 'Tooling/Ensure-RunnerCli.ps1'),
+            (Join-Path $env:GITHUB_WORKSPACE 'Tooling/Ensure-RunnerCli.ps1')
+          ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -Path $_ -PathType Leaf) } | Select-Object -First 1
+          if ($ensureRunnerCliScript) {
+            $ensureResult = & $ensureRunnerCliScript -RepoRoot $env:REPO_ROOT -RunnerCliPath $runnerCliPath -Require
+            if ($ensureResult -and -not [string]::IsNullOrWhiteSpace($ensureResult.Path)) {
+              $runnerCliPath = $ensureResult.Path
+            }
+          }
           $usePrebuiltRunnerCli = -not [string]::IsNullOrWhiteSpace($runnerCliPath) -and (Test-Path -Path $runnerCliPath -PathType Leaf)
+          $runnerCliProject = @(
+            (Join-Path $env:REPO_ROOT 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'),
+            (Join-Path $env:GITHUB_WORKSPACE 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj')
+          ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path -Path $_ -PathType Leaf) } | Select-Object -First 1
           if ($usePrebuiltRunnerCli) {
             Write-Host ("Using prebuilt runner-cli at {0}" -f $runnerCliPath)
-          } elseif (-not (Test-Path -Path $runnerCliProject -PathType Leaf)) {
-            throw "runner-cli unavailable: LVIE_RUNNER_CLI_PATH is missing/unresolvable and runner-cli project was not found at $runnerCliProject"
+          } elseif (-not $runnerCliProject) {
+            throw "runner-cli unavailable: no usable LVIE_RUNNER_CLI_PATH and no runner-cli project found under REPO_ROOT/GITHUB_WORKSPACE."
           }
 
           $displayInformationJson = $Env:DISPLAY_INFORMATION_JSON
