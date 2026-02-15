@@ -1,4 +1,4 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 
 contact_links:
   - name: ❓ Join Our Discord Server
@@ -6,16 +6,16 @@ contact_links:
     about: "Let us help you if you hit a roadblock!"
 
   - name: 📖 Read the Docs
-    url: https://github.com/ni/labview-icon-editor#labview-icon-editor
+    url: https://ni.github.io/labview-icon-editor/
     about: "Check the documentation for common questions before opening an issue."
 
 issue_templates:
   - name: 🐞 Bug Report
-    path: bug_report.yaml
+    path: bug_report.yml
     description: "Report a reproducible issue."
-    labels: ["bug"]
+    labels: ["Issue group: Bug"]
     
   - name: 🚀 Feature Request
-    path: feature_request.yaml
+    path: feature_request.yml
     description: "Suggest a new feature or enhancement."
-    labels: ["enhancement"]
+    labels: ["Type: Enhancement"]

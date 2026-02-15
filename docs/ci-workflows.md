@@ -1,5 +1,9 @@
 # Local CI/CD Workflows
 
+**Last updated:** 2026-02-12
+
+Quick link: `.github/workflows/runner-cli.yml` (Runner CLI consolidated workflow).
+
 This document explains how to automate build, test, and distribution steps for the Icon Editor using GitHub Actions. It includes features such as **automatic version bumping** (using labels) and **artifact upload**. Additionally, it shows how you can **brand** the resulting VI Package with **organization** and **repository** metadata for unique identification.
 
 ---
@@ -31,6 +35,19 @@ Automating your Icon Editor builds and tests:
 - PowerShell 7+
 - Git for Windows
 
+### Issue 91 Reconciliation Note (2026-02-11)
+
+- Reconciled branch purpose: forward-port the `456-2020-migration` work onto the current CI/tooling baseline while removing CI selector/dev-mode coupling.
+- CI behavior change: `ci.yml`, `ci-composite.yml`, and container parity CI scripts no longer perform automatic selector mode set/unset or development-mode toggles.
+- Windows container parity guardrail: `Tooling/Test-PathContract.ps1` now runs before Windows container parity execution to enforce `Tooling/support/PathContract.ps1` compatibility with Windows PowerShell 5.1 and prevent `ScriptRequiresUnmatchedPSVersion`.
+- Manual development mode support remains available through [`development-mode-toggle.yml`](../.github/workflows/development-mode-toggle.yml).
+
+### Solo Maintainer Mode (2026-02-11)
+
+- Repository operation is optimized for a single maintainer with PR-gated integration and manual publish intent.
+- Normative policy: [`docs/ci/solo-maintainer-mode.md`](ci/solo-maintainer-mode.md)
+- LLM runbook: [`docs/ci/llm-operator-runbook.md`](ci/llm-operator-runbook.md)
+
 ---
 
 ## 2. Quickstart
@@ -47,21 +64,17 @@ Automating your Icon Editor builds and tests:
 
 4. **Run Tests**
    Use the main CI workflow (`ci-composite.yml`) to confirm your environment is valid.
-   - The workflow triggers on pushes to or pull requests targeting:
-     - `main`
-     - `develop`
-     - release branches: `release-alpha/*`, `release-beta/*`, `release-rc/*`
-     - feature branches: `feature/*`
-     - hotfix branches: `hotfix/*`
-     - issue branches: `issue-*`
-     - `workflow_dispatch` enables manual runs.
-     - Every run—push, pull request, or manual—requires the source branch name to match `issue-<number>` and the linked issue's Status to be **In Progress**; otherwise, downstream jobs are skipped.
+   - `ci-composite.yml` is the canonical publish-capable workflow. It triggers on pushes to or pull requests targeting configured branches and supports manual `workflow_dispatch` runs.
      - Typically run with Dev Mode **disabled** unless you’re testing dev features specifically.
-     - The `issue-status` job enforces these checks and also skips the workflow if the branch or pull request has a `NoCI` label. Contributors must ensure their issue is added to a project with the required Status. For pull requests, the check inspects the head branch. This gating helps avoid ambiguous runs for automated tools.
-     - A concurrency group cancels any previous run on the same branch, ensuring only the latest pipeline execution continues.
+     - Concurrency is isolated by repository, runner label, event name, and ref.
+     - Pull request runs auto-cancel earlier runs for the same PR ref.
+     - Push and `workflow_dispatch` runs are isolated by event/ref and are not canceled by pull request updates.
+   - `ci.yml` (`CI Pipeline (No Smoke)`) is a PR-only companion workflow that increases validation signal without publication side effects.
 
 5. **Build VI Package**
-   - Produces `.vip` artifacts automatically. By default, the workflow populates the **“Company Name”** with `github.repository_owner` and the **“Author Name”** with `github.event.repository.name`, so each build is branded with your GitHub account and repository.
+   - Produces `.vip` artifacts automatically using the Windows/self-hosted `build-vip` job in `ci-composite.yml` for `full` and `pr-fast` profiles.
+   - The `release-priority` profile (`workflow_dispatch` with `force_gcli_lunit=true`) intentionally skips `build-vip` and publishes prereleases from container packed-library assets.
+   - By default, the workflow populates the **“Company Name”** with `github.repository_owner` and the **“Author Name”** with `github.event.repository.name`, so each build is branded with your GitHub account and repository.
    - To use different branding, edit the **“Generate display information JSON”** step in [`.github/workflows/ci-composite.yml`](../.github/workflows/ci-composite.yml) and supply custom values for these fields.
    - Uses **label-based** version bumping (major/minor/patch) on pull requests.
    - Generates `Tooling/deployment/release_notes.md` summarizing recent commits. Use this file to draft changelogs or release notes.
@@ -71,6 +84,38 @@ Automating your Icon Editor builds and tests:
 
 > [!NOTE]
 > The workflow automatically brands the VI Package using the repository owner (`github.repository_owner`) and repository name (`github.event.repository.name`). Modify the “Generate display information JSON” step in `.github/workflows/ci-composite.yml` if you need different values.
+
+### Release Publication Policy
+
+This document is the canonical source for release/publication policy.
+
+- Normative contract: [VI Package Pre-Release Requirements](vip-prerelease-requirements.md).
+- Merge strategy contract: pull requests intended to drive prerelease publication to `develop` must use merge commits (`--merge`), not squash or rebase.
+- Publish contract: prerelease publication is **manual-intent only** via `workflow_dispatch` with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`.
+- Execution profiles (`prerelease-context` output `ci_profile`):
+  - `release-priority`: `workflow_dispatch` with `force_gcli_lunit=true`; skips self-hosted heavy jobs (`Verify IE Paths`, smoke, unit-tests, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) and targets <= 25 minutes.
+  - `pr-fast`: `pull_request`; keeps validation coverage but uses 64-bit-only matrices for smoke/unit-tests, targeting <= 35 minutes.
+  - `full`: default for `push` and `workflow_dispatch` without `force_gcli_lunit=true`; preserves full publish-eligible flow.
+- Profile routing note: `force_gcli_lunit=true` is now used only to select the `release-priority` profile; unit-test execution is standardized on direct `g-cli lunit` in workflows that run tests.
+- Release-priority publish-intent guardrail: `workflow_dispatch` publish intent in `release-priority` requires a successful `full` profile run on `develop` completed within the previous 24 hours.
+- Asset contract: published prereleases in `full`/`pr-fast` attach `.vip`, release notes, `labviewcli-logs`, `vip-build-status`, Linux and Windows container packed libraries, and `codex-skill-layer`; `release-priority` publishes Linux and Windows container packed libraries plus `codex-skill-layer`.
+- Branch trigger reality for `ci-composite.yml`: `push` and `pull_request` run on `main`, `develop`, `release/*`, `feature/*`, and `hotfix/*`, plus `workflow_dispatch`.
+- Companion trigger reality for `ci.yml`: `pull_request` only; no `push` or `workflow_dispatch`.
+
+#### Deterministic Manual Publish Procedure
+
+1. Resolve the target SHA to publish:
+   ```powershell
+   $repo = pwsh -NoProfile -File .\Tooling\Resolve-GitHubRepo.ps1
+   $sha = (git rev-parse HEAD).Trim()
+   ```
+2. Dispatch publish intent explicitly:
+   ```powershell
+   gh workflow run ci-composite.yml --repo $repo `
+     -f publish_prerelease=true `
+     -f expected_sha=$sha `
+     -f strict_sha=true
+   ```
 
 ---
 
@@ -94,6 +139,7 @@ Below are the **key GitHub Actions** provided in this repository:
 1. **[Development Mode Toggle](ci/actions/development-mode-toggle.md)**
    - Invokes `Set_Development_Mode.ps1` or `RevertDevelopmentMode.ps1`.  
    - Usually triggered via `workflow_dispatch` for manual toggling.
+   - Uses `runner-cli version-gate` when available to resolve `.lvversion` (falls back to PowerShell).
 
 2. **[Build VI Package](ci/actions/build-vi-package.md)**
    - **Automatically** versions your code based on PR labels (`major`, `minor`, `patch`).
@@ -104,22 +150,67 @@ Below are the **key GitHub Actions** provided in this repository:
    - By default, “Company Name” and “Author Name” in the generated `.vip` come from `github.repository_owner` and `github.event.repository.name`. Update the “Generate display information JSON” step in [`ci-composite.yml`](../.github/workflows/ci-composite.yml) if you need custom values.
    - Uploads the `.vip` artifact to GitHub’s build artifacts.
 
+3. **Runner CLI**
+   - [`runner-cli.yml`](../.github/workflows/runner-cli.yml) is the single source of truth for runner-cli build/test paths.
+   - It builds/tests the .NET CLI, publishes multi-RID artifacts on pushes, runs cross-platform smoke tests, and validates pylavi inside the Linux Docker image.
+   - `ci-composite.yml` still uses `runner-cli-reusable.yml` as an internal helper to publish a Linux artifact for version-gate usage; `runner-audit.yml` downloads the latest artifact when available.
+
+4. **Headless Self-Hosted PPL Parity**
+   - [`headless-self-hosted-parity.yml`](../.github/workflows/headless-self-hosted-parity.yml) validates the local/self-hosted headless PPL path with container-aligned pre-steps:
+     - staged `MassCompile`,
+     - source synchronization into LabVIEW install paths,
+     - `ExecuteBuildSpec`.
+   - Fail-fast preflight gate:
+     - runs `Tooling/Assert-LabVIEWVersion.ps1 -EnforceProjectLvVersion` before parity execution,
+     - requires `lv_icon_editor.lvproj` root `LVVersion` to match `.lvversion`,
+     - requires `Split-Path -Parent $PROJECT_PATH` to equal `REPO_ROOT`.
+   - Trigger policy:
+     - manual `workflow_dispatch` for explicit validation,
+     - `push` to `develop` for observability.
+   - Rollout status: non-blocking diagnostic lane (not wired into publish required-job gates yet).
+   - Artifacts: LabVIEWCLI logs, agent logs, build status, and `lv_icon_x64.lvlibp` when produced.
+
 #### Jobs in CI workflow
 
 The [`ci-composite.yml`](../.github/workflows/ci-composite.yml) pipeline breaks the build into several jobs:
 
-- **issue-status** – skips the workflow if the pull request or branch has a `NoCI` label, then queries the **Status** field of the linked GitHub issue’s associated GitHub Project and proceeds only when that field is **In Progress**. Contributors must ensure their issue is added to a project with this Status value. It also requires the source branch name to contain `issue-<number>` (such as `issue-123` or `feature/issue-123`). For pull requests, the job evaluates the PR’s head branch.
-- **changes** – checks out the repository and detects `.vipc` file changes to determine if dependencies need to be applied.
-- **apply-deps** – installs VIPC dependencies for multiple LabVIEW versions and bitnesses **only when** the `changes` job reports `.vipc` modifications (`if: needs.changes.outputs.vipc == 'true'`).
+- **pylavi-validate** – report-only LabVIEW file validation using `vi_validate` (strict + legacy profiles) with `.lvversion`-synced version gating and optional baseline/delta reporting.
+- **prerelease-context** – computes prerelease publish eligibility, reason, merged-PR bump override context, and the execution profile (`ci_profile`: `release-priority`, `pr-fast`, `full`).
+- **changes** – checks out the repository and detects `.vipc` file changes for diagnostics/reporting in downstream jobs.
+- **apply-deps** – runs VIPC audit (`Assert-VipcApplied`) for both bitnesses on every run (hard-stop on mismatch), then optionally runs informational VIPC apply diagnostics when manually dispatched with `vipc_apply_info=true`.
 - **version** – computes the semantic version and build number using commit count and PR labels.
-- **missing-in-project-check** – verifies every source file is referenced in the `.lvproj`.
-- **test** – runs LabVIEW unit tests on Windows in LabVIEW 2021 (32- and 64-bit).
+- **unit-tests** – runs LabVIEW unit tests on Windows in LabVIEW 2021 after dependency application. Runs 64-bit in `full` and `pr-fast`, and is skipped in `release-priority`.
+  - Each matrix job appends a short `GITHUB_STEP_SUMMARY` line stating the fixed executor (`g-cli`).
 - **build-ppl** – uses a matrix to build 32-bit and 64-bit packed libraries, then uses the `rename-file` action to append the bitness to each library’s filename.
-- **build-vi-package** – packages the final VI Package using the built libraries and version information. In `ci-composite.yml` this job passes `supported_bitness: 64`, so it produces only a 64-bit `.vip`.
+- **build-ppl-linux-container** – builds the Linux container packed library (`lv_icon.lvlibp`) for publish-eligible runs and emits a versioned artifact for prerelease attachment.
+- **build-ppl-windows-container** – builds the Windows container packed library (`lv_icon.lvlibp`) for publish-eligible runs and emits a versioned artifact for prerelease attachment.
+- **codex-skill-layer-asset** – downloads the pinned Codex skill-layer release asset (`lvie-codex-skill-layer.zip`), validates SHA256 + required files + `0BSD` manifest license, and publishes artifact `codex-skill-layer` for prerelease attachment.
+- **build-vip** – Windows/self-hosted VI Package packaging path. This job requires both PPL artifacts (`lv_icon_x86.lvlibp`, `lv_icon_x64.lvlibp`) and runs for `full`/`pr-fast`; it is intentionally skipped in `release-priority`.
+- **publish-gate** – evaluates profile-required prepublish job outcomes and blocks prerelease publication when required checks are missing or non-success.
+- **publish-prerelease** – upserts GitHub prereleases for eligible runs, attaches required assets (including Linux and Windows container packed libraries), and emits `prerelease-publish-status`.
+- **pipeline-contract** – validates required-job outcomes using profile-specific expectations so intentionally skipped jobs in `release-priority` do not fail the run.
 
-Both `build-ppl` and `build-vi-package` run a `close-labview` step after their build actions finish but before any steps that rename files or upload artifacts, so it isn't the job's final step.
+Companion workflow note: [`ci.yml`](../.github/workflows/ci.yml) provides PR-only validation signal and is intentionally non-publishing.
+
+Dedicated headless parity note: [`headless-self-hosted-parity.yml`](../.github/workflows/headless-self-hosted-parity.yml) is intentionally separate from publish-capable workflows during initial rollout, so regressions are visible without blocking release lanes.
+
+Manual VIPC diagnostics example (non-blocking apply after audit):
+`gh workflow run ci-composite.yml --ref <branch> -f vipc_apply_info=true`
+
+Windows self-hosted build jobs (`build-ppl-*` and `build-vip`) run a `close-labview` step after their build actions finish but before any steps that rename files or upload artifacts, so it is not the final step.
 
 The `build-ppl` job uses a matrix to produce both bitnesses rather than distinct jobs.
+
+#### Event matrix (VIP packaging)
+
+| Event / profile | `build-vip` (Windows) |
+| --- | --- |
+| `pull_request` (`pr-fast`) | Runs (required) |
+| `push` (`full`) | Runs (required) |
+| `workflow_dispatch` (`full`, `force_gcli_lunit=false`) | Runs (required) |
+| `workflow_dispatch` (`release-priority`, `force_gcli_lunit=true`) | Skipped intentionally |
+
+Branch protection recommendation for solo mode: require only `CI Pipeline (Composite) / Pipeline Contract` and `CI Pipeline (No Smoke) / Pipeline Contract` for pull requests.
 
 *(The **Run Unit Tests** workflow has been consolidated into the main CI process.)*
 
@@ -166,7 +257,7 @@ Although GitHub Actions primarily run on GitHub-hosted or self-hosted agents, yo
    - If you have custom or dev references, ensure Dev Mode is toggled appropriately.
 
 3. **Build VI Package**:
-   - Manually invoke `Build.ps1` from `.github/actions/build` to generate a `.vip`.
+   - Manually invoke `Tooling/Invoke-VipBuild.ps1` (preferred) to generate a `.vip`, or run the full `Run-CICompositeLocal.ps1` parity workflow.
    - Pass optional metadata fields (e.g., `-CompanyName`, `-AuthorName`) if you want your build to be **branded**.
    - On GitHub Actions, the workflow will produce and upload the artifact automatically.
 
@@ -188,10 +279,12 @@ Although GitHub Actions primarily run on GitHub-hosted or self-hosted agents, yo
 
 3. **Open a Pull Request** and **Label** it:
    - Assign `major`, `minor`, or `patch` to control the version bump.
-   - The CI validates your code without creating tags or releases.
+   - The CI validates your code and produces versioned build artifacts.
 
-4. **Merge the PR** into `develop` (or `main`):
+4. **Merge the PR into your target integration branch with a merge commit**:
      - The **Build VI Package** workflow builds and uploads the `.vip` artifact.
+     - Use merge commits only (`gh pr merge <pr-number> --merge --delete-branch`); do not use squash/rebase for prerelease-driving changes.
+     - Prerelease publication is manual-intent only via `workflow_dispatch` using `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`.
      - **Inside** that `.vip`, the **“Company Name”** and **“Author Name (Person or Company)”** fields are filled automatically using `github.repository_owner` and `github.event.repository.name`. Modify the “Generate display information JSON” step in `.github/workflows/ci-composite.yml` to override them.
 
 5. **Disable Development Mode**:  

@@ -1,0 +1,16 @@
+{
+  "repo": "svelderrainruiz/labview-icon-editor-codex-skills",
+  "tag": "v0.1.0",
+  "asset_name": "lvie-codex-skill-layer.zip",
+  "sha256": "0c9ea464c55066a0bfafcba2ed63b24513e9ad99ee948647708a904e22e18d2d",
+  "license_spdx": "0BSD",
+  "required_files": [
+    "ci-debt/Invoke-CiDebtAnalysis.ps1",
+    "ci-debt/Test-CiDebtPolicyGate.ps1",
+    "ci-debt/signatures.json",
+    "ci-debt/playbook.md",
+    "ci-debt/fixtures/run-21840801109.json",
+    "manifest.json",
+    "LICENSE"
+  ]
+}

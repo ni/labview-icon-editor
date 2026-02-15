@@ -26,6 +26,13 @@
 
 .PARAMETER SummaryPath
     Optional override path for summary output (defaults to GITHUB_STEP_SUMMARY).
+
+.PARAMETER EnforceProjectLvVersion
+    Deprecated compatibility switch. Project-file LVVersion and parent-path
+    enforcement are no longer part of this contract.
+
+.PARAMETER ProjectPath
+    Deprecated compatibility parameter. Ignored.
 #>
 
 [CmdletBinding()]
@@ -44,7 +51,13 @@ param(
     [switch]$WriteSummary,
 
     [Parameter(Mandatory = $false)]
-    [string]$SummaryPath
+    [string]$SummaryPath,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$EnforceProjectLvVersion,
+
+    [Parameter(Mandatory = $false)]
+    [string]$ProjectPath
 )
 
 $ErrorActionPreference = 'Stop'
@@ -52,11 +65,24 @@ $ErrorActionPreference = 'Stop'
 function Resolve-RepoRoot {
     param([string]$Path)
 
-    if ([string]::IsNullOrWhiteSpace($Path)) {
-        throw 'RepoRoot is required.'
+    if (-not [string]::IsNullOrWhiteSpace($Path)) {
+        return (Resolve-Path -Path $Path -ErrorAction Stop).Path
     }
 
-    return (Resolve-Path -Path $Path -ErrorAction Stop).Path
+    $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $PSCommandPath }
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        try {
+            $gitRoot = git -C $scriptRoot rev-parse --show-toplevel 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRoot)) {
+                return (Resolve-Path -Path $gitRoot.Trim()).Path
+            }
+        } catch {
+            Write-Verbose ("git rev-parse failed: {0}" -f $_.Exception.Message)
+        }
+    }
+
+    return (Resolve-Path -Path (Join-Path $scriptRoot '..')).Path
 }
 
 function Resolve-VersionInput {
@@ -79,15 +105,14 @@ function Resolve-VersionInput {
 function Add-DeclaredVersion {
     param(
         [string]$Source,
-        [string]$VersionInput,
-        [string]$RepoRoot
+        [string]$VersionInput
     )
 
     if ([string]::IsNullOrWhiteSpace($VersionInput)) {
         return $null
     }
 
-    $info = Get-LabVIEWVersionInfo -VersionInput $VersionInput -RepoRoot $RepoRoot
+    $info = Get-LabVIEWVersionInfo -VersionInput $VersionInput
     return [pscustomobject]@{
         Source        = $Source
         Raw           = $info.Raw
@@ -138,6 +163,10 @@ function Write-VersionSummary {
     $lines | Out-File -FilePath $Path -Append -Encoding utf8
 }
 
+if ($EnforceProjectLvVersion -or -not [string]::IsNullOrWhiteSpace($ProjectPath)) {
+    Write-Verbose "Project contract parameters are deprecated and ignored. .lvversion is the only enforced version contract."
+}
+
 $repoRootResolved = Resolve-RepoRoot -Path $RepoRoot
 $versionHelper = Join-Path $repoRootResolved 'Tooling/support/LabVIEWVersion.ps1'
 if (-not (Test-Path -Path $versionHelper)) {
@@ -153,22 +182,22 @@ $repoMinor = [int]$repoInfo.MinorRevision
 $declared = @()
 
 if (-not [string]::IsNullOrWhiteSpace($ExpectedVersion)) {
-    $declared += Add-DeclaredVersion -Source 'expected' -VersionInput $ExpectedVersion -RepoRoot $repoRootResolved
+    $declared += Add-DeclaredVersion -Source 'expected' -VersionInput $ExpectedVersion
 }
 
 $requiredVersion = $env:LVIE_REQUIRED_LABVIEW_VERSION
 if (-not [string]::IsNullOrWhiteSpace($requiredVersion)) {
-    $declared += Add-DeclaredVersion -Source 'LVIE_REQUIRED_LABVIEW_VERSION' -VersionInput $requiredVersion -RepoRoot $repoRootResolved
+    $declared += Add-DeclaredVersion -Source 'LVIE_REQUIRED_LABVIEW_VERSION' -VersionInput $requiredVersion
 }
 
 $requiredFromParts = Resolve-VersionInput -Year $env:LVIE_REQUIRED_LABVIEW_VERSION_YEAR -Minor $env:LVIE_REQUIRED_LABVIEW_MINOR_REVISION
 if ($requiredFromParts) {
-    $declared += Add-DeclaredVersion -Source 'LVIE_REQUIRED_LABVIEW_VERSION_YEAR/MINOR' -VersionInput $requiredFromParts -RepoRoot $repoRootResolved
+    $declared += Add-DeclaredVersion -Source 'LVIE_REQUIRED_LABVIEW_VERSION_YEAR/MINOR' -VersionInput $requiredFromParts
 }
 
 $envFromParts = Resolve-VersionInput -Year $env:LABVIEW_VERSION_YEAR -Minor $env:LABVIEW_MINOR_REVISION
 if ($envFromParts) {
-    $declared += Add-DeclaredVersion -Source 'LABVIEW_VERSION_YEAR/MINOR' -VersionInput $envFromParts -RepoRoot $repoRootResolved
+    $declared += Add-DeclaredVersion -Source 'LABVIEW_VERSION_YEAR/MINOR' -VersionInput $envFromParts
 }
 
 $declared = $declared | Where-Object { $_ }

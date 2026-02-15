@@ -13,7 +13,6 @@
 
 .PARAMETER LabVIEWVersion
     LabVIEW version year (e.g., 2021) or numeric version (e.g., 21.0).
-    Alias: MinimumSupportedLVVersion.
 
 .PARAMETER SupportedBitness
     One or more bitness values ("32", "64") to run (default: both).
@@ -54,7 +53,6 @@ param(
     [string]$Mode,
 
     [Parameter(Mandatory = $false)]
-    [Alias('MinimumSupportedLVVersion')]
     [AllowNull()]
     [AllowEmptyString()]
     [string]$LabVIEWVersion = '',
@@ -95,6 +93,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$devModePolicyHelper = Join-Path $PSScriptRoot 'support\DevModePolicy.ps1'
+if (-not (Test-Path -LiteralPath $devModePolicyHelper -PathType Leaf)) {
+    throw "Dev mode policy helper not found: $devModePolicyHelper"
+}
+. $devModePolicyHelper
+Assert-DevModeInvocationBlocked -EntryPoint $PSCommandPath
+
 function Test-ForceNoLabVIEWDevMode {
     $value = $env:LVIE_FORCE_NO_LABVIEW_DEVMODE
     if ([string]::IsNullOrWhiteSpace($value)) {
@@ -109,14 +114,27 @@ function Resolve-RepoRoot {
         [string]$PathOverride
     )
 
-    if ($PathOverride) {
+    if (-not [string]::IsNullOrWhiteSpace($PathOverride)) {
         if (-not (Test-Path -Path $PathOverride)) {
             throw "RepoRoot does not exist: $PathOverride"
         }
         return (Resolve-Path -Path $PathOverride).Path
     }
 
-    return (Resolve-Path -Path (Join-Path $PSScriptRoot '..')).Path
+    $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $PSCommandPath }
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        try {
+            $gitRoot = git -C $scriptRoot rev-parse --show-toplevel 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRoot)) {
+                return (Resolve-Path -Path $gitRoot.Trim()).Path
+            }
+        } catch {
+            Write-Verbose ("git rev-parse failed: {0}" -f $_.Exception.Message)
+        }
+    }
+
+    return (Resolve-Path -Path (Join-Path $scriptRoot '..')).Path
 }
 
 function Resolve-LogPath {
@@ -145,7 +163,7 @@ if (Test-Path -Path $versionHelper) {
     $labviewYear = $versionInfo.Year
 }
 if ([string]::IsNullOrWhiteSpace($labviewYear)) {
-    $labviewYear = '2021'
+    throw "LabVIEW version could not be resolved. Check .lvversion."
 }
 
 if (Test-ForceNoLabVIEWDevMode) {
@@ -339,3 +357,4 @@ try {
     $logPath = Resolve-LogPath -ResolvedRepoRoot $resolvedRepoRoot -SnapshotRootResolved $snapshotRootResolved
     $toggleRecord | ConvertTo-Json -Depth 7 | Set-Content -Path $logPath -Encoding utf8
 }
+

@@ -1,0 +1,1323 @@
+name: CI Pipeline (No Smoke)
+run-name: "CI ${{ github.sha }} (#${{ github.run_id }}.${{ github.run_attempt }})"
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+
+env:
+  LVIE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+  LVIE_EXPECTED_RUNNER_LABEL: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+  LVIE_CANONICAL_RUNNER_LABEL: self-hosted-windows-lv
+  LVIE_FORCE_NO_LABVIEW_DEVMODE: 1
+  LVIE_RUNNER_ACL_CHECK: 1
+  LVIE_RUNNER_ACL_AUTOFIX: 1
+  LVIE_RUNNER_ACL_WARN_ONLY: 1
+  LVIE_REQUIRE_RUNNER_CLI: ${{ vars.LVIE_REQUIRE_RUNNER_CLI || '0' }}
+  LVIE_PYLAVI_BASELINE_PATH: ${{ vars.LVIE_PYLAVI_BASELINE_PATH || '' }}
+  LVIE_PYLAVI_BASELINE_REQUIRED: ${{ vars.LVIE_PYLAVI_BASELINE_REQUIRED || '0' }}
+  LVIE_PYLAVI_FAIL_ON_DELTA: ${{ vars.LVIE_PYLAVI_FAIL_ON_DELTA || '0' }}
+
+concurrency:
+  group: labview-${{ github.repository }}-${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+      - 456-2020-migration
+      - release/*
+      - feature/*
+      - hotfix/*
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+jobs:
+  # Stage 1: Run identity and companion CI context.
+  run-metadata:
+    name: Run Metadata
+    runs-on: ubuntu-latest
+    outputs:
+      run_uid: ${{ steps.meta.outputs.run_uid }}
+      sha: ${{ steps.meta.outputs.sha }}
+    steps:
+      - id: meta
+        name: Generate run manifest
+        shell: pwsh
+        run: |
+          $runId = '${{ github.run_id }}'
+          $runAttempt = '${{ github.run_attempt }}'
+          $sha = '${{ github.sha }}'
+          $ref = '${{ github.ref }}'
+          $headRef = '${{ github.head_ref }}'
+          $eventName = '${{ github.event_name }}'
+          $actor = '${{ github.actor }}'
+          $repo = '${{ github.repository }}'
+          $workflow = '${{ github.workflow }}'
+          $runUid = "{0}-{1}-{2}" -f $runId, $runAttempt, $sha
+
+          $manifest = [pscustomobject]@{
+            run_id        = $runId
+            run_attempt   = $runAttempt
+            run_uid       = $runUid
+            sha           = $sha
+            ref           = $ref
+            head_ref      = $headRef
+            event         = $eventName
+            actor         = $actor
+            repository    = $repo
+            workflow      = $workflow
+            timestamp_utc = (Get-Date).ToUniversalTime().ToString('o')
+          }
+
+          $path = Join-Path $env:RUNNER_TEMP 'run-manifest.json'
+          $manifest | ConvertTo-Json -Depth 6 | Out-File -FilePath $path -Encoding ascii
+          "run_uid=$runUid" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "sha=$sha" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "manifest_path=$path" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+      - name: Upload run manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-manifest
+          path: ${{ steps.meta.outputs.manifest_path }}
+
+  prerelease-context:
+    name: Pre-Release Context
+    needs: run-metadata
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.ctx.outputs.should_publish }}
+      publish_mode: ${{ steps.ctx.outputs.publish_mode }}
+      publish_reason: ${{ steps.ctx.outputs.publish_reason }}
+      ci_profile: ${{ steps.ctx.outputs.ci_profile }}
+      release_priority_mode: ${{ steps.ctx.outputs.release_priority_mode }}
+      bump_type_override: ${{ steps.ctx.outputs.bump_type_override }}
+      merged_pr_number: ${{ steps.ctx.outputs.merged_pr_number }}
+      bump_conflict: ${{ steps.ctx.outputs.bump_conflict }}
+      bump_conflict_labels: ${{ steps.ctx.outputs.bump_conflict_labels }}
+    steps:
+      - id: ctx
+        name: Resolve PR companion context
+        shell: pwsh
+        run: |
+          "should_publish=false" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "publish_mode=pull-request" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "publish_reason=no-smoke-validation-companion" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "ci_profile=pr-fast" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "release_priority_mode=false" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "bump_type_override=" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "merged_pr_number=" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "bump_conflict=false" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "bump_conflict_labels=" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+          @(
+            "Companion publish eligibility resolved."
+            "- should_publish=false"
+            "- ci_profile=pr-fast"
+            "- publish_reason=no-smoke-validation-companion"
+          ) | Out-File -FilePath $Env:GITHUB_STEP_SUMMARY -Append
+
+  version-gate:
+    name: LabVIEW Version Gate
+    needs: [run-metadata]
+    runs-on: ubuntu-latest
+    outputs:
+      raw: ${{ steps.lv.outputs.raw }}
+      year: ${{ steps.lv.outputs.year }}
+      minor: ${{ steps.lv.outputs.minor }}
+      numeric: ${{ steps.lv.outputs.numeric }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - id: lv
+        name: Assert .lvversion
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repoRoot = $env:GITHUB_WORKSPACE
+          $runnerCliProject = Join-Path $repoRoot 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+          $canUseRunnerCli = (Get-Command dotnet -ErrorAction SilentlyContinue) -and (Test-Path $runnerCliProject)
+          if ($canUseRunnerCli) {
+            Write-Host "Using runner-cli version-gate (RID-aware path discovery)."
+            dotnet build $runnerCliProject --configuration Release | Out-Host
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
+
+            $buildRoot = Join-Path (Split-Path $runnerCliProject) 'bin/Release'
+            $candidates = Get-ChildItem -Path $buildRoot -Recurse -File -Filter 'runner-cli.dll' -ErrorAction SilentlyContinue | Where-Object {
+              $_.FullName -match '[\\/]net8\.0([\\/]|$)' -or $_.FullName -match '[\\/]net8\.0-[^\\/]+[\\/]'
+            }
+            if (-not $candidates) {
+              throw "Runner CLI build succeeded but no runner-cli.dll was found under $buildRoot (expected net8.0* output)."
+            }
+
+            $preferredRid = 'linux-x64'
+            $ridPattern = "[\\/]{0}[\\/]" -f [regex]::Escape($preferredRid)
+            $preferredCandidates = $candidates | Where-Object { $_.FullName -match $ridPattern }
+            $selected = $preferredCandidates | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+            if (-not $selected) {
+              $selected = $candidates | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+            }
+            if (-not $selected) {
+              throw "Runner CLI candidate resolution failed unexpectedly under $buildRoot."
+            }
+
+            if ($candidates.Count -gt 1) {
+              $candidateList = ($candidates | Sort-Object FullName | ForEach-Object { " - $($_.FullName)" }) -join [Environment]::NewLine
+              Write-Host ("runner-cli.dll candidates:`n{0}" -f $candidateList)
+            }
+            $runnerCliDll = $selected.FullName
+            Write-Host ("Resolved runner-cli.dll: {0}" -f $runnerCliDll)
+
+            $json = & dotnet $runnerCliDll version-gate --repo-root $repoRoot --json
+            $exitCode = $LASTEXITCODE
+            if ($exitCode -ne 0) {
+              exit $exitCode
+            }
+            $info = $json | ConvertFrom-Json
+          } else {
+            if ($env:LVIE_REQUIRE_RUNNER_CLI -eq '1') {
+              throw "LVIE_REQUIRE_RUNNER_CLI=1 but runner-cli was not available."
+            }
+            Write-Warning "runner-cli unavailable; falling back to Assert-LabVIEWVersion.ps1."
+            $info = & "$repoRoot/Tooling/Assert-LabVIEWVersion.ps1" -RepoRoot $repoRoot -Context 'ci-version-gate' -WriteSummary
+          }
+          Write-Warning ("labview_version not provided; using .lvversion ({0})." -f $info.Raw)
+          "raw=$($info.Raw)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "year=$($info.Year)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "minor=$($info.MinorRevision)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "numeric=$($info.NumericVersion)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          Write-Host ("LabVIEW version gate passed: {0}" -f $info.Raw)
+
+  core-conformance-hosted-linux:
+    name: Core Conformance Evidence (Hosted Linux)
+    needs: [run-metadata, version-gate]
+    runs-on: ubuntu-latest
+    outputs:
+      evidence: ${{ steps.evidence.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - id: evidence
+        name: Run Core JSON checks (linux)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runnerCliProject = Join-Path $env:GITHUB_WORKSPACE 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+          if (-not (Test-Path $runnerCliProject)) {
+            throw "runner-cli project missing at $runnerCliProject"
+          }
+          dotnet build $runnerCliProject --configuration Release | Out-Host
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli build failed with exit code $LASTEXITCODE"
+          }
+
+          $buildRoot = Join-Path (Split-Path $runnerCliProject) 'bin/Release'
+          $candidates = Get-ChildItem -Path $buildRoot -Recurse -File -Filter 'runner-cli.dll' -ErrorAction SilentlyContinue | Where-Object {
+            $_.FullName -match '[\\/]net8\.0([\\/]|$)' -or $_.FullName -match '[\\/]net8\.0-[^\\/]+[\\/]'
+          }
+          if (-not $candidates) {
+            throw "runner-cli build succeeded but no runner-cli.dll was found under $buildRoot (expected net8.0* output)."
+          }
+
+          $preferredRid = 'linux-x64'
+          $ridPattern = "[\\/]{0}[\\/]" -f [regex]::Escape($preferredRid)
+          $preferredCandidates = $candidates | Where-Object { $_.FullName -match $ridPattern }
+          $selected = $preferredCandidates | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+          if (-not $selected) {
+            $selected = $candidates | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+          }
+          if (-not $selected) {
+            throw "runner-cli candidate resolution failed unexpectedly under $buildRoot."
+          }
+
+          if ($candidates.Count -gt 1) {
+            $candidateList = ($candidates | Sort-Object FullName | ForEach-Object { " - $($_.FullName)" }) -join [Environment]::NewLine
+            Write-Host ("runner-cli.dll candidates:`n{0}" -f $candidateList)
+          }
+          $cli = $selected.FullName
+          Write-Host ("Resolved runner-cli.dll: {0}" -f $cli)
+
+          $runUrl = "{0}/{1}/actions/runs/{2}" -f $env:GITHUB_SERVER_URL, $env:GITHUB_REPOSITORY, $env:GITHUB_RUN_ID
+          $evidence = "core-linux:{0}:attempt-{1}" -f $runUrl, $env:GITHUB_RUN_ATTEMPT
+          $versionOut = Join-Path $env:RUNNER_TEMP 'core-linux-version-gate.json'
+          $pylaviOut = Join-Path $env:RUNNER_TEMP 'core-linux-pylavi-summarize.json'
+          $evidenceOut = Join-Path $env:RUNNER_TEMP 'core-conformance-linux-evidence.json'
+
+          & dotnet $cli version-gate --repo-root $env:GITHUB_WORKSPACE --json | Out-File -FilePath $versionOut -Encoding utf8
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli version-gate failed with exit code $LASTEXITCODE"
+          }
+          & dotnet $cli pylavi summarize --path (Join-Path $env:GITHUB_WORKSPACE 'Tooling/pylavi/fixtures/pylavi-offenders.sample.json') --json | Out-File -FilePath $pylaviOut -Encoding utf8
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli pylavi summarize failed with exit code $LASTEXITCODE"
+          }
+
+          $payload = [ordered]@{
+            platform = 'linux'
+            run_url = $runUrl
+            evidence = $evidence
+            version_gate_json = $versionOut
+            pylavi_summarize_json = $pylaviOut
+          }
+          $payload | ConvertTo-Json -Depth 5 | Out-File -FilePath $evidenceOut -Encoding utf8
+          "value=$evidence" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+      - name: Upload Core conformance linux evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-conformance-linux-evidence
+          path: |
+            ${{ runner.temp }}/core-linux-version-gate.json
+            ${{ runner.temp }}/core-linux-pylavi-summarize.json
+            ${{ runner.temp }}/core-conformance-linux-evidence.json
+          if-no-files-found: error
+
+  core-conformance-hosted-windows:
+    name: Core Conformance Evidence (Hosted Windows)
+    needs: [run-metadata, version-gate]
+    runs-on: windows-latest
+    outputs:
+      evidence: ${{ steps.evidence.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - id: evidence
+        name: Run Core JSON checks (windows)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runnerCliProject = Join-Path $env:GITHUB_WORKSPACE 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+          if (-not (Test-Path $runnerCliProject)) {
+            throw "runner-cli project missing at $runnerCliProject"
+          }
+          dotnet build $runnerCliProject --configuration Release | Out-Host
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli build failed with exit code $LASTEXITCODE"
+          }
+
+          $buildRoot = Join-Path (Split-Path $runnerCliProject) 'bin/Release'
+          $candidates = Get-ChildItem -Path $buildRoot -Recurse -File -Filter 'runner-cli.dll' -ErrorAction SilentlyContinue | Where-Object {
+            $_.FullName -match '[\\/]net8\.0([\\/]|$)' -or $_.FullName -match '[\\/]net8\.0-[^\\/]+[\\/]'
+          }
+          if (-not $candidates) {
+            throw "runner-cli build succeeded but no runner-cli.dll was found under $buildRoot (expected net8.0* output)."
+          }
+
+          $preferredRid = 'win-x64'
+          $ridPattern = "[\\/]{0}[\\/]" -f [regex]::Escape($preferredRid)
+          $preferredCandidates = $candidates | Where-Object { $_.FullName -match $ridPattern }
+          $selected = $preferredCandidates | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+          if (-not $selected) {
+            $selected = $candidates | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+          }
+          if (-not $selected) {
+            throw "runner-cli candidate resolution failed unexpectedly under $buildRoot"
+          }
+          if ($candidates.Count -gt 1) {
+            $candidateList = ($candidates | Sort-Object FullName | ForEach-Object { " - $($_.FullName)" }) -join [Environment]::NewLine
+            Write-Host ("runner-cli.dll candidates:`n{0}" -f $candidateList)
+          }
+          $cli = $selected.FullName
+          Write-Host ("Resolved runner-cli.dll: {0}" -f $cli)
+
+          $runUrl = "{0}/{1}/actions/runs/{2}" -f $env:GITHUB_SERVER_URL, $env:GITHUB_REPOSITORY, $env:GITHUB_RUN_ID
+          $evidence = "core-windows:${runUrl}:attempt-$($env:GITHUB_RUN_ATTEMPT)"
+          $versionOut = Join-Path $env:RUNNER_TEMP 'core-windows-version-gate.json'
+          $pylaviOut = Join-Path $env:RUNNER_TEMP 'core-windows-pylavi-summarize.json'
+          $evidenceOut = Join-Path $env:RUNNER_TEMP 'core-conformance-windows-evidence.json'
+          & dotnet $cli version-gate --repo-root $env:GITHUB_WORKSPACE --json | Out-File -FilePath $versionOut -Encoding utf8
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli version-gate failed with exit code $LASTEXITCODE"
+          }
+          $sample = Join-Path $env:GITHUB_WORKSPACE 'Tooling/pylavi/fixtures/pylavi-offenders.sample.json'
+          & dotnet $cli pylavi summarize --path $sample --json | Out-File -FilePath $pylaviOut -Encoding utf8
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli pylavi summarize failed with exit code $LASTEXITCODE"
+          }
+          $payload = [ordered]@{
+            platform = 'windows'
+            run_url = $runUrl
+            evidence = $evidence
+            version_gate_json = $versionOut
+            pylavi_summarize_json = $pylaviOut
+          }
+          $payload | ConvertTo-Json -Depth 5 | Out-File -FilePath $evidenceOut -Encoding utf8
+          "value=$evidence" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+      - name: Upload Core conformance windows evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-conformance-windows-evidence
+          path: |
+            ${{ runner.temp }}/core-windows-version-gate.json
+            ${{ runner.temp }}/core-windows-pylavi-summarize.json
+            ${{ runner.temp }}/core-conformance-windows-evidence.json
+          if-no-files-found: error
+
+  conformance-full:
+    name: Conformance Check (Full, Strict)
+    needs: [run-metadata, core-conformance-hosted-linux, core-conformance-hosted-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Run full conformance gate
+        shell: pwsh
+        env:
+          RC_HOSTED_LINUX_EVIDENCE: ${{ needs.core-conformance-hosted-linux.outputs.evidence }}
+          RC_HOSTED_WINDOWS_EVIDENCE: ${{ needs.core-conformance-hosted-windows.outputs.evidence }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runnerCliProject = Join-Path $env:GITHUB_WORKSPACE 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+          if (-not (Test-Path $runnerCliProject)) {
+            throw "runner-cli project missing at $runnerCliProject"
+          }
+          dotnet build $runnerCliProject --configuration Release | Out-Host
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli build failed with exit code $LASTEXITCODE"
+          }
+
+          $buildRoot = Join-Path (Split-Path $runnerCliProject) 'bin/Release'
+          $candidates = Get-ChildItem -Path $buildRoot -Recurse -File -Filter 'runner-cli.dll' -ErrorAction SilentlyContinue | Where-Object {
+            $_.FullName -match '[\\/]net8\.0([\\/]|$)' -or $_.FullName -match '[\\/]net8\.0-[^\\/]+[\\/]'
+          }
+          if (-not $candidates) {
+            throw "runner-cli build succeeded but no runner-cli.dll was found under $buildRoot (expected net8.0* output)."
+          }
+
+          $preferredRid = 'linux-x64'
+          $ridPattern = "[\\/]{0}[\\/]" -f [regex]::Escape($preferredRid)
+          $preferredCandidates = $candidates | Where-Object { $_.FullName -match $ridPattern }
+          $selected = $preferredCandidates | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+          if (-not $selected) {
+            $selected = $candidates | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+          }
+          if (-not $selected) {
+            throw "runner-cli candidate resolution failed unexpectedly under $buildRoot"
+          }
+          if ($candidates.Count -gt 1) {
+            $candidateList = ($candidates | Sort-Object FullName | ForEach-Object { " - $($_.FullName)" }) -join [Environment]::NewLine
+            Write-Host ("runner-cli.dll candidates:`n{0}" -f $candidateList)
+          }
+          $cli = $selected.FullName
+          Write-Host ("Resolved runner-cli.dll: {0}" -f $cli)
+
+          $outDir = Join-Path $env:RUNNER_TEMP 'conformance-full'
+          New-Item -Path $outDir -ItemType Directory -Force | Out-Null
+          $jsonPath = Join-Path $outDir 'conformance-full.json'
+          $json = & dotnet $cli conformance check --profile full --json --strict --repo-root $env:GITHUB_WORKSPACE
+          $exitCode = $LASTEXITCODE
+          $json | Out-File -FilePath $jsonPath -Encoding utf8
+          if ($exitCode -ne 0) {
+            throw "runner-cli conformance check failed with exit code $exitCode"
+          }
+          $result = $json | ConvertFrom-Json
+          Write-Host ("Conformance profile: {0}" -f $result.profile)
+          Write-Host ("Conformance totals: total={0}, pass={1}, warn={2}, fail={3}" -f $result.summary.total, $result.summary.pass, $result.summary.warn, $result.summary.fail)
+      - name: Upload full conformance artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: conformance-full
+          path: ${{ runner.temp }}/conformance-full/conformance-full.json
+          if-no-files-found: error
+
+  powershell-lint:
+    name: PowerShell Lint
+    needs: run-metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Guard PSScriptAnalyzer baseline
+        shell: pwsh
+        env:
+          ALLOW_BASELINE_UPDATE: ${{ github.event.inputs.allow_baseline_update }}
+        run: |
+          $baselinePath = 'Tooling/PSScriptAnalyzerBaseline.json'
+          $eventName = '${{ github.event_name }}'
+          $branchName = if ($eventName -eq 'pull_request') { '${{ github.head_ref }}' } else { '${{ github.ref_name }}' }
+          $allowInput = $env:ALLOW_BASELINE_UPDATE -eq 'true'
+          $allowBranch = $branchName -match '^lint-baseline/' -or $branchName -match '^chore/lint-baseline/'
+          if ($allowInput -or $allowBranch) {
+            Write-Host ("Baseline guard: update allowed (allow_input={0}, branch={1})." -f $allowInput, $branchName)
+            exit 0
+          }
+
+          $baseSha = if ($eventName -eq 'pull_request') { '${{ github.event.pull_request.base.sha }}' } else { '${{ github.event.before }}' }
+          $headSha = '${{ github.sha }}'
+          if ([string]::IsNullOrWhiteSpace($baseSha) -or $baseSha -eq '0000000000000000000000000000000000000000') {
+            $revList = @(git rev-list --max-count=2 $headSha)
+            if ($revList.Count -gt 1) { $baseSha = $revList[1] }
+          }
+          if ([string]::IsNullOrWhiteSpace($baseSha)) {
+            throw "Baseline guard: unable to determine base commit for comparison."
+          }
+
+          $baselineInBase = & git ls-tree -r --name-only $baseSha -- $baselinePath
+          if (-not $baselineInBase) {
+            Write-Host ("Baseline guard: baseline missing in base {0}; allowing initial baseline addition." -f $baseSha)
+            exit 0
+          }
+
+          $changed = git diff --name-only $baseSha $headSha -- $baselinePath
+          if ($changed) {
+            throw ("PSScriptAnalyzer baseline change detected in {0}. Use branch prefix 'lint-baseline/' or workflow_dispatch input allow_baseline_update=true." -f $baselinePath)
+          }
+
+          Write-Host "Baseline guard: no changes detected."
+      - name: Validate path root contract
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-PathContract.ps1" -WriteSummary
+      - name: Validate CI selector/dev-mode contract
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-CiPipelineSelectorDevModeContract.ps1" -Scope ci-only -WriteSummary
+      - name: Validate solo-maintainer workflow contract
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-SoloMaintainerWorkflowContract.ps1" -WriteSummary
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force -AllowClobber
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Invoke-PSScriptAnalyzer.ps1" -WriteSummary
+
+  vip-prerelease-requirements-lint:
+    name: VIP Prerelease Requirements Lint
+    needs: run-metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Lint VIP prerelease requirements v1
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-VipPrereleaseRequirementsV1.ps1" -WriteSummary
+      - name: Upload VIP prerelease requirements lint status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vip-prerelease-requirements-lint
+          path: builds/status/vip-prerelease-requirements-lint.json
+          if-no-files-found: error
+
+  pylavi-validate:
+    name: Validate LabVIEW Files (pylavi, report-only)
+    needs: [run-metadata, version-gate]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Run vi_validate (strict, report-only)
+        uses: ./.github/actions/pylavi-validate
+        with:
+          config_path: Tooling/pylavi/vi-validate.yml
+          label: strict
+          log_name: pylavi-validate-strict-log
+          report_only: 'true'
+          absolute_roots: ${{ vars.LVIE_PYLAVI_ABSOLUTE_PATH_ROOTS }}
+      - name: Run vi_validate (legacy, report-only)
+        uses: ./.github/actions/pylavi-validate
+        with:
+          config_path: Tooling/pylavi/vi-validate-legacy.yml
+          label: legacy
+          log_name: pylavi-validate-legacy-log
+          report_only: 'true'
+          absolute_roots: ${{ vars.LVIE_PYLAVI_ABSOLUTE_PATH_ROOTS }}
+
+  # Stage 2: Baseline hosted/static checks.
+
+  changes:
+    name: Detect VIPC changes
+    needs: [run-metadata, version-gate]
+    runs-on: ubuntu-latest
+    env:
+      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
+      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
+      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
+    outputs:
+      vipc: ${{ steps.filter.outputs.vipc }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Runner sanity
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE\\Tooling\\Check-Runner.ps1" -SafeDirectoryScope System
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            vipc:
+              - '**/*.vipc'
+
+  version:
+    name: Compute Version
+    needs: [run-metadata, version-gate, prerelease-context]
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    env:
+      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
+      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
+      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
+      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
+    outputs:
+      VERSION:       ${{ steps.compute.outputs.VERSION }}
+      MAJOR:         ${{ steps.compute.outputs.MAJOR }}
+      MINOR:         ${{ steps.compute.outputs.MINOR }}
+      PATCH:         ${{ steps.compute.outputs.PATCH }}
+      BUILD:         ${{ steps.compute.outputs.BUILD }}
+      IS_PRERELEASE: ${{ steps.compute.outputs.IS_PRERELEASE }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Job setup
+        uses: ./.github/actions/lvie-job-setup
+        with:
+          checkout: 'false'
+          create_worktree: 'false'
+      - name: Fail on conflicting merged PR release labels
+        if: ${{ needs.prerelease-context.outputs.bump_conflict == 'true' }}
+        shell: pwsh
+        run: |
+          $labels = '${{ needs.prerelease-context.outputs.bump_conflict_labels }}'
+          $prNumber = '${{ needs.prerelease-context.outputs.merged_pr_number }}'
+          if ([string]::IsNullOrWhiteSpace($prNumber)) {
+            throw ("Conflicting merged PR release labels detected: {0}" -f $labels)
+          }
+          throw ("Conflicting merged PR release labels detected on merged PR #{0}: {1}" -f $prNumber, $labels)
+      - id: compute
+        uses: ./.github/actions/compute-version
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          bump_type_override: ${{ needs.prerelease-context.outputs.bump_type_override }}
+      - name: Job teardown
+        if: always()
+        uses: ./.github/actions/lvie-job-teardown
+        with:
+          cleanup_worktree: 'false'
+
+  # Stage 3: Self-hosted LabVIEW validation/build chain (profile-gated).
+
+  unit-tests:
+    name: Test Source Using LV ${{ matrix.bitness }}-bit
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+    needs: [run-metadata, prerelease-context, version-gate, changes]
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    env:
+      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
+      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
+      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
+      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        bitness: ${{ fromJson('["64"]') }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Job setup
+        uses: ./.github/actions/lvie-job-setup
+        with:
+          checkout: 'false'
+          bitness: ${{ matrix.bitness }}
+          create_worktree: 'true'
+          worktree_root_mode: runner_temp
+      - name: Test Source Using LV ${{ matrix.bitness }}-bit
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          $reportPath = Join-Path $env:REPO_ROOT '.github/actions/run-unit-tests/UnitTestReport.xml'
+          if (Test-Path -Path $reportPath) {
+            Remove-Item -Path $reportPath -Force -ErrorAction SilentlyContinue
+          }
+
+          & g-cli --lv-ver $env:LABVIEW_VERSION_YEAR --arch ${{ matrix.bitness }} lunit -- -r $reportPath "$env:PROJECT_PATH"
+          $gcliExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+          Write-Host ("g-cli lunit exit code: {0}" -f $gcliExitCode)
+
+          & pwsh -NoProfile -File ".github/actions/run-unit-tests/RunUnitTests.ps1" `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
+            -SupportedBitness ${{ matrix.bitness }} `
+            -ReportPath $reportPath
+          $parserExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+          Write-Host ("RunUnitTests parser exit code: {0}" -f $parserExitCode)
+
+          if ($gcliExitCode -ne 0) {
+            exit $gcliExitCode
+          }
+
+          exit $parserExitCode
+      - name: Summarize unit-test executor
+        if: always()
+        shell: pwsh
+        run: |
+          $summaryLine = "- Unit Tests (LV {0}-bit): LUnit executor = g-cli" -f '${{ matrix.bitness }}'
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summaryLine
+      - name: Upload unit test report (LV ${{ matrix.bitness }}-bit)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-tests-${{ matrix.bitness }}-bit-report
+          path: ${{ env.REPO_ROOT }}/.github/actions/run-unit-tests/UnitTestReport.xml
+          if-no-files-found: warn
+      - name: Job teardown
+        if: always()
+        uses: ./.github/actions/lvie-job-teardown
+        with:
+          revert_bitness: ${{ matrix.bitness }}
+          close_labview: 'true'
+          close_bitness: ${{ matrix.bitness }}
+
+  build-ppl-x86:
+    name: Build 32-bit Packed Library
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+    needs: [run-metadata, prerelease-context, version-gate, build-ppl-x64, version]
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    env:
+      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
+      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
+      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
+      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Job setup
+        uses: ./.github/actions/lvie-job-setup
+        with:
+          checkout: 'false'
+          bitness: 32
+          create_worktree: 'true'
+          worktree_root_mode: runner_temp
+      - name: Build PPL (LV 32-bit)
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          & ".github/actions/build-lvlibp/BuildProjectSpec.ps1" `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
+            -SupportedBitness 32 `
+            -RepoRoot "$env:REPO_ROOT" `
+            -Major ${{ needs.version.outputs.MAJOR }} `
+            -Minor ${{ needs.version.outputs.MINOR }} `
+            -Patch ${{ needs.version.outputs.PATCH }} `
+            -Build ${{ needs.version.outputs.BUILD }} `
+            -Commit "${{ github.sha }}"
+      - name: Rename PPL (LV 32-bit)
+        shell: pwsh
+        run: |
+          & "$env:REPO_ROOT\\.github\\actions\\rename-file\\Rename-file.ps1" `
+            -CurrentFilename "$env:REPO_ROOT\\resource\\plugins\\lv_icon.lvlibp" `
+            -NewFilename "$env:REPO_ROOT\\resource\\plugins\\lv_icon_x86.lvlibp"
+      - name: Upload packed library artifact (32-bit)
+        uses: actions/upload-artifact@v4
+        with:
+          name: lv_icon_x86.lvlibp
+          path: ${{ env.REPO_ROOT }}/resource/plugins/lv_icon_x86.lvlibp
+      - name: Job teardown
+        if: always()
+        uses: ./.github/actions/lvie-job-teardown
+        with:
+          revert_bitness: 32
+          close_labview: 'true'
+          close_bitness: 32
+
+  build-ppl-x64:
+    name: Build 64-bit Packed Library
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+    needs: [run-metadata, prerelease-context, version-gate, unit-tests, version]
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    env:
+      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
+      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
+      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
+      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Job setup
+        uses: ./.github/actions/lvie-job-setup
+        with:
+          checkout: 'false'
+          bitness: 64
+          create_worktree: 'true'
+          worktree_root_mode: runner_temp
+      - name: Build PPL (LV 64-bit)
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          & ".github/actions/build-lvlibp/BuildProjectSpec.ps1" `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
+            -SupportedBitness 64 `
+            -RepoRoot "$env:REPO_ROOT" `
+            -Major ${{ needs.version.outputs.MAJOR }} `
+            -Minor ${{ needs.version.outputs.MINOR }} `
+            -Patch ${{ needs.version.outputs.PATCH }} `
+            -Build ${{ needs.version.outputs.BUILD }} `
+            -Commit "${{ github.sha }}"
+      - name: Rename PPL (LV 64-bit)
+        shell: pwsh
+        run: |
+          & "$env:REPO_ROOT\\.github\\actions\\rename-file\\Rename-file.ps1" `
+            -CurrentFilename "$env:REPO_ROOT\\resource\\plugins\\lv_icon.lvlibp" `
+            -NewFilename "$env:REPO_ROOT\\resource\\plugins\\lv_icon_x64.lvlibp"
+      - name: Upload packed library artifact (64-bit)
+        uses: actions/upload-artifact@v4
+        with:
+          name: lv_icon_x64.lvlibp
+          path: ${{ env.REPO_ROOT }}/resource/plugins/lv_icon_x64.lvlibp
+      - name: Job teardown
+        if: always()
+        uses: ./.github/actions/lvie-job-teardown
+        with:
+          revert_bitness: 64
+          close_labview: 'true'
+          close_bitness: 64
+
+  build-vip:
+    name: Build VI Package
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+    # Chain after 32-bit PPL build (which depends on 64-bit PPL build).
+    needs: [run-metadata, prerelease-context, version-gate, build-ppl-x86, version]
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    outputs:
+      vip_status_exists: ${{ steps.vip-status.outputs.exists }}
+      vip_artifact_name: ${{ steps.locate-vip.outputs.vip_artifact }}
+      vip_file_name: ${{ steps.locate-vip.outputs.vip_name }}
+      release_notes_artifact_name: ${{ steps.release-notes.outputs.artifact_name }}
+      release_notes_file_name: ${{ steps.release-notes.outputs.asset_name }}
+    env:
+      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
+      LVIE_VIPM_TIMEOUT_SECONDS: 900
+      LVIE_VIPM_MAX_ATTEMPTS: 2
+      LVIE_VIPM_RETRY_DELAY_SECONDS: 30
+      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
+      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
+      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Job setup
+        uses: ./.github/actions/lvie-job-setup
+        with:
+          checkout: 'false'
+          bitness: 64
+          create_worktree: 'true'
+          worktree_root_mode: runner_temp
+      - name: Generate release notes
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          & ".github/actions/generate-release-notes/GenerateReleaseNotes.ps1" -OutputPath "Tooling/deployment/release_notes.md"
+      - uses: actions/download-artifact@v4
+        with:
+          name: lv_icon_x86.lvlibp
+          path: ${{ env.REPO_ROOT }}/resource/plugins
+      - uses: actions/download-artifact@v4
+        with:
+          name: lv_icon_x64.lvlibp
+          path: ${{ env.REPO_ROOT }}/resource/plugins
+      - name: Generate display information JSON
+        id: display-info
+        shell: pwsh
+        env:
+          RELEASE_NOTES_PATH: ${{ env.REPO_ROOT }}/Tooling/deployment/release_notes.md
+          REPO_NAME: ${{ github.event.repository.name }}
+          REPO_DESCRIPTION: ${{ github.event.repository.description }}
+          REPO_URL: ${{ github.event.repository.html_url }}
+          COMPANY: ${{ github.repository_owner }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          $releaseNotes = if (Test-Path $Env:RELEASE_NOTES_PATH) {
+            Get-Content -Raw -Path $Env:RELEASE_NOTES_PATH
+          } else {
+            "Release notes file not generated."
+          }
+
+          $productName = if ([string]::IsNullOrWhiteSpace($Env:REPO_NAME)) {
+            $Env:REPOSITORY
+          } else {
+            $Env:REPO_NAME
+          }
+
+          $description = if ([string]::IsNullOrWhiteSpace($Env:REPO_DESCRIPTION)) {
+            "$($Env:REPO_NAME) VI Package build for $($Env:REPOSITORY)."
+          } else {
+            $Env:REPO_DESCRIPTION
+          }
+
+          $info = @{
+            "Package Version" = @{
+              "major" = ${{ needs.version.outputs.MAJOR }}
+              "minor" = ${{ needs.version.outputs.MINOR }}
+              "patch" = ${{ needs.version.outputs.PATCH }}
+              "build" = ${{ needs.version.outputs.BUILD }}
+            }
+            "Product Name" = $productName
+            "Company Name" = $Env:COMPANY
+            "Author Name (Person or Company)" = $Env:REPOSITORY
+            "Product Homepage (URL)" = if ([string]::IsNullOrWhiteSpace($Env:REPO_URL)) {
+              "https://github.com/$($Env:REPOSITORY)"
+            } else {
+              $Env:REPO_URL
+            }
+            "Legal Copyright" = "? $(Get-Date -Format yyyy) $($Env:COMPANY)"
+            "Product Description Summary" = $description
+            "Product Description" = $description
+            "Release Notes - Change Log" = $releaseNotes
+          }
+
+          $json = $info | ConvertTo-Json -Depth 5 -Compress
+          "json=$json" >> $Env:GITHUB_OUTPUT
+      - name: Modify VIPB display info (LV 64-bit)
+        shell: pwsh
+        env:
+          DISPLAY_INFORMATION_JSON: |
+            ${{ steps.display-info.outputs.json }}
+        run: |
+          $displayInformationJson = $Env:DISPLAY_INFORMATION_JSON
+          & "$env:REPO_ROOT\\.github\\actions\\modify-vipb-display-info\\ModifyVIPBDisplayInfo.ps1" `
+            -SupportedBitness 64 `
+            -RepoRoot "$env:REPO_ROOT" `
+            -VIPBPath "Tooling/deployment/NI Icon editor.vipb" `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWMinorRevision $env:LABVIEW_MINOR_REVISION `
+            -Major ${{ needs.version.outputs.MAJOR }} `
+            -Minor ${{ needs.version.outputs.MINOR }} `
+            -Patch ${{ needs.version.outputs.PATCH }} `
+            -Build ${{ needs.version.outputs.BUILD }} `
+            -Commit "${{ github.sha }}" `
+            -ReleaseNotesFile "$env:REPO_ROOT\\Tooling\\deployment\\release_notes.md" `
+            -DisplayInformationJSON $displayInformationJson
+      - name: Build VI Package (LV 64-bit)
+        shell: pwsh
+        env:
+          DISPLAY_INFORMATION_JSON: |
+            ${{ steps.display-info.outputs.json }}
+        run: |
+          $displayInformationJson = $Env:DISPLAY_INFORMATION_JSON
+          & "$env:REPO_ROOT\\Tooling\\Invoke-VipBuild.ps1" `
+            -SupportedBitness 64 `
+            -RepoRoot "$env:REPO_ROOT" `
+            -VIPBPath "Tooling/deployment/NI Icon editor.vipb" `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWMinorRevision $env:LABVIEW_MINOR_REVISION `
+            -Major ${{ needs.version.outputs.MAJOR }} `
+            -Minor ${{ needs.version.outputs.MINOR }} `
+            -Patch ${{ needs.version.outputs.PATCH }} `
+            -Build ${{ needs.version.outputs.BUILD }} `
+            -Commit "${{ github.sha }}" `
+            -ReleaseNotesFile "$env:REPO_ROOT\\Tooling\\deployment\\release_notes.md" `
+            -DisplayInformationJSON $displayInformationJson `
+            -VipmTimeoutSeconds $env:LVIE_VIPM_TIMEOUT_SECONDS
+      - name: Check VIP build status file
+        id: vip-status
+        shell: pwsh
+        run: |
+          $statusRoot = if (-not [string]::IsNullOrWhiteSpace($env:LVIE_ARTIFACT_ROOT)) { $env:LVIE_ARTIFACT_ROOT } else { $env:REPO_ROOT }
+          $statusPath = Join-Path $statusRoot 'builds/status/vip-build.json'
+          $exists = Test-Path -Path $statusPath
+          "exists=$($exists.ToString().ToLowerInvariant())" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+      - name: Upload VIP build status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vip-build-status
+          path: ${{ env.LVIE_ARTIFACT_ROOT || env.REPO_ROOT }}/builds/status/vip-build.json
+          if-no-files-found: warn
+      - name: Prepare release notes artifact
+        id: release-notes
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $source = "$env:REPO_ROOT\\Tooling\\deployment\\release_notes.md"
+          if (-not (Test-Path $source)) {
+            Write-Error "Release notes file not found at $source."
+            exit 1
+          }
+
+          $version = "{0}.{1}.{2}.{3}" -f "${{ needs.version.outputs.MAJOR }}", "${{ needs.version.outputs.MINOR }}", "${{ needs.version.outputs.PATCH }}", "${{ needs.version.outputs.BUILD }}"
+          $destName = "release_notes_{0}.md" -f $version
+          $artifactName = "release_notes_{0}" -f $version
+          $destPath = Join-Path -Path (Split-Path -Parent $source) -ChildPath $destName
+
+          Copy-Item -LiteralPath $source -Destination $destPath -Force
+          Write-Host ("Release notes artifact prepared at {0}" -f $destPath)
+
+          "artifact_path=$destPath" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "artifact_name=$artifactName" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "asset_name=$destName" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+      - name: Locate built VI package
+        id: locate-vip
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vipDir = Join-Path -Path $env:REPO_ROOT -ChildPath "builds/VI Package"
+          if (-not (Test-Path $vipDir)) {
+            Write-Error "VI Package directory not found at '$vipDir'."
+            exit 1
+          }
+
+          $vipFiles = Get-ChildItem -Path $vipDir -Filter *.vip -File -Recurse | Sort-Object LastWriteTime -Descending
+          if (-not $vipFiles) {
+            Write-Error "No .vip file found under '$vipDir'."
+            exit 1
+          }
+
+          if ($vipFiles.Count -gt 1) {
+            Write-Warning ("Multiple .vip files found; selecting most recent (by LastWriteTime). Files:`n{0}" -f ($vipFiles | ForEach-Object { " - $($_.FullName)" } | Out-String))
+          }
+
+          $vip = $vipFiles[0]
+          Write-Host ("Selected .vip: {0}" -f $vip.FullName)
+
+          "vip_path=$($vip.FullName)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "vip_name=$($vip.Name)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "vip_artifact=$([System.IO.Path]::GetFileNameWithoutExtension($vip.Name))" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+      - name: Inspect VI Package contents (zip paths)
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:REPO_ROOT\\Tooling\\Inspect-VipPackage.ps1" `
+            -VipPath "${{ steps.locate-vip.outputs.vip_path }}" `
+            -WriteSummary
+      - name: Upload release notes
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.release-notes.outputs.artifact_name }}
+          path: ${{ steps.release-notes.outputs.artifact_path }}
+          compression-level: 0
+          if-no-files-found: error
+      - name: Upload VI Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.locate-vip.outputs.vip_artifact }}
+          path: ${{ steps.locate-vip.outputs.vip_path }}
+          if-no-files-found: error
+      - name: Ensure LabVIEWCLI logs evidence exists
+        if: always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $logsDir = Join-Path $env:REPO_ROOT 'builds/logs'
+          New-Item -Path $logsDir -ItemType Directory -Force | Out-Null
+
+          $existingFiles = Get-ChildItem -Path $logsDir -Recurse -File -ErrorAction SilentlyContinue
+          if (-not $existingFiles) {
+            $placeholderPath = Join-Path $logsDir 'labviewcli-logs-placeholder.txt'
+            $runUrl = "{0}/{1}/actions/runs/{2}" -f $env:GITHUB_SERVER_URL, $env:GITHUB_REPOSITORY, $env:GITHUB_RUN_ID
+            @(
+              'No LabVIEWCLI log files were produced by this run.'
+              'This placeholder preserves the prerelease labviewcli-logs asset contract.'
+              ("Run URL: {0}" -f $runUrl)
+              ("Generated UTC: {0}" -f (Get-Date).ToUniversalTime().ToString('o'))
+            ) | Out-File -FilePath $placeholderPath -Encoding utf8
+            Write-Host ("Created LabVIEWCLI logs placeholder at {0}" -f $placeholderPath)
+          }
+      - name: Upload LabVIEWCLI logs (if present)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labviewcli-logs
+          path: ${{ env.REPO_ROOT }}/builds/logs
+          if-no-files-found: error
+      - name: Validate tag matches computed version (if provided)
+        if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.dispatch_tag != ''
+        shell: pwsh
+        env:
+          EXPECTED_TAG: v${{ needs.version.outputs.MAJOR }}.${{ needs.version.outputs.MINOR }}.${{ needs.version.outputs.PATCH }}.${{ needs.version.outputs.BUILD }}
+          REF_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          INPUT_TAG: ${{ github.event.inputs.dispatch_tag || '' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $provided = if (-not [string]::IsNullOrWhiteSpace($Env:INPUT_TAG)) { $Env:INPUT_TAG } else { $Env:REF_TAG }
+          if ([string]::IsNullOrWhiteSpace($provided)) {
+            Write-Host 'No tag provided; skipping validation.'
+            exit 0
+          }
+          if ($provided -ne $Env:EXPECTED_TAG) {
+            Write-Error ("Provided tag '{0}' does not match computed tag '{1}'." -f $provided, $Env:EXPECTED_TAG)
+          } else {
+            Write-Host ("Tag validation ok: {0}" -f $provided)
+          }
+      - name: Job teardown
+        if: always()
+        uses: ./.github/actions/lvie-job-teardown
+        with:
+          close_labview: 'true'
+          close_bitness: 64
+
+  codex-skill-layer-asset:
+    name: Resolve Codex Skill Layer Asset
+    needs: [run-metadata, prerelease-context]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      artifact_name: ${{ steps.meta.outputs.artifact_name }}
+      asset_file_name: ${{ steps.meta.outputs.asset_file_name }}
+    steps:
+      - id: meta
+        name: Resolve artifact metadata
+        shell: pwsh
+        run: |
+          "artifact_name=codex-skill-layer" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "asset_file_name=lvie-codex-skill-layer.zip" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+      - name: Checkout code
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        uses: actions/checkout@v4
+
+      - id: resolve
+        name: Download and validate pinned skill layer
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $lockPath = Join-Path $env:GITHUB_WORKSPACE 'Tooling/codex-skill-layer.lock.json'
+          if (-not (Test-Path -Path $lockPath -PathType Leaf)) {
+            throw "Codex skill lock file not found: $lockPath"
+          }
+
+          $lock = Get-Content -Raw -Path $lockPath | ConvertFrom-Json
+          foreach ($key in @('repo', 'tag', 'asset_name', 'sha256', 'required_files', 'license_spdx')) {
+            if (-not ($lock.PSObject.Properties.Name -contains $key)) {
+              throw "Codex skill lock file is missing required key '$key'."
+            }
+          }
+
+          $destDir = Join-Path $env:RUNNER_TEMP 'prerelease-codex-skill-layer'
+          New-Item -Path $destDir -ItemType Directory -Force | Out-Null
+
+          gh release download $lock.tag --repo $lock.repo --pattern $lock.asset_name --dir $destDir --clobber
+          if ($LASTEXITCODE -ne 0) {
+            throw ("Failed to download codex skill layer asset '{0}' from {1} tag {2}." -f $lock.asset_name, $lock.repo, $lock.tag)
+          }
+
+          $assetPath = Join-Path $destDir $lock.asset_name
+          if (-not (Test-Path -Path $assetPath -PathType Leaf)) {
+            throw "Downloaded codex skill layer asset is missing at $assetPath"
+          }
+
+          $actualHash = (Get-FileHash -Path $assetPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expectedHash = ([string]$lock.sha256).ToLowerInvariant()
+          if ($actualHash -ne $expectedHash) {
+            throw ("Codex skill layer hash mismatch. expected={0} actual={1}" -f $expectedHash, $actualHash)
+          }
+
+          $extractDir = Join-Path $destDir 'extract'
+          Expand-Archive -Path $assetPath -DestinationPath $extractDir -Force
+
+          $manifestPath = Join-Path $extractDir 'manifest.json'
+          if (-not (Test-Path -Path $manifestPath -PathType Leaf)) {
+            throw "Codex skill layer manifest missing: $manifestPath"
+          }
+
+          $manifest = Get-Content -Raw -Path $manifestPath | ConvertFrom-Json
+          if ([string]::IsNullOrWhiteSpace([string]$manifest.license_spdx) -or [string]$manifest.license_spdx -ne [string]$lock.license_spdx) {
+            throw ("Codex skill layer license mismatch. expected={0} actual={1}" -f [string]$lock.license_spdx, [string]$manifest.license_spdx)
+          }
+
+          foreach ($relative in @($lock.required_files)) {
+            $requiredPath = Join-Path $extractDir ([string]$relative)
+            if (-not (Test-Path -Path $requiredPath)) {
+              throw ("Codex skill layer required file missing: {0}" -f $relative)
+            }
+          }
+
+          "asset_path=$assetPath" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+      - name: Upload codex skill layer artifact
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.artifact_name }}
+          path: ${{ steps.resolve.outputs.asset_path }}
+          if-no-files-found: error
+
+  pipeline-contract:
+    name: Pipeline Contract
+    if: always()
+    needs:
+      - run-metadata
+      - prerelease-context
+      - version-gate
+      - powershell-lint
+      - vip-prerelease-requirements-lint
+      - pylavi-validate
+      - changes
+      - unit-tests
+      - build-ppl-x64
+      - build-ppl-x86
+      - build-vip
+      - codex-skill-layer-asset
+      - version
+      - conformance-full
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download VIP build status (if available)
+        if: ${{ needs.build-vip.outputs.vip_status_exists == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: vip-build-status
+          path: vip-build-status
+      - name: Validate required jobs
+        shell: pwsh
+        run: |
+          $requiredCommon = @(
+            'run-metadata',
+            'prerelease-context',
+            'version-gate',
+            'powershell-lint',
+            'vip-prerelease-requirements-lint',
+            'pylavi-validate',
+            'codex-skill-layer-asset',
+            'version',
+            'conformance-full'
+          )
+          $requiredFullValidation = @(
+            'changes',
+            'unit-tests',
+            'build-ppl-x64',
+            'build-ppl-x86',
+            'build-vip'
+          )
+          $requiredByProfile = @{
+            'full' = @($requiredCommon + $requiredFullValidation)
+            'pr-fast' = @($requiredCommon + $requiredFullValidation)
+            'release-priority' = @($requiredCommon + $requiredFullValidation)
+          }
+
+          $ciProfile = '${{ needs.prerelease-context.outputs.ci_profile }}'
+          if ([string]::IsNullOrWhiteSpace($ciProfile)) {
+            Write-Warning 'ci_profile output was empty; defaulting to pr-fast profile contract.'
+            $ciProfile = 'pr-fast'
+          }
+          if (-not $requiredByProfile.ContainsKey($ciProfile)) {
+            Write-Warning ("Unknown ci_profile '{0}'; defaulting to pr-fast profile contract." -f $ciProfile)
+            $ciProfile = 'pr-fast'
+          }
+
+          $required = $requiredByProfile[$ciProfile]
+          Write-Host ("CI profile: {0}" -f $ciProfile)
+          Write-Host ("Required jobs ({0}): {1}" -f $required.Count, ($required -join ', '))
+
+          $needs = ConvertFrom-Json -InputObject '${{ toJson(needs) }}'
+          $needsProps = $needs.PSObject.Properties
+          $missing = @()
+          $rootCauseFailures = @()
+          $cascaded = @()
+
+          $vipStatus = $null
+          $vipStatusPath = Join-Path -Path $PWD -ChildPath 'vip-build-status/vip-build.json'
+          if (Test-Path $vipStatusPath) {
+            try {
+              $vipStatus = Get-Content -Raw -Path $vipStatusPath | ConvertFrom-Json
+            } catch {
+              Write-Warning "Failed to parse VIP build status file at ${vipStatusPath}: $($_.Exception.Message)"
+            }
+          }
+
+          function Get-JobEntryLabel {
+            param(
+              [string]$JobName,
+              [string]$Result,
+              [object]$VipStatusObject
+            )
+
+            if ($JobName -eq 'build-vip' -and $VipStatusObject) {
+              $label = if ($VipStatusObject.reason) { $VipStatusObject.reason } elseif ($VipStatusObject.status) { $VipStatusObject.status } else { $null }
+              if ($label) {
+                return "{0}:{1} ({2})" -f $JobName, $Result, $label
+              }
+            }
+
+            return "{0}:{1}" -f $JobName, $Result
+          }
+
+          foreach ($job in $required) {
+            $entryProp = $needsProps[$job]
+            if (-not $entryProp) {
+              $missing += "$($job):missing"
+              continue
+            }
+            $result = $entryProp.Value.result
+            if ($result -ne 'success') {
+              $entry = Get-JobEntryLabel -JobName $job -Result $result -VipStatusObject $vipStatus
+              if ($result -in @('failure', 'cancelled', 'timed_out', 'action_required', 'startup_failure')) {
+                $rootCauseFailures += $entry
+              } elseif ($result -eq 'skipped') {
+                $cascaded += $entry
+              } else {
+                $rootCauseFailures += $entry
+              }
+            }
+          }
+
+          $requiredJobVerdict = if ($missing.Count -eq 0 -and $rootCauseFailures.Count -eq 0 -and $cascaded.Count -eq 0) { 'pass' } else { 'fail' }
+          $rootCauseLabel = if ($rootCauseFailures.Count -gt 0) { $rootCauseFailures -join ', ' } else { '<none>' }
+          $cascadedLabel = if ($cascaded.Count -gt 0) { $cascaded -join ', ' } else { '<none>' }
+          $missingLabel = if ($missing.Count -gt 0) { $missing -join ', ' } else { '<none>' }
+
+          Write-Host ("Required job verdict: {0}" -f $requiredJobVerdict)
+          Write-Host ("Root-cause failures: {0}" -f $rootCauseLabel)
+          Write-Host ("Cascaded/skipped jobs: {0}" -f $cascadedLabel)
+          Write-Host ("Missing required jobs: {0}" -f $missingLabel)
+
+          if ($requiredJobVerdict -eq 'fail') {
+            Write-Error ("Pipeline contract failed: required-job verdict={0}; root-cause failures={1}; cascaded/skipped={2}; missing={3}" -f $requiredJobVerdict, $rootCauseLabel, $cascadedLabel, $missingLabel)
+          } else {
+            Write-Host 'Pipeline contract satisfied.'
+          }
+
+

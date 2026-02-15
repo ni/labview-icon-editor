@@ -1,0 +1,43 @@
+{
+  "run": {
+    "databaseId": 21840801109,
+    "workflowName": "CI Pipeline (Composite)",
+    "name": "CI Pipeline (Composite)",
+    "url": "https://github.com/svelderrainruiz/labview-icon-editor/actions/runs/21840801109",
+    "status": "completed",
+    "conclusion": "failure",
+    "event": "pull_request",
+    "headBranch": "tooling/repo-agnostic-issue-routing",
+    "headSha": "0000000000000000000000000000000000000000"
+  },
+  "jobs": [
+    {
+      "databaseId": 63024287085,
+      "name": "PowerShell Lint",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "Exception: git was not found on PATH."
+    },
+    {
+      "databaseId": 63024513106,
+      "name": "Verify IE Paths Gate (LV 64-bit)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "Job setup failed. runner-cli not found; using PowerShell fallback. Process completed with exit code 1."
+    },
+    {
+      "databaseId": 63024513120,
+      "name": "Verify IE Paths Gate (LV 32-bit)",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "Job setup failed. runner-cli not found; using PowerShell fallback. Process completed with exit code 1."
+    },
+    {
+      "databaseId": 63024631666,
+      "name": "Pipeline Contract",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "Write-Error (\"Pipeline contract failed: powershell-lint:failure, dev-mode-gate:failure\")"
+    }
+  ]
+}

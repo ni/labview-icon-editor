@@ -1,0 +1,409 @@
+name: LabVIEW Parity
+
+on:
+  workflow_call:
+    inputs:
+      lv_release:
+        required: false
+        type: string
+      run_build_spec:
+        required: false
+        type: boolean
+        default: true
+      run_self_hosted:
+        required: false
+        type: boolean
+        default: true
+      expected_sha:
+        required: false
+        type: string
+  workflow_dispatch:
+    inputs:
+      lv_release:
+        description: Optional LabVIEW release tag override (for example, 2020q1). Defaults from .lvversion.
+        required: false
+        type: string
+      run_build_spec:
+        description: Run ExecuteBuildSpec parity for Editor Packed Library
+        required: false
+        type: boolean
+        default: true
+      run_self_hosted:
+        description: Run self-hosted parity lane in this workflow
+        required: false
+        type: boolean
+        default: true
+      expected_sha:
+        description: Optional commit SHA contract; workflow fails if github.sha does not match
+        required: false
+        type: string
+  push:
+    branches:
+      - develop
+  pull_request:
+    paths:
+      - ".github/workflows/labview-parity.yml"
+      - "Tooling/container-parity/**"
+      - "Tooling/runner-cli/**"
+      - "Test/Templates/**"
+      - "lv_icon_editor.lvproj"
+      - ".lvversion"
+
+permissions:
+  contents: read
+
+jobs:
+  resolve-parity-context:
+    name: Resolve parity context
+    runs-on: ubuntu-latest
+    outputs:
+      lv_release_input: ${{ steps.resolve.outputs.lv_release_input }}
+      run_build_spec: ${{ steps.resolve.outputs.run_build_spec }}
+      run_self_hosted: ${{ steps.resolve.outputs.run_self_hosted }}
+    steps:
+      - id: resolve
+        name: Resolve inputs + SHA contract
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $sha = '${{ github.sha }}'
+          $expectedSha = '${{ inputs.expected_sha }}'
+          if ([string]::IsNullOrWhiteSpace($expectedSha)) {
+            $expectedSha = '${{ github.event.inputs.expected_sha }}'
+          }
+          if (-not [string]::IsNullOrWhiteSpace($expectedSha) -and $expectedSha -ne $sha) {
+            throw ("expected_sha '{0}' does not match github.sha '{1}'." -f $expectedSha, $sha)
+          }
+
+          $lvReleaseInput = '${{ inputs.lv_release }}'
+          if ([string]::IsNullOrWhiteSpace($lvReleaseInput)) {
+            $lvReleaseInput = '${{ github.event.inputs.lv_release }}'
+          }
+          if ([string]::IsNullOrWhiteSpace($lvReleaseInput)) {
+            $lvReleaseInput = ''
+          }
+
+          $runBuildSpecRaw = '${{ inputs.run_build_spec }}'
+          if ([string]::IsNullOrWhiteSpace($runBuildSpecRaw)) {
+            $runBuildSpecRaw = '${{ github.event.inputs.run_build_spec }}'
+          }
+          $runBuildSpec = 'true'
+          if (-not [string]::IsNullOrWhiteSpace($runBuildSpecRaw) -and $runBuildSpecRaw.Equals('false', [System.StringComparison]::OrdinalIgnoreCase)) {
+            $runBuildSpec = 'false'
+          }
+
+          $runSelfHostedRaw = '${{ inputs.run_self_hosted }}'
+          if ([string]::IsNullOrWhiteSpace($runSelfHostedRaw)) {
+            $runSelfHostedRaw = '${{ github.event.inputs.run_self_hosted }}'
+          }
+          $runSelfHosted = 'true'
+          if (-not [string]::IsNullOrWhiteSpace($runSelfHostedRaw) -and $runSelfHostedRaw.Equals('false', [System.StringComparison]::OrdinalIgnoreCase)) {
+            $runSelfHosted = 'false'
+          }
+
+          "lv_release_input=$lvReleaseInput" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "run_build_spec=$runBuildSpec" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "run_self_hosted=$runSelfHosted" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+  parity-linux:
+    name: Parity (Linux Container)
+    needs: [resolve-parity-context]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Resolve parity context via runner-cli
+        shell: bash
+        run: |
+          set -euo pipefail
+          CONTEXT_PATH="$RUNNER_TEMP/parity-context-linux.json"
+          LV_RELEASE_INPUT="${{ needs.resolve-parity-context.outputs.lv_release_input }}"
+
+          if [[ -n "$LV_RELEASE_INPUT" ]]; then
+            dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj -- \
+              parity context \
+              --repo-root "$GITHUB_WORKSPACE" \
+              --lv-release "$LV_RELEASE_INPUT" \
+              --output "$CONTEXT_PATH"
+          else
+            dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj -- \
+              parity context \
+              --repo-root "$GITHUB_WORKSPACE" \
+              --output "$CONTEXT_PATH"
+          fi
+
+          echo "PARITY_CONTEXT_PATH=$CONTEXT_PATH" >> "$GITHUB_ENV"
+
+      - name: Run parity lane via runner-cli (linux-container)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj -- \
+            parity run \
+            --mode linux-container \
+            --context "$PARITY_CONTEXT_PATH" \
+            --build-spec "${{ needs.resolve-parity-context.outputs.run_build_spec }}"
+
+      - name: Verify built specification output (Linux container)
+        if: ${{ needs.resolve-parity-context.outputs.run_build_spec == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          output_path="${GITHUB_WORKSPACE}/resource/plugins/lv_icon.lvlibp"
+          if [[ ! -f "$output_path" ]]; then
+            echo "Expected build output was not found: $output_path" >&2
+            exit 1
+          fi
+          bytes="$(wc -c < "$output_path" | xargs)"
+          echo "Built specification artifact: $output_path ($bytes bytes)"
+
+      - name: Upload built specification artifact (Linux container)
+        if: ${{ needs.resolve-parity-context.outputs.run_build_spec == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-container-editor-packed-library-linux
+          path: resource/plugins/lv_icon.lvlibp
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload LabVIEWCLI logs (Linux container)
+        if: ${{ needs.resolve-parity-context.outputs.run_build_spec == 'true' || failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-container-logs-linux
+          path: TestResults/container-parity/linux/logs
+          if-no-files-found: warn
+          retention-days: 14
+
+  parity-self-hosted:
+    name: Parity (Self-Hosted Runner)
+    needs: [resolve-parity-context]
+    if: ${{ (github.event_name == 'push' && github.ref_name == 'develop') || ((github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') && needs.resolve-parity-context.outputs.run_self_hosted == 'true') }}
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    timeout-minutes: 180
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Assert .NET SDK availability (self-hosted)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
+          if (-not $dotnet) {
+            throw ".NET SDK is required on the self-hosted runner. Install .NET 8 SDK and ensure 'dotnet' is on PATH."
+          }
+
+          & dotnet --info | Out-Host
+          if ($LASTEXITCODE -ne 0) {
+            throw "dotnet --info failed with exit code $LASTEXITCODE."
+          }
+
+          $dotnetVersion = (& dotnet --version).Trim()
+          if (-not $dotnetVersion.StartsWith('8.')) {
+            throw "Self-hosted parity requires .NET 8 SDK. Found: $dotnetVersion"
+          }
+
+          Write-Host ("Using .NET SDK {0} at {1}" -f $dotnetVersion, $dotnet.Source)
+
+      - name: Job setup
+        uses: ./.github/actions/lvie-job-setup
+        with:
+          checkout: 'false'
+          acquire_lock: 'true'
+          create_worktree: 'true'
+          bitness: 64
+          worktree_root_mode: runner_temp
+
+      - name: Assert .lvversion contract
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          pwsh -NoProfile -File .\Tooling\Assert-LabVIEWVersion.ps1 `
+            -RepoRoot "$env:REPO_ROOT" `
+            -Context 'headless-version-contract' `
+            -WriteSummary
+
+      - name: Resolve parity context via runner-cli
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $contextPath = Join-Path $env:RUNNER_TEMP 'parity-context-self-hosted.json'
+          $lvReleaseInput = '${{ needs.resolve-parity-context.outputs.lv_release_input }}'
+
+          $args = @(
+            'run', '--project', '.\Tooling\runner-cli\RunnerCli\RunnerCli.csproj', '--',
+            'parity', 'context',
+            '--repo-root', $env:REPO_ROOT,
+            '--output', $contextPath
+          )
+          if (-not [string]::IsNullOrWhiteSpace($lvReleaseInput)) {
+            $args += @('--lv-release', $lvReleaseInput)
+          }
+
+          & dotnet @args
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli parity context failed with exit code $LASTEXITCODE."
+          }
+
+          "PARITY_CONTEXT_PATH=$contextPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Run parity lane via runner-cli (self-hosted-windows)
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          dotnet run --project .\Tooling\runner-cli\RunnerCli\RunnerCli.csproj -- `
+            parity run `
+            --mode self-hosted-windows `
+            --context "$env:PARITY_CONTEXT_PATH" `
+            --labview-bitness 64 `
+            --build-spec "${{ needs.resolve-parity-context.outputs.run_build_spec }}"
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli parity run failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Verify built specification output (Self-hosted)
+        if: ${{ needs.resolve-parity-context.outputs.run_build_spec == 'true' }}
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          $outputPath = Join-Path $env:REPO_ROOT 'resource\plugins\lv_icon.lvlibp'
+          if (-not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
+            throw "Expected build output was not found: $outputPath"
+          }
+          $item = Get-Item -LiteralPath $outputPath
+          Write-Host ("Built specification artifact: {0} ({1} bytes)" -f $item.FullName, $item.Length)
+
+      - name: Resolve artifact root
+        if: always()
+        shell: pwsh
+        run: |
+          $repoRoot = if ([string]::IsNullOrWhiteSpace($env:REPO_ROOT)) { $env:GITHUB_WORKSPACE } else { $env:REPO_ROOT }
+          "HEADLESS_REPO_ROOT=$repoRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Upload LabVIEWCLI logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-parity-self-hosted-labviewcli-logs
+          path: ${{ env.HEADLESS_REPO_ROOT }}/TestResults/container-parity/windows/logs
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload built specification artifact (Self-hosted)
+        if: ${{ always() && needs.resolve-parity-context.outputs.run_build_spec == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-parity-self-hosted-editor-packed-library
+          path: ${{ env.HEADLESS_REPO_ROOT }}/resource/plugins/lv_icon.lvlibp
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Job teardown
+        if: always()
+        uses: ./.github/actions/lvie-job-teardown
+        with:
+          repo_root: ${{ env.REPO_ROOT }}
+          close_labview: 'true'
+          close_bitness: 64
+          cleanup_worktree: 'true'
+          release_lock: 'true'
+
+  parity-windows:
+    name: Parity (Windows Container)
+    needs: [resolve-parity-context, parity-self-hosted]
+    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || (github.event_name == 'push' && github.ref_name == 'develop')) && needs.parity-self-hosted.result == 'success' }}
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Resolve parity context via runner-cli
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $contextPath = Join-Path $env:RUNNER_TEMP 'parity-context-windows.json'
+          $lvReleaseInput = '${{ needs.resolve-parity-context.outputs.lv_release_input }}'
+
+          $args = @(
+            'run', '--project', '.\Tooling\runner-cli\RunnerCli\RunnerCli.csproj', '--',
+            'parity', 'context',
+            '--repo-root', $env:GITHUB_WORKSPACE,
+            '--output', $contextPath
+          )
+          if (-not [string]::IsNullOrWhiteSpace($lvReleaseInput)) {
+            $args += @('--lv-release', $lvReleaseInput)
+          }
+
+          & dotnet @args
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli parity context failed with exit code $LASTEXITCODE."
+          }
+
+          "PARITY_CONTEXT_PATH=$contextPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Validate path contract for Windows container shell
+        shell: pwsh
+        run: |
+          Write-Host 'Windows container parity script runs under powershell.exe (Windows PowerShell 5.1) inside the NI container.'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE\Tooling\Test-PathContract.ps1" -WriteSummary
+
+      - name: Run parity lane via runner-cli (windows-container)
+        shell: pwsh
+        run: |
+          dotnet run --project .\Tooling\runner-cli\RunnerCli\RunnerCli.csproj -- `
+            parity run `
+            --mode windows-container `
+            --context "$env:PARITY_CONTEXT_PATH" `
+            --build-spec "${{ needs.resolve-parity-context.outputs.run_build_spec }}"
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli parity run failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Verify built specification output (Windows container)
+        if: ${{ needs.resolve-parity-context.outputs.run_build_spec == 'true' }}
+        shell: pwsh
+        run: |
+          $outputPath = Join-Path $env:GITHUB_WORKSPACE 'resource\plugins\lv_icon.lvlibp'
+          if (-not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
+            throw "Expected build output was not found: $outputPath"
+          }
+          $item = Get-Item -LiteralPath $outputPath
+          Write-Host ("Built specification artifact: {0} ({1} bytes)" -f $item.FullName, $item.Length)
+
+      - name: Upload built specification artifact (Windows container)
+        if: ${{ needs.resolve-parity-context.outputs.run_build_spec == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-container-editor-packed-library-windows
+          path: resource/plugins/lv_icon.lvlibp
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload LabVIEWCLI logs (Windows container)
+        if: ${{ needs.resolve-parity-context.outputs.run_build_spec == 'true' || failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-container-logs-windows
+          path: TestResults/container-parity/windows/logs
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,112 @@
+name: Headless Self-Hosted PPL Parity
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  headless-self-hosted-parity:
+    name: Headless Self-Hosted PPL Parity
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    timeout-minutes: 180
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Transitional workflow note
+        shell: pwsh
+        run: |
+          Write-Host 'This workflow is transitional and manual-only. Canonical parity execution is moving to .github/workflows/labview-parity.yml.'
+
+      - name: Job setup
+        uses: ./.github/actions/lvie-job-setup
+        with:
+          checkout: 'false'
+          acquire_lock: 'true'
+          create_worktree: 'true'
+          bitness: 64
+          worktree_root_mode: runner_temp
+
+      - name: Assert project LVVersion contract
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          pwsh -NoProfile -File .\Tooling\Assert-LabVIEWVersion.ps1 `
+            -RepoRoot "$env:REPO_ROOT" `
+            -ProjectPath "$env:PROJECT_PATH" `
+            -EnforceProjectLvVersion `
+            -Context 'headless-project-contract' `
+            -WriteSummary
+
+      - name: Run headless local parity sequence (64-bit)
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          pwsh -NoProfile -File .\Tooling\Run-CICompositeLocal-Auto.ps1 `
+            -LabVIEWBitness 64 `
+            -EnableSingleBitnessRecoverySequence `
+            -SuccessTarget ppl-single `
+            -MaxAttempts 3 `
+            -SkipVerifyIEPaths `
+            -SkipMissingInProject `
+            -SkipBuildVip `
+            -UseWorktree:$false `
+            -RepoRoot "$env:REPO_ROOT" `
+            -WorktreeRoot "$env:LVIE_WORKTREE_ROOT"
+
+      - name: Resolve artifact root
+        if: always()
+        shell: pwsh
+        run: |
+          $repoRoot = if ([string]::IsNullOrWhiteSpace($env:REPO_ROOT)) { $env:GITHUB_WORKSPACE } else { $env:REPO_ROOT }
+          "HEADLESS_REPO_ROOT=$repoRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Upload LabVIEWCLI logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: headless-self-hosted-labviewcli-logs
+          path: ${{ env.HEADLESS_REPO_ROOT }}/builds/logs/labviewcli-*.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload agent logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: headless-self-hosted-agent-logs
+          path: ${{ env.HEADLESS_REPO_ROOT }}/TestResults/agent-logs/**
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload build status artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: headless-self-hosted-build-status
+          path: ${{ env.HEADLESS_REPO_ROOT }}/builds/status/**
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload 64-bit PPL artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: headless-self-hosted-lv_icon_x64
+          path: ${{ env.HEADLESS_REPO_ROOT }}/resource/plugins/lv_icon_x64.lvlibp
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Job teardown
+        if: always()
+        uses: ./.github/actions/lvie-job-teardown
+        with:
+          repo_root: ${{ env.REPO_ROOT }}
+          close_labview: 'true'
+          close_bitness: 64
+          cleanup_worktree: 'true'
+          release_lock: 'true'

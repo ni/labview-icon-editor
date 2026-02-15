@@ -47,12 +47,28 @@ function Resolve-NormalizedPath {
 function Resolve-RepoRoot {
     param([string]$Path)
 
-    if (-not [string]::IsNullOrWhiteSpace($Path) -and (Test-Path -Path $Path)) {
-        return (Resolve-Path -Path $Path -ErrorAction Stop).Path
+    if (-not [string]::IsNullOrWhiteSpace($Path)) {
+        if (Test-Path -Path $Path) {
+            return (Resolve-Path -Path $Path -ErrorAction Stop).Path
+        }
+        return $null
     }
 
     if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_WORKSPACE) -and (Test-Path -Path $env:GITHUB_WORKSPACE)) {
         return (Resolve-Path -Path $env:GITHUB_WORKSPACE -ErrorAction Stop).Path
+    }
+
+    $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $PSCommandPath }
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        try {
+            $gitRoot = git -C $scriptRoot rev-parse --show-toplevel 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRoot)) {
+                return (Resolve-Path -Path $gitRoot.Trim() -ErrorAction Stop).Path
+            }
+        } catch {
+            Write-Verbose ("git rev-parse failed: {0}" -f $_.Exception.Message)
+        }
     }
 
     return $null
@@ -166,7 +182,11 @@ function Grant-ModifyAccess {
         $icaclsArgs += '/T'
     }
 
-    & icacls @icaclsArgs | Out-Null
+    $icaclsOutput = & icacls @icaclsArgs
+    if ($LASTEXITCODE -ne 0) {
+        $outputText = if ($icaclsOutput) { ($icaclsOutput -join ' ') } else { '<no output>' }
+        throw ("icacls failed with exit code {0}: {1}" -f $LASTEXITCODE, $outputText)
+    }
 }
 
 $resolvedWorkRoot = if ($WorkRoot) { $WorkRoot } else { $env:LVIE_RUNNER_WORK_ROOT }

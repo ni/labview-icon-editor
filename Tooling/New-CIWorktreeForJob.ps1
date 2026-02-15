@@ -1,13 +1,16 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-    Creates a short-path worktree for a CI job and exports REPO_ROOT/PROJECT_PATH.
+    Creates a short-path worktree for a CI job and exports canonical path contract variables.
 
 .DESCRIPTION
     Centralizes CI worktree creation so workflows only need to pass a bitness and
     (optionally) a variant label. The script resolves the worktree root, creates
     a deterministic folder name, calls New-CIWorktree.ps1, and exports:
       - LVIE_WORKTREE_ROOT
+      - LVIE_REPO_ROOT
+      - LVIE_PROJECT_RELATIVE_PATH
+      - LVIE_PROJECT_PATH
       - REPO_ROOT
       - PROJECT_PATH
 
@@ -23,6 +26,10 @@
 .PARAMETER JobName
     Job name used to compute the job hash. Defaults to GITHUB_JOB.
 
+.PARAMETER WorkflowIdentity
+    Workflow identity used to compute the workflow hash. Defaults to
+    GITHUB_WORKFLOW_REF, then GITHUB_WORKFLOW, then 'local'.
+
 .PARAMETER RunId
     Run ID. Defaults to GITHUB_RUN_ID.
 
@@ -30,7 +37,8 @@
     Run attempt. Defaults to GITHUB_RUN_ATTEMPT.
 
 .PARAMETER ProjectFile
-    Project file name to export as PROJECT_PATH. Defaults to lv_icon_editor.lvproj.
+    Project file relative path to export as LVIE_PROJECT_PATH/PROJECT_PATH.
+    Defaults to lv_icon_editor.lvproj.
 
 .PARAMETER WorktreeRoot
     Optional explicit worktree root. If omitted, LVIE_WORKTREE_ROOT or a
@@ -57,6 +65,15 @@ param(
     [string]$JobName,
 
     [Parameter(Mandatory = $false)]
+    [string]$WorkflowIdentity,
+
+    [Parameter(Mandatory = $false)]
+    [string]$RunId,
+
+    [Parameter(Mandatory = $false)]
+    [string]$RunAttempt,
+
+    [Parameter(Mandatory = $false)]
     [string]$ProjectFile = 'lv_icon_editor.lvproj',
 
     [Parameter(Mandatory = $false)]
@@ -68,6 +85,9 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    throw "git was not found on PATH."
+}
 function Resolve-RepoRoot {
     param([string]$BasePath)
 
@@ -79,7 +99,20 @@ function Resolve-RepoRoot {
         return [System.IO.Path]::GetFullPath($env:GITHUB_WORKSPACE)
     }
 
-    return (Resolve-Path -Path (Join-Path $PSScriptRoot '..')).Path
+    $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $PSCommandPath }
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        try {
+            $gitRoot = git -C $scriptRoot rev-parse --show-toplevel 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRoot)) {
+                return (Resolve-Path -Path $gitRoot.Trim()).Path
+            }
+        } catch {
+            Write-Verbose ("git rev-parse failed: {0}" -f $_.Exception.Message)
+        }
+    }
+
+    return (Resolve-Path -Path (Join-Path $scriptRoot '..')).Path
 }
 
 function Resolve-NormalizedPath {
@@ -97,6 +130,77 @@ function Resolve-NormalizedPath {
     return $full
 }
 
+function Get-ShortSha1Token {
+    param([string]$Value)
+
+    $valueToHash = if ([string]::IsNullOrWhiteSpace($Value)) { 'local' } else { $Value }
+    $hashBytes = [System.Text.Encoding]::UTF8.GetBytes($valueToHash)
+    $sha1 = [System.Security.Cryptography.SHA1]::Create()
+    try {
+        $hash = $sha1.ComputeHash($hashBytes)
+    }
+    finally {
+        $sha1.Dispose()
+    }
+
+    return [System.BitConverter]::ToString($hash).Replace('-', '').Substring(0, 8).ToUpperInvariant()
+}
+
+function ConvertTo-SafePathToken {
+    param(
+        [string]$Value,
+        [string]$Default = 'token'
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $Default
+    }
+
+    $token = ($Value -replace '[^A-Za-z0-9._-]', '-')
+    $token = ($token -replace '-{2,}', '-').Trim('-')
+    if ([string]::IsNullOrWhiteSpace($token)) {
+        return $Default
+    }
+
+    return $token
+}
+
+function Resolve-WorkflowIdentity {
+    param([string]$Candidate)
+
+    if (-not [string]::IsNullOrWhiteSpace($Candidate)) {
+        return $Candidate
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_WORKFLOW_REF)) {
+        return $env:GITHUB_WORKFLOW_REF
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_WORKFLOW)) {
+        return $env:GITHUB_WORKFLOW
+    }
+
+    return 'local'
+}
+
+function Get-RunnerCliRuntime {
+    $arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+    if ($IsWindows) { return 'win-x64' }
+    if ($IsLinux) {
+        if ($arch -eq 'Arm64') { return 'linux-arm64' }
+        return 'linux-x64'
+    }
+    if ($IsMacOS) {
+        if ($arch -eq 'Arm64') { return 'osx-arm64' }
+        return 'osx-x64'
+    }
+    return 'win-x64'
+}
+
+function Get-RunnerCliFileName {
+    param([string]$Runtime)
+    if ($Runtime -like 'win-*') { return 'runner-cli.exe' }
+    return 'runner-cli'
+}
+
 function Get-RegisteredWorktreePathList {
     param([string]$RepoRoot)
 
@@ -107,7 +211,15 @@ function Get-RegisteredWorktreePathList {
             if ($line -like 'worktree *') {
                 $path = $line.Substring(9).Trim()
                 if (-not [string]::IsNullOrWhiteSpace($path)) {
-                    $paths.Add($path) | Out-Null
+                    try {
+                        $normalized = Resolve-NormalizedPath -Path $path
+                        if (-not [string]::IsNullOrWhiteSpace($normalized)) {
+                            $paths.Add($normalized) | Out-Null
+                        }
+                    }
+                    catch {
+                        $paths.Add($path) | Out-Null
+                    }
                 }
             }
         }
@@ -117,6 +229,18 @@ function Get-RegisteredWorktreePathList {
     }
 
     return $paths
+}
+
+function Invoke-WorktreePrune {
+    param([string]$RepoRoot)
+
+    $pruneOutput = & git -C $RepoRoot worktree prune 2>&1
+    if ($pruneOutput) {
+        $pruneOutput | ForEach-Object { Write-Verbose ("git worktree prune: {0}" -f $_) }
+    }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning ("git worktree prune returned exit code {0}." -f $LASTEXITCODE)
+    }
 }
 
 function Invoke-WorktreeRetentionCleanup {
@@ -207,6 +331,15 @@ if ([string]::IsNullOrWhiteSpace($jobName)) {
 if ([string]::IsNullOrWhiteSpace($jobName)) {
     throw "JobName is required to compute the worktree name."
 }
+$workflowIdentity = Resolve-WorkflowIdentity -Candidate $WorkflowIdentity
+$resolvedRunId = if ([string]::IsNullOrWhiteSpace($RunId)) { $env:GITHUB_RUN_ID } else { $RunId }
+if ([string]::IsNullOrWhiteSpace($resolvedRunId)) {
+    $resolvedRunId = 'local'
+}
+$resolvedRunAttempt = if ([string]::IsNullOrWhiteSpace($RunAttempt)) { $env:GITHUB_RUN_ATTEMPT } else { $RunAttempt }
+if ([string]::IsNullOrWhiteSpace($resolvedRunAttempt)) {
+    $resolvedRunAttempt = '1'
+}
 
 $ref = $Ref
 if ([string]::IsNullOrWhiteSpace($ref)) {
@@ -245,14 +378,16 @@ if (-not $rootIsExplicit) {
 }
 $root = Resolve-NormalizedPath -Path $root
 
-$hashBytes = [System.Text.Encoding]::UTF8.GetBytes($jobName)
-$jobHash = [System.BitConverter]::ToString([System.Security.Cryptography.SHA1]::Create().ComputeHash($hashBytes)).Replace('-', '').Substring(0, 8)
+$workflowHash = Get-ShortSha1Token -Value $workflowIdentity
+$jobHash = Get-ShortSha1Token -Value $jobName
+$runIdToken = ConvertTo-SafePathToken -Value $resolvedRunId -Default 'local'
+$runAttemptToken = ConvertTo-SafePathToken -Value $resolvedRunAttempt -Default '1'
 
-$variantToken = if ([string]::IsNullOrWhiteSpace($Variant)) { $null } else { $Variant }
+$variantToken = if ([string]::IsNullOrWhiteSpace($Variant)) { $null } else { ConvertTo-SafePathToken -Value $Variant -Default 'variant' }
 $name = if ($variantToken) {
-    "ci-$jobHash-$variantToken-$Bitness"
+    "ci-$workflowHash-$jobHash-$variantToken-$Bitness-$runIdToken-$runAttemptToken"
 } else {
-    "ci-$jobHash-$Bitness"
+    "ci-$workflowHash-$jobHash-$Bitness-$runIdToken-$runAttemptToken"
 }
 
 $targetPath = Join-Path $root $name
@@ -268,6 +403,26 @@ if (-not (Test-Path -Path $worktreeScript)) {
     throw "New-CIWorktree.ps1 not found at $worktreeScript"
 }
 
+Invoke-WorktreePrune -RepoRoot $repoRoot
+
+$registeredBeforeCreate = Get-RegisteredWorktreePathList -RepoRoot $repoRoot
+if ($registeredBeforeCreate.Contains($targetPath)) {
+    Write-Host ("Target worktree path is registered; removing stale registration: {0}" -f $targetPath)
+    $removeOutput = & git -C $repoRoot worktree remove --force $targetPath 2>&1
+    if ($removeOutput) {
+        $removeOutput | ForEach-Object { Write-Host $_ }
+    }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning ("git worktree remove returned exit code {0} for {1}" -f $LASTEXITCODE, $targetPath)
+    }
+
+    Invoke-WorktreePrune -RepoRoot $repoRoot
+    $registeredAfterCleanup = Get-RegisteredWorktreePathList -RepoRoot $repoRoot
+    if ($registeredAfterCleanup.Contains($targetPath)) {
+        throw ("Unable to clear stale worktree registration for '{0}'. The path is still registered after remove/prune. Verify '.git/worktrees' metadata and rerun." -f $targetPath)
+    }
+}
+
 $retentionDays = $null
 if (-not [string]::IsNullOrWhiteSpace($env:LVIE_WORKTREE_RETENTION_DAYS)) {
     if (-not [int]::TryParse($env:LVIE_WORKTREE_RETENTION_DAYS, [ref]$retentionDays)) {
@@ -281,9 +436,8 @@ if ($null -ne $retentionDays) {
     Invoke-WorktreeRetentionCleanup -Root $root -RepoRoot $repoRoot -TargetPath $targetPath -RetentionDays $retentionDays
 }
 
-# If a previous run was cancelled, the worktree folder may still exist.
-# Reuse the *same* short path across runs for deterministic paths and to
-# avoid accumulating stale worktree folders under the root.
+# The worktree path is deterministic for workflow+job+run.
+# If a previous attempt left on-disk content at that path, clear it.
 if (Test-Path -Path $targetPath) {
     Write-Host ("Cleaning existing worktree at {0}" -f $targetPath)
 
@@ -322,14 +476,41 @@ if (-not (Test-Path -Path $projectPath)) {
 
 $lvInfo = Resolve-LabVIEWVersionInfo -VersionPath (Join-Path $worktree '.lvversion')
 
+$runnerCliPath = $null
+$ensureRunnerCli = Join-Path $worktree 'Tooling\Ensure-RunnerCli.ps1'
+if (Test-Path -Path $ensureRunnerCli) {
+    try {
+        Write-Host "Ensuring runner-cli is built in the new worktree..."
+        $runtime = Get-RunnerCliRuntime
+        $cliFile = Get-RunnerCliFileName -Runtime $runtime
+        $preferredPath = Join-Path $worktree "Tooling\runner-cli\publish\$runtime\$cliFile"
+        $ensureResult = & $ensureRunnerCli -RepoRoot $worktree -RunnerCliPath $preferredPath -SkipDownload
+        if ($ensureResult -and $ensureResult.Path) {
+            $runnerCliPath = $ensureResult.Path
+            Write-Host ("runner-cli ready at {0}" -f $runnerCliPath)
+        }
+    } catch {
+        if ($env:LVIE_REQUIRE_RUNNER_CLI -eq '1') {
+            throw
+        }
+        Write-Warning ("runner-cli build failed in worktree: {0}" -f $_.Exception.Message)
+    }
+}
+
 if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_ENV)) {
     "LVIE_WORKTREE_ROOT=$root" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
+    "LVIE_REPO_ROOT=$worktree" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
+    "LVIE_PROJECT_RELATIVE_PATH=$ProjectFile" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
+    "LVIE_PROJECT_PATH=$projectPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
     "REPO_ROOT=$worktree" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
     "PROJECT_PATH=$projectPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
     "LABVIEW_VERSION_RAW=$($lvInfo.Raw)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
     "LABVIEW_VERSION_YEAR=$($lvInfo.Year)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
     "LABVIEW_MINOR_REVISION=$($lvInfo.MinorRevision)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
     "LABVIEW_NUMERIC_VERSION=$($lvInfo.NumericVersion)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
+    if (-not [string]::IsNullOrWhiteSpace($runnerCliPath)) {
+        "LVIE_RUNNER_CLI_PATH=$runnerCliPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding ascii
+    }
 }
 
 Write-Host ("Worktree created: {0}" -f $worktree)

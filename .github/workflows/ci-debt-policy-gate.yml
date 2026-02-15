@@ -1,0 +1,50 @@
+name: CI Debt Policy Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Policy mode override"
+        required: false
+        default: warn
+        type: choice
+        options:
+          - warn
+          - enforce
+
+permissions:
+  contents: read
+
+jobs:
+  root_cause_contract:
+    name: Root Cause Contract
+    runs-on: ubuntu-latest
+    env:
+      CI_DEBT_POLICY_ENFORCE_AFTER_UTC: "2026-02-19T00:00:00Z"
+      CI_DEBT_POLICY_MODE: ${{ github.event.inputs.mode || vars.CI_DEBT_POLICY_MODE || '' }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pinned codex skill layer
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE\Tooling\Install-CodexSkillLayer.ps1"
+
+      - name: Validate CI debt policy contract
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE\Tooling\Assert-CodexSkillLayer.ps1"
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE\Tooling\Test-CiDebtPolicyGate.ps1"
+
+      - name: Validate repo-agnostic issue/discussion routing guard
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE\Tooling\Test-RepoAgnosticIssueRouting.ps1"
+
+      - name: Run repository resolver tests
+        shell: pwsh
+        run: |
+          $testPath = Join-Path $env:GITHUB_WORKSPACE 'Tooling\tests\ResolveGitHubRepo.Tests.ps1'
+          Invoke-Pester -Path $testPath -Output Detailed

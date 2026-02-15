@@ -4,6 +4,10 @@ inputs:
   github_token:
     description: "GitHub token with repository access"
     required: true
+  bump_type_override:
+    description: "Optional bump override: major, minor, patch, or none."
+    required: false
+    default: ""
 outputs:
   VERSION:
     description: "Full version string"
@@ -37,16 +41,37 @@ runs:
       with:
         github-token: ${{ inputs.github_token }}
         script: |
+          const path = require('path');
+          const {
+            loadLabelContract,
+            buildReleaseLabelMap,
+            normalizeLabels,
+          } = require(path.join(process.env.GITHUB_WORKSPACE || process.cwd(), '.github', 'scripts', 'label-metadata.js'));
+          const contractPath = path.join(process.env.GITHUB_WORKSPACE || process.cwd(), '.github', 'labels', 'label-contract.json');
+          const labelContract = loadLabelContract(contractPath);
+          const releaseLabelMap = buildReleaseLabelMap(labelContract);
           const allowed = ['major', 'minor', 'patch'];
+          const allowedWithNone = [...allowed, 'none'];
           let bump = 'none';
-          if (context.event_name === 'pull_request') {
-            const labels = context.payload.pull_request.labels.map(l => l.name.toLowerCase());
-            const found = labels.filter(l => allowed.includes(l));
-            if (found.length > 1) {
-              core.setFailed(`Conflicting release labels detected: ${found.join(', ')}`);
+
+          const override = core.getInput('bump_type_override').trim().toLowerCase();
+          if (override) {
+            if (!allowedWithNone.includes(override)) {
+              core.setFailed(`Invalid bump_type_override '${override}'. Allowed: ${allowedWithNone.join(', ')}`);
               return;
             }
-            bump = found[0] || 'patch';
+            core.info(`Using bump_type_override: ${override}`);
+            core.setOutput('bump_type', override);
+            return;
+          }
+          if (context.eventName === 'pull_request') {
+            const labels = (context.payload.pull_request.labels || []).map((l) => String(l.name || ''));
+            const found = normalizeLabels(labels, releaseLabelMap);
+            if (found.normalized.length > 1) {
+              core.setFailed(`Conflicting release labels detected after normalization: ${found.matchedRaw.join(', ')}`);
+              return;
+            }
+            bump = found.normalized[0] || 'patch';
           }
           core.setOutput('bump_type', bump);
 

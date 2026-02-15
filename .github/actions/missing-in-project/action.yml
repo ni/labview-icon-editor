@@ -1,10 +1,10 @@
-name: "Missing In Project"
+name: "Missing?In?Project"
 description: >
-  Executes MissinInProjectCLI.vi (bundled with this action) via g‑cli,
-  pointing at a user‑supplied *.lvproj* (default: lv_icon.lvproj in repo root).
+  Executes MissinInProjectCLI.vi (bundled with this action) via?g?cli,
+  pointing at a user?supplied *.lvproj* (default: lv_icon.lvproj in repo root).
   Fails instantly on any missing file and exports:
-    • passed        (Boolean)  
-    • missing-files (String)
+    ? passed        (Boolean)  
+    ? missing-files (String)
 
 branding:
   icon: check-circle
@@ -13,7 +13,7 @@ branding:
 inputs:
   lv-ver:
     description: "LabVIEW version (year or numeric)."
-    required: true
+    required: false
   arch:
     description: "Bitness (32 or 64)."
     required: true
@@ -32,7 +32,7 @@ outputs:
     description: "True if VI reported success."
     value: ${{ steps.run_vi.outputs.passed }}
   missing-files:
-    description: "Comma‑separated list of missing files."
+    description: "Comma?separated list of missing files."
     value: ${{ steps.run_vi.outputs.missing-files }}
 
 runs:
@@ -60,13 +60,33 @@ runs:
           throw "Project file not found: $pf"
         }
         echo "projFile=$pf" >> $Env:GITHUB_OUTPUT
-        Write-Host "ℹ️  Using project file: $pf"
+        Write-Host "??  Using project file: $pf"
 
-    - name: Preflight – ensure NI Icon Editor resources exist
+    - name: Resolve LabVIEW version
+      id: resolve_lv
+      shell: pwsh
+      run: |
+        $repoRoot = '${{ inputs.repo-root }}'
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "repo-root is required."
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
+        $lvInput = '${{ inputs.lv-ver }}'
+        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+        if (-not (Test-Path -Path $assertScript)) {
+          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+        }
+        $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $lvInput -Context 'missing-in-project'
+        if ([string]::IsNullOrWhiteSpace($lvInput)) {
+          Write-Warning "lv-ver not provided; using .lvversion ($($lvInfo.Raw))."
+        }
+        "lv_year=$($lvInfo.Year)" >> $Env:GITHUB_OUTPUT
+
+    - name: Preflight ? ensure NI Icon Editor resources exist
       shell: pwsh
       run: |
         $ErrorActionPreference = 'Stop'
-        $lvVer   = '${{ inputs.lv-ver }}'
+        $lvVer   = '${{ steps.resolve_lv.outputs.lv_year }}'
         $arch    = '${{ inputs.arch }}'
         $bitness = if ($arch -eq '64') { '64' } else { '32' }
 
@@ -75,11 +95,11 @@ runs:
         $probe = Join-Path $niDir 'resource\plugins\NIIconEditor\Miscellaneous\Classes Initialization.vi'
 
         if (Test-Path $probe) {
-          Write-Host "✅  NI Icon Editor resources already present ($probe)"
+          Write-Host "?  NI Icon Editor resources already present ($probe)"
           return
         }
 
-        Write-Host "⚠️  NI Icon Editor resources missing – preparing source …"
+        Write-Host "??  NI Icon Editor resources missing ? preparing source ?"
 
         # Wait for any existing g-cli / LabVIEW processes to finish (do NOT kill them)
         $maxWait = 300  # seconds
@@ -89,29 +109,29 @@ runs:
           $gcli = Get-Process -Name 'g-cli' -ErrorAction SilentlyContinue
           $lv   = Get-Process -Name 'LabVIEW' -ErrorAction SilentlyContinue
           if (-not $gcli -and -not $lv) { break }
-          Write-Host "⏳  g-cli/LabVIEW running – waiting ($elapsed s / $maxWait s) …"
+          Write-Host "?  g-cli/LabVIEW running ? waiting ($elapsed s / $maxWait s) ?"
           Start-Sleep -Seconds $interval
           $elapsed += $interval
         }
 
         if ($elapsed -ge $maxWait) {
-          Write-Host "⚠️  Timed out waiting for g-cli/LabVIEW to exit – skipping preflight preparation."
+          Write-Host "??  Timed out waiting for g-cli/LabVIEW to exit ? skipping preflight preparation."
           Write-Host "    The Missing-In-Project check may fail if resources are still missing."
           return
         }
 
         $prepareScript = Join-Path $Env:GITHUB_WORKSPACE '.github\actions\prepare-labview-source\Prepare_LabVIEW_source.ps1'
         & $prepareScript `
-          -MinimumSupportedLVVersion $lvVer `
+          -LabVIEWVersion $lvVer `
           -SupportedBitness          $bitness `
           -RelativePath              $Env:GITHUB_WORKSPACE `
           -LabVIEW_Project           'lv_icon_editor' `
           -Build_Spec                'Editor Packed Library'
 
         if (Test-Path $probe) {
-          Write-Host "✅  NI Icon Editor resources deployed successfully."
+          Write-Host "?  NI Icon Editor resources deployed successfully."
         } else {
-          Write-Host "⚠️  PrepareIESource completed but probe file still missing."
+          Write-Host "??  PrepareIESource completed but probe file still missing."
           Write-Host "    The Missing-In-Project check may report failures."
         }
 
@@ -119,9 +139,72 @@ runs:
       id: run_vi
       shell: pwsh
       run: |
+        $repoRoot = '${{ inputs.repo-root }}'
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "repo-root is required."
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
+        $projectFile = '${{ steps.resolve.outputs.projFile }}'
+        $lvInput = '${{ inputs.lv-ver }}'
+
+        function Test-Enabled {
+          param([string]$Value)
+          if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+          $normalized = $Value.Trim().ToLowerInvariant()
+          return ($normalized -eq '1' -or $normalized -eq 'true' -or $normalized -eq 'yes')
+        }
+        $requireRunnerCli = Test-Enabled $env:LVIE_REQUIRE_RUNNER_CLI
+        $runnerCliPath = $env:LVIE_RUNNER_CLI_PATH
+        if ([string]::IsNullOrWhiteSpace($runnerCliPath)) {
+          $cliName = if ($IsWindows) { 'runner-cli.exe' } else { 'runner-cli' }
+          $candidate = Join-Path $env:RUNNER_TEMP 'runner-cli' $cliName
+          if (Test-Path $candidate) {
+            $runnerCliPath = $candidate
+          }
+        }
+        $runnerCliProject = Join-Path $repoRoot 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+        $useRunnerCliBinary = (-not [string]::IsNullOrWhiteSpace($runnerCliPath)) -and (Test-Path $runnerCliPath)
+        $canUseRunnerCli = $useRunnerCliBinary -or ((Get-Command dotnet -ErrorAction SilentlyContinue) -and (Test-Path $runnerCliProject))
+        if (-not $canUseRunnerCli -and $requireRunnerCli) {
+          throw "runner-cli is required but unavailable. Set LVIE_RUNNER_CLI_PATH or enable dotnet build for Tooling/runner-cli."
+        }
+        if ($canUseRunnerCli) {
+          if ($useRunnerCliBinary -and -not $IsWindows) {
+            chmod +x $runnerCliPath
+          }
+          Write-Host "Using runner-cli missing-in-project (incremental migration)."
+          $args = @(
+            'missing-in-project',
+            '--repo-root', $repoRoot,
+            '--arch', '${{ inputs.arch }}',
+            '--project-file', $projectFile
+          )
+          if (-not [string]::IsNullOrWhiteSpace($lvInput)) {
+            $args += '--labview'
+            $args += $lvInput
+          }
+          if ($useRunnerCliBinary) {
+            & $runnerCliPath @args
+          } else {
+            $dotnetArgs = @(
+              'run',
+              '--project', $runnerCliProject,
+              '--configuration', 'Release',
+              '--'
+            ) + $args
+            & dotnet @dotnetArgs
+          }
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0 -and $exitCode -ne $null) {
+            exit $exitCode
+          }
+          return
+        }
+
         & "$Env:GITHUB_ACTION_PATH\Invoke-MissingInProjectCLI.ps1" `
-          -LVVersion   "${{ inputs.lv-ver }}" `
+          -LVVersion   "${{ steps.resolve_lv.outputs.lv_year }}" `
           -Arch        "${{ inputs.arch }}" `
           -ProjectFile "${{ steps.resolve.outputs.projFile }}"
+
 
 

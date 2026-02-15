@@ -1,0 +1,1003 @@
+using System.Diagnostics;
+using System.Text.Json;
+using RunnerCli;
+
+namespace RunnerCli.Tests;
+
+[Collection("RunnerCliCli")]
+public class RunnerCliCliTests
+{
+    [Fact]
+    public void VersionGate_emits_json_payload()
+    {
+        var repoRoot = FindRepoRoot();
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, $"version-gate --repo-root \"{repoRoot}\" --json");
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+
+        using var doc = JsonDocument.Parse(stdout);
+        var root = doc.RootElement;
+        Assert.True(TryGetPropertyIgnoreCase(root, "year", out _), "year missing");
+        Assert.True(TryGetPropertyIgnoreCase(root, "numericVersion", out _), "numericVersion missing");
+    }
+
+    [Fact]
+    public void Manifest_emits_required_json_fields()
+    {
+        var repoRoot = FindRepoRoot();
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, $"manifest --repo-root \"{repoRoot}\" --json");
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+
+        using var doc = JsonDocument.Parse(stdout);
+        var root = doc.RootElement;
+        Assert.True(TryGetPropertyIgnoreCase(root, "spec_document_id", out var specDocumentId), "spec_document_id missing");
+        Assert.True(TryGetPropertyIgnoreCase(root, "spec_version", out var specVersion), "spec_version missing");
+        Assert.True(TryGetPropertyIgnoreCase(root, "supported_commands", out _), "supported_commands missing");
+        Assert.True(TryGetPropertyIgnoreCase(root, "supported_profiles", out _), "supported_profiles missing");
+        Assert.True(TryGetPropertyIgnoreCase(root, "build_version", out _), "build_version missing");
+        Assert.True(TryGetPropertyIgnoreCase(root, "generated_utc", out _), "generated_utc missing");
+        Assert.Equal("LVIE-RC-REQ-v5", specDocumentId.GetString());
+        Assert.Equal("v5.2", specVersion.GetString());
+        var supportedCommands = root
+            .GetProperty("supported_commands")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .ToArray();
+        Assert.Contains("parity context", supportedCommands);
+        Assert.Contains("parity run", supportedCommands);
+    }
+
+    [Fact]
+    public void ParityContext_emits_json_payload_and_derives_release_from_lvversion()
+    {
+        var repoRoot = FindRepoRoot();
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, $"parity context --repo-root \"{repoRoot}\" --json");
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+
+        using var doc = JsonDocument.Parse(stdout);
+        var root = doc.RootElement;
+        Assert.Equal(repoRoot, root.GetProperty("repo_root").GetString());
+        Assert.Equal("lv_icon_editor.lvproj", root.GetProperty("project_relative_path").GetString());
+        Assert.Equal("Editor Packed Library", root.GetProperty("build_spec_name").GetString());
+        var year = root.GetProperty("labview_year").GetString();
+        var release = root.GetProperty("lv_release_resolved").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(year), "labview_year missing");
+        Assert.False(string.IsNullOrWhiteSpace(release), "lv_release_resolved missing");
+        Assert.StartsWith(year!, release!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ParityContext_fails_when_lv_release_year_does_not_match_lvversion()
+    {
+        var repoRoot = FindRepoRoot();
+        var (exitCode, _, stderr) = RunCli(repoRoot, $"parity context --repo-root \"{repoRoot}\" --lv-release 1999q1");
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains(".lvversion resolves to LabVIEW", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ConformanceCheck_json_reports_non_windows_not_applicable_treatment()
+    {
+        var repoRoot = FindRepoRoot();
+        var env = new Dictionary<string, string?>
+        {
+            ["RC_PROFILE"] = "core",
+            ["RC_STRICT_MODE"] = "false",
+            ["RC_HOSTED_LINUX_EVIDENCE"] = "linux evidence",
+            ["RC_HOSTED_WINDOWS_EVIDENCE"] = "windows evidence"
+        };
+
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, "conformance check --json", env);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+
+        using var doc = JsonDocument.Parse(stdout);
+        var root = doc.RootElement;
+        Assert.Equal("core", root.GetProperty("profile").GetString());
+        var checks = root.GetProperty("checks").EnumerateArray().ToList();
+        var naCheck = checks.FirstOrDefault(entry =>
+            string.Equals(entry.GetProperty("id").GetString(), "core.windows-only.nonwindows-not-applicable", StringComparison.OrdinalIgnoreCase));
+        Assert.NotEqual(default, naCheck);
+        Assert.Contains("not applicable", naCheck.GetProperty("message").GetString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ConformanceCheck_strict_mode_escalates_warnings_to_exit_code_3()
+    {
+        var repoRoot = FindRepoRoot();
+        var env = new Dictionary<string, string?>
+        {
+            ["RC_PROFILE"] = "core",
+            ["RC_STRICT_MODE"] = "true",
+            ["RC_HOSTED_LINUX_EVIDENCE"] = null,
+            ["RC_HOSTED_WINDOWS_EVIDENCE"] = null
+        };
+
+        var (exitCode, _, stderr) = RunCli(repoRoot, "conformance check --json", env);
+
+        Assert.Equal(3, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+    }
+
+    [Fact]
+    public void ConformanceCheck_full_profile_missing_artifacts_returns_exit_code_2()
+    {
+        var repoRoot = FindRepoRoot();
+        var tempRoot = Directory.CreateTempSubdirectory("lvie-cli-conformance-full").FullName;
+        var env = new Dictionary<string, string?>
+        {
+            ["RC_HOSTED_LINUX_EVIDENCE"] = "linux evidence",
+            ["RC_HOSTED_WINDOWS_EVIDENCE"] = "windows evidence"
+        };
+
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, $"conformance check --profile full --repo-root \"{tempRoot}\" --json", env);
+
+        Assert.Equal(2, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+        using var doc = JsonDocument.Parse(stdout);
+        var checks = doc.RootElement.GetProperty("checks").EnumerateArray().ToList();
+        var traceability = checks.FirstOrDefault(entry =>
+            string.Equals(entry.GetProperty("id").GetString(), "full.governance.traceability", StringComparison.OrdinalIgnoreCase));
+        Assert.NotEqual(default, traceability);
+        Assert.Equal("fail", traceability.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public void ConformanceCheck_json_includes_coverage_summary_and_writes_report()
+    {
+        var repoRoot = FindRepoRoot();
+        var reportRelativePath = Path.Combine("TestResults", "agent-logs", $"coverage-report-{Guid.NewGuid():N}.json");
+        var reportPath = Path.Combine(repoRoot, reportRelativePath);
+        var reportDirectory = Path.GetDirectoryName(reportPath);
+        if (!string.IsNullOrWhiteSpace(reportDirectory))
+        {
+            Directory.CreateDirectory(reportDirectory);
+        }
+
+        if (File.Exists(reportPath))
+        {
+            File.Delete(reportPath);
+        }
+
+        var env = new Dictionary<string, string?>
+        {
+            ["RC_HOSTED_LINUX_EVIDENCE"] = "linux evidence",
+            ["RC_HOSTED_WINDOWS_EVIDENCE"] = "windows evidence"
+        };
+
+        var args = $"conformance check --profile full --repo-root \"{repoRoot}\" --json --coverage-report \"{reportRelativePath}\"";
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args, env);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+        Assert.True(File.Exists(reportPath), "coverage report file was not created");
+
+        using var resultDoc = JsonDocument.Parse(stdout);
+        var summary = resultDoc.RootElement.GetProperty("summary");
+        Assert.True(TryGetPropertyIgnoreCase(summary, "coverage", out var coverage), "summary.coverage missing");
+        Assert.True(TryGetPropertyIgnoreCase(coverage, "rc_total", out var rcTotal), "summary.coverage.rc_total missing");
+        Assert.True(TryGetPropertyIgnoreCase(coverage, "rc_covered", out _), "summary.coverage.rc_covered missing");
+        Assert.True(TryGetPropertyIgnoreCase(coverage, "rc_uncovered", out _), "summary.coverage.rc_uncovered missing");
+        Assert.True(TryGetPropertyIgnoreCase(coverage, "coverage_percent", out _), "summary.coverage.coverage_percent missing");
+        Assert.True(TryGetPropertyIgnoreCase(coverage, "uncovered_rc_ids", out _), "summary.coverage.uncovered_rc_ids missing");
+        Assert.True(rcTotal.GetInt32() > 0, "summary.coverage.rc_total should be greater than zero");
+
+        using var reportDoc = JsonDocument.Parse(File.ReadAllText(reportPath));
+        Assert.Equal("full", reportDoc.RootElement.GetProperty("profile").GetString());
+        Assert.Equal("v5.1", reportDoc.RootElement.GetProperty("semantic_revision").GetString());
+        Assert.True(reportDoc.RootElement.TryGetProperty("coverage", out var reportCoverage));
+        Assert.Equal(
+            coverage.GetProperty("rc_total").GetInt32(),
+            reportCoverage.GetProperty("rc_total").GetInt32());
+    }
+
+    [Fact]
+    public void ConformanceCheck_coverage_fail_on_gap_requires_flag_and_emits_fail_entries()
+    {
+        var repoRoot = FindRepoRoot();
+        var fixtureRoot = CreateConformanceCoverageGapFixture(repoRoot, out var expectedUncoveredRcIds);
+        var env = new Dictionary<string, string?>
+        {
+            ["RC_HOSTED_LINUX_EVIDENCE"] = "linux evidence",
+            ["RC_HOSTED_WINDOWS_EVIDENCE"] = "windows evidence"
+        };
+
+        var withoutFlagArgs = $"conformance check --profile extended --repo-root \"{fixtureRoot}\" --json";
+        var (exitWithoutFlag, stdoutWithoutFlag, stderrWithoutFlag) = RunCli(repoRoot, withoutFlagArgs, env);
+        Assert.Equal(0, exitWithoutFlag);
+        Assert.True(string.IsNullOrWhiteSpace(stderrWithoutFlag), $"stderr: {stderrWithoutFlag}");
+
+        using var withoutFlagDoc = JsonDocument.Parse(stdoutWithoutFlag);
+        var withoutFlagCoverage = withoutFlagDoc.RootElement.GetProperty("summary").GetProperty("coverage");
+        var withoutFlagUncovered = withoutFlagCoverage
+            .GetProperty("uncovered_rc_ids")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .ToArray();
+        Assert.Equal(expectedUncoveredRcIds, withoutFlagUncovered);
+        Assert.Equal(expectedUncoveredRcIds.Length, withoutFlagCoverage.GetProperty("rc_uncovered").GetInt32());
+        var withoutFlagChecks = withoutFlagDoc.RootElement.GetProperty("checks").EnumerateArray().ToList();
+        Assert.Empty(withoutFlagChecks.Where(check =>
+            check.GetProperty("id").GetString()!.StartsWith("coverage.uncovered.", StringComparison.OrdinalIgnoreCase)));
+
+        var coverageReportRelative = Path.Combine("coverage", "gap-report.json");
+        var withFlagArgs = $"conformance check --profile extended --repo-root \"{fixtureRoot}\" --json --coverage-fail-on-gap --coverage-report \"{coverageReportRelative}\"";
+        var (exitWithFlag, stdoutWithFlag, stderrWithFlag) = RunCli(repoRoot, withFlagArgs, env);
+        Assert.Equal(2, exitWithFlag);
+        Assert.True(string.IsNullOrWhiteSpace(stderrWithFlag), $"stderr: {stderrWithFlag}");
+
+        using var withFlagDoc = JsonDocument.Parse(stdoutWithFlag);
+        var withFlagChecks = withFlagDoc.RootElement.GetProperty("checks").EnumerateArray().ToList();
+        var uncoveredFailChecks = withFlagChecks.Where(check =>
+            check.GetProperty("id").GetString()!.StartsWith("coverage.uncovered.", StringComparison.OrdinalIgnoreCase)).ToList();
+        Assert.Equal(expectedUncoveredRcIds.Length, uncoveredFailChecks.Count);
+        foreach (var expectedRcId in expectedUncoveredRcIds)
+        {
+            var matchingCheck = uncoveredFailChecks.FirstOrDefault(check =>
+                check.GetProperty("message").GetString()!.Contains(expectedRcId, StringComparison.OrdinalIgnoreCase));
+            Assert.NotEqual(default, matchingCheck);
+            Assert.Equal("fail", matchingCheck.GetProperty("status").GetString());
+            Assert.Equal("error", matchingCheck.GetProperty("severity").GetString());
+            Assert.Contains("runner-cli-requirements-v4-to-v5-trace.md", matchingCheck.GetProperty("evidence").GetString(), StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("runner-cli-requirements-v5-acceptance.md", matchingCheck.GetProperty("evidence").GetString(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        var coverageReportPath = Path.Combine(fixtureRoot, coverageReportRelative);
+        Assert.True(File.Exists(coverageReportPath), "coverage report for gap run was not created");
+        using var gapReportDoc = JsonDocument.Parse(File.ReadAllText(coverageReportPath));
+        var reportUncovered = gapReportDoc.RootElement
+            .GetProperty("coverage")
+            .GetProperty("uncovered_rc_ids")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .ToArray();
+        Assert.Equal(expectedUncoveredRcIds, reportUncovered);
+    }
+
+    [Fact]
+    public void PylaviSummarize_writes_output_even_with_json()
+    {
+        var repoRoot = FindRepoRoot();
+        var tempDir = Directory.CreateTempSubdirectory("lvie-cli-test");
+        var reportPath = Path.Combine(tempDir.FullName, "pylavi-report.json");
+        var outputPath = Path.Combine(tempDir.FullName, "pylavi-summary.json");
+
+        var report = new PylaviOffendersReport
+        {
+            Label = "pylavi",
+            GeneratedUtc = "2026-02-06T12:00:00Z",
+            TotalFails = 1,
+            ConfiguredRoots = "<redacted>",
+            ConfiguredRootCount = 1,
+            TopOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "foo.vi", Count = 1 }
+            },
+            TopAbsoluteOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "C:\\Users\\DevUser\\Projects\\bar.vi", Count = 1 }
+            }
+        };
+        File.WriteAllText(reportPath, JsonSerializer.Serialize(report, RunnerCliJsonContext.Default.PylaviOffendersReport));
+
+        var args = $"pylavi summarize --path \"{reportPath}\" --json --output-path \"{outputPath}\"";
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+        Assert.True(File.Exists(outputPath), "output path not written");
+
+        using var stdoutDoc = JsonDocument.Parse(stdout);
+        Assert.True(stdoutDoc.RootElement.TryGetProperty("label", out _));
+
+        var outputJson = File.ReadAllText(outputPath);
+        using var outputDoc = JsonDocument.Parse(outputJson);
+        Assert.True(outputDoc.RootElement.TryGetProperty("file", out _));
+        Assert.True(outputDoc.RootElement.TryGetProperty("has_findings", out _));
+    }
+
+    [Fact]
+    public void PylaviSummarize_with_baseline_emits_delta_fields()
+    {
+        var repoRoot = FindRepoRoot();
+        var tempDir = Directory.CreateTempSubdirectory("lvie-cli-delta");
+        var reportPath = Path.Combine(tempDir.FullName, "pylavi-report.json");
+        var baselinePath = Path.Combine(tempDir.FullName, "pylavi-baseline.json");
+        var outputPath = Path.Combine(tempDir.FullName, "pylavi-summary.json");
+
+        var baseline = new PylaviOffendersReport
+        {
+            Label = "pylavi",
+            GeneratedUtc = "2026-02-06T12:00:00Z",
+            TotalFails = 1,
+            ConfiguredRoots = "<redacted>",
+            ConfiguredRootCount = 1,
+            TopOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "foo.vi", Count = 1 }
+            },
+            TopAbsoluteOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "C:\\Users\\DevUser\\Projects\\bar.vi", Count = 1 }
+            }
+        };
+
+        var report = new PylaviOffendersReport
+        {
+            Label = "pylavi",
+            GeneratedUtc = "2026-02-06T12:00:00Z",
+            TotalFails = 2,
+            ConfiguredRoots = "<redacted>",
+            ConfiguredRootCount = 2,
+            TopOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "foo.vi", Count = 1 },
+                new() { Item = "delta.vi", Count = 1 }
+            },
+            TopAbsoluteOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "C:\\Users\\DevUser\\Projects\\bar.vi", Count = 1 },
+                new() { Item = "C:\\Users\\DevUser\\Projects\\delta.vi", Count = 1 }
+            }
+        };
+
+        File.WriteAllText(baselinePath, JsonSerializer.Serialize(baseline, RunnerCliJsonContext.Default.PylaviOffendersReport));
+        File.WriteAllText(reportPath, JsonSerializer.Serialize(report, RunnerCliJsonContext.Default.PylaviOffendersReport));
+
+        var args = $"pylavi summarize --path \"{reportPath}\" --baseline \"{baselinePath}\" --json --output-path \"{outputPath}\"";
+        var (exitCode, _, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+        Assert.True(File.Exists(outputPath), "output path not written");
+
+        using var summaryDoc = JsonDocument.Parse(File.ReadAllText(outputPath));
+        var summaryRoot = summaryDoc.RootElement;
+        Assert.True(summaryRoot.GetProperty("has_delta").GetBoolean());
+        Assert.Equal(1, summaryRoot.GetProperty("delta_total_fails").GetInt32());
+        Assert.Equal("delta.vi", summaryRoot.GetProperty("delta_offenders")[0].GetProperty("item").GetString());
+        Assert.Equal("C:\\Users\\DevUser\\Projects\\delta.vi", summaryRoot.GetProperty("delta_absolute_offenders")[0].GetProperty("item").GetString());
+    }
+
+    [Fact]
+    public void PylaviSummarize_fail_on_delta_returns_exit_code_6()
+    {
+        var repoRoot = FindRepoRoot();
+        var tempDir = Directory.CreateTempSubdirectory("lvie-cli-delta-fail");
+        var reportPath = Path.Combine(tempDir.FullName, "pylavi-report.json");
+        var baselinePath = Path.Combine(tempDir.FullName, "pylavi-baseline.json");
+
+        var baseline = new PylaviOffendersReport
+        {
+            Label = "pylavi",
+            GeneratedUtc = "2026-02-06T12:00:00Z",
+            TotalFails = 1,
+            ConfiguredRoots = "<redacted>",
+            ConfiguredRootCount = 1,
+            TopOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "foo.vi", Count = 1 }
+            }
+        };
+
+        var report = new PylaviOffendersReport
+        {
+            Label = "pylavi",
+            GeneratedUtc = "2026-02-06T12:00:00Z",
+            TotalFails = 2,
+            ConfiguredRoots = "<redacted>",
+            ConfiguredRootCount = 1,
+            TopOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "foo.vi", Count = 1 },
+                new() { Item = "delta.vi", Count = 1 }
+            }
+        };
+
+        File.WriteAllText(baselinePath, JsonSerializer.Serialize(baseline, RunnerCliJsonContext.Default.PylaviOffendersReport));
+        File.WriteAllText(reportPath, JsonSerializer.Serialize(report, RunnerCliJsonContext.Default.PylaviOffendersReport));
+
+        var args = $"pylavi summarize --path \"{reportPath}\" --baseline \"{baselinePath}\" --fail-on-delta";
+        var (exitCode, _, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(6, exitCode);
+        Assert.Contains("new entries", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void PylaviSummarize_validate_exists_returns_exit_code_2()
+    {
+        var repoRoot = FindRepoRoot();
+        var tempDir = Directory.CreateTempSubdirectory("lvie-cli-missing");
+        var missingPath = Path.Combine(tempDir.FullName, "missing.json");
+
+        var args = $"pylavi summarize --path \"{missingPath}\" --validate-exists";
+        var (exitCode, stdout, _) = RunCli(repoRoot, args);
+
+        Assert.Equal(2, exitCode);
+        Assert.Contains("PYLAVI_OFFENDERS_EXIT_CODE=2", stdout, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void PylaviSummarize_invalid_json_returns_exit_code_1()
+    {
+        var repoRoot = FindRepoRoot();
+        var tempDir = Directory.CreateTempSubdirectory("lvie-cli-invalid");
+        var reportPath = Path.Combine(tempDir.FullName, "invalid.json");
+        File.WriteAllText(reportPath, "not-json");
+
+        var args = $"pylavi summarize --path \"{reportPath}\" --json";
+        var (exitCode, _, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("ERROR", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void PylaviSummarize_orders_ranked_arrays_deterministically()
+    {
+        var repoRoot = FindRepoRoot();
+        var tempDir = Directory.CreateTempSubdirectory("lvie-cli-ordering");
+        var reportPath = Path.Combine(tempDir.FullName, "pylavi-report.json");
+        var baselinePath = Path.Combine(tempDir.FullName, "pylavi-baseline.json");
+        var outputPath = Path.Combine(tempDir.FullName, "pylavi-summary.json");
+
+        var baseline = new PylaviOffendersReport
+        {
+            Label = "pylavi",
+            GeneratedUtc = "2026-02-06T12:00:00Z",
+            TotalFails = 3,
+            ConfiguredRoots = "<redacted>",
+            ConfiguredRootCount = 1,
+            TopOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "Alpha2.vi", Count = 3 }
+            },
+            TopAbsoluteOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "C:\\Alpha2.vi", Count = 3 }
+            }
+        };
+
+        var report = new PylaviOffendersReport
+        {
+            Label = "pylavi",
+            GeneratedUtc = "2026-02-07T12:00:00Z",
+            TotalFails = 9,
+            ConfiguredRoots = "<redacted>",
+            ConfiguredRootCount = 1,
+            TopOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "zeta.vi", Count = 2 },
+                new() { Item = "Alpha.vi", Count = 2 },
+                new() { Item = "beta.vi", Count = 2 },
+                new() { Item = "Alpha2.vi", Count = 3 }
+            },
+            TopAbsoluteOffenders = new List<PylaviOffenderEntry>
+            {
+                new() { Item = "C:\\zeta.vi", Count = 2 },
+                new() { Item = "C:\\Alpha.vi", Count = 2 },
+                new() { Item = "C:\\beta.vi", Count = 2 },
+                new() { Item = "C:\\Alpha2.vi", Count = 3 }
+            }
+        };
+
+        File.WriteAllText(reportPath, JsonSerializer.Serialize(report, RunnerCliJsonContext.Default.PylaviOffendersReport));
+        File.WriteAllText(baselinePath, JsonSerializer.Serialize(baseline, RunnerCliJsonContext.Default.PylaviOffendersReport));
+
+        var args = $"pylavi summarize --path \"{reportPath}\" --baseline \"{baselinePath}\" --json --output-path \"{outputPath}\"";
+        var (exitCode, _, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+
+        using var summaryDoc = JsonDocument.Parse(File.ReadAllText(outputPath));
+        var summaryRoot = summaryDoc.RootElement;
+
+        AssertItemOrder(summaryRoot.GetProperty("top_offenders"), "Alpha2.vi", "Alpha.vi", "beta.vi", "zeta.vi");
+        AssertItemOrder(summaryRoot.GetProperty("top_absolute_offenders"), "C:\\Alpha2.vi", "C:\\Alpha.vi", "C:\\beta.vi", "C:\\zeta.vi");
+        AssertItemOrder(summaryRoot.GetProperty("delta_offenders"), "Alpha.vi", "beta.vi", "zeta.vi");
+        AssertItemOrder(summaryRoot.GetProperty("delta_absolute_offenders"), "C:\\Alpha.vi", "C:\\beta.vi", "C:\\zeta.vi");
+    }
+
+    [Fact]
+    public void PylaviScan_report_only_emits_command_and_info_to_stderr()
+    {
+        var repoRoot = FindRepoRoot();
+        var tempDir = Directory.CreateTempSubdirectory("lvie-cli-scan-stream");
+        var offendersPath = Path.Combine(tempDir.FullName, "offenders.json");
+        var logPath = Path.Combine(tempDir.FullName, "vi_validate.log");
+        var configPath = Path.Combine(repoRoot, "Tooling", "pylavi", "vi-validate.yml");
+        var stubPathRoot = CreateViValidateStub(exitCode: 2, line: "FAIL: synthetic failure");
+        var existingPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+        var env = new Dictionary<string, string?>
+        {
+            ["PATH"] = $"{stubPathRoot}{Path.PathSeparator}{existingPath}",
+            ["GITHUB_ACTIONS"] = "false"
+        };
+
+        var args = $"pylavi scan --repo-root \"{repoRoot}\" --config \"{configPath}\" --skip-version-gate --report-only --json --offenders-path \"{offendersPath}\" --log-path \"{logPath}\"";
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args, env);
+
+        Assert.Equal(0, exitCode);
+        Assert.Contains("vi_validate command", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("vi_validate exit code", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("vi_validate command", stdout, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("vi_validate exit code", stdout, StringComparison.OrdinalIgnoreCase);
+
+        using var json = JsonDocument.Parse(stdout);
+        Assert.True(TryGetPropertyIgnoreCase(json.RootElement, "total_fails", out _));
+    }
+
+    [Fact]
+    public void PylaviService_write_warning_uses_github_annotation_format_when_env_is_uppercase_true()
+    {
+        var originalError = Console.Error;
+        var originalGitHubActions = Environment.GetEnvironmentVariable("GITHUB_ACTIONS");
+        using var errorWriter = new StringWriter();
+        try
+        {
+            Console.SetError(errorWriter);
+            Environment.SetEnvironmentVariable("GITHUB_ACTIONS", "TRUE");
+
+            var writeWarning = typeof(PylaviService).GetMethod(
+                "WriteWarning",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.NotNull(writeWarning);
+            writeWarning!.Invoke(null, new object[] { "pylavi", "synthetic warning" });
+        }
+        finally
+        {
+            Console.SetError(originalError);
+            Environment.SetEnvironmentVariable("GITHUB_ACTIONS", originalGitHubActions);
+        }
+
+        var stderr = errorWriter.ToString();
+        Assert.StartsWith("::warning::", stderr.TrimStart(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void MissingInProject_dry_run_emits_command_echo_and_skips_script_execution_on_windows()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var repoRoot = FindRepoRoot();
+        var fixture = CreateMissingInProjectFixture(
+            "lvie-cli-mip-dry-run",
+            """
+            $sentinel = Join-Path $PSScriptRoot "..\..\..\script-executed.txt"
+            Set-Content -Path $sentinel -Value "executed" -Encoding UTF8
+            exit 9
+            """);
+
+        var args = $"missing-in-project --repo-root \"{fixture.RepoRoot}\" --arch 64 --project-file \"{fixture.ProjectPath}\" --skip-worktree-root-check --dry-run";
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args, timeoutMs: 30000);
+
+        Assert.Equal(0, exitCode);
+        Assert.Contains("missing-in-project command:", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("missing-in-project command:", stdout, StringComparison.OrdinalIgnoreCase);
+        Assert.False(File.Exists(fixture.SentinelPath), "dry-run should not execute the script.");
+    }
+
+    [Fact]
+    public void MissingInProject_forwards_script_exit_code_on_windows()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var repoRoot = FindRepoRoot();
+        var fixture = CreateMissingInProjectFixture(
+            "lvie-cli-mip-exit-code",
+            """
+            $sentinel = Join-Path $PSScriptRoot "..\..\..\script-executed.txt"
+            Set-Content -Path $sentinel -Value "executed" -Encoding UTF8
+            exit 7
+            """);
+
+        var args = $"missing-in-project --repo-root \"{fixture.RepoRoot}\" --arch 64 --project-file \"{fixture.ProjectPath}\" --skip-worktree-root-check";
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args, timeoutMs: 30000);
+
+        Assert.Equal(7, exitCode);
+        Assert.Contains("missing-in-project command:", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("missing-in-project command:", stdout, StringComparison.OrdinalIgnoreCase);
+        Assert.True(File.Exists(fixture.SentinelPath), "non-dry-run should execute the script.");
+    }
+
+    [Fact]
+    public void MissingInProject_on_non_windows_returns_clear_error()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var repoRoot = FindRepoRoot();
+        var args = "missing-in-project --repo-root \"" + repoRoot + "\" --arch 64 --project-file \"" + Path.Combine(repoRoot, "lv_icon_editor.lvproj") + "\"";
+        var (exitCode, _, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("only supported on Windows", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void PublishedBinary_runs_version_gate_and_pylavi()
+    {
+        var repoRoot = FindRepoRoot();
+        var cliPath = EnsurePublishedBinary(repoRoot);
+        var fixture = Path.Combine(repoRoot, "Tooling", "pylavi", "fixtures", "pylavi-offenders.sample.json");
+        var outputPath = Path.Combine(Path.GetTempPath(), $"pylavi-summary-{Guid.NewGuid():N}.json");
+
+        var (exitCode, stdout, stderr) = RunBinary(cliPath, new[]
+        {
+            "version-gate",
+            "--repo-root",
+            repoRoot,
+            "--json"
+        });
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stderr), $"stderr: {stderr}");
+        using (var doc = JsonDocument.Parse(stdout))
+        {
+            var root = doc.RootElement;
+            Assert.True(TryGetPropertyIgnoreCase(root, "year", out _), "year missing");
+        }
+
+        var (pylaviExit, pylaviStdout, pylaviStderr) = RunBinary(cliPath, new[]
+        {
+            "pylavi",
+            "summarize",
+            "--path",
+            fixture,
+            "--json",
+            "--output-path",
+            outputPath
+        });
+
+        Assert.Equal(0, pylaviExit);
+        Assert.True(string.IsNullOrWhiteSpace(pylaviStderr), $"stderr: {pylaviStderr}");
+        Assert.True(File.Exists(outputPath), "output path not written");
+        using var pylaviDoc = JsonDocument.Parse(pylaviStdout);
+        Assert.True(TryGetPropertyIgnoreCase(pylaviDoc.RootElement, "label", out _), "label missing");
+    }
+
+    private static string FindRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null)
+        {
+            var marker = Path.Combine(dir.FullName, ".lvversion");
+            if (File.Exists(marker))
+            {
+                return dir.FullName;
+            }
+            dir = dir.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Repo root not found (missing .lvversion).");
+    }
+
+    private static (int ExitCode, string StdOut, string StdErr) RunCli(
+        string repoRoot,
+        string args,
+        IDictionary<string, string?>? environmentOverrides = null,
+        int timeoutMs = 120000)
+    {
+        var dllPath = ResolveRunnerCliDll(repoRoot);
+        var runArgs = dllPath is null
+            ? BuildDotnetRunArgs(repoRoot, args)
+            : $"\"{dllPath}\" {args}";
+
+        var psi = new ProcessStartInfo
+        {
+            FileName = "dotnet",
+            Arguments = runArgs,
+            WorkingDirectory = repoRoot,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        if (environmentOverrides is not null)
+        {
+            foreach (var entry in environmentOverrides)
+            {
+                psi.Environment[entry.Key] = entry.Value ?? string.Empty;
+            }
+        }
+
+        using var process = Process.Start(psi);
+        if (process is null)
+        {
+            throw new InvalidOperationException("Failed to start dotnet process.");
+        }
+
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+
+        if (!process.WaitForExit(timeoutMs))
+        {
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch
+            {
+                // Best effort; process state can race with timeout handling.
+            }
+
+            process.WaitForExit();
+            var partialStdout = stdoutTask.IsCompletedSuccessfully ? stdoutTask.Result.Trim() : string.Empty;
+            var partialStderr = stderrTask.IsCompletedSuccessfully ? stderrTask.Result.Trim() : string.Empty;
+            throw new TimeoutException(
+                $"runner-cli invocation timed out after {timeoutMs}ms: dotnet {runArgs}{Environment.NewLine}" +
+                $"stdout:{Environment.NewLine}{partialStdout}{Environment.NewLine}" +
+                $"stderr:{Environment.NewLine}{partialStderr}");
+        }
+
+        process.WaitForExit();
+        var stdout = stdoutTask.GetAwaiter().GetResult();
+        var stderr = stderrTask.GetAwaiter().GetResult();
+
+        return (process.ExitCode, stdout.Trim(), stderr.Trim());
+    }
+
+    private static string BuildDotnetRunArgs(string repoRoot, string args)
+    {
+        var projectPath = Path.Combine(repoRoot, "Tooling", "runner-cli", "RunnerCli", "RunnerCli.csproj");
+        if (!File.Exists(projectPath))
+        {
+            throw new FileNotFoundException("RunnerCli.csproj not found.", projectPath);
+        }
+
+        return $"run --project \"{projectPath}\" --configuration Release -- {args}";
+    }
+
+    private static string? ResolveRunnerCliDll(string repoRoot)
+    {
+        var outputRoots = new[]
+        {
+            Path.Combine(repoRoot, "Tooling", "runner-cli", "RunnerCli", "bin", "Debug", "net8.0"),
+            Path.Combine(repoRoot, "Tooling", "runner-cli", "RunnerCli", "bin", "Release", "net8.0")
+        };
+
+        var candidates = outputRoots
+            .Where(Directory.Exists)
+            .SelectMany(outputRoot => new DirectoryInfo(outputRoot).GetFiles("runner-cli.dll", SearchOption.AllDirectories))
+            .OrderByDescending(file => file.LastWriteTimeUtc)
+            .Select(file => file.FullName)
+            .ToList();
+
+        return candidates.FirstOrDefault();
+    }
+
+    private static string EnsurePublishedBinary(string repoRoot)
+    {
+        var (rid, exeName) = GetRuntimeInfo();
+        var outputDir = Path.Combine(Path.GetTempPath(), $"runner-cli-publish-{rid}");
+        Directory.CreateDirectory(outputDir);
+
+        var cliPath = Path.Combine(outputDir, exeName);
+        if (File.Exists(cliPath))
+        {
+            return cliPath;
+        }
+
+        var projectPath = Path.Combine(repoRoot, "Tooling", "runner-cli", "RunnerCli", "RunnerCli.csproj");
+        if (!File.Exists(projectPath))
+        {
+            throw new FileNotFoundException("RunnerCli.csproj not found.", projectPath);
+        }
+
+        var publishArgs = string.Join(' ', new[]
+        {
+            "publish",
+            $"\"{projectPath}\"",
+            "--configuration", "Release",
+            "--runtime", rid,
+            "--self-contained", "true",
+            "-p:PublishSingleFile=true",
+            "-p:PublishTrimmed=true",
+            "--output", $"\"{outputDir}\""
+        });
+
+        var (exitCode, _, stderr) = RunProcess("dotnet", publishArgs, repoRoot);
+        if (exitCode != 0)
+        {
+            throw new InvalidOperationException($"dotnet publish failed: {stderr}");
+        }
+
+        if (!File.Exists(cliPath))
+        {
+            throw new FileNotFoundException("Published runner-cli not found.", cliPath);
+        }
+
+        if (!OperatingSystem.IsWindows())
+        {
+            RunProcess("chmod", $"+x \"{cliPath}\"", repoRoot);
+        }
+
+        return cliPath;
+    }
+
+    private static (string Rid, string ExeName) GetRuntimeInfo()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return ("win-x64", "runner-cli.exe");
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return (System.Runtime.InteropServices.RuntimeInformation.OSArchitecture == System.Runtime.InteropServices.Architecture.Arm64
+                ? "osx-arm64"
+                : "osx-x64", "runner-cli");
+        }
+
+        return (System.Runtime.InteropServices.RuntimeInformation.OSArchitecture == System.Runtime.InteropServices.Architecture.Arm64
+            ? "linux-arm64"
+            : "linux-x64", "runner-cli");
+    }
+
+    private static (int ExitCode, string StdOut, string StdErr) RunBinary(string path, IEnumerable<string> arguments)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = path,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        foreach (var arg in arguments)
+        {
+            psi.ArgumentList.Add(arg);
+        }
+
+        using var process = Process.Start(psi);
+        if (process is null)
+        {
+            throw new InvalidOperationException("Failed to start runner-cli binary.");
+        }
+
+        var stdout = process.StandardOutput.ReadToEnd();
+        var stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        return (process.ExitCode, stdout.Trim(), stderr.Trim());
+    }
+
+    private static string CreateViValidateStub(int exitCode, string line)
+    {
+        var dir = Directory.CreateTempSubdirectory("vi-validate-stub").FullName;
+        if (OperatingSystem.IsWindows())
+        {
+            // Use powershell.exe as a deterministic non-zero shim for unsupported args.
+            var psExe = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe");
+            File.Copy(psExe, Path.Combine(dir, "vi_validate.exe"));
+            return dir;
+        }
+
+        var scriptPath = Path.Combine(dir, "vi_validate");
+        File.WriteAllText(scriptPath, $"#!/usr/bin/env sh{Environment.NewLine}echo \"{line}\"{Environment.NewLine}exit {exitCode}{Environment.NewLine}");
+        var (_, _, stderr) = RunProcess("chmod", $"+x \"{scriptPath}\"", dir);
+        if (!string.IsNullOrWhiteSpace(stderr))
+        {
+            throw new InvalidOperationException($"chmod failed for vi_validate stub: {stderr}");
+        }
+        return dir;
+    }
+
+    private static string CreateConformanceCoverageGapFixture(string repoRoot, out string[] expectedUncoveredRcIds)
+    {
+        var fixtureRoot = Directory.CreateTempSubdirectory("lvie-cli-conformance-gap").FullName;
+        var docsRoot = Path.Combine(fixtureRoot, "docs");
+        Directory.CreateDirectory(docsRoot);
+
+        var requirementsSource = Path.Combine(repoRoot, "docs", "runner-cli-requirements.md");
+        var acceptanceSource = Path.Combine(repoRoot, "docs", "runner-cli-requirements-v5-acceptance.md");
+        var traceSource = Path.Combine(repoRoot, "docs", "runner-cli-requirements-v4-to-v5-trace.md");
+
+        var requirementsDest = Path.Combine(docsRoot, "runner-cli-requirements.md");
+        var acceptanceDest = Path.Combine(docsRoot, "runner-cli-requirements-v5-acceptance.md");
+        var traceDest = Path.Combine(docsRoot, "runner-cli-requirements-v4-to-v5-trace.md");
+
+        File.Copy(requirementsSource, requirementsDest, overwrite: true);
+        File.Copy(acceptanceSource, acceptanceDest, overwrite: true);
+        File.Copy(traceSource, traceDest, overwrite: true);
+
+        var syntheticGapRow = "| V5.1-Z9 | none | RC-ZZZ-999, RC-AAA-111 | Extended | Clarifying | synthetic uncovered RC fixture | synthetic coverage fixture |";
+        File.AppendAllText(traceDest, $"{Environment.NewLine}{syntheticGapRow}{Environment.NewLine}");
+
+        expectedUncoveredRcIds = new[] { "RC-AAA-111", "RC-ZZZ-999" };
+        return fixtureRoot;
+    }
+
+    private static (string RepoRoot, string ProjectPath, string SentinelPath) CreateMissingInProjectFixture(
+        string namePrefix,
+        string scriptContents)
+    {
+        var repoRoot = Directory.CreateTempSubdirectory(namePrefix).FullName;
+        var projectPath = Path.Combine(repoRoot, "fixture.lvproj");
+        var sentinelPath = Path.Combine(repoRoot, "script-executed.txt");
+        var scriptPath = Path.Combine(
+            repoRoot,
+            ".github",
+            "actions",
+            "missing-in-project",
+            "Invoke-MissingInProjectCLI.ps1");
+
+        var scriptDirectory = Path.GetDirectoryName(scriptPath);
+        if (!string.IsNullOrWhiteSpace(scriptDirectory))
+        {
+            Directory.CreateDirectory(scriptDirectory);
+        }
+
+        File.WriteAllText(projectPath, "<Project/>");
+        File.WriteAllText(scriptPath, scriptContents);
+        return (repoRoot, projectPath, sentinelPath);
+    }
+
+    private static void AssertItemOrder(JsonElement array, params string[] expectedItems)
+    {
+        var actualItems = array
+            .EnumerateArray()
+            .Select(element => element.GetProperty("item").GetString())
+            .ToArray();
+        Assert.Equal(expectedItems, actualItems);
+    }
+
+    private static (int ExitCode, string StdOut, string StdErr) RunProcess(string fileName, string args, string workingDirectory)
+    {
+        var psi = new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = args,
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using var process = Process.Start(psi);
+        if (process is null)
+        {
+            throw new InvalidOperationException($"Failed to start {fileName}.");
+        }
+
+        var stdout = process.StandardOutput.ReadToEnd();
+        var stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        return (process.ExitCode, stdout.Trim(), stderr.Trim());
+    }
+
+    private static bool TryGetPropertyIgnoreCase(JsonElement element, string name, out JsonElement value)
+    {
+        foreach (var prop in element.EnumerateObject())
+        {
+            if (string.Equals(prop.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                value = prop.Value;
+                return true;
+            }
+        }
+
+        value = default;
+        return false;
+    }
+}

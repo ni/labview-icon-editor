@@ -115,6 +115,40 @@ Describe 'Set-RunnerContract and Get-RunnerContract' {
         $nested | Should -Exist
     }
 
+    It 'rewrites scalar runner_labels as a JSON array' {
+        $contract = [pscustomobject]@{
+            version        = 1
+            runner_root    = $Script:TempDir
+            runner_labels  = 'self-hosted-windows-lv'
+            runner_label   = 'self-hosted-windows-lv'
+        }
+
+        Set-RunnerContract -ContractPath $Script:ContractFile -Contract $contract
+        $raw = Get-Content -Path $Script:ContractFile -Raw
+        $raw | Should -Match '"runner_labels"\s*:\s*\['
+
+        $loaded = Get-RunnerContract -ContractPath $Script:ContractFile
+        @($loaded.runner_labels).Count | Should -Be 1
+        @($loaded.runner_labels)[0] | Should -Be 'self-hosted-windows-lv'
+    }
+
+    It 'preserves a single-label array shape after roundtrip' {
+        $contract = [pscustomobject]@{
+            version        = 1
+            runner_root    = $Script:TempDir
+            runner_labels  = @('self-hosted-windows-lv')
+            runner_label   = 'self-hosted-windows-lv'
+        }
+
+        Set-RunnerContract -ContractPath $Script:ContractFile -Contract $contract
+        $raw = Get-Content -Path $Script:ContractFile -Raw
+        $raw | Should -Match '"runner_labels"\s*:\s*\['
+
+        $loaded = Get-RunnerContract -ContractPath $Script:ContractFile
+        @($loaded.runner_labels).Count | Should -Be 1
+        @($loaded.runner_labels)[0] | Should -Be 'self-hosted-windows-lv'
+    }
+
     It 'Get-RunnerContract returns null for non-existent path' {
         $result = Get-RunnerContract -ContractPath (Join-Path $Script:TempDir 'nope.json')
         $result | Should -BeNullOrEmpty

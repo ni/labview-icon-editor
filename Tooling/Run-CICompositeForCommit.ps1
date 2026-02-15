@@ -26,6 +26,9 @@
     If set, delete the remote branch after dispatching the workflow.
 #>
 
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    throw "git was not found on PATH."
+}
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]

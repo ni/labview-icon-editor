@@ -3,24 +3,32 @@ run-name: "CI ${{ github.sha }} (#${{ github.run_id }}.${{ github.run_attempt }}
 
 permissions:
   actions: read
+  contents: read
+  pull-requests: read
 
 env:
   LVIE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
   LVIE_EXPECTED_RUNNER_LABEL: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
   LVIE_CANONICAL_RUNNER_LABEL: self-hosted-windows-lv
   LVIE_FORCE_NO_LABVIEW_DEVMODE: 1
+  LVIE_RUNNER_ACL_CHECK: 1
   LVIE_RUNNER_ACL_AUTOFIX: 1
   LVIE_RUNNER_ACL_WARN_ONLY: 1
+  LVIE_REQUIRE_RUNNER_CLI: ${{ vars.LVIE_REQUIRE_RUNNER_CLI || '0' }}
+  LVIE_PYLAVI_BASELINE_PATH: ${{ vars.LVIE_PYLAVI_BASELINE_PATH || '' }}
+  LVIE_PYLAVI_BASELINE_REQUIRED: ${{ vars.LVIE_PYLAVI_BASELINE_REQUIRED || '0' }}
+  LVIE_PYLAVI_FAIL_ON_DELTA: ${{ vars.LVIE_PYLAVI_FAIL_ON_DELTA || '0' }}
 
 concurrency:
-  group: labview-${{ github.repository }}-${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
-  cancel-in-progress: false
+  group: labview-${{ github.repository }}-${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 on:
   push:
     branches:
       - main
       - develop
+      - 456-2020-migration
       - release/*
       - feature/*
       - hotfix/*
@@ -28,6 +36,7 @@ on:
     branches:
       - main
       - develop
+      - 456-2020-migration
       - release/*
       - feature/*
       - hotfix/*
@@ -54,8 +63,24 @@ on:
         description: "Require expected_sha to be provided and matched"
         required: false
         type: boolean
+      publish_prerelease:
+        description: "Publish prerelease for this dispatch run"
+        required: false
+        default: false
+        type: boolean
+      force_gcli_lunit:
+        description: "Selects the release-priority CI profile for workflow_dispatch routing"
+        required: false
+        default: false
+        type: boolean
+      vipc_apply_info:
+        description: "Run informational VIPC apply diagnostics after audit (non-blocking)"
+        required: false
+        default: false
+        type: boolean
 
 jobs:
+  # Stage 1: Run identity and publish-eligibility context.
   run-metadata:
     name: Run Metadata
     runs-on: ubuntu-latest
@@ -78,8 +103,15 @@ jobs:
           $workflow = '${{ github.workflow }}'
           $expectedSha = '${{ github.event.inputs.expected_sha }}'
           $strictSha = '${{ github.event.inputs.strict_sha }}'
+          $publishPrerelease = '${{ github.event.inputs.publish_prerelease }}'
           $runUid = "{0}-{1}-{2}" -f $runId, $runAttempt, $sha
 
+          if ($eventName -eq 'workflow_dispatch' -and $publishPrerelease -eq 'true' -and $strictSha -ne 'true') {
+            throw "strict_sha=true is required when publish_prerelease=true."
+          }
+          if ($eventName -eq 'workflow_dispatch' -and $publishPrerelease -eq 'true' -and [string]::IsNullOrWhiteSpace($expectedSha)) {
+            throw "expected_sha is required when publish_prerelease=true."
+          }
           if ($strictSha -eq 'true' -and [string]::IsNullOrWhiteSpace($expectedSha)) {
             throw "expected_sha is required when strict_sha=true."
           }
@@ -113,9 +145,262 @@ jobs:
           name: run-manifest
           path: ${{ steps.meta.outputs.manifest_path }}
 
+  prerelease-context:
+    name: Pre-Release Context
+    needs: run-metadata
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.ctx.outputs.should_publish }}
+      publish_mode: ${{ steps.ctx.outputs.publish_mode }}
+      publish_reason: ${{ steps.ctx.outputs.publish_reason }}
+      ci_profile: ${{ steps.ctx.outputs.ci_profile }}
+      release_priority_mode: ${{ steps.ctx.outputs.release_priority_mode }}
+      bump_type_override: ${{ steps.ctx.outputs.bump_type_override }}
+      merged_pr_number: ${{ steps.ctx.outputs.merged_pr_number }}
+      bump_conflict: ${{ steps.ctx.outputs.bump_conflict }}
+      bump_conflict_labels: ${{ steps.ctx.outputs.bump_conflict_labels }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - id: ctx
+        name: Resolve publish eligibility and bump override
+        uses: actions/github-script@v7
+        env:
+          PUBLISH_PRERELEASE: ${{ github.event.inputs.publish_prerelease || 'false' }}
+          FORCE_GCLI_LUNIT: ${{ github.event.inputs.force_gcli_lunit || 'false' }}
+        with:
+          script: |
+            const path = require('path');
+            const {
+              loadLabelContract,
+              buildReleaseLabelMap,
+              normalizeLabels,
+            } = require(path.join(process.env.GITHUB_WORKSPACE || process.cwd(), '.github', 'scripts', 'label-metadata.js'));
+            const contractPath = path.join(process.env.GITHUB_WORKSPACE || process.cwd(), '.github', 'labels', 'label-contract.json');
+            const labelContract = loadLabelContract(contractPath);
+            const releaseLabelMap = buildReleaseLabelMap(labelContract);
+            const publishInput = (process.env.PUBLISH_PRERELEASE || 'false').toLowerCase() === 'true';
+            const forceGcliLunitInput = (process.env.FORCE_GCLI_LUNIT || 'false').toLowerCase() === 'true';
+            const ciProfile = context.eventName === 'workflow_dispatch' && forceGcliLunitInput
+              ? 'release-priority'
+              : (context.eventName === 'pull_request' ? 'pr-fast' : 'full');
+            const releasePriorityMode = ciProfile === 'release-priority';
+
+            async function getCommitParentCount() {
+              const response = await github.rest.repos.getCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: context.sha,
+              });
+              const parents = Array.isArray(response.data.parents) ? response.data.parents : [];
+              return parents.length;
+            }
+
+            async function findMergedPrsTargetingDevelop() {
+              const response = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.sha,
+              });
+              const mergedDevelopPrs = response.data
+                .filter((pr) => pr.merged_at && pr.base && pr.base.ref === 'develop')
+                .sort((a, b) => new Date(b.merged_at) - new Date(a.merged_at));
+              return mergedDevelopPrs;
+            }
+
+            async function findRecentSuccessfulFullProfileRun(maxAgeHours) {
+              const cutoffMs = Date.now() - (maxAgeHours * 60 * 60 * 1000);
+              let page = 1;
+              while (page <= 5) {
+                const response = await github.rest.actions.listWorkflowRuns({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: 'ci-composite.yml',
+                  branch: 'develop',
+                  event: 'push',
+                  status: 'completed',
+                  per_page: 100,
+                  page,
+                });
+                const runs = Array.isArray(response.data.workflow_runs) ? response.data.workflow_runs : [];
+                if (!runs.length) {
+                  break;
+                }
+
+                for (const run of runs) {
+                  const createdMs = Date.parse(run.created_at || '');
+                  if (!Number.isFinite(createdMs)) {
+                    continue;
+                  }
+                  if (createdMs < cutoffMs) {
+                    return null;
+                  }
+                  if (run.id === context.runId) {
+                    continue;
+                  }
+                  if (String(run.conclusion || '') === 'success') {
+                    return run;
+                  }
+                }
+
+                const datedRuns = runs
+                  .map((run) => Date.parse(run.created_at || ''))
+                  .filter((value) => Number.isFinite(value));
+                if (datedRuns.length > 0 && Math.min(...datedRuns) < cutoffMs) {
+                  break;
+                }
+                page += 1;
+              }
+
+              return null;
+            }
+
+            function findMergedPrForCurrentSha(mergedDevelopPrs) {
+              const sha = String(context.sha || '').toLowerCase();
+              for (const pr of mergedDevelopPrs) {
+                const mergeSha = String(pr.merge_commit_sha || '').toLowerCase();
+                if (mergeSha === sha) {
+                  return pr;
+                }
+              }
+              return null;
+            }
+
+            function deriveBumpFromLabels(pr) {
+              const labels = (pr.labels || []).map((l) => String(l.name || ''));
+              const found = normalizeLabels(labels, releaseLabelMap);
+              if (found.normalized.length > 1) {
+                return {
+                  conflict: true,
+                  conflictLabels: found.matchedRaw.join(', '),
+                  bumpTypeOverride: '',
+                };
+              }
+              return {
+                conflict: false,
+                conflictLabels: '',
+                bumpTypeOverride: found.normalized[0] || 'patch',
+              };
+            }
+
+            let shouldPublish = false;
+            let publishMode = 'none';
+            let publishReason = 'not-eligible';
+            let bumpTypeOverride = '';
+            let mergedPrNumber = '';
+            let bumpConflict = false;
+            let bumpConflictLabels = '';
+
+            const commitParentCount = await getCommitParentCount();
+            const isMergeCommit = commitParentCount > 1;
+            const mergedDevelopPrs = await findMergedPrsTargetingDevelop();
+            const hasMergedDevelopPrAssociation = mergedDevelopPrs.length > 0;
+            const mergedPr = findMergedPrForCurrentSha(mergedDevelopPrs);
+            if (mergedPr) {
+              mergedPrNumber = String(mergedPr.number);
+            }
+
+            if (context.eventName === 'push' && context.ref === 'refs/heads/develop') {
+              publishMode = 'manual-intent';
+              shouldPublish = false;
+              if (!isMergeCommit) {
+                publishReason = 'manual-intent-required-develop-push-not-merge-commit';
+              } else if (mergedPr) {
+                publishReason = 'manual-intent-required-develop-push-merged-pr-detected';
+              } else if (hasMergedDevelopPrAssociation) {
+                publishReason = 'manual-intent-required-develop-push-merged-pr-sha-mismatch';
+              } else {
+                publishReason = 'manual-intent-required-develop-push-no-merged-pr';
+              }
+            } else if (context.eventName === 'workflow_dispatch') {
+              publishMode = 'manual';
+              if (!publishInput) {
+                shouldPublish = false;
+                publishReason = 'manual-intent-false';
+              } else if (!isMergeCommit) {
+                core.setFailed('Manual prerelease publish requires expected_sha to reference a merged develop merge commit.');
+                return;
+              } else if (!mergedPr) {
+                if (hasMergedDevelopPrAssociation) {
+                  core.setFailed('Manual prerelease publish requires expected_sha to match the merged develop PR merge SHA.');
+                } else {
+                  core.setFailed('Manual prerelease publish requires expected_sha to be associated with a merged PR targeting develop.');
+                }
+                return;
+              } else {
+                if (ciProfile === 'release-priority') {
+                  const freshnessHours = 24;
+                  let recentFullRun = null;
+                  try {
+                    recentFullRun = await findRecentSuccessfulFullProfileRun(freshnessHours);
+                  } catch (error) {
+                    core.setFailed(`Release-priority prerelease publish could not verify recent full-profile run freshness: ${error.message}`);
+                    return;
+                  }
+                  if (!recentFullRun) {
+                    core.setFailed(`Release-priority prerelease publish requires a successful full profile run on develop within the last ${freshnessHours} hours.`);
+                    return;
+                  }
+                }
+                shouldPublish = true;
+                publishReason = 'manual-intent-eligible-merged-pr-merge-commit';
+              }
+            } else if (context.eventName === 'pull_request') {
+              publishMode = 'pull-request';
+              shouldPublish = false;
+              publishReason = 'pull-request-events-never-publish';
+            } else {
+              publishMode = context.eventName;
+              shouldPublish = false;
+              publishReason = 'event-not-eligible';
+            }
+
+            const shouldDeriveMergedPrBump =
+              (context.eventName === 'push' && context.ref === 'refs/heads/develop' && !!mergedPr) ||
+              (context.eventName === 'workflow_dispatch' && publishInput && shouldPublish && !!mergedPr);
+            if (shouldDeriveMergedPrBump) {
+              const bumpInfo = deriveBumpFromLabels(mergedPr);
+              bumpConflict = bumpInfo.conflict;
+              bumpConflictLabels = bumpInfo.conflictLabels;
+              bumpTypeOverride = bumpInfo.bumpTypeOverride;
+            }
+
+            core.setOutput('should_publish', shouldPublish ? 'true' : 'false');
+            core.setOutput('publish_mode', publishMode);
+            core.setOutput('publish_reason', publishReason);
+            core.setOutput('ci_profile', ciProfile);
+            core.setOutput('release_priority_mode', releasePriorityMode ? 'true' : 'false');
+            core.setOutput('bump_type_override', bumpTypeOverride);
+            core.setOutput('merged_pr_number', mergedPrNumber);
+            core.setOutput('bump_conflict', bumpConflict ? 'true' : 'false');
+            core.setOutput('bump_conflict_labels', bumpConflictLabels);
+
+  runner-cli-build:
+    name: Build runner-cli (linux-x64)
+    needs: run-metadata
+    uses: ./.github/workflows/runner-cli-reusable.yml
+    permissions:
+      actions: read
+      contents: read
+    with:
+      rid: linux-x64
+      artifact_name: runner-cli-linux-x64
+
+  runner-cli-build-win:
+    name: Build runner-cli (win-x64)
+    needs: run-metadata
+    uses: ./.github/workflows/runner-cli-reusable.yml
+    permissions:
+      actions: read
+      contents: read
+    with:
+      rid: win-x64
+      artifact_name: runner-cli-win-x64
+
   version-gate:
     name: LabVIEW Version Gate
-    needs: run-metadata
+    needs: [run-metadata, runner-cli-build]
     runs-on: ubuntu-latest
     outputs:
       raw: ${{ steps.lv.outputs.raw }}
@@ -126,15 +411,213 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - name: Download runner-cli artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.runner-cli-build.outputs.artifact_name }}
+          path: ${{ runner.temp }}/runner-cli
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
       - id: lv
         name: Assert .lvversion
         shell: pwsh
         run: |
-          $info = & "$env:GITHUB_WORKSPACE/Tooling/Assert-LabVIEWVersion.ps1" -RepoRoot $env:GITHUB_WORKSPACE -Context 'ci-version-gate' -WriteSummary
+          $ErrorActionPreference = 'Stop'
+          $repoRoot = $env:GITHUB_WORKSPACE
+          $cliPath = Join-Path $env:RUNNER_TEMP 'runner-cli' 'runner-cli'
+          if (Test-Path $cliPath) {
+            Write-Host "Using prebuilt runner-cli artifact (incremental migration)."
+            chmod +x $cliPath
+            $json = & $cliPath version-gate --repo-root $repoRoot --json
+            $exitCode = $LASTEXITCODE
+            if ($exitCode -ne 0) {
+              exit $exitCode
+            }
+            $info = $json | ConvertFrom-Json
+          } else {
+            $runnerCliProject = Join-Path $repoRoot 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+            $canUseRunnerCli = (Get-Command dotnet -ErrorAction SilentlyContinue) -and (Test-Path $runnerCliProject)
+            if ($canUseRunnerCli) {
+            Write-Host "Using runner-cli version-gate (incremental migration)."
+            dotnet build $runnerCliProject --configuration Release | Out-Host
+            if ($LASTEXITCODE -ne 0) {
+              exit $LASTEXITCODE
+            }
+            $runnerCliDll = Join-Path (Split-Path $runnerCliProject) 'bin/Release/net8.0/runner-cli.dll'
+            if (-not (Test-Path $runnerCliDll)) {
+              throw "Runner CLI build succeeded but binary not found: $runnerCliDll"
+            }
+            $json = & dotnet $runnerCliDll version-gate --repo-root $repoRoot --json
+            $exitCode = $LASTEXITCODE
+            if ($exitCode -ne 0) {
+              exit $exitCode
+            }
+            $info = $json | ConvertFrom-Json
+            } else {
+              if ($env:LVIE_REQUIRE_RUNNER_CLI -eq '1') {
+                throw "LVIE_REQUIRE_RUNNER_CLI=1 but runner-cli was not available."
+              }
+              Write-Warning "runner-cli unavailable; falling back to Assert-LabVIEWVersion.ps1."
+              $info = & "$repoRoot/Tooling/Assert-LabVIEWVersion.ps1" -RepoRoot $repoRoot -Context 'ci-version-gate' -WriteSummary
+            }
+          }
+          Write-Warning ("labview_version not provided; using .lvversion ({0})." -f $info.Raw)
           "raw=$($info.Raw)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
           "year=$($info.Year)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
           "minor=$($info.MinorRevision)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
           "numeric=$($info.NumericVersion)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          Write-Host ("LabVIEW version gate passed: {0}" -f $info.Raw)
+
+  core-conformance-hosted-linux:
+    name: Core Conformance Evidence (Hosted Linux)
+    needs: [run-metadata, version-gate, runner-cli-build]
+    runs-on: ubuntu-latest
+    outputs:
+      evidence: ${{ steps.evidence.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download runner-cli artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.runner-cli-build.outputs.artifact_name }}
+          path: ${{ runner.temp }}/runner-cli
+      - id: evidence
+        name: Run Core JSON checks (linux)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cli="${RUNNER_TEMP}/runner-cli/runner-cli"
+          if [ ! -x "$cli" ]; then
+            chmod +x "$cli"
+          fi
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          evidence="core-linux:${run_url}:attempt-${GITHUB_RUN_ATTEMPT}"
+          "$cli" version-gate --repo-root "$GITHUB_WORKSPACE" --json > "${RUNNER_TEMP}/core-linux-version-gate.json"
+          "$cli" pylavi summarize --path "$GITHUB_WORKSPACE/Tooling/pylavi/fixtures/pylavi-offenders.sample.json" --json > "${RUNNER_TEMP}/core-linux-pylavi-summarize.json"
+          cat > "${RUNNER_TEMP}/core-conformance-linux-evidence.json" <<JSON
+          {
+            "platform": "linux",
+            "run_url": "${run_url}",
+            "evidence": "${evidence}",
+            "version_gate_json": "${RUNNER_TEMP}/core-linux-version-gate.json",
+            "pylavi_summarize_json": "${RUNNER_TEMP}/core-linux-pylavi-summarize.json"
+          }
+          JSON
+          echo "value=${evidence}" >> "$GITHUB_OUTPUT"
+      - name: Upload Core conformance linux evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-conformance-linux-evidence
+          path: |
+            ${{ runner.temp }}/core-linux-version-gate.json
+            ${{ runner.temp }}/core-linux-pylavi-summarize.json
+            ${{ runner.temp }}/core-conformance-linux-evidence.json
+          if-no-files-found: error
+
+  core-conformance-hosted-windows:
+    name: Core Conformance Evidence (Hosted Windows)
+    needs: [run-metadata, version-gate, runner-cli-build-win]
+    runs-on: windows-latest
+    outputs:
+      evidence: ${{ steps.evidence.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download runner-cli artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.runner-cli-build-win.outputs.artifact_name }}
+          path: ${{ runner.temp }}/runner-cli
+      - id: evidence
+        name: Run Core JSON checks (windows)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cli = Join-Path $env:RUNNER_TEMP 'runner-cli/runner-cli.exe'
+          if (-not (Test-Path $cli)) {
+            throw "runner-cli artifact missing at $cli"
+          }
+          $runUrl = "{0}/{1}/actions/runs/{2}" -f $env:GITHUB_SERVER_URL, $env:GITHUB_REPOSITORY, $env:GITHUB_RUN_ID
+          $evidence = "core-windows:${runUrl}:attempt-$($env:GITHUB_RUN_ATTEMPT)"
+          $versionOut = Join-Path $env:RUNNER_TEMP 'core-windows-version-gate.json'
+          $pylaviOut = Join-Path $env:RUNNER_TEMP 'core-windows-pylavi-summarize.json'
+          $evidenceOut = Join-Path $env:RUNNER_TEMP 'core-conformance-windows-evidence.json'
+          & $cli version-gate --repo-root $env:GITHUB_WORKSPACE --json | Out-File -FilePath $versionOut -Encoding utf8
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli version-gate failed with exit code $LASTEXITCODE"
+          }
+          $sample = Join-Path $env:GITHUB_WORKSPACE 'Tooling/pylavi/fixtures/pylavi-offenders.sample.json'
+          & $cli pylavi summarize --path $sample --json | Out-File -FilePath $pylaviOut -Encoding utf8
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli pylavi summarize failed with exit code $LASTEXITCODE"
+          }
+          $payload = [ordered]@{
+            platform = 'windows'
+            run_url = $runUrl
+            evidence = $evidence
+            version_gate_json = $versionOut
+            pylavi_summarize_json = $pylaviOut
+          }
+          $payload | ConvertTo-Json -Depth 5 | Out-File -FilePath $evidenceOut -Encoding utf8
+          "value=$evidence" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+      - name: Upload Core conformance windows evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-conformance-windows-evidence
+          path: |
+            ${{ runner.temp }}/core-windows-version-gate.json
+            ${{ runner.temp }}/core-windows-pylavi-summarize.json
+            ${{ runner.temp }}/core-conformance-windows-evidence.json
+          if-no-files-found: error
+
+  conformance-full:
+    name: Conformance Check (Full, Strict)
+    needs: [run-metadata, core-conformance-hosted-linux, core-conformance-hosted-windows, runner-cli-build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download runner-cli artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.runner-cli-build.outputs.artifact_name }}
+          path: ${{ runner.temp }}/runner-cli
+      - name: Run full conformance gate
+        shell: pwsh
+        env:
+          RC_HOSTED_LINUX_EVIDENCE: ${{ needs.core-conformance-hosted-linux.outputs.evidence }}
+          RC_HOSTED_WINDOWS_EVIDENCE: ${{ needs.core-conformance-hosted-windows.outputs.evidence }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cli = Join-Path $env:RUNNER_TEMP 'runner-cli/runner-cli'
+          if (-not (Test-Path $cli)) {
+            throw "runner-cli artifact missing at $cli"
+          }
+          chmod +x $cli
+          $outDir = Join-Path $env:RUNNER_TEMP 'conformance-full'
+          New-Item -Path $outDir -ItemType Directory -Force | Out-Null
+          $jsonPath = Join-Path $outDir 'conformance-full.json'
+          $json = & $cli conformance check --profile full --json --strict --repo-root $env:GITHUB_WORKSPACE
+          $exitCode = $LASTEXITCODE
+          $json | Out-File -FilePath $jsonPath -Encoding utf8
+          if ($exitCode -ne 0) {
+            throw "runner-cli conformance check failed with exit code $exitCode"
+          }
+          $result = $json | ConvertFrom-Json
+          Write-Host ("Conformance profile: {0}" -f $result.profile)
+          Write-Host ("Conformance totals: total={0}, pass={1}, warn={2}, fail={3}" -f $result.summary.total, $result.summary.pass, $result.summary.warn, $result.summary.fail)
+      - name: Upload full conformance artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: conformance-full
+          path: ${{ runner.temp }}/conformance-full/conformance-full.json
+          if-no-files-found: error
 
   powershell-lint:
     name: PowerShell Lint
@@ -181,6 +664,18 @@ jobs:
           }
 
           Write-Host "Baseline guard: no changes detected."
+      - name: Validate path root contract
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-PathContract.ps1" -WriteSummary
+      - name: Validate CI selector/dev-mode contract
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-CiPipelineSelectorDevModeContract.ps1" -WriteSummary
+      - name: Validate solo-maintainer workflow contract
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-SoloMaintainerWorkflowContract.ps1" -WriteSummary
       - name: Install PSScriptAnalyzer
         shell: pwsh
         run: |
@@ -191,61 +686,73 @@ jobs:
         run: |
           pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Invoke-PSScriptAnalyzer.ps1" -WriteSummary
 
-  dev-mode-gate:
-    name: Verify IE Paths Gate (LV ${{ matrix.bitness }}-bit)
-    needs: [run-metadata, version-gate]
-    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
-    env:
-      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
-      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
-      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
-      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
-      LVIE_VERIFY_IEPATHS_STRICT: '1'
-    strategy:
-      fail-fast: false
-      matrix:
-        bitness: ["64", "32"]
+  vip-prerelease-requirements-lint:
+    name: VIP Prerelease Requirements Lint
+    needs: run-metadata
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Job setup
-        uses: ./.github/actions/lvie-job-setup
-        with:
-          checkout: 'false'
-          bitness: ${{ matrix.bitness }}
-          create_worktree: 'true'
-      - name: Initialize VerifyIEPaths archive folder
+      - name: Lint VIP prerelease requirements v1
         shell: pwsh
         run: |
-          New-Item -Path "$env:RUNNER_TEMP\\verify-iepaths" -ItemType Directory -Force | Out-Null
-      - name: Verify IE Paths (LV ${{ matrix.bitness }}-bit)
-        shell: pwsh
-        run: |
-          pwsh -NoProfile -ExecutionPolicy Bypass -File "$env:REPO_ROOT\\Tooling\\Invoke-MissingIEFilesFromLVInstall.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
-            -SupportedBitness ${{ matrix.bitness }} `
-            -RepoRoot $env:REPO_ROOT `
-            -ConnectTimeoutMs 180000 `
-            -ProcessTimeoutMs 300000 `
-            -StatusFileTimeoutMs 60000 `
-            -StatusFileArchiveDirectory "$env:RUNNER_TEMP\\verify-iepaths" `
-            -EnableDevModeNoLabVIEW `
-            -AutoRevertIfEnabled
-      - name: Upload VerifyIEPaths status (on failure)
-        if: failure()
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-VipPrereleaseRequirementsV1.ps1" -WriteSummary
+      - name: Upload VIP prerelease requirements lint status
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: verify-iepaths-${{ matrix.bitness }}-bit
-          path: ${{ runner.temp }}\verify-iepaths
-      - name: Job teardown
-        if: always()
-        uses: ./.github/actions/lvie-job-teardown
+          name: vip-prerelease-requirements-lint
+          path: builds/status/vip-prerelease-requirements-lint.json
+          if-no-files-found: error
 
+  pylavi-validate:
+    name: Validate LabVIEW Files (pylavi, report-only)
+    needs: [run-metadata, version-gate, runner-cli-build-win]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download runner-cli artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.runner-cli-build-win.outputs.artifact_name }}
+          path: ${{ runner.temp }}/runner-cli
+      - name: Export runner-cli path
+        shell: pwsh
+        run: |
+          $cliPath = Join-Path $env:RUNNER_TEMP 'runner-cli' 'runner-cli.exe'
+          if (Test-Path $cliPath) {
+            "LVIE_RUNNER_CLI_PATH=$cliPath" | Out-File -FilePath $Env:GITHUB_ENV -Append -Encoding ascii
+            Write-Host ("Using runner-cli at {0}" -f $cliPath)
+          } else {
+            Write-Warning ("runner-cli artifact missing at {0}" -f $cliPath)
+            if ($env:LVIE_REQUIRE_RUNNER_CLI -eq '1') {
+              throw "LVIE_REQUIRE_RUNNER_CLI=1 but runner-cli was not found."
+            }
+          }
+      - name: Run vi_validate (strict, report-only)
+        uses: ./.github/actions/pylavi-validate
+        with:
+          config_path: Tooling/pylavi/vi-validate.yml
+          label: strict
+          log_name: pylavi-validate-strict-log
+          report_only: 'true'
+          absolute_roots: ${{ vars.LVIE_PYLAVI_ABSOLUTE_PATH_ROOTS }}
+      - name: Run vi_validate (legacy, report-only)
+        uses: ./.github/actions/pylavi-validate
+        with:
+          config_path: Tooling/pylavi/vi-validate-legacy.yml
+          label: legacy
+          log_name: pylavi-validate-legacy-log
+          report_only: 'true'
+          absolute_roots: ${{ vars.LVIE_PYLAVI_ABSOLUTE_PATH_ROOTS }}
+
+  # Stage 2: Baseline hosted/static checks.
   changes:
     name: Detect VIPC changes
-    needs: [run-metadata, version-gate, dev-mode-gate]
+    needs: [run-metadata, prerelease-context, version-gate, pylavi-validate]
     runs-on: ubuntu-latest
     env:
       LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
@@ -268,7 +775,7 @@ jobs:
             vipc:
               - '**/*.vipc'
 
-  apply-deps-2021-x64:
+  apply-deps-lv-x64:
     name: Apply VIPC (LV x64)
     needs: [run-metadata, version-gate, changes]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
@@ -288,26 +795,74 @@ jobs:
           checkout: 'false'
           bitness: 64
           create_worktree: 'true'
-      - name: Apply VIPC (LV x64)
-        if: needs.changes.outputs.vipc == 'true'
+          worktree_root_mode: runner_temp
+      - name: Audit VIPC apply (LV x64)
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
         run: |
-          & ".github\\actions\\apply-vipc\\ApplyVIPC.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
-            -VIP_LVVersion $env:LABVIEW_VERSION_YEAR `
+          & "$env:REPO_ROOT\\Tooling\\Assert-VipcApplied.ps1" `
+            -RepoRoot "$env:REPO_ROOT" `
+            -VIPCPath ".github/actions/apply-vipc/runner_dependencies.vipc" `
+            -SupportedBitness 64 `
+            -OutputPath "$env:REPO_ROOT\\builds\\status\\vipc-audit-64.json"
+      - name: Report VIPC change status (LV x64)
+        shell: pwsh
+        run: |
+          if ('${{ needs.changes.outputs.vipc }}' -eq 'true') {
+            Write-Host ".vipc changes detected for this run."
+          } else {
+            Write-Host "No .vipc changes detected; audit-first policy still enforced."
+          }
+      - name: Apply VIPC (LV x64, informational)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.vipc_apply_info == 'true' }}
+        continue-on-error: true
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          $logPath = Join-Path $env:REPO_ROOT 'builds\status\vipc-apply-64.log'
+          $logDir = Split-Path -Path $logPath -Parent
+          if (-not (Test-Path -Path $logDir)) {
+            New-Item -Path $logDir -ItemType Directory -Force | Out-Null
+          }
+
+          '' | Set-Content -Path $logPath -Encoding utf8
+          $output = & ".github\\actions\\apply-vipc\\ApplyVIPC.ps1" `
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
-            -VIPCPath ".github/actions/apply-vipc/runner_dependencies.vipc"
-      - run: echo "No .vipc changes detected; skipping dependency application."
-        if: needs.changes.outputs.vipc != 'true'
+            -VIPCPath ".github/actions/apply-vipc/runner_dependencies.vipc" *>&1
+          $exitCode = $LASTEXITCODE
+
+          if ($output) {
+            $output |
+              ForEach-Object { $_.ToString() } |
+              Tee-Object -FilePath $logPath -Append |
+              ForEach-Object { Write-Host $_ }
+          }
+
+          if ($exitCode -ne 0) {
+            exit $exitCode
+          }
+      - name: Upload VIPC audit artifact (LV x64)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vipc-audit-64
+          path: ${{ env.REPO_ROOT }}/builds/status/vipc-audit-64.json
+          if-no-files-found: warn
+      - name: Upload VIPC apply log artifact (LV x64)
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && github.event.inputs.vipc_apply_info == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vipc-apply-log-64
+          path: ${{ env.REPO_ROOT }}/builds/status/vipc-apply-64.log
+          if-no-files-found: warn
       - name: Job teardown
         if: always()
         uses: ./.github/actions/lvie-job-teardown
 
-  apply-deps-2021-x86:
+  apply-deps-x86:
     name: Apply VIPC (LV x86)
-    needs: [run-metadata, version-gate, apply-deps-2021-x64, changes]
+    needs: [run-metadata, version-gate, apply-deps-lv-x64, changes]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
@@ -325,26 +880,74 @@ jobs:
           checkout: 'false'
           bitness: 32
           create_worktree: 'true'
-      - name: Apply VIPC (LV x86)
-        if: needs.changes.outputs.vipc == 'true'
+          worktree_root_mode: runner_temp
+      - name: Audit VIPC apply (LV x86)
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
         run: |
-          & ".github\\actions\\apply-vipc\\ApplyVIPC.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
-            -VIP_LVVersion $env:LABVIEW_VERSION_YEAR `
+          & "$env:REPO_ROOT\\Tooling\\Assert-VipcApplied.ps1" `
+            -RepoRoot "$env:REPO_ROOT" `
+            -VIPCPath ".github/actions/apply-vipc/runner_dependencies.vipc" `
+            -SupportedBitness 32 `
+            -OutputPath "$env:REPO_ROOT\\builds\\status\\vipc-audit-32.json"
+      - name: Report VIPC change status (LV x86)
+        shell: pwsh
+        run: |
+          if ('${{ needs.changes.outputs.vipc }}' -eq 'true') {
+            Write-Host ".vipc changes detected for this run."
+          } else {
+            Write-Host "No .vipc changes detected; audit-first policy still enforced."
+          }
+      - name: Apply VIPC (LV x86, informational)
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.vipc_apply_info == 'true' }}
+        continue-on-error: true
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          $logPath = Join-Path $env:REPO_ROOT 'builds\status\vipc-apply-32.log'
+          $logDir = Split-Path -Path $logPath -Parent
+          if (-not (Test-Path -Path $logDir)) {
+            New-Item -Path $logDir -ItemType Directory -Force | Out-Null
+          }
+
+          '' | Set-Content -Path $logPath -Encoding utf8
+          $output = & ".github\\actions\\apply-vipc\\ApplyVIPC.ps1" `
             -SupportedBitness 32 `
             -RepoRoot "$env:REPO_ROOT" `
-            -VIPCPath ".github/actions/apply-vipc/runner_dependencies.vipc"
-      - run: echo "No .vipc changes detected; skipping dependency application."
-        if: needs.changes.outputs.vipc != 'true'
+            -VIPCPath ".github/actions/apply-vipc/runner_dependencies.vipc" *>&1
+          $exitCode = $LASTEXITCODE
+
+          if ($output) {
+            $output |
+              ForEach-Object { $_.ToString() } |
+              Tee-Object -FilePath $logPath -Append |
+              ForEach-Object { Write-Host $_ }
+          }
+
+          if ($exitCode -ne 0) {
+            exit $exitCode
+          }
+      - name: Upload VIPC audit artifact (LV x86)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vipc-audit-32
+          path: ${{ env.REPO_ROOT }}/builds/status/vipc-audit-32.json
+          if-no-files-found: warn
+      - name: Upload VIPC apply log artifact (LV x86)
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && github.event.inputs.vipc_apply_info == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vipc-apply-log-32
+          path: ${{ env.REPO_ROOT }}/builds/status/vipc-apply-32.log
+          if-no-files-found: warn
       - name: Job teardown
         if: always()
         uses: ./.github/actions/lvie-job-teardown
 
   version:
     name: Compute Version
-    needs: [run-metadata, version-gate, dev-mode-gate]
+    needs: [run-metadata, version-gate, prerelease-context]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
@@ -368,106 +971,32 @@ jobs:
         with:
           checkout: 'false'
           create_worktree: 'false'
+      - name: Fail on conflicting merged PR release labels
+        if: ${{ needs.prerelease-context.outputs.bump_conflict == 'true' }}
+        shell: pwsh
+        run: |
+          $labels = '${{ needs.prerelease-context.outputs.bump_conflict_labels }}'
+          $prNumber = '${{ needs.prerelease-context.outputs.merged_pr_number }}'
+          if ([string]::IsNullOrWhiteSpace($prNumber)) {
+            throw ("Conflicting merged PR release labels detected: {0}" -f $labels)
+          }
+          throw ("Conflicting merged PR release labels detected on merged PR #{0}: {1}" -f $prNumber, $labels)
       - id: compute
         uses: ./.github/actions/compute-version
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          bump_type_override: ${{ needs.prerelease-context.outputs.bump_type_override }}
       - name: Job teardown
         if: always()
         uses: ./.github/actions/lvie-job-teardown
         with:
           cleanup_worktree: 'false'
 
-  missing-in-project:
-    name: Missing-In-Project (LV ${{ matrix.bitness }}-bit)
-    needs: [run-metadata, version-gate, apply-deps-2021-x86]
-    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
-    env:
-      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
-      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
-      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
-      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        bitness: ["64", "32"]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Job setup
-        uses: ./.github/actions/lvie-job-setup
-        with:
-          checkout: 'false'
-          bitness: ${{ matrix.bitness }}
-          create_worktree: 'true'
-      - name: Enable Development Mode (LV ${{ matrix.bitness }}-bit)
-        shell: pwsh
-        working-directory: ${{ env.REPO_ROOT }}
-        run: |
-          & ".github\\actions\\set-development-mode\\Set_Development_Mode.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
-            -SupportedBitness ${{ matrix.bitness }} `
-            -RepoRoot "$env:REPO_ROOT"
-      - name: Resolve LabVIEW project path
-        id: proj
-        shell: pwsh
-        run: |
-          if ([string]::IsNullOrWhiteSpace($env:PROJECT_PATH)) {
-            throw "PROJECT_PATH was not set."
-          }
-          if (-not (Test-Path -Path $env:PROJECT_PATH)) {
-            throw "Project file not found: $env:PROJECT_PATH"
-          }
-          Write-Host "Using project file: $env:PROJECT_PATH"
-          "project_file=$env:PROJECT_PATH" >> $env:GITHUB_OUTPUT
-      - name: Missing-In-Project (LV ${{ matrix.bitness }}-bit)
-        id: mip
-        shell: pwsh
-        working-directory: ${{ env.REPO_ROOT }}
-        run: |
-          & ".github\\actions\\missing-in-project\\Invoke-MissingInProjectCLI.ps1" `
-            -LVVersion   "$env:LABVIEW_VERSION_YEAR" `
-            -Arch        "${{ matrix.bitness }}" `
-            -ProjectFile "${{ steps.proj.outputs.project_file }}"
-
-          $missingFile = Join-Path $env:REPO_ROOT '.github\\actions\\missing-in-project\\missing_files.txt'
-          $missingCsv = ''
-          if (Test-Path $missingFile) {
-            $missingCsv = Get-Content -Path $missingFile -Raw
-          }
-          $passed = [string]::IsNullOrWhiteSpace($missingCsv)
-          "passed=$($passed.ToString().ToLower())" >> $env:GITHUB_OUTPUT
-          "missing-files=$missingCsv" >> $env:GITHUB_OUTPUT
-      - name: Summarize to run Summary tab
-        if: always()
-        shell: pwsh
-        env:
-          PROJ_FILE: ${{ steps.proj.outputs.project_file }}
-          MISSING_CSV: ${{ steps.mip.outputs.missing-files }}
-        run: |
-          echo "INFO: Using project file: $env:PROJ_FILE" >> $GITHUB_STEP_SUMMARY
-          if ("${{ steps.mip.outputs.passed }}" -eq "true") {
-            echo "OK: Nothing missing for $env:LABVIEW_VERSION_YEAR-${{ matrix.bitness }}" >> $GITHUB_STEP_SUMMARY
-            exit 0
-          }
-          echo "ERROR: Missing files for $env:LABVIEW_VERSION_YEAR-${{ matrix.bitness }}" >> $GITHUB_STEP_SUMMARY
-          echo "$env:MISSING_CSV" >> $GITHUB_STEP_SUMMARY
-          exit 1
-      - name: Job teardown
-        if: always()
-        uses: ./.github/actions/lvie-job-teardown
-        with:
-          revert_dev_mode: 'true'
-          revert_bitness: ${{ matrix.bitness }}
-          close_labview: 'true'
-          close_bitness: ${{ matrix.bitness }}
-
+  # Stage 3: Self-hosted LabVIEW validation/build chain (profile-gated).
   unit-tests:
-    name: Run Unit Tests (LV ${{ matrix.bitness }}-bit)
-    needs: [run-metadata, version-gate, missing-in-project]
+    name: Test Source Using LV ${{ matrix.bitness }}-bit
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+    needs: [run-metadata, prerelease-context, version-gate, apply-deps-x86]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
@@ -478,7 +1007,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        bitness: ["64", "32"]
+        bitness: ${{ fromJson('["64"]') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -490,22 +1019,38 @@ jobs:
           checkout: 'false'
           bitness: ${{ matrix.bitness }}
           create_worktree: 'true'
-      - name: Enable Development Mode (LV ${{ matrix.bitness }}-bit)
+          worktree_root_mode: runner_temp
+      - name: Test Source Using LV ${{ matrix.bitness }}-bit
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
         run: |
-          & ".github/actions/set-development-mode/Set_Development_Mode.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
+          $reportPath = Join-Path $env:REPO_ROOT '.github/actions/run-unit-tests/UnitTestReport.xml'
+          if (Test-Path -Path $reportPath) {
+            Remove-Item -Path $reportPath -Force -ErrorAction SilentlyContinue
+          }
+
+          & g-cli --lv-ver $env:LABVIEW_VERSION_YEAR --arch ${{ matrix.bitness }} lunit -- -r $reportPath "$env:PROJECT_PATH"
+          $gcliExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+          Write-Host ("g-cli lunit exit code: {0}" -f $gcliExitCode)
+
+          & pwsh -NoProfile -File ".github/actions/run-unit-tests/RunUnitTests.ps1" `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -SupportedBitness ${{ matrix.bitness }} `
-            -RepoRoot "$env:REPO_ROOT"
-      - name: Run Unit Tests (LV ${{ matrix.bitness }}-bit)
+            -ReportPath $reportPath
+          $parserExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+          Write-Host ("RunUnitTests parser exit code: {0}" -f $parserExitCode)
+
+          if ($gcliExitCode -ne 0) {
+            exit $gcliExitCode
+          }
+
+          exit $parserExitCode
+      - name: Summarize unit-test executor
+        if: always()
         shell: pwsh
-        working-directory: ${{ env.REPO_ROOT }}
         run: |
-          & ".github/actions/run-unit-tests/RunUnitTests.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
-            -SupportedBitness ${{ matrix.bitness }} `
-            -ProjectPath "$env:PROJECT_PATH"
+          $summaryLine = "- Unit Tests (LV {0}-bit): LUnit executor = g-cli" -f '${{ matrix.bitness }}'
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summaryLine
       - name: Upload unit test report (LV ${{ matrix.bitness }}-bit)
         if: failure()
         uses: actions/upload-artifact@v4
@@ -517,14 +1062,14 @@ jobs:
         if: always()
         uses: ./.github/actions/lvie-job-teardown
         with:
-          revert_dev_mode: 'true'
           revert_bitness: ${{ matrix.bitness }}
           close_labview: 'true'
           close_bitness: ${{ matrix.bitness }}
 
   build-ppl-x86:
     name: Build 32-bit Packed Library
-    needs: [run-metadata, version-gate, build-ppl-x64, version]
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+    needs: [run-metadata, prerelease-context, version-gate, build-ppl-x64, version]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
@@ -542,20 +1087,13 @@ jobs:
           checkout: 'false'
           bitness: 32
           create_worktree: 'true'
-      - name: Enable Development Mode (LV 32-bit)
-        shell: pwsh
-        working-directory: ${{ env.REPO_ROOT }}
-        run: |
-          & ".github/actions/set-development-mode/Set_Development_Mode.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
-            -SupportedBitness 32 `
-            -RepoRoot "$env:REPO_ROOT"
+          worktree_root_mode: runner_temp
       - name: Build PPL (LV 32-bit)
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
         run: |
-          & ".github/actions/build-lvlibp/Build_lvlibp.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
+          & ".github/actions/build-lvlibp/BuildProjectSpec.ps1" `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -SupportedBitness 32 `
             -RepoRoot "$env:REPO_ROOT" `
             -Major ${{ needs.version.outputs.MAJOR }} `
@@ -578,14 +1116,14 @@ jobs:
         if: always()
         uses: ./.github/actions/lvie-job-teardown
         with:
-          revert_dev_mode: 'true'
           revert_bitness: 32
           close_labview: 'true'
           close_bitness: 32
 
   build-ppl-x64:
     name: Build 64-bit Packed Library
-    needs: [run-metadata, version-gate, unit-tests, version]
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+    needs: [run-metadata, prerelease-context, version-gate, unit-tests, version]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
@@ -603,20 +1141,13 @@ jobs:
           checkout: 'false'
           bitness: 64
           create_worktree: 'true'
-      - name: Enable Development Mode (LV 64-bit)
-        shell: pwsh
-        working-directory: ${{ env.REPO_ROOT }}
-        run: |
-          & ".github/actions/set-development-mode/Set_Development_Mode.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
-            -SupportedBitness 64 `
-            -RepoRoot "$env:REPO_ROOT"
+          worktree_root_mode: runner_temp
       - name: Build PPL (LV 64-bit)
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
         run: |
-          & ".github/actions/build-lvlibp/Build_lvlibp.ps1" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
+          & ".github/actions/build-lvlibp/BuildProjectSpec.ps1" `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
             -Major ${{ needs.version.outputs.MAJOR }} `
@@ -639,18 +1170,22 @@ jobs:
         if: always()
         uses: ./.github/actions/lvie-job-teardown
         with:
-          revert_dev_mode: 'true'
           revert_bitness: 64
           close_labview: 'true'
           close_bitness: 64
 
   build-vip:
     name: Build VI Package
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
     # Chain after 32-bit PPL build (which depends on 64-bit PPL build).
-    needs: [run-metadata, version-gate, build-ppl-x86, version]
+    needs: [run-metadata, prerelease-context, version-gate, build-ppl-x86, version]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     outputs:
       vip_status_exists: ${{ steps.vip-status.outputs.exists }}
+      vip_artifact_name: ${{ steps.locate-vip.outputs.vip_artifact }}
+      vip_file_name: ${{ steps.locate-vip.outputs.vip_name }}
+      release_notes_artifact_name: ${{ steps.release-notes.outputs.artifact_name }}
+      release_notes_file_name: ${{ steps.release-notes.outputs.asset_name }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
       LVIE_VIPM_TIMEOUT_SECONDS: 900
@@ -670,6 +1205,7 @@ jobs:
           checkout: 'false'
           bitness: 64
           create_worktree: 'true'
+          worktree_root_mode: runner_temp
       - name: Generate release notes
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
@@ -727,7 +1263,7 @@ jobs:
             } else {
               $Env:REPO_URL
             }
-            "Legal Copyright" = "© $(Get-Date -Format yyyy) $($Env:COMPANY)"
+            "Legal Copyright" = "? $(Get-Date -Format yyyy) $($Env:COMPANY)"
             "Product Description Summary" = $description
             "Product Description" = $description
             "Release Notes - Change Log" = $releaseNotes
@@ -746,7 +1282,7 @@ jobs:
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
             -VIPBPath "Tooling/deployment/NI Icon editor.vipb" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -LabVIEWMinorRevision $env:LABVIEW_MINOR_REVISION `
             -Major ${{ needs.version.outputs.MAJOR }} `
             -Minor ${{ needs.version.outputs.MINOR }} `
@@ -766,7 +1302,7 @@ jobs:
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
             -VIPBPath "Tooling/deployment/NI Icon editor.vipb" `
-            -MinimumSupportedLVVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
             -LabVIEWMinorRevision $env:LABVIEW_MINOR_REVISION `
             -Major ${{ needs.version.outputs.MAJOR }} `
             -Minor ${{ needs.version.outputs.MINOR }} `
@@ -780,7 +1316,8 @@ jobs:
         id: vip-status
         shell: pwsh
         run: |
-          $statusPath = Join-Path $env:REPO_ROOT 'builds/status/vip-build.json'
+          $statusRoot = if (-not [string]::IsNullOrWhiteSpace($env:LVIE_ARTIFACT_ROOT)) { $env:LVIE_ARTIFACT_ROOT } else { $env:REPO_ROOT }
+          $statusPath = Join-Path $statusRoot 'builds/status/vip-build.json'
           $exists = Test-Path -Path $statusPath
           "exists=$($exists.ToString().ToLowerInvariant())" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
       - name: Upload VIP build status
@@ -788,7 +1325,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vip-build-status
-          path: ${{ env.REPO_ROOT }}/builds/status/vip-build.json
+          path: ${{ env.LVIE_ARTIFACT_ROOT || env.REPO_ROOT }}/builds/status/vip-build.json
           if-no-files-found: warn
       - name: Prepare release notes artifact
         id: release-notes
@@ -811,6 +1348,7 @@ jobs:
 
           "artifact_path=$destPath" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
           "artifact_name=$artifactName" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "asset_name=$destName" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
       - name: Locate built VI package
         id: locate-vip
         shell: pwsh
@@ -857,13 +1395,33 @@ jobs:
           name: ${{ steps.locate-vip.outputs.vip_artifact }}
           path: ${{ steps.locate-vip.outputs.vip_path }}
           if-no-files-found: error
-      - name: Upload g-cli logs (if present)
+      - name: Ensure LabVIEWCLI logs evidence exists
+        if: always()
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $logsDir = Join-Path $env:REPO_ROOT 'builds/logs'
+          New-Item -Path $logsDir -ItemType Directory -Force | Out-Null
+
+          $existingFiles = Get-ChildItem -Path $logsDir -Recurse -File -ErrorAction SilentlyContinue
+          if (-not $existingFiles) {
+            $placeholderPath = Join-Path $logsDir 'labviewcli-logs-placeholder.txt'
+            $runUrl = "{0}/{1}/actions/runs/{2}" -f $env:GITHUB_SERVER_URL, $env:GITHUB_REPOSITORY, $env:GITHUB_RUN_ID
+            @(
+              'No LabVIEWCLI log files were produced by this run.'
+              'This placeholder preserves the prerelease labviewcli-logs asset contract.'
+              ("Run URL: {0}" -f $runUrl)
+              ("Generated UTC: {0}" -f (Get-Date).ToUniversalTime().ToString('o'))
+            ) | Out-File -FilePath $placeholderPath -Encoding utf8
+            Write-Host ("Created LabVIEWCLI logs placeholder at {0}" -f $placeholderPath)
+          }
+      - name: Upload LabVIEWCLI logs (if present)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gcli-logs
+          name: labviewcli-logs
           path: ${{ env.REPO_ROOT }}/builds/logs
-          if-no-files-found: warn
+          if-no-files-found: error
       - name: Validate tag matches computed version (if provided)
         if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.dispatch_tag != ''
         shell: pwsh
@@ -890,23 +1448,774 @@ jobs:
           close_labview: 'true'
           close_bitness: 64
 
+  build-ppl-linux-container:
+    name: Build Linux Container Packed Library
+    needs: [run-metadata, prerelease-context, version]
+    runs-on: ubuntu-latest
+    outputs:
+      artifact_name: ${{ steps.asset-meta.outputs.artifact_name }}
+      asset_name: ${{ steps.asset-meta.outputs.asset_name }}
+    steps:
+      - id: asset-meta
+        name: Resolve Linux packed library artifact names
+        shell: bash
+        run: |
+          set -euo pipefail
+          version='${{ needs.version.outputs.VERSION }}'
+          if [[ -z "$version" ]]; then
+            echo "Version output is required to name Linux packed library asset." >&2
+            exit 1
+          fi
+
+          asset_name="lv_icon_linux_${version}.lvlibp"
+          artifact_name="lv_icon_linux_container"
+
+          echo "asset_name=$asset_name" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
+
+      - name: Skip Linux packed library build when publish intent is disabled
+        if: ${{ needs.prerelease-context.outputs.should_publish != 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Skipping Linux packed library build because prerelease publish intent is disabled."
+          echo "- Linux packed library build: skipped (prerelease publish disabled)." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout code
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        uses: actions/checkout@v4
+
+      - name: Pull LabVIEW Linux image
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        shell: bash
+        env:
+          LV_RELEASE: 2026q1
+        run: |
+          set -euo pipefail
+          image="nationalinstruments/labview:${LV_RELEASE}-linux"
+          echo "Using image: ${image}"
+          docker pull "${image}"
+          echo "LABVIEW_LINUX_IMAGE=${image}" >> "$GITHUB_ENV"
+
+      - name: Build Linux packed library via LabVIEWCLI container parity script
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x Tooling/container-parity/runlabview-linux.sh
+
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}:/workspace" \
+            -e LVIE_REPO_ROOT=/workspace \
+            -e WORKSPACE_ROOT=/workspace \
+            -e REPO_ROOT=/workspace \
+            -e "LVIE_PROJECT_RELATIVE_PATH=lv_icon_editor.lvproj" \
+            -e "PROJECT_PATH_REL=lv_icon_editor.lvproj" \
+            -e "LVIE_PROJECT_PATH=/workspace/lv_icon_editor.lvproj" \
+            -e "PROJECT_PATH=/workspace/lv_icon_editor.lvproj" \
+            -e "TARGET_DIR_REL=Test/Templates" \
+            -e "CONTAINER_PARITY_EXCLUDE_FILES=Polymorphic Template.vi" \
+            -e "CONTAINER_PARITY_BUILD_SPEC=true" \
+            -e "CONTAINER_PARITY_BUILD_SPEC_NAME=Editor Packed Library" \
+            -e "CONTAINER_PARITY_TARGET_NAME=My Computer" \
+            -e "CONTAINER_PARITY_BUILD_OUTPUT_RELATIVE_PATH=resource/plugins/lv_icon.lvlibp" \
+            -e "CONTAINER_PARITY_LABVIEW_VERSION=2026" \
+            "$LABVIEW_LINUX_IMAGE" \
+            bash -lc "chmod +x /workspace/Tooling/container-parity/runlabview-linux.sh && /workspace/Tooling/container-parity/runlabview-linux.sh"
+
+      - id: prepare-linux-ppl
+        name: Prepare Linux packed library release asset
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_path="${GITHUB_WORKSPACE}/resource/plugins/lv_icon.lvlibp"
+          if [[ ! -f "$source_path" ]]; then
+            echo "Expected Linux packed library not found: $source_path" >&2
+            exit 1
+          fi
+
+          asset_name='${{ steps.asset-meta.outputs.asset_name }}'
+          if [[ -z "$asset_name" ]]; then
+            echo "Linux packed library asset_name output is empty." >&2
+            exit 1
+          fi
+
+          dest_dir="${RUNNER_TEMP}/prerelease-linux-ppl"
+          mkdir -p "$dest_dir"
+          dest_path="${dest_dir}/${asset_name}"
+          cp "$source_path" "$dest_path"
+
+          bytes="$(wc -c < "$dest_path" | xargs)"
+          echo "Prepared Linux packed library release asset: $dest_path ($bytes bytes)"
+          echo "asset_path=$dest_path" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Linux packed library artifact
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.asset-meta.outputs.artifact_name }}
+          path: ${{ steps.prepare-linux-ppl.outputs.asset_path }}
+          if-no-files-found: error
+
+      - name: Upload Linux container logs
+        if: ${{ always() && needs.prerelease-context.outputs.should_publish == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-container-ppl-logs
+          path: TestResults/container-parity/linux/logs
+          if-no-files-found: warn
+
+  build-ppl-windows-container:
+    name: Build Windows Container Packed Library
+    needs: [run-metadata, prerelease-context, version]
+    runs-on: windows-latest
+    outputs:
+      artifact_name: ${{ steps.asset-meta.outputs.artifact_name }}
+      asset_name: ${{ steps.asset-meta.outputs.asset_name }}
+    steps:
+      - id: asset-meta
+        name: Resolve Windows packed library artifact names
+        shell: pwsh
+        run: |
+          $version = '${{ needs.version.outputs.VERSION }}'
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "Version output is required to name Windows packed library asset."
+          }
+
+          $assetName = "lv_icon_windows_{0}.lvlibp" -f $version
+          $artifactName = 'lv_icon_windows_container'
+
+          "asset_name=$assetName" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "artifact_name=$artifactName" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+      - name: Skip Windows packed library build when publish intent is disabled
+        if: ${{ needs.prerelease-context.outputs.should_publish != 'true' }}
+        shell: pwsh
+        run: |
+          Write-Host "Skipping Windows packed library build because prerelease publish intent is disabled."
+          "- Windows packed library build: skipped (prerelease publish disabled)." | Out-File -FilePath $Env:GITHUB_STEP_SUMMARY -Append
+
+      - name: Checkout code
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        uses: actions/checkout@v4
+
+      - name: Pull LabVIEW Windows image
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        shell: pwsh
+        run: |
+          $image = 'nationalinstruments/labview:2026q1-windows'
+          Write-Host "Using image: $image"
+          docker pull $image
+          "LABVIEW_WINDOWS_IMAGE=$image" | Out-File -FilePath $Env:GITHUB_ENV -Append
+
+      - name: Validate path contract for Windows container shell
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        shell: pwsh
+        run: |
+          Write-Host 'Windows container parity script runs under powershell.exe (Windows PowerShell 5.1) inside the NI container.'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE\Tooling\Test-PathContract.ps1" -WriteSummary
+
+      - name: Build Windows packed library via LabVIEWCLI container parity script
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        shell: pwsh
+        run: |
+          docker run --rm `
+            -v "${env:GITHUB_WORKSPACE}:C:\workspace" `
+            -e LVIE_REPO_ROOT=C:\workspace `
+            -e WORKSPACE_ROOT=C:\workspace `
+            -e REPO_ROOT=C:\workspace `
+            -e "LVIE_PROJECT_RELATIVE_PATH=lv_icon_editor.lvproj" `
+            -e "PROJECT_PATH_REL=lv_icon_editor.lvproj" `
+            -e "LVIE_PROJECT_PATH=C:\workspace\lv_icon_editor.lvproj" `
+            -e "PROJECT_PATH=C:\workspace\lv_icon_editor.lvproj" `
+            -e "TARGET_DIR_REL=Test\Templates" `
+            -e "CONTAINER_PARITY_EXCLUDE_FILES=Polymorphic Template.vi" `
+            -e "CONTAINER_PARITY_BUILD_SPEC=true" `
+            -e "CONTAINER_PARITY_BUILD_SPEC_NAME=Editor Packed Library" `
+            -e "CONTAINER_PARITY_TARGET_NAME=My Computer" `
+            -e "CONTAINER_PARITY_BUILD_OUTPUT_RELATIVE_PATH=resource\plugins\lv_icon.lvlibp" `
+            -e "CONTAINER_PARITY_LABVIEW_VERSION=2026" `
+            $env:LABVIEW_WINDOWS_IMAGE `
+            powershell -NoProfile -ExecutionPolicy Bypass -File C:\workspace\Tooling\container-parity\runlabview-windows.ps1
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Windows container parity run failed with exit code $LASTEXITCODE."
+          }
+
+      - id: prepare-windows-ppl
+        name: Prepare Windows packed library release asset
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        shell: pwsh
+        run: |
+          $sourcePath = Join-Path $env:GITHUB_WORKSPACE 'resource\plugins\lv_icon.lvlibp'
+          if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+            throw "Expected Windows packed library not found: $sourcePath"
+          }
+
+          $assetName = '${{ steps.asset-meta.outputs.asset_name }}'
+          if ([string]::IsNullOrWhiteSpace($assetName)) {
+            throw 'Windows packed library asset_name output is empty.'
+          }
+
+          $destDir = Join-Path $env:RUNNER_TEMP 'prerelease-windows-ppl'
+          New-Item -Path $destDir -ItemType Directory -Force | Out-Null
+          $destPath = Join-Path $destDir $assetName
+          Copy-Item -LiteralPath $sourcePath -Destination $destPath -Force
+
+          $item = Get-Item -LiteralPath $destPath
+          Write-Host ("Prepared Windows packed library release asset: {0} ({1} bytes)" -f $item.FullName, $item.Length)
+          "asset_path=$destPath" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+      - name: Upload Windows packed library artifact
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.asset-meta.outputs.artifact_name }}
+          path: ${{ steps.prepare-windows-ppl.outputs.asset_path }}
+          if-no-files-found: error
+
+      - name: Upload Windows container logs
+        if: ${{ always() && needs.prerelease-context.outputs.should_publish == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-container-ppl-logs
+          path: TestResults/container-parity/windows/logs
+          if-no-files-found: warn
+
+  codex-skill-layer-asset:
+    name: Resolve Codex Skill Layer Asset
+    needs: [run-metadata, prerelease-context]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      artifact_name: ${{ steps.meta.outputs.artifact_name }}
+      asset_file_name: ${{ steps.meta.outputs.asset_file_name }}
+    steps:
+      - id: meta
+        name: Resolve artifact metadata
+        shell: pwsh
+        run: |
+          "artifact_name=codex-skill-layer" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          "asset_file_name=lvie-codex-skill-layer.zip" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+      - name: Checkout code
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        uses: actions/checkout@v4
+
+      - id: resolve
+        name: Download and validate pinned skill layer
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $lockPath = Join-Path $env:GITHUB_WORKSPACE 'Tooling/codex-skill-layer.lock.json'
+          if (-not (Test-Path -Path $lockPath -PathType Leaf)) {
+            throw "Codex skill lock file not found: $lockPath"
+          }
+
+          $lock = Get-Content -Raw -Path $lockPath | ConvertFrom-Json
+          foreach ($key in @('repo', 'tag', 'asset_name', 'sha256', 'required_files', 'license_spdx')) {
+            if (-not ($lock.PSObject.Properties.Name -contains $key)) {
+              throw "Codex skill lock file is missing required key '$key'."
+            }
+          }
+
+          $destDir = Join-Path $env:RUNNER_TEMP 'prerelease-codex-skill-layer'
+          New-Item -Path $destDir -ItemType Directory -Force | Out-Null
+
+          gh release download $lock.tag --repo $lock.repo --pattern $lock.asset_name --dir $destDir --clobber
+          if ($LASTEXITCODE -ne 0) {
+            throw ("Failed to download codex skill layer asset '{0}' from {1} tag {2}." -f $lock.asset_name, $lock.repo, $lock.tag)
+          }
+
+          $assetPath = Join-Path $destDir $lock.asset_name
+          if (-not (Test-Path -Path $assetPath -PathType Leaf)) {
+            throw "Downloaded codex skill layer asset is missing at $assetPath"
+          }
+
+          $actualHash = (Get-FileHash -Path $assetPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expectedHash = ([string]$lock.sha256).ToLowerInvariant()
+          if ($actualHash -ne $expectedHash) {
+            throw ("Codex skill layer hash mismatch. expected={0} actual={1}" -f $expectedHash, $actualHash)
+          }
+
+          $extractDir = Join-Path $destDir 'extract'
+          Expand-Archive -Path $assetPath -DestinationPath $extractDir -Force
+
+          $manifestPath = Join-Path $extractDir 'manifest.json'
+          if (-not (Test-Path -Path $manifestPath -PathType Leaf)) {
+            throw "Codex skill layer manifest missing: $manifestPath"
+          }
+
+          $manifest = Get-Content -Raw -Path $manifestPath | ConvertFrom-Json
+          if ([string]::IsNullOrWhiteSpace([string]$manifest.license_spdx) -or [string]$manifest.license_spdx -ne [string]$lock.license_spdx) {
+            throw ("Codex skill layer license mismatch. expected={0} actual={1}" -f [string]$lock.license_spdx, [string]$manifest.license_spdx)
+          }
+
+          foreach ($relative in @($lock.required_files)) {
+            $requiredPath = Join-Path $extractDir ([string]$relative)
+            if (-not (Test-Path -Path $requiredPath)) {
+              throw ("Codex skill layer required file missing: {0}" -f $relative)
+            }
+          }
+
+          "asset_path=$assetPath" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+      - name: Upload codex skill layer artifact
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.artifact_name }}
+          path: ${{ steps.resolve.outputs.asset_path }}
+          if-no-files-found: error
+
+  publish-gate:
+    name: Publish Gate
+    if: always()
+    needs:
+      - run-metadata
+      - prerelease-context
+      - version-gate
+      - powershell-lint
+      - vip-prerelease-requirements-lint
+      - pylavi-validate
+      - changes
+      - apply-deps-lv-x64
+      - apply-deps-x86
+      - unit-tests
+      - build-ppl-x64
+      - build-ppl-x86
+      - build-ppl-linux-container
+      - build-ppl-windows-container
+      - codex-skill-layer-asset
+      - build-vip
+      - version
+      - conformance-full
+    runs-on: ubuntu-latest
+    outputs:
+      gate_reason: ${{ steps.gate.outputs.gate_reason }}
+      ci_profile: ${{ steps.gate.outputs.ci_profile }}
+    steps:
+      - id: gate
+        name: Evaluate profile-required prepublish jobs
+        shell: pwsh
+        run: |
+          $shouldPublish = '${{ needs.prerelease-context.outputs.should_publish }}' -eq 'true'
+          $ciProfile = '${{ needs.prerelease-context.outputs.ci_profile }}'
+          if ([string]::IsNullOrWhiteSpace($ciProfile)) {
+            Write-Warning 'ci_profile output was empty; defaulting to full for prepublish gating.'
+            $ciProfile = 'full'
+          }
+
+          "ci_profile=$ciProfile" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+          if (-not $shouldPublish) {
+            "gate_reason=publish-intent-disabled" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+            Write-Host 'Publish intent is disabled for this run; prepublish gate passes by policy.'
+            exit 0
+          }
+
+          $requiredCommon = @(
+            'run-metadata',
+            'prerelease-context',
+            'version-gate',
+            'powershell-lint',
+            'vip-prerelease-requirements-lint',
+            'pylavi-validate',
+            'build-ppl-linux-container',
+            'build-ppl-windows-container',
+            'codex-skill-layer-asset',
+            'version',
+            'conformance-full'
+          )
+          $requiredFullValidation = @(
+            'changes',
+            'apply-deps-lv-x64',
+            'apply-deps-x86',
+            'unit-tests',
+            'build-ppl-x64',
+            'build-ppl-x86',
+            'build-vip'
+          )
+          $requiredByProfile = @{
+            'full' = @($requiredCommon + $requiredFullValidation)
+            'pr-fast' = @($requiredCommon + $requiredFullValidation)
+            'release-priority' = @($requiredCommon)
+          }
+          if (-not $requiredByProfile.ContainsKey($ciProfile)) {
+            Write-Warning ("Unknown ci_profile '{0}'; defaulting to full prepublish contract." -f $ciProfile)
+            $ciProfile = 'full'
+            "ci_profile=$ciProfile" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          }
+
+          $required = $requiredByProfile[$ciProfile]
+          $needs = ConvertFrom-Json -InputObject '${{ toJson(needs) }}'
+          $needsProps = $needs.PSObject.Properties
+
+          $missing = @()
+          $failing = @()
+          foreach ($job in $required) {
+            $entryProp = $needsProps[$job]
+            if (-not $entryProp) {
+              $missing += "$job:missing"
+              continue
+            }
+            $result = [string]$entryProp.Value.result
+            if ($result -ne 'success') {
+              $failing += "{0}:{1}" -f $job, $result
+            }
+          }
+
+          $gatePasses = ($missing.Count -eq 0 -and $failing.Count -eq 0)
+          $gateReason = if ($gatePasses) { 'prepublish-required-jobs-satisfied' } else { 'prepublish-required-jobs-failed' }
+          "gate_reason=$gateReason" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+          $missingLabel = if ($missing.Count -gt 0) { $missing -join ', ' } else { '<none>' }
+          $failingLabel = if ($failing.Count -gt 0) { $failing -join ', ' } else { '<none>' }
+          Write-Host ("Prepublish gate profile: {0}" -f $ciProfile)
+          Write-Host ("Prepublish gate reason: {0}" -f $gateReason)
+          Write-Host ("Missing required jobs: {0}" -f $missingLabel)
+          Write-Host ("Failing/non-success required jobs: {0}" -f $failingLabel)
+
+          if (-not $gatePasses) {
+            throw ("Publish gate blocked prerelease publication for profile '{0}': missing={1}; failing={2}" -f $ciProfile, $missingLabel, $failingLabel)
+          }
+
+  publish-prerelease:
+    name: Publish Pre-Release
+    if: ${{ always() && needs.publish-gate.result == 'success' && needs.run-metadata.result == 'success' && needs.prerelease-context.result == 'success' && needs.version.result == 'success' && needs.build-ppl-linux-container.result == 'success' && needs.build-ppl-windows-container.result == 'success' && needs.codex-skill-layer-asset.result == 'success' && (needs.prerelease-context.outputs.ci_profile == 'release-priority' || needs.build-vip.result == 'success') }}
+    needs: [run-metadata, prerelease-context, version, build-vip, build-ppl-linux-container, build-ppl-windows-container, codex-skill-layer-asset, publish-gate]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    outputs:
+      release_tag: ${{ steps.publish.outputs.release_tag }}
+      release_url: ${{ steps.publish.outputs.release_url }}
+      release_id: ${{ steps.publish.outputs.release_id }}
+      publish_status: ${{ steps.publish.outputs.publish_status }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Report publish gate decision
+        shell: pwsh
+        run: |
+          Write-Host ("Publish gate reason: {0}" -f '${{ needs.publish-gate.outputs.gate_reason }}')
+
+      - name: Download VI package artifact
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' && needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-vip.outputs.vip_artifact_name }}
+          path: ${{ runner.temp }}/prerelease-assets/vip
+
+      - name: Download release notes artifact
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' && needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-vip.outputs.release_notes_artifact_name }}
+          path: ${{ runner.temp }}/prerelease-assets/release-notes
+
+      - name: Download LabVIEWCLI logs artifact
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' && needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: labviewcli-logs
+          path: ${{ runner.temp }}/prerelease-assets/labviewcli-logs
+
+      - name: Download VIP build status artifact
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' && needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: vip-build-status
+          path: ${{ runner.temp }}/prerelease-assets/vip-build-status
+
+      - name: Download Linux packed library artifact
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-ppl-linux-container.outputs.artifact_name }}
+          path: ${{ runner.temp }}/prerelease-assets/linux-ppl
+
+      - name: Download Windows packed library artifact
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-ppl-windows-container.outputs.artifact_name }}
+          path: ${{ runner.temp }}/prerelease-assets/windows-ppl
+
+      - name: Download Codex skill layer artifact
+        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.codex-skill-layer-asset.outputs.artifact_name }}
+          path: ${{ runner.temp }}/prerelease-assets/codex-skill-layer
+
+      - id: publish
+        name: Publish prerelease and write status
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $statusDir = Join-Path $env:GITHUB_WORKSPACE 'builds/status'
+          New-Item -Path $statusDir -ItemType Directory -Force | Out-Null
+          $statusPath = Join-Path $statusDir 'prerelease-publish.json'
+
+          $shouldPublish = '${{ needs.prerelease-context.outputs.should_publish }}' -eq 'true'
+          $ciProfile = '${{ needs.prerelease-context.outputs.ci_profile }}'
+          $releasePriorityMode = $ciProfile -eq 'release-priority'
+          $publishMode = '${{ needs.prerelease-context.outputs.publish_mode }}'
+          $publishReason = '${{ needs.prerelease-context.outputs.publish_reason }}'
+          $publishGateReason = '${{ needs.publish-gate.outputs.gate_reason }}'
+          $mergedPrNumber = '${{ needs.prerelease-context.outputs.merged_pr_number }}'
+          $tag = '${{ needs.version.outputs.VERSION }}'
+          $expectedVipFileName = '${{ needs.build-vip.outputs.vip_file_name }}'
+          $expectedReleaseNotesFileName = '${{ needs.build-vip.outputs.release_notes_file_name }}'
+          $expectedLinuxPackedLibraryFileName = '${{ needs.build-ppl-linux-container.outputs.asset_name }}'
+          $expectedWindowsPackedLibraryFileName = '${{ needs.build-ppl-windows-container.outputs.asset_name }}'
+          $expectedCodexSkillLayerFileName = '${{ needs.codex-skill-layer-asset.outputs.asset_file_name }}'
+
+          $publishStatus = 'skipped'
+          $releaseUrl = ''
+          $releaseId = ''
+          $attachedAssets = @()
+          $requiredAssets = @()
+          $errorMessage = ''
+
+          try {
+            if ($shouldPublish) {
+              $assetRoot = Join-Path $env:RUNNER_TEMP 'prerelease-assets'
+              if ($releasePriorityMode) {
+                $requiredAssets = @('linux-packed-library', 'windows-packed-library', 'codex-skill-layer')
+              } else {
+                $requiredAssets = @('vip', 'release_notes', 'labviewcli-logs', 'vip-build-status', 'linux-packed-library', 'windows-packed-library', 'codex-skill-layer')
+              }
+              if (-not $releasePriorityMode -and [string]::IsNullOrWhiteSpace($expectedVipFileName)) {
+                throw 'Required build-vip output missing: vip_file_name.'
+              }
+              if (-not $releasePriorityMode -and [string]::IsNullOrWhiteSpace($expectedReleaseNotesFileName)) {
+                throw 'Required build-vip output missing: release_notes_file_name.'
+              }
+              if ([string]::IsNullOrWhiteSpace($expectedLinuxPackedLibraryFileName)) {
+                throw 'Required build-ppl-linux-container output missing: asset_name.'
+              }
+              if ([string]::IsNullOrWhiteSpace($expectedWindowsPackedLibraryFileName)) {
+                throw 'Required build-ppl-windows-container output missing: asset_name.'
+              }
+              if ([string]::IsNullOrWhiteSpace($expectedCodexSkillLayerFileName)) {
+                throw 'Required codex-skill-layer-asset output missing: asset_file_name.'
+              }
+
+              $vipFile = $null
+              $notesFile = $null
+              $vipStatusFile = $null
+              $labviewcliZip = $null
+              $codexSkillLayerFile = $null
+
+              if (-not $releasePriorityMode) {
+                $vipFiles = Get-ChildItem -Path (Join-Path $assetRoot 'vip') -Filter $expectedVipFileName -File -Recurse -ErrorAction SilentlyContinue | Sort-Object FullName
+                if (-not $vipFiles) { throw ("Required asset missing: expected VIP file '{0}'." -f $expectedVipFileName) }
+                $vipFile = $vipFiles[0]
+
+                $notesFiles = Get-ChildItem -Path (Join-Path $assetRoot 'release-notes') -Filter $expectedReleaseNotesFileName -File -Recurse -ErrorAction SilentlyContinue | Sort-Object FullName
+                if (-not $notesFiles) { throw ("Required asset missing: expected release notes file '{0}'." -f $expectedReleaseNotesFileName) }
+                $notesFile = $notesFiles[0]
+
+                $vipStatusFile = Get-ChildItem -Path (Join-Path $assetRoot 'vip-build-status') -Filter vip-build.json -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+                if (-not $vipStatusFile) { throw 'Required asset missing: vip-build-status/vip-build.json.' }
+              }
+
+              $linuxPackedLibraryFiles = Get-ChildItem -Path (Join-Path $assetRoot 'linux-ppl') -Filter $expectedLinuxPackedLibraryFileName -File -Recurse -ErrorAction SilentlyContinue | Sort-Object FullName
+              if (-not $linuxPackedLibraryFiles) { throw ("Required asset missing: expected Linux packed library '{0}'." -f $expectedLinuxPackedLibraryFileName) }
+              $linuxPackedLibraryFile = $linuxPackedLibraryFiles[0]
+
+              $windowsPackedLibraryFiles = Get-ChildItem -Path (Join-Path $assetRoot 'windows-ppl') -Filter $expectedWindowsPackedLibraryFileName -File -Recurse -ErrorAction SilentlyContinue | Sort-Object FullName
+              if (-not $windowsPackedLibraryFiles) { throw ("Required asset missing: expected Windows packed library '{0}'." -f $expectedWindowsPackedLibraryFileName) }
+              $windowsPackedLibraryFile = $windowsPackedLibraryFiles[0]
+
+              $codexSkillLayerFiles = Get-ChildItem -Path (Join-Path $assetRoot 'codex-skill-layer') -Filter $expectedCodexSkillLayerFileName -File -Recurse -ErrorAction SilentlyContinue | Sort-Object FullName
+              if (-not $codexSkillLayerFiles) { throw ("Required asset missing: expected codex skill layer '{0}'." -f $expectedCodexSkillLayerFileName) }
+              $codexSkillLayerFile = $codexSkillLayerFiles[0]
+
+              if (-not $releasePriorityMode) {
+                $labviewcliDir = Join-Path $assetRoot 'labviewcli-logs'
+                if (-not (Test-Path $labviewcliDir)) { throw 'Required asset missing: labviewcli-logs artifact.' }
+                $labviewcliFiles = Get-ChildItem -Path $labviewcliDir -Recurse -File -ErrorAction SilentlyContinue
+                if (-not $labviewcliFiles) { throw 'Required asset missing: labviewcli-logs artifact content.' }
+                $labviewcliZip = Join-Path $assetRoot 'labviewcli-logs.zip'
+                if (Test-Path $labviewcliZip) {
+                  Remove-Item -Path $labviewcliZip -Force
+                }
+                Compress-Archive -Path (Join-Path $labviewcliDir '*') -DestinationPath $labviewcliZip -Force
+              }
+
+              $null = gh --version
+
+              if ($releasePriorityMode) {
+                $releaseBody = @(
+                  "# Release Priority Prerelease"
+                  ''
+                  "This prerelease was published in release-priority mode."
+                  "Included assets:"
+                  "- $($linuxPackedLibraryFile.Name)"
+                  "- $($windowsPackedLibraryFile.Name)"
+                  "- $($codexSkillLayerFile.Name)"
+                ) -join [Environment]::NewLine
+              } else {
+                $releaseBody = Get-Content -Raw -Path $notesFile.FullName
+              }
+              $payloadPath = Join-Path $assetRoot 'release-payload.json'
+              $payload = [ordered]@{
+                tag_name = $tag
+                target_commitish = $env:GITHUB_SHA
+                name = $tag
+                body = $releaseBody
+                draft = $false
+                prerelease = $true
+              }
+              $payload | ConvertTo-Json -Depth 8 | Out-File -FilePath $payloadPath -Encoding utf8
+
+              $repo = $env:GITHUB_REPOSITORY
+              $existing = $null
+              try {
+                $existingRaw = gh api --method GET -H "Accept: application/vnd.github+json" "/repos/$repo/releases/tags/$tag" 2>$null
+                if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($existingRaw)) {
+                  $existing = $existingRaw | ConvertFrom-Json
+                }
+              } catch {
+                $existing = $null
+              }
+
+              if ($existing) {
+                $releaseRaw = gh api --method PATCH -H "Accept: application/vnd.github+json" "/repos/$repo/releases/$($existing.id)" --input $payloadPath
+              } else {
+                $releaseRaw = gh api --method POST -H "Accept: application/vnd.github+json" "/repos/$repo/releases" --input $payloadPath
+              }
+
+              if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($releaseRaw)) {
+                throw "Failed to create or update release metadata for tag '$tag'."
+              }
+
+              $release = $releaseRaw | ConvertFrom-Json
+              $releaseUrl = [string]$release.html_url
+              $releaseId = [string]$release.id
+
+              $uploadAssets = @($linuxPackedLibraryFile.FullName, $windowsPackedLibraryFile.FullName, $codexSkillLayerFile.FullName)
+              if (-not $releasePriorityMode) {
+                $uploadAssets = @($vipFile.FullName, $notesFile.FullName, $labviewcliZip, $vipStatusFile.FullName) + $uploadAssets
+              }
+
+              & gh release upload $tag @uploadAssets --clobber
+              if ($LASTEXITCODE -ne 0) {
+                throw "Failed to upload release assets for tag '$tag'."
+              }
+
+              $publishStatus = 'published'
+              if ($releasePriorityMode) {
+                $attachedAssets = @($linuxPackedLibraryFile.Name, $windowsPackedLibraryFile.Name, $codexSkillLayerFile.Name)
+              } else {
+                $attachedAssets = @($vipFile.Name, $notesFile.Name, (Split-Path -Path $labviewcliZip -Leaf), $vipStatusFile.Name, $linuxPackedLibraryFile.Name, $windowsPackedLibraryFile.Name, $codexSkillLayerFile.Name)
+              }
+            } else {
+              if ($releasePriorityMode) {
+                $requiredAssets = @('linux-packed-library', 'windows-packed-library', 'codex-skill-layer')
+              } else {
+                $requiredAssets = @('vip', 'release_notes', 'labviewcli-logs', 'vip-build-status', 'linux-packed-library', 'windows-packed-library', 'codex-skill-layer')
+              }
+            }
+          } catch {
+            $publishStatus = 'failed'
+            $errorMessage = $_.Exception.Message
+          } finally {
+            $status = [ordered]@{
+              run_id = '${{ github.run_id }}'
+              run_attempt = '${{ github.run_attempt }}'
+              sha = '${{ github.sha }}'
+              ref = '${{ github.ref }}'
+              event = '${{ github.event_name }}'
+              publish_mode = $publishMode
+              publish_reason = $publishReason
+              publish_gate_reason = $publishGateReason
+              ci_profile = $ciProfile
+              release_priority_mode = $releasePriorityMode
+              should_publish = $shouldPublish
+              publish_status = $publishStatus
+              version = $tag
+              release_tag = $tag
+              release_url = $releaseUrl
+              release_id = $releaseId
+              merged_pr_number = $mergedPrNumber
+              required_assets = $requiredAssets
+              attached_assets = $attachedAssets
+              error = $errorMessage
+              generated_utc = (Get-Date).ToUniversalTime().ToString('o')
+            }
+            $status | ConvertTo-Json -Depth 8 | Out-File -FilePath $statusPath -Encoding utf8
+
+            "release_tag=$tag" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+            "release_url=$releaseUrl" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+            "release_id=$releaseId" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+            "publish_status=$publishStatus" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+          }
+
+          if ($publishStatus -eq 'failed') {
+            throw $errorMessage
+          }
+
+      - name: Upload prerelease publish status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prerelease-publish-status
+          path: builds/status/prerelease-publish.json
+          if-no-files-found: error
+
+      - name: Upload solo release evidence (if present)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: solo-release-evidence
+          path: builds/status/solo-release-evidence.json
+          if-no-files-found: warn
+
   pipeline-contract:
     name: Pipeline Contract
     if: always()
     needs:
       - run-metadata
+      - prerelease-context
       - version-gate
       - powershell-lint
-      - dev-mode-gate
+      - vip-prerelease-requirements-lint
+      - pylavi-validate
       - changes
-      - apply-deps-2021-x64
-      - apply-deps-2021-x86
-      - missing-in-project
+      - apply-deps-lv-x64
+      - apply-deps-x86
       - unit-tests
       - build-ppl-x64
       - build-ppl-x86
+      - build-ppl-linux-container
+      - build-ppl-windows-container
+      - codex-skill-layer-asset
       - build-vip
+      - publish-gate
+      - publish-prerelease
       - version
+      - conformance-full
     runs-on: ubuntu-latest
     steps:
       - name: Download VIP build status (if available)
@@ -918,24 +2227,55 @@ jobs:
       - name: Validate required jobs
         shell: pwsh
         run: |
-          $required = @(
+          $requiredCommon = @(
             'run-metadata',
+            'prerelease-context',
             'version-gate',
             'powershell-lint',
-            'dev-mode-gate',
+            'vip-prerelease-requirements-lint',
+            'pylavi-validate',
+            'build-ppl-linux-container',
+            'build-ppl-windows-container',
+            'codex-skill-layer-asset',
+            'publish-gate',
+            'publish-prerelease',
+            'version',
+            'conformance-full'
+          )
+          $requiredFullValidation = @(
             'changes',
-            'apply-deps-2021-x64',
-            'apply-deps-2021-x86',
-            'missing-in-project',
+            'apply-deps-lv-x64',
+            'apply-deps-x86',
             'unit-tests',
             'build-ppl-x64',
             'build-ppl-x86',
-            'build-vip',
-            'version'
+            'build-vip'
           )
+          $requiredByProfile = @{
+            'full' = @($requiredCommon + $requiredFullValidation)
+            'pr-fast' = @($requiredCommon + $requiredFullValidation)
+            'release-priority' = @($requiredCommon)
+          }
+
+          $ciProfile = '${{ needs.prerelease-context.outputs.ci_profile }}'
+          if ([string]::IsNullOrWhiteSpace($ciProfile)) {
+            Write-Warning 'ci_profile output was empty; defaulting to full profile contract.'
+            $ciProfile = 'full'
+          }
+          if (-not $requiredByProfile.ContainsKey($ciProfile)) {
+            Write-Warning ("Unknown ci_profile '{0}'; defaulting to full profile contract." -f $ciProfile)
+            $ciProfile = 'full'
+          }
+
+          $required = $requiredByProfile[$ciProfile]
+          Write-Host ("CI profile: {0}" -f $ciProfile)
+          Write-Host ("Required jobs ({0}): {1}" -f $required.Count, ($required -join ', '))
+
           $needs = ConvertFrom-Json -InputObject '${{ toJson(needs) }}'
           $needsProps = $needs.PSObject.Properties
-          $failed = @()
+          $missing = @()
+          $rootCauseFailures = @()
+          $cascaded = @()
 
           $vipStatus = $null
           $vipStatusPath = Join-Path -Path $PWD -ChildPath 'vip-build-status/vip-build.json'
@@ -947,31 +2287,60 @@ jobs:
             }
           }
 
+          function Get-JobEntryLabel {
+            param(
+              [string]$JobName,
+              [string]$Result,
+              [object]$VipStatusObject
+            )
+
+            if ($JobName -eq 'build-vip' -and $VipStatusObject) {
+              $label = if ($VipStatusObject.reason) { $VipStatusObject.reason } elseif ($VipStatusObject.status) { $VipStatusObject.status } else { $null }
+              if ($label) {
+                return "{0}:{1} ({2})" -f $JobName, $Result, $label
+              }
+            }
+
+            return "{0}:{1}" -f $JobName, $Result
+          }
+
           foreach ($job in $required) {
             $entryProp = $needsProps[$job]
             if (-not $entryProp) {
-              $failed += "$($job):missing"
+              $missing += "$($job):missing"
               continue
             }
             $result = $entryProp.Value.result
             if ($result -ne 'success') {
-              if ($job -eq 'build-vip' -and $vipStatus) {
-                $label = if ($vipStatus.reason) { $vipStatus.reason } elseif ($vipStatus.status) { $vipStatus.status } else { $null }
-                if ($label) {
-                  $failed += "$($job):$result ($label)"
-                } else {
-                  $failed += "$($job):$result"
-                }
+              $entry = Get-JobEntryLabel -JobName $job -Result $result -VipStatusObject $vipStatus
+              if ($result -in @('failure', 'cancelled', 'timed_out', 'action_required', 'startup_failure')) {
+                $rootCauseFailures += $entry
+              } elseif ($result -eq 'skipped') {
+                $cascaded += $entry
               } else {
-                $failed += "$($job):$result"
+                $rootCauseFailures += $entry
               }
             }
           }
-          if ($failed.Count -gt 0) {
-            Write-Error ("Pipeline contract failed: {0}" -f ($failed -join ', '))
+
+          $requiredJobVerdict = if ($missing.Count -eq 0 -and $rootCauseFailures.Count -eq 0 -and $cascaded.Count -eq 0) { 'pass' } else { 'fail' }
+          $rootCauseLabel = if ($rootCauseFailures.Count -gt 0) { $rootCauseFailures -join ', ' } else { '<none>' }
+          $cascadedLabel = if ($cascaded.Count -gt 0) { $cascaded -join ', ' } else { '<none>' }
+          $missingLabel = if ($missing.Count -gt 0) { $missing -join ', ' } else { '<none>' }
+
+          Write-Host ("Required job verdict: {0}" -f $requiredJobVerdict)
+          Write-Host ("Root-cause failures: {0}" -f $rootCauseLabel)
+          Write-Host ("Cascaded/skipped jobs: {0}" -f $cascadedLabel)
+          Write-Host ("Missing required jobs: {0}" -f $missingLabel)
+
+          if ($requiredJobVerdict -eq 'fail') {
+            Write-Error ("Pipeline contract failed: required-job verdict={0}; root-cause failures={1}; cascaded/skipped={2}; missing={3}" -f $requiredJobVerdict, $rootCauseLabel, $cascadedLabel, $missingLabel)
           } else {
             Write-Host 'Pipeline contract satisfied.'
           }
+
+
+
 
 
 

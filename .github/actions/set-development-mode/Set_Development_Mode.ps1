@@ -46,13 +46,12 @@
 #        Attempt restore when Toggle-DevMode fails (default: true).
 #
 #    .EXAMPLE
-#        .\Set_Development_Mode.ps1 -LabVIEWVersion 2021
+#        .\Set_Development_Mode.ps1  # Uses .lvversion by default
 #
 #>
 
 param(
     [Parameter(Mandatory = $false)]
-    [Alias('MinimumSupportedLVVersion')]
     [AllowNull()]
     [AllowEmptyString()]
     [string]$LabVIEWVersion = '',
@@ -107,12 +106,38 @@ Write-Host "Close_LabVIEW script: $CloseScript"
 
 $ErrorActionPreference = 'Stop'
 
+$devModePolicyHelper = Join-Path $PSScriptRoot '..\..\..\Tooling\support\DevModePolicy.ps1'
+if (-not (Test-Path -LiteralPath $devModePolicyHelper -PathType Leaf)) {
+    throw "Dev mode policy helper not found: $devModePolicyHelper"
+}
+. $devModePolicyHelper
+Assert-DevModeInvocationBlocked -EntryPoint $PSCommandPath
+
 function Test-ForceNoLabVIEWDevMode {
     $value = $env:LVIE_FORCE_NO_LABVIEW_DEVMODE
     if ([string]::IsNullOrWhiteSpace($value)) {
         return $false
     }
     $normalized = $value.Trim().ToLowerInvariant()
+    return ($normalized -notin @('0', 'false', 'no'))
+}
+
+function Resolve-BoolFromEnv {
+    param(
+        [string]$Name,
+        [bool]$Fallback = $false
+    )
+
+    if (-not (Test-Path "Env:$Name")) {
+        return $Fallback
+    }
+
+    $raw = (Get-Item "Env:$Name").Value
+    if ([string]::IsNullOrWhiteSpace($raw)) {
+        return $Fallback
+    }
+
+    $normalized = $raw.Trim().ToLowerInvariant()
     return ($normalized -notin @('0', 'false', 'no'))
 }
 
@@ -140,7 +165,7 @@ if (Test-Path -Path $versionHelper) {
     $labviewYear = $versionInfo.Year
 }
 if ([string]::IsNullOrWhiteSpace($labviewYear)) {
-    $labviewYear = '2021'
+    throw "LabVIEW version could not be resolved. Check .lvversion."
 }
 
 if (Test-ForceNoLabVIEWDevMode) {
@@ -148,6 +173,10 @@ if (Test-ForceNoLabVIEWDevMode) {
         Write-Host 'LVIE_FORCE_NO_LABVIEW_DEVMODE=1; ignoring UseLabVIEW.'
     }
     $UseLabVIEW = $false
+    if (-not $SkipToggle) {
+        Write-Host 'LVIE_FORCE_NO_LABVIEW_DEVMODE=1; forcing direct no-LabVIEW path (SkipToggle).'
+        $SkipToggle = $true
+    }
 }
 
 if (-not $SkipToggle) {
@@ -203,13 +232,24 @@ if (-not $UseLabVIEW) {
     }
 
     Write-Host ("Using no-LabVIEW dev mode path (LV{0})..." -f $labviewYear)
-    & $noLabviewScript `
-        -LabVIEWVersion $labviewYear `
-        -SupportedBitness $SupportedBitness `
-        -RepoRoot $resolvedRepoRoot
+    try {
+        & $noLabviewScript `
+            -LabVIEWVersion $labviewYear `
+            -SupportedBitness $SupportedBitness `
+            -RepoRoot $resolvedRepoRoot
 
-    if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
-        throw "Set-DevelopmentMode-NoLabVIEW.ps1 failed with exit code $LASTEXITCODE."
+        if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
+            throw "Set-DevelopmentMode-NoLabVIEW.ps1 failed with exit code $LASTEXITCODE."
+        }
+    } catch {
+        $allowAccessDenied = Resolve-BoolFromEnv -Name 'LVIE_ALLOW_NO_LABVIEW_ACCESS_DENIED' -Fallback (Resolve-BoolFromEnv -Name 'LVIE_RUNNER_ACL_WARN_ONLY' -Fallback $false)
+        $message = $_.Exception.Message
+        $accessDenied = $message -match '(?i)\baccess\b.*\bdenied\b'
+        if ($allowAccessDenied -and $accessDenied) {
+            Write-Warning ("No-LabVIEW dev mode enable failed with access denied; continuing due policy. Details: {0}" -f $message)
+            return
+        }
+        throw
     }
 
     return
@@ -314,3 +354,4 @@ catch {
     Write-Error "An unexpected error occurred during script execution: $($_.Exception.Message)"
     exit 1
 }
+

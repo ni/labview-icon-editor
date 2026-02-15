@@ -1,12 +1,12 @@
 name: Feature request
 description: Tell us about a new feature
 title: "[Feature] "
-labels: "Enhancement"
+labels: "Type: Enhancement"
 body: 
   - type: markdown
     attributes:
       value: |
-        **IMPORTANT:** Start the discussion on our Discord channel [#icon-editor-dev](https://discord.gg/q4d3ggrFVA) or create a [GitHub Discussion]https://github.com/ni/labview-icon-editor/discussions/new/choose **only** if you are requesting changes to the shipping version of the Icon Editor.
+        **IMPORTANT:** Start the discussion on our Discord channel [#icon-editor-dev](https://discord.gg/q4d3ggrFVA) or create a GitHub Discussion in this repository (Discussions tab) **only** if you are requesting changes to the shipping version of the Icon Editor.
 
   - type: textarea
     attributes:

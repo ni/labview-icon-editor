@@ -1,0 +1,281 @@
+name: Label Metadata Normalize
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Policy mode override"
+        required: false
+        default: warn
+        type: choice
+        options:
+          - warn
+          - enforce
+      pr_number:
+        description: "Optional PR number to normalize"
+        required: false
+        type: string
+      issue_number:
+        description: "Optional issue number to normalize"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  normalize:
+    name: Normalize Label Metadata
+    runs-on: ubuntu-latest
+    env:
+      ENFORCE_AFTER_UTC: "2026-02-19T00:00:00Z"
+      LABEL_METADATA_MODE: ${{ vars.LVIE_LABEL_METADATA_MODE || '' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Normalize labels for PRs and issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const path = require('path');
+            const {
+              loadLabelContract,
+              buildReleaseTypeToCanonicalMap,
+              buildIssueTypeToCanonicalMap,
+              buildReleaseLabelMap,
+              buildIssueTypeLabelMap,
+              normalizeLabels,
+            } = require(path.join(process.env.GITHUB_WORKSPACE || process.cwd(), '.github', 'scripts', 'label-metadata.js'));
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const inputs = context.payload.inputs || {};
+
+            function parsePositiveInt(value) {
+              const parsed = Number.parseInt(String(value || '').trim(), 10);
+              return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+            }
+
+            function resolveMode() {
+              const dispatchMode = String(inputs.mode || '').trim().toLowerCase();
+              if (dispatchMode === 'warn' || dispatchMode === 'enforce') {
+                return dispatchMode;
+              }
+
+              const envMode = String(process.env.LABEL_METADATA_MODE || '').trim().toLowerCase();
+              if (envMode === 'warn' || envMode === 'enforce') {
+                return envMode;
+              }
+
+              const enforceAfterRaw = String(process.env.ENFORCE_AFTER_UTC || '').trim();
+              const enforceAfterMs = Date.parse(enforceAfterRaw);
+              if (!Number.isNaN(enforceAfterMs) && Date.now() >= enforceAfterMs) {
+                return 'enforce';
+              }
+
+              return 'warn';
+            }
+
+            async function addLabels(issueNumber, labels) {
+              if (!Array.isArray(labels) || labels.length === 0) {
+                return;
+              }
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                labels,
+              });
+            }
+
+            async function ensureComment(issueNumber, marker, message) {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: issueNumber,
+                per_page: 100,
+              });
+              if (comments.some((comment) => String(comment.body || '').includes(marker))) {
+                return false;
+              }
+
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body: `${message}\n\n${marker}`,
+              });
+              return true;
+            }
+
+            const mode = resolveMode();
+            const contractPath = path.join(process.env.GITHUB_WORKSPACE || process.cwd(), '.github', 'labels', 'label-contract.json');
+            const contract = loadLabelContract(contractPath);
+            const releaseToCanonical = buildReleaseTypeToCanonicalMap(contract);
+            const issueTypeToCanonical = buildIssueTypeToCanonicalMap(contract);
+            const releaseLabelMap = buildReleaseLabelMap(contract);
+            const issueTypeLabelMap = buildIssueTypeLabelMap(contract);
+
+            const prNumber =
+              context.eventName === 'pull_request_target'
+                ? parsePositiveInt(context.payload.pull_request && context.payload.pull_request.number)
+                : parsePositiveInt(inputs.pr_number);
+
+            const issueNumber =
+              context.eventName === 'issues'
+                ? parsePositiveInt(context.payload.issue && context.payload.issue.number)
+                : parsePositiveInt(inputs.issue_number);
+
+            const summary = [];
+            summary.push('## Label Metadata Normalize');
+            summary.push('');
+            summary.push(`- Mode: \`${mode}\``);
+            summary.push(`- Event: \`${context.eventName}\``);
+            summary.push('');
+
+            if (prNumber) {
+              const conflictMarker = '<!-- label-metadata-normalize:pr-release-conflict:v1 -->';
+              const prResponse = await github.rest.pulls.get({
+                owner,
+                repo,
+                pull_number: prNumber,
+              });
+
+              const pr = prResponse.data;
+              const labels = (pr.labels || []).map((entry) => String(entry.name || '').trim()).filter(Boolean);
+              const labelSet = new Set(labels.map((name) => name.toLowerCase()));
+              const found = normalizeLabels(labels, releaseLabelMap);
+              const labelsToAdd = [];
+
+              if (found.normalized.length <= 1) {
+                for (const bumpType of found.normalized) {
+                  const canonical = releaseToCanonical.get(bumpType);
+                  if (canonical && !labelSet.has(canonical.toLowerCase())) {
+                    labelsToAdd.push(canonical);
+                  }
+                }
+
+                if (found.normalized.length === 0) {
+                  const defaultPatch = releaseToCanonical.get('patch') || 'Version Increment: Patch';
+                  if (!labelSet.has(defaultPatch.toLowerCase())) {
+                    labelsToAdd.push(defaultPatch);
+                  }
+                }
+              }
+
+              const uniqueLabelsToAdd = [...new Set(labelsToAdd)];
+              if (uniqueLabelsToAdd.length > 0) {
+                await addLabels(prNumber, uniqueLabelsToAdd);
+              }
+
+              let conflictCommented = false;
+              if (found.normalized.length > 1) {
+                conflictCommented = await ensureComment(
+                  prNumber,
+                  conflictMarker,
+                  [
+                    `This pull request currently has conflicting normalized release labels: ${found.matchedRaw.join(', ')}.`,
+                    'Apply exactly one release increment family (`major`, `minor`, or `patch`) after normalization.',
+                    'Canonical labels are preferred: `Version Increment: Major`, `Version Increment: Minor`, `Version Increment: Patch`.',
+                  ].join('\n')
+                );
+
+                if (mode === 'enforce') {
+                  core.setFailed(`Conflicting normalized release labels on PR #${prNumber}: ${found.matchedRaw.join(', ')}`);
+                }
+              }
+
+              summary.push(`### PR #${prNumber}`);
+              summary.push(`- Matched release labels: ${found.matchedRaw.length > 0 ? found.matchedRaw.join(', ') : '<none>'}`);
+              summary.push(`- Normalized release bump types: ${found.normalized.length > 0 ? found.normalized.join(', ') : '<none>'}`);
+              summary.push(`- Added labels: ${uniqueLabelsToAdd.length > 0 ? uniqueLabelsToAdd.join(', ') : '<none>'}`);
+              summary.push(`- Conflict comment posted: ${conflictCommented ? 'yes' : 'no'}`);
+              summary.push('');
+            }
+
+            if (issueNumber) {
+              const defaultMarker = '<!-- label-metadata-normalize:issue-default-type:v1 -->';
+              const conflictMarker = '<!-- label-metadata-normalize:issue-type-conflict:v1 -->';
+              const issueResponse = await github.rest.issues.get({
+                owner,
+                repo,
+                issue_number: issueNumber,
+              });
+
+              const issue = issueResponse.data;
+              if (issue.pull_request) {
+                summary.push(`### Issue #${issueNumber}`);
+                summary.push('- Target is a pull request issue object; skipped issue-type normalization.');
+                summary.push('');
+              } else {
+                const labels = (issue.labels || []).map((entry) => String(entry.name || '').trim()).filter(Boolean);
+                const labelSet = new Set(labels.map((name) => name.toLowerCase()));
+                const found = normalizeLabels(labels, issueTypeLabelMap);
+                const labelsToAdd = [];
+                let defaultCommented = false;
+                let conflictCommented = false;
+
+                if (found.normalized.length === 0) {
+                  const normalizedTitle = String(issue.title || '').trim().toLowerCase();
+                  const inferredType = normalizedTitle.startsWith('[bug]') ? 'bug' : 'enhancement';
+                  const canonical = issueTypeToCanonical.get(inferredType);
+                  if (canonical && !labelSet.has(canonical.toLowerCase())) {
+                    labelsToAdd.push(canonical);
+                  }
+
+                  defaultCommented = await ensureComment(
+                    issueNumber,
+                    defaultMarker,
+                    [
+                      `No issue-type label was found, so this issue was normalized to \`${canonical || 'Type: Enhancement'}\`.`,
+                      'Use canonical issue-type labels where possible: `Issue group: Bug` or `Type: Enhancement`.',
+                    ].join('\n')
+                  );
+                } else {
+                  for (const issueType of found.normalized) {
+                    const canonical = issueTypeToCanonical.get(issueType);
+                    if (canonical && !labelSet.has(canonical.toLowerCase())) {
+                      labelsToAdd.push(canonical);
+                    }
+                  }
+                }
+
+                const uniqueLabelsToAdd = [...new Set(labelsToAdd)];
+                if (uniqueLabelsToAdd.length > 0) {
+                  await addLabels(issueNumber, uniqueLabelsToAdd);
+                }
+
+                if (found.normalized.length > 1) {
+                  conflictCommented = await ensureComment(
+                    issueNumber,
+                    conflictMarker,
+                    [
+                      `This issue currently has conflicting normalized issue-type labels: ${found.matchedRaw.join(', ')}.`,
+                      'Apply one issue-type family label after normalization (`Issue group: Bug` or `Type: Enhancement`).',
+                    ].join('\n')
+                  );
+
+                  if (mode === 'enforce') {
+                    core.setFailed(`Conflicting normalized issue-type labels on issue #${issueNumber}: ${found.matchedRaw.join(', ')}`);
+                  }
+                }
+
+                summary.push(`### Issue #${issueNumber}`);
+                summary.push(`- Matched issue-type labels: ${found.matchedRaw.length > 0 ? found.matchedRaw.join(', ') : '<none>'}`);
+                summary.push(`- Normalized issue types: ${found.normalized.length > 0 ? found.normalized.join(', ') : '<none>'}`);
+                summary.push(`- Added labels: ${uniqueLabelsToAdd.length > 0 ? uniqueLabelsToAdd.join(', ') : '<none>'}`);
+                summary.push(`- Default-label comment posted: ${defaultCommented ? 'yes' : 'no'}`);
+                summary.push(`- Conflict comment posted: ${conflictCommented ? 'yes' : 'no'}`);
+                summary.push('');
+              }
+            }
+
+            if (!prNumber && !issueNumber) {
+              summary.push('No PR or issue target resolved for this event; nothing to normalize.');
+              summary.push('');
+            }
+
+            await core.summary.addRaw(summary.join('\n') + '\n').write();

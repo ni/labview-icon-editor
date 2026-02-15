@@ -10,29 +10,21 @@
 
 .PARAMETER LabVIEWVersion
     LabVIEW version year (e.g., 2021) or numeric version (e.g., 21.0).
-    Alias: MinimumSupportedLVVersion.
 
 .PARAMETER SupportedBitness
     LabVIEW bitness to target ("32" or "64"). Defaults to "64".
 
 .PARAMETER EnableDevMode
-    Enable LabVIEW Icon Editor development mode before running VerifyIEPaths.
-    When enabled, missing paths that are expected in dev mode (LabVIEW Icon API and lv_icon.lvlibp)
-    are treated as success; other missing paths still fail the check.
-    Non-zero VerifyIEPaths g-cli exit codes are ignored so the status file can be evaluated.
+    Policy-disabled. Passing this switch throws an error because dev-mode invocation is forbidden.
 
 .PARAMETER EnableDevModeNoLabVIEW
-    Enable development mode without launching LabVIEW by editing install files and LabVIEW.ini.
-    When enabled, missing paths that are expected in dev mode (LabVIEW Icon API and lv_icon.lvlibp)
-    are treated as success; other missing paths still fail the check.
+    Policy-disabled. Passing this switch throws an error because dev-mode invocation is forbidden.
 
 .PARAMETER AllowFallbackToNoLabVIEW
-    When EnableDevMode is set, allow fallback to the no-LabVIEW path if the
-    LabVIEW toggle fails.
+    Policy-disabled. Passing this switch throws an error because dev-mode invocation is forbidden.
 
 .PARAMETER AutoRevertIfEnabled
-    When enabled, automatically revert dev mode if the install appears to be
-    in dev mode (or mixed state) before running VerifyIEPaths.
+    Policy-disabled. Passing this switch throws an error because dev-mode invocation is forbidden.
 
 .PARAMETER RepoRoot
     Optional path to the repository root. If omitted, resolved relative to
@@ -63,7 +55,7 @@
     Timeout in milliseconds to wait for the status file to appear.
 
 .PARAMETER DevModeConnectTimeoutMs
-    g-cli connect timeout in milliseconds for PrepareIESource.vi when dev mode is enabled.
+    Reserved for compatibility. Ignored because dev-mode invocation is disabled by policy.
 
 .PARAMETER ProcessTimeoutMs
     Maximum time to wait for g-cli to finish in milliseconds (0 disables the timeout).
@@ -95,7 +87,6 @@ param(
     [Parameter(Mandatory = $false)]
     [AllowNull()]
     [AllowEmptyString()]
-    [Alias('MinimumSupportedLVVersion')]
     [string]$LabVIEWVersion = '',
 
     [Parameter(Mandatory = $false)]
@@ -173,10 +164,19 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$devModeRequested = $EnableDevMode -or $EnableDevModeNoLabVIEW
-if ($EnableDevMode -and $EnableDevModeNoLabVIEW) {
-    Write-Warning "EnableDevModeNoLabVIEW is set; ignoring EnableDevMode."
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    throw "git was not found on PATH."
 }
+
+$devModePolicyHelper = Join-Path $PSScriptRoot 'support\DevModePolicy.ps1'
+if (-not (Test-Path -Path $devModePolicyHelper -PathType Leaf)) {
+    throw "Dev mode policy helper not found at $devModePolicyHelper"
+}
+. $devModePolicyHelper
+Assert-DevModePolicyParameterNotBound `
+    -BoundParameters $PSBoundParameters `
+    -BlockedParameters @('EnableDevMode', 'EnableDevModeNoLabVIEW', 'AllowFallbackToNoLabVIEW', 'AutoRevertIfEnabled') `
+    -EntryPoint $PSCommandPath
 
 function Convert-BoundParametersToArgumentList {
     param(
@@ -225,14 +225,27 @@ function Resolve-RepoRoot {
         [string]$PathOverride
     )
 
-    if ($PathOverride) {
+    if (-not [string]::IsNullOrWhiteSpace($PathOverride)) {
         if (-not (Test-Path -Path $PathOverride)) {
             throw "RepoRoot does not exist: $PathOverride"
         }
         return (Resolve-Path -Path $PathOverride).Path
     }
 
-    return (Resolve-Path -Path (Join-Path $PSScriptRoot '..')).Path
+    $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $PSCommandPath }
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        try {
+            $gitRoot = git -C $scriptRoot rev-parse --show-toplevel 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRoot)) {
+                return (Resolve-Path -Path $gitRoot.Trim()).Path
+            }
+        } catch {
+            Write-Verbose ("git rev-parse failed: {0}" -f $_.Exception.Message)
+        }
+    }
+
+    return (Resolve-Path -Path (Join-Path $scriptRoot '..')).Path
 }
 
 function Get-LabVIEWInstallRoot {
@@ -534,7 +547,7 @@ if (Test-Path -Path $versionHelper) {
     $labviewYear = $versionInfo.Year
 }
 if ([string]::IsNullOrWhiteSpace($labviewYear)) {
-    $labviewYear = '2021'
+    throw "LabVIEW version could not be resolved. Check .lvversion."
 }
 if ([string]::IsNullOrWhiteSpace($StatusFileArchiveDirectory) -and $artifactRootResolved) {
     $StatusFileArchiveDirectory = Join-Path $artifactRootResolved 'verify-iepaths'
@@ -571,49 +584,9 @@ function Write-VerifyIEPathsSummaryLine {
 }
 
 $strictState = Resolve-BoolFromEnv -Name 'LVIE_VERIFY_IEPATHS_STRICT' -Fallback $false
-$autoRevert = $AutoRevertIfEnabled -or (Resolve-BoolFromEnv -Name 'LVIE_VERIFY_IEPATHS_AUTO_REVERT' -Fallback $false)
-$forceNoLabVIEW = Resolve-BoolFromEnv -Name 'LVIE_FORCE_NO_LABVIEW_DEVMODE' -Fallback $false
-$preferNoLabVIEW = $forceNoLabVIEW -or $EnableDevModeNoLabVIEW -or (Resolve-BoolFromEnv -Name 'LVIE_VERIFY_IEPATHS_NO_LABVIEW' -Fallback $false)
 $preState = Get-IEInstallState -LabVIEWInstallRoot $installRoot
 Write-Host ("Install state (pre): {0}" -f (Format-IEInstallState -State $preState))
 Write-VerifyIEPathsSummaryLine ("Verify IE Paths pre-state ({0} {1}-bit): {2}" -f $labviewYear, $SupportedBitness, (Format-IEInstallState -State $preState))
-
-if (($preState.MixedState -or $preState.DevModeEnabled) -and $autoRevert) {
-    Write-Host "Pre-run install state indicates dev mode or mixed state; reverting before VerifyIEPaths."
-    Write-VerifyIEPathsSummaryLine "Verify IE Paths auto-revert: pre-state indicated dev mode or mixed state; attempting revert."
-
-    $revertScript = Join-Path $repoRoot '.github\actions\revert-development-mode\RevertDevelopmentMode.ps1'
-    if (-not (Test-Path -Path $revertScript)) {
-        throw "RevertDevelopmentMode.ps1 not found at $revertScript"
-    }
-
-    if ($preferNoLabVIEW) {
-        & $revertScript `
-            -LabVIEWVersion $labviewYear `
-            -SupportedBitness $SupportedBitness `
-            -RepoRoot $repoRoot `
-            -ConnectTimeoutMs $ConnectTimeoutMs `
-            -ProcessTimeoutMs $ProcessTimeoutMs
-    } else {
-        & $revertScript `
-            -LabVIEWVersion $labviewYear `
-            -SupportedBitness $SupportedBitness `
-            -RepoRoot $repoRoot `
-            -ConnectTimeoutMs $ConnectTimeoutMs `
-            -ProcessTimeoutMs $ProcessTimeoutMs `
-            -UseLabVIEW `
-            -AllowFallbackToNoLabVIEW:$AllowFallbackToNoLabVIEW
-    }
-
-    if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
-        throw "Dev mode auto-revert failed with exit code $LASTEXITCODE."
-    }
-
-    $postRevertState = Get-IEInstallState -LabVIEWInstallRoot $installRoot
-    Write-Host ("Install state (post-revert): {0}" -f (Format-IEInstallState -State $postRevertState))
-    Write-VerifyIEPathsSummaryLine ("Verify IE Paths post-revert ({0} {1}-bit): {2}" -f $labviewYear, $SupportedBitness, (Format-IEInstallState -State $postRevertState))
-    $preState = $postRevertState
-}
 
 if ($preState.MixedState) {
     $message = "Install appears to be in a mixed dev-mode state before VerifyIEPaths."
@@ -621,9 +594,8 @@ if ($preState.MixedState) {
         throw $message
     }
     Write-Warning $message
-}
-if ($devModeRequested -and $preState.DevModeEnabled) {
-    $message = "Dev mode appears enabled before VerifyIEPaths; previous runs may have left the runner in dev mode."
+} elseif ($preState.DevModeEnabled) {
+    $message = "Install appears to be in dev mode before VerifyIEPaths. Dev mode invocation is disabled by repository policy."
     if ($strictState) {
         throw $message
     }
@@ -635,48 +607,6 @@ if (-not (Get-Command g-cli -ErrorAction SilentlyContinue)) {
 }
 
 $gCliPath = (Get-Command g-cli -ErrorAction SilentlyContinue).Source
-
-if ($devModeRequested) {
-    if ($preferNoLabVIEW) {
-        $devModeScript = Join-Path $repoRoot 'Tooling\Set-DevelopmentMode-NoLabVIEW.ps1'
-        if (-not (Test-Path -Path $devModeScript)) {
-            throw "Set-DevelopmentMode-NoLabVIEW.ps1 not found at $devModeScript"
-        }
-
-        Write-Host ("Enabling development mode without LabVIEW before VerifyIEPaths (LV{0} {1}-bit)..." -f $labviewYear, $SupportedBitness)
-        & $devModeScript `
-            -LabVIEWVersion $labviewYear `
-            -SupportedBitness $SupportedBitness `
-            -RepoRoot $repoRoot
-    } else {
-        $devModeScript = Join-Path $repoRoot '.github\actions\set-development-mode\Set_Development_Mode.ps1'
-        if (-not (Test-Path -Path $devModeScript)) {
-            throw "Set_Development_Mode.ps1 not found at $devModeScript"
-        }
-
-        Write-Host ("Enabling development mode before VerifyIEPaths (LV{0} {1}-bit)..." -f $labviewYear, $SupportedBitness)
-        & $devModeScript `
-            -LabVIEWVersion $labviewYear `
-            -SupportedBitness $SupportedBitness `
-            -RepoRoot $repoRoot `
-            -ConnectTimeoutMs $DevModeConnectTimeoutMs `
-            -ProcessTimeoutMs $ProcessTimeoutMs `
-            -UseLabVIEW `
-            -AllowFallbackToNoLabVIEW:$AllowFallbackToNoLabVIEW
-    }
-
-    if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
-        throw "Development mode enable failed with exit code $LASTEXITCODE."
-    }
-
-    if (-not (Test-IEDevModeEnabled -LabVIEWInstallRoot $installRoot)) {
-        Write-Warning ("Development mode did not appear enabled (LV{0} {1}-bit). VerifyIEPaths may not behave as expected." -f $labviewYear, $SupportedBitness)
-    }
-
-    $postEnableState = Get-IEInstallState -LabVIEWInstallRoot $installRoot
-    Write-Host ("Install state (post-enable): {0}" -f (Format-IEInstallState -State $postEnableState))
-    Write-VerifyIEPathsSummaryLine ("Verify IE Paths post-enable ({0} {1}-bit): {2}" -f $labviewYear, $SupportedBitness, (Format-IEInstallState -State $postEnableState))
-}
 
 $gCliArgs = @(
     '--lv-ver', $labviewYear,
@@ -703,10 +633,8 @@ try {
         throw "VerifyIEPaths.vi timed out after $ProcessTimeoutMs ms."
     }
     if ($result.ExitCode -ne 0) {
-        $allowGcliExit = $IgnoreGcliExitCode -or $devModeRequested
-        if ($allowGcliExit) {
-            $reason = if ($IgnoreGcliExitCode) { 'IgnoreGcliExitCode is set' } else { 'development mode is enabled' }
-            Write-Warning ("VerifyIEPaths.vi returned exit code {0}; continuing because {1}." -f $result.ExitCode, $reason)
+        if ($IgnoreGcliExitCode) {
+            Write-Warning ("VerifyIEPaths.vi returned exit code {0}; continuing because IgnoreGcliExitCode is set." -f $result.ExitCode)
         } else {
             throw "VerifyIEPaths.vi failed with exit code $($result.ExitCode)."
         }
@@ -731,28 +659,7 @@ try {
                 } else {
                     $statusInfo.RawStatus
                 }
-
-                if ($devModeRequested) {
-                    $unexpected = @()
-                    if ($statusInfo.MissingPaths -and $statusInfo.MissingPaths.Count -gt 0) {
-                        $unexpected = $statusInfo.MissingPaths | Where-Object {
-                            $path = $_
-                            -not ($path -match '(?i)LabVIEW Icon API') `
-                                -and -not ($path -match '(?i)lv_icon\.lvlibp') `
-                                -and -not ($path -match '(?i)lv_icon\.vi(t)?') `
-                                -and -not ($path -match '(?i)lv_iconeditor\.lvlib') `
-                                -and -not ($path -match '(?i)NIIconEditor')
-                        }
-                    }
-
-                    if ($unexpected -and $unexpected.Count -gt 0) {
-                        throw "VerifyIEPaths reported unexpected missing paths in dev mode: $missing"
-                    }
-
-                    Write-Host "VerifyIEPaths reported missing paths expected in development mode; treating as success."
-                } else {
-                    throw "VerifyIEPaths reported missing paths: $missing"
-                }
+                throw "VerifyIEPaths reported missing paths: $missing"
             }
 
             if ($statusInfo.IsUnknown -and $FailOnUnknownStatus) {
@@ -789,4 +696,5 @@ finally {
 if ($preflight -and $preflight.CleanRoomAfter) {
     Invoke-PreflightCleanup -RepoRoot $preflight.RepoRoot -Phase 'after'
 }
+
 
