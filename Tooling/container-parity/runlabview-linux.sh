@@ -11,7 +11,7 @@ fi
 # shellcheck disable=SC1090
 source "$PATH_CONTRACT_SCRIPT"
 
-LV_YEAR="${LV_YEAR:-2026}"
+LV_YEAR="${CONTAINER_PARITY_LABVIEW_VERSION:-${LV_YEAR:-2020}}"
 LVIE_PROJECT_RELATIVE_PATH="${LVIE_PROJECT_RELATIVE_PATH:-${PROJECT_PATH_REL:-lv_icon_editor.lvproj}}"
 resolve_lvie_repo_root "/workspace" > /dev/null
 LVIE_REPO_ROOT="${LVIE_RESOLVED_REPO_ROOT:-}"

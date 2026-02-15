@@ -1450,7 +1450,7 @@ jobs:
 
   build-ppl-linux-container:
     name: Build Linux Container Packed Library
-    needs: [run-metadata, prerelease-context, version]
+    needs: [run-metadata, prerelease-context, version, version-gate]
     runs-on: ubuntu-latest
     outputs:
       artifact_name: ${{ steps.asset-meta.outputs.artifact_name }}
@@ -1489,7 +1489,7 @@ jobs:
         if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
         shell: bash
         env:
-          LV_RELEASE: 2026q1
+          LV_RELEASE: ${{ format('{0}q1', needs.version-gate.outputs.year) }}
         run: |
           set -euo pipefail
           image="nationalinstruments/labview:${LV_RELEASE}-linux"
@@ -1519,7 +1519,7 @@ jobs:
             -e "CONTAINER_PARITY_BUILD_SPEC_NAME=Editor Packed Library" \
             -e "CONTAINER_PARITY_TARGET_NAME=My Computer" \
             -e "CONTAINER_PARITY_BUILD_OUTPUT_RELATIVE_PATH=resource/plugins/lv_icon.lvlibp" \
-            -e "CONTAINER_PARITY_LABVIEW_VERSION=2026" \
+            -e "CONTAINER_PARITY_LABVIEW_VERSION=${{ needs.version-gate.outputs.year }}" \
             "$LABVIEW_LINUX_IMAGE" \
             bash -lc "chmod +x /workspace/Tooling/container-parity/runlabview-linux.sh && /workspace/Tooling/container-parity/runlabview-linux.sh"
 
@@ -1568,7 +1568,7 @@ jobs:
 
   build-ppl-windows-container:
     name: Build Windows Container Packed Library
-    needs: [run-metadata, prerelease-context, version]
+    needs: [run-metadata, prerelease-context, version, version-gate]
     runs-on: windows-latest
     outputs:
       artifact_name: ${{ steps.asset-meta.outputs.artifact_name }}
@@ -1604,7 +1604,7 @@ jobs:
         if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
         shell: pwsh
         run: |
-          $image = 'nationalinstruments/labview:2026q1-windows'
+          $image = 'nationalinstruments/labview:${{ needs.version-gate.outputs.year }}q1-windows'
           Write-Host "Using image: $image"
           docker pull $image
           "LABVIEW_WINDOWS_IMAGE=$image" | Out-File -FilePath $Env:GITHUB_ENV -Append
@@ -1635,7 +1635,7 @@ jobs:
             -e "CONTAINER_PARITY_BUILD_SPEC_NAME=Editor Packed Library" `
             -e "CONTAINER_PARITY_TARGET_NAME=My Computer" `
             -e "CONTAINER_PARITY_BUILD_OUTPUT_RELATIVE_PATH=resource\plugins\lv_icon.lvlibp" `
-            -e "CONTAINER_PARITY_LABVIEW_VERSION=2026" `
+            -e "CONTAINER_PARITY_LABVIEW_VERSION=${{ needs.version-gate.outputs.year }}" `
             $env:LABVIEW_WINDOWS_IMAGE `
             powershell -NoProfile -ExecutionPolicy Bypass -File C:\workspace\Tooling\container-parity\runlabview-windows.ps1
 

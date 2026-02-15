@@ -47,7 +47,7 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 
 5. **Enable Dev Mode**:
    ```powershell
-   .\Set_Development_Mode.ps1 -LabVIEWVersion 2021
+   .\Set_Development_Mode.ps1 -LabVIEWVersion 2020
    ```
 
    Removes the default `lv_icon.lvlibp` and points LabVIEW to your local Icon Editor code.
@@ -62,8 +62,8 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 ## 3. Distribution Guide (VI Package via PowerShell)
 
 1. **Apply Dependencies** in VIPM:
-   - Set LabVIEW to 2021 (32-bit) and apply `.github\actions\apply-vipc\runner_dependencies.vipc`.
-   - Repeat for **2021 (64-bit)** so both bitnesses are covered.
+   - Set LabVIEW to 2020 (32-bit) and apply `.github\actions\apply-vipc\runner_dependencies.vipc`.
+   - Repeat for **2020 (64-bit)** so both bitnesses are covered.
 
 2. **Disable LabVIEW Security Warnings** *(to prevent popups from "run when opened" VIs)*:
    - **Tools → Options → Security** → **Run VI Without Warnings**.
@@ -88,7 +88,7 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 
 5. **Revert Dev Mode (optional)**:
    ```powershell
-   ..\revert-development-mode\RevertDevelopmentMode.ps1 -LabVIEWVersion 2021
+   ..\revert-development-mode\RevertDevelopmentMode.ps1 -LabVIEWVersion 2020
    ```
 
 6. **Install** the `.vip` in VIPM (as Admin). Validate your custom Icon Editor changes.

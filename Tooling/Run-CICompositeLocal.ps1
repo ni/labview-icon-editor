@@ -16,7 +16,7 @@
     GitHub-only steps (workflow metadata, artifact upload) are not included.
 
 .PARAMETER LabVIEWVersion
-    LabVIEW version year (e.g., 2021) or numeric version (e.g., 21.0).
+    LabVIEW version year (e.g., 2020) or numeric version (e.g., 20.0).
 
 .PARAMETER LabVIEWBitness
     Bitness to run: both, 32, 64, or installed (auto-detect).
@@ -729,7 +729,7 @@ function Resolve-ViValidateVersion {
     }
     $raw = (Get-Content -Raw -Path $versionPath).Trim()
     if (-not ($raw -match '^(?<major>\\d{2,4})(?:\\.(?<minor>\\d+))?$')) {
-        throw "LabVIEW version '$raw' is invalid. Expected formats like '21.0' or '2021'."
+        throw "LabVIEW version '$raw' is invalid. Expected formats like '20.0' or '2020'."
     }
     $majorRaw = [int]$Matches['major']
     $minor = if ($Matches['minor']) { [int]$Matches['minor'] } else { 0 }

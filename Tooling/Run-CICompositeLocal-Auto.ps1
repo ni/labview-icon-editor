@@ -8,7 +8,7 @@
     Uses the existing parity script for all work and logging.
 
 .PARAMETER LabVIEWVersion
-    LabVIEW version year (e.g., 2021) or numeric version (e.g., 21.0).
+    LabVIEW version year (e.g., 2020) or numeric version (e.g., 20.0).
 
 .PARAMETER LabVIEWBitness
     Bitness to run: both, 32, 64, or installed (auto-detect).

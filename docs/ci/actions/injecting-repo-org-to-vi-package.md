@@ -143,7 +143,7 @@ jobs:
    2. `build-project-spec` compiles the **32- and 64-bit** packed libraries.
    3. A PowerShell step generates JSON with `CompanyName` and `AuthorName` fields derived from GitHub variables.
    4. `modify-vipb-display-info` merges that JSON into the `.vipb` file.
-   5. `build-vi-package` produces the final **64-bit LabVIEW 2021 (21.0)** Icon Editor `.vip` package.
+   5. `build-vi-package` produces the final **64-bit LabVIEW 2020 (20.0)** Icon Editor `.vip` package.
 4. **Actions** can then upload the resulting `.vip` as an artifact.
 
 ---

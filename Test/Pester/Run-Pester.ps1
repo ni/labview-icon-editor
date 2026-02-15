@@ -68,7 +68,7 @@ if (Test-Path -Path $versionHelper) {
     $env:LABVIEW_MINOR_REVISION = $versionInfo.MinorRevision.ToString()
     $env:LABVIEW_NUMERIC_VERSION = $versionInfo.NumericVersion
 } elseif ([string]::IsNullOrWhiteSpace($LabVIEWVersion)) {
-    $LabVIEWVersion = '2021'
+    $LabVIEWVersion = '2020'
 }
 
 $env:LABVIEW_VERSION = $LabVIEWVersion

@@ -1,7 +1,7 @@
 param(
     [string]$WorkspaceRoot = "",
     [string]$TargetDir = "",
-    [string]$LabVIEWPath = "C:\Program Files\National Instruments\LabVIEW 2026\LabVIEW.exe",
+    [string]$LabVIEWPath = "",
     [string]$ProjectPath = "",
     [string]$BuildSpecName = "",
     [string]$TargetName = "",
@@ -455,6 +455,17 @@ $buildOutputRelativePath = if ([string]::IsNullOrWhiteSpace($env:CONTAINER_PARIT
     $env:CONTAINER_PARITY_BUILD_OUTPUT_RELATIVE_PATH
 }
 $buildOutputPath = Join-LvieRepoPath -RepoRoot $WorkspaceRoot -RelativePath $buildOutputRelativePath
+
+if ([string]::IsNullOrWhiteSpace($LabVIEWPath)) {
+    $resolvedLabVIEWYear = if (-not [string]::IsNullOrWhiteSpace($env:CONTAINER_PARITY_LABVIEW_VERSION)) {
+        $env:CONTAINER_PARITY_LABVIEW_VERSION
+    } elseif (-not [string]::IsNullOrWhiteSpace($LabVIEWVersion)) {
+        $LabVIEWVersion
+    } else {
+        '2020'
+    }
+    $LabVIEWPath = "C:\Program Files\National Instruments\LabVIEW $resolvedLabVIEWYear\LabVIEW.exe"
+}
 
 if (-not (Get-Command LabVIEWCLI -ErrorAction SilentlyContinue)) {
     Write-Error "LabVIEWCLI is not available on PATH inside the container."

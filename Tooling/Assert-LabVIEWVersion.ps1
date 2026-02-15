@@ -12,7 +12,7 @@
     Repository root that contains .lvversion.
 
 .PARAMETER ExpectedVersion
-    Optional expected version (year or numeric, e.g. 2021 or 21.0) to compare
+    Optional expected version (year or numeric, e.g. 2020 or 20.0) to compare
     against .lvversion.
 
 .PARAMETER AllowMismatch

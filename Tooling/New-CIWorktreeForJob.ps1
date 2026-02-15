@@ -18,7 +18,7 @@
     LabVIEW bitness (32 or 64). Required.
 
 .PARAMETER Variant
-    Optional additional label included in the worktree folder name (e.g. 2021).
+    Optional additional label included in the worktree folder name (e.g. 2020).
 
 .PARAMETER Ref
     Git ref to check out. Defaults to GITHUB_SHA or HEAD.
@@ -291,7 +291,7 @@ function Resolve-LabVIEWVersionInfo {
     }
 
     if (-not ($raw -match '^(?<major>\d{2,4})(?:\.(?<minor>\d+))?$')) {
-        throw ".lvversion value '$raw' is invalid. Expected formats like '21.0' or '2021.0'."
+        throw ".lvversion value '$raw' is invalid. Expected formats like '20.0' or '2020.0'."
     }
 
     $majorRaw = [int]$Matches['major']

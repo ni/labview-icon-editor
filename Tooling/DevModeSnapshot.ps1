@@ -8,7 +8,7 @@
     for each supported bitness so dev-mode changes can be restored.
 
 .PARAMETER LabVIEWVersion
-    LabVIEW version year (e.g., 2021) or numeric version (e.g., 21.0).
+    LabVIEW version year (e.g., 2020) or numeric version (e.g., 20.0).
 
 .PARAMETER SupportedBitness
     One or more bitness values ("32", "64") to snapshot (default: both).

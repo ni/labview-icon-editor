@@ -9,7 +9,7 @@
     and enforces integration coverage guards.
 
 .PARAMETER LabVIEWVersion
-    LabVIEW version year (e.g., 2021) or numeric version (e.g., 21.0).
+    LabVIEW version year (e.g., 2020) or numeric version (e.g., 20.0).
 
 .PARAMETER LabVIEWBitness
     Bitness to run: 32, 64, both, all, or auto.

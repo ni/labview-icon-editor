@@ -493,7 +493,7 @@ Behavior
 RC-VG-001: The command shall resolve repo root per section 5.4.
 RC-VG-002: If --version is not provided, the command shall read .lvversion from the resolved repo root.
 RC-VG-003: If --version is provided, the command shall read .lvversion from the resolved repo root.
-RC-VG-004: The command shall accept version inputs matching the pattern of a 2 to 4 digit major value with an optional .minor suffix, for example 21.0 or 2021.
+RC-VG-004: The command shall accept version inputs matching the pattern of a 2 to 4 digit major value with an optional .minor suffix, for example 20.0 or 2020.
 RC-VG-005: When --json is set, the command shall emit a LabVIEWVersionInfo JSON object to stdout.
 RC-VG-006: When --json is not set, the command shall emit raw=, year=, minor=, and numeric= lines to stdout.
 RC-VG-007: The command shall fail with exit code 1 when .lvversion is missing.

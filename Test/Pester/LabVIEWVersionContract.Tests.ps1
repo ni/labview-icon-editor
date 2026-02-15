@@ -60,31 +60,31 @@ Describe 'LabVIEW version contract' {
     }
 
     It 'accepts matching expected version' {
-        $root = & $script:newTempRepo -Version '21.0' -VersionHelperPath $script:versionHelper
-        $result = & $script:assertScript -RepoRoot $root -ExpectedVersion '2021'
-        $result.Year | Should -Be '2021'
+        $root = & $script:newTempRepo -Version '20.0' -VersionHelperPath $script:versionHelper
+        $result = & $script:assertScript -RepoRoot $root -ExpectedVersion '2020'
+        $result.Year | Should -Be '2020'
     }
 
     It 'throws when expected version mismatches .lvversion' {
-        $root = & $script:newTempRepo -Version '21.0' -VersionHelperPath $script:versionHelper
+        $root = & $script:newTempRepo -Version '20.0' -VersionHelperPath $script:versionHelper
         { & $script:assertScript -RepoRoot $root -ExpectedVersion '2022' } | Should -Throw
     }
 
     It 'allows mismatches when AllowMismatch is set' {
-        $root = & $script:newTempRepo -Version '21.0' -VersionHelperPath $script:versionHelper
+        $root = & $script:newTempRepo -Version '20.0' -VersionHelperPath $script:versionHelper
         { & $script:assertScript -RepoRoot $root -ExpectedVersion '2022' -AllowMismatch } | Should -Not -Throw
     }
 
     It 'throws when required env overrides mismatch .lvversion' {
-        $root = & $script:newTempRepo -Version '21.0' -VersionHelperPath $script:versionHelper
+        $root = & $script:newTempRepo -Version '20.0' -VersionHelperPath $script:versionHelper
         $env:LVIE_REQUIRED_LABVIEW_VERSION = '2022'
         { & $script:assertScript -RepoRoot $root } | Should -Throw
     }
 
     It 'accepts matching year/minor env overrides' {
-        $root = & $script:newTempRepo -Version '21.0' -VersionHelperPath $script:versionHelper
+        $root = & $script:newTempRepo -Version '20.0' -VersionHelperPath $script:versionHelper
         Remove-Item -Path Env:LVIE_REQUIRED_LABVIEW_VERSION -ErrorAction SilentlyContinue
-        $env:LABVIEW_VERSION_YEAR = '2021'
+        $env:LABVIEW_VERSION_YEAR = '2020'
         $env:LABVIEW_MINOR_REVISION = '0'
         { & $script:assertScript -RepoRoot $root } | Should -Not -Throw
     }

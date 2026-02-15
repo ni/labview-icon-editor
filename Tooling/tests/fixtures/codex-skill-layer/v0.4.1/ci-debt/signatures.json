@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0",
+  "signatures": [
+    {
+      "id": "powershell-lint.git-missing",
+      "job": "PowerShell Lint",
+      "containsAny": [
+        "git was not found on PATH."
+      ],
+      "classification": "fatal-tool-dependency",
+      "severity": "high",
+      "recommendedActions": [
+        "Install git and ensure it is available on PATH for CI jobs.",
+        "Validate PATH and tool bootstrap steps before running lint."
+      ],
+      "preventiveCheck": "CI Debt Policy Gate / Root Cause Contract"
+    },
+    {
+      "id": "powershell-lint.new-issues",
+      "job": "PowerShell Lint",
+      "containsAny": [
+        "New PSScriptAnalyzer issues detected:",
+        "PSScriptAnalyzer detected new issues. Update baseline or fix the findings."
+      ],
+      "classification": "lint-regression",
+      "severity": "high",
+      "recommendedActions": [
+        "Fix newly introduced PSScriptAnalyzer findings in modified scripts.",
+        "Only update Tooling/PSScriptAnalyzerBaseline.json via approved baseline update workflow."
+      ],
+      "preventiveCheck": "CI Debt Policy Gate / Root Cause Contract"
+    },
+    {
+      "id": "verify-iepaths.setup-failed",
+      "job": "Verify IE Paths Gate",
+      "containsAny": [
+        "Job setup",
+        "runner-cli not found; using PowerShell fallback.",
+        "Process completed with exit code 1"
+      ],
+      "classification": "setup-failure",
+      "severity": "high",
+      "recommendedActions": [
+        "Emit explicit Verify IE Paths setup diagnostics with classification and hints.",
+        "Always upload verify-iepaths diagnostics artifacts even when setup fails."
+      ],
+      "preventiveCheck": "CI Debt Policy Gate / Root Cause Contract"
+    },
+    {
+      "id": "pipeline-contract.cascade-failure",
+      "job": "Pipeline Contract",
+      "containsAny": [
+        "Pipeline contract failed:",
+        "powershell-lint:failure",
+        "dev-mode-gate:failure"
+      ],
+      "classification": "cascaded-contract-failure",
+      "severity": "medium",
+      "recommendedActions": [
+        "Separate root-cause failures from cascaded/skipped jobs in pipeline contract output.",
+        "Emit required-job verdict plus root-cause list to speed remediation."
+      ],
+      "preventiveCheck": "CI Debt Policy Gate / Root Cause Contract"
+    }
+  ]
+}
