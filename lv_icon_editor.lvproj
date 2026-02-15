@@ -1,6 +1,6 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<Project Type="Project" LVVersion="21008000">
-	<Property Name="NI.LV.All.SaveVersion" Type="Str">21.0</Property>
+﻿<?xml version='1.0' encoding='UTF-8'?>
+<Project Type="Project" LVVersion="20008000">
+	<Property Name="NI.LV.All.SaveVersion" Type="Str">Editor version</Property>
 	<Property Name="NI.LV.All.SourceOnly" Type="Bool">true</Property>
 	<Property Name="NI.Project.Description" Type="Str"></Property>
 	<Item Name="My Computer" Type="My Computer">
@@ -301,9 +301,10 @@
 				<Item Name="Launch Icon Editor From String.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Launch Icon Editor From String.vi"/>
 			</Item>
 			<Item Name="lv_icon.lvlib" Type="Library" URL="../vi.lib/LabVIEW Icon API/lv_icon/lv_icon.lvlib"/>
-			<Item Name="lv_icon.vit" Type="VI" URL="/&lt;resource&gt;/plugins/lv_icon.vit"/>
-			<Item Name="lv_IconEditor.lvlib" Type="Library" URL="/&lt;resource&gt;/plugins/lv_IconEditor.lvlib"/>
-			<Item Name="SAMPLE_lv_icon.vi" Type="VI" URL="/&lt;resource&gt;/plugins/SAMPLE_lv_icon.vi"/>
+			<Item Name="lv_icon.vit" Type="VI" URL="../resource/plugins/lv_icon.vit"/>
+			<Item Name="lv_IconEditor.lvlib" Type="Library" URL="../resource/plugins/lv_IconEditor.lvlib"/>
+			<Item Name="SAMPLE_lv_icon.vi" Type="VI" URL="../resource/plugins/SAMPLE_lv_icon.vi"/>
+			<Item Name="lv_icon_launcher.vi" Type="VI" URL="../resource/plugins/lv_icon_launcher.vi"/>
 		</Item>
 		<Item Name="Tooling" Type="Folder">
 			<Item Name="support" Type="Folder">
@@ -312,10 +313,14 @@
 				<Item Name="Get Paths to Icon Editor Files in LV Installation.vi" Type="VI" URL="../Tooling/support/Get Paths to Icon Editor Files in LV Installation.vi"/>
 				<Item Name="Prompt to Confirm Archival.vi" Type="VI" URL="../Tooling/support/Prompt to Confirm Archival.vi"/>
 				<Item Name="Set LibraryPaths to Include Icon Editor.vi" Type="VI" URL="../Tooling/support/Set LibraryPaths to Include Icon Editor.vi"/>
+				<Item Name="Add dev dist if present.vi" Type="VI" URL="../Tooling/support/Add dev dist if present.vi"/>
+				<Item Name="API Paths.vi" Type="VI" URL="../Tooling/support/API Paths.vi"/>
+				<Item Name="PPL Paths.vi" Type="VI" URL="../Tooling/support/PPL Paths.vi"/>
+				<Item Name="Set Path in Launcher.vi" Type="VI" URL="../Tooling/support/Set Path in Launcher.vi"/>
 			</Item>
 			<Item Name="Force Icon Editor to Unload.vi" Type="VI" URL="../Tooling/Force Icon Editor to Unload.vi"/>
 			<Item Name="Pre Build Icon Editor PPL.vi" Type="VI" URL="../Tooling/Pre Build Icon Editor PPL.vi"/>
-			<Item Name="Prepare LV to Use Icon Editor Source.vi" Type="VI" URL="../Tooling/Prepare LV to Use Icon Editor Source.vi"/>
+			<Item Name="Set Run Icon Editor from Source.vi" Type="VI" URL="../Tooling/Set Run Icon Editor from Source.vi"/>
 			<Item Name="Remove Icon Editor Settings.vi" Type="VI" URL="../Tooling/Remove Icon Editor Settings.vi"/>
 		</Item>
 		<Item Name="vi.lib/LabVIEW Icon API" Type="Folder">
@@ -323,8 +328,8 @@
 				<Item Name="Classes" Type="Folder">
 					<Item Name="Icon.lvclass" Type="LVClass" URL="../vi.lib/LabVIEW Icon API/lv_icon/Classes/Icon/Icon.lvclass"/>
 					<Item Name="Icon Framework.lvclass" Type="LVClass" URL="../vi.lib/LabVIEW Icon API/lv_icon/Classes/Icon Framework/Icon Framework.lvclass"/>
-					<Item Name="Layer.lvclass" Type="LVClass" URL="../vi.lib/LabVIEW Icon API/lv_icon/Classes/Layer/Layer.lvclass"/>
 					<Item Name="Load &amp; Unload.lvclass" Type="LVClass" URL="../vi.lib/LabVIEW Icon API/lv_icon/Classes/Load_Unload/Load &amp; Unload.lvclass"/>
+					<Item Name="Layer.lvclass" Type="LVClass" URL="../vi.lib/LabVIEW Icon API/lv_icon/Classes/Layer/Layer.lvclass"/>
 				</Item>
 				<Item Name="Controls" Type="Folder">
 					<Item Name="Alignment.ctl" Type="VI" URL="../vi.lib/LabVIEW Icon API/lv_icon/Controls/Alignment.ctl"/>
@@ -353,6 +358,16 @@
 			<Item Name="Text-Based VI Icon Tests.lvclass" Type="LVClass" URL="../Test/Unit Tests/Text-Based VI Icon Tests/Text-Based VI Icon Tests.lvclass"/>
 			<Item Name="Undo Redo Core.lvclass" Type="LVClass" URL="../Test/Unit Tests/Undo Redo Core/Undo Redo Core.lvclass"/>
 		</Item>
+		<Item Name="Test Templates" Type="Folder">
+			<Item Name="Class Template.lvclass" Type="LVClass" URL="../Test/Templates/Class Template/Class Template.lvclass"/>
+			<Item Name="Library Template.lvlib" Type="Library" URL="../Test/Templates/Library Template/Library Template.lvlib"/>
+			<Item Name="Control Template.ctl" Type="VI" URL="../Test/Templates/Control Template.ctl"/>
+			<Item Name="Many Layers.vi" Type="VI" URL="../Test/Templates/Many Layers.vi"/>
+			<Item Name="Polymorphic Template.vi" Type="VI" URL="../Test/Templates/Polymorphic Template.vi"/>
+			<Item Name="Pyramid Icon Template.vi" Type="VI" URL="../Test/Templates/Pyramid Icon Template.vi"/>
+			<Item Name="Pyramid.png" Type="Document" URL="../Test/Templates/Pyramid.png"/>
+		</Item>
+		<Item Name="Unset Run Icon Editor from Source.vi" Type="VI" URL="../Tooling/Unset Run Icon Editor from Source.vi"/>
 		<Item Name="Dependencies" Type="Dependencies"/>
 		<Item Name="Build Specifications" Type="Build">
 			<Item Name="Editor Packed Library" Type="Packed Library">
@@ -469,4 +484,3 @@
 		</Item>
 	</Item>
 </Project>
-
