@@ -112,6 +112,10 @@ runs:
           Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
         }
         $labviewVersion = $lvInfo.Raw
+        $labviewInstallVersion = [string]$lvInfo.Year
+        if ([string]::IsNullOrWhiteSpace($labviewInstallVersion)) {
+          $labviewInstallVersion = $labviewVersion
+        }
         $closeExecutor = '${{ inputs.close_executor }}'
         if ([string]::IsNullOrWhiteSpace($closeExecutor)) {
           $closeExecutor = 'gcli'
@@ -134,9 +138,9 @@ runs:
             }
             . $stageScript
 
-            $installRoot = Get-LabVIEWInstallRoot -Version $labviewVersion -Bitness $bitness
+            $installRoot = Get-LabVIEWInstallRoot -Version $labviewInstallVersion -Bitness $bitness
             if ([string]::IsNullOrWhiteSpace($installRoot)) {
-              throw ("Unable to resolve LabVIEW install root for version {0} ({1}-bit)." -f $labviewVersion, $bitness)
+              throw ("Unable to resolve LabVIEW install root for version {0} ({1}-bit)." -f $labviewInstallVersion, $bitness)
             }
             $labviewExecutablePath = Join-Path $installRoot 'LabVIEW.exe'
             if (-not (Test-Path -Path $labviewExecutablePath -PathType Leaf)) {
