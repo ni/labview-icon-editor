@@ -79,6 +79,85 @@ function Get-InstalledPackageBasename {
     )
 }
 
+function Resolve-VipmDatabasePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$VipmDbRoot,
+        [Parameter(Mandatory = $true)]
+        [psobject]$LabVIEWInfo,
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('32', '64')]
+        [string]$Bitness
+    )
+
+    $requestedFolderName = if ($Bitness -eq '64') {
+        "LV $($LabVIEWInfo.NumericVersion) (64-bit)"
+    } else {
+        "LV $($LabVIEWInfo.NumericVersion)"
+    }
+
+    $requestedPath = Join-Path -Path $VipmDbRoot -ChildPath $requestedFolderName
+    if (Test-Path -Path $requestedPath -PathType Container) {
+        return [pscustomobject]@{
+            RequestedPath = $requestedPath
+            ResolvedPath  = $requestedPath
+            Resolution    = 'exact'
+            CandidatePaths = @()
+        }
+    }
+
+    if (-not (Test-Path -Path $VipmDbRoot -PathType Container)) {
+        return [pscustomobject]@{
+            RequestedPath = $requestedPath
+            ResolvedPath  = $null
+            Resolution    = 'missing_root'
+            CandidatePaths = @()
+        }
+    }
+
+    $major = [int]$LabVIEWInfo.NumericMajor
+    $nameRegex = if ($Bitness -eq '64') {
+        '^LV\s+(?<major>\d+)\.(?<minor>\d+)\s+\(64-bit\)$'
+    } else {
+        '^LV\s+(?<major>\d+)\.(?<minor>\d+)$'
+    }
+
+    $candidates = @(
+        Get-ChildItem -Path $VipmDbRoot -Directory -ErrorAction SilentlyContinue |
+            ForEach-Object {
+                $match = [regex]::Match($_.Name, $nameRegex, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+                if (-not $match.Success) {
+                    return $null
+                }
+
+                [pscustomobject]@{
+                    Path  = $_.FullName
+                    Name  = $_.Name
+                    Major = [int]$match.Groups['major'].Value
+                    Minor = [int]$match.Groups['minor'].Value
+                }
+            } |
+            Where-Object { $null -ne $_ -and $_.Major -eq $major } |
+            Sort-Object -Property Minor -Descending
+    )
+
+    if ($candidates.Count -eq 0) {
+        return [pscustomobject]@{
+            RequestedPath = $requestedPath
+            ResolvedPath  = $null
+            Resolution    = 'not_found'
+            CandidatePaths = @()
+        }
+    }
+
+    return [pscustomobject]@{
+        RequestedPath = $requestedPath
+        ResolvedPath  = $candidates[0].Path
+        Resolution    = 'major_fallback'
+        CandidatePaths = @($candidates | ForEach-Object { $_.Path })
+    }
+}
+
 $tempExtractRoot = $null
 try {
     $resolvedRepoRoot = (Resolve-Path -Path $RepoRoot).Path
@@ -96,15 +175,18 @@ try {
     $lvInfo = Get-LabVIEWVersionInfo -VersionInput $LabVIEWVersion -RepoRoot $resolvedRepoRoot
 
     $vipmDbRoot = Join-Path -Path $env:ProgramData -ChildPath 'JKI\VIPM\databases'
-    $dbFolderName = if ($SupportedBitness -eq '64') {
-        "LV $($lvInfo.NumericVersion) (64-bit)"
-    } else {
-        "LV $($lvInfo.NumericVersion)"
+    $dbResolution = Resolve-VipmDatabasePath -VipmDbRoot $vipmDbRoot -LabVIEWInfo $lvInfo -Bitness $SupportedBitness
+    $vipmDbPath = $dbResolution.ResolvedPath
+    if ([string]::IsNullOrWhiteSpace($vipmDbPath)) {
+        $candidateSummary = if ($dbResolution.CandidatePaths.Count -gt 0) {
+            ($dbResolution.CandidatePaths -join ', ')
+        } else {
+            'none'
+        }
+        throw "VIPM database path not found for LabVIEW $($lvInfo.NumericVersion) ($SupportedBitness-bit). Requested='$($dbResolution.RequestedPath)'. Candidates='$candidateSummary'."
     }
-    $vipmDbPath = Join-Path -Path $vipmDbRoot -ChildPath $dbFolderName
-
-    if (-not (Test-Path -Path $vipmDbPath -PathType Container)) {
-        throw "VIPM database path not found for LabVIEW $($lvInfo.NumericVersion) ($SupportedBitness-bit): '$vipmDbPath'."
+    if ($dbResolution.Resolution -eq 'major_fallback') {
+        Write-Warning "VIPM DB exact path not found for '$($dbResolution.RequestedPath)'; using '$vipmDbPath' based on major-version match."
     }
 
     $tempExtractRoot = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ("vipc-audit-{0}" -f [guid]::NewGuid().ToString())
@@ -186,6 +268,9 @@ try {
         labview_year        = $lvInfo.Year
         labview_numeric     = $lvInfo.NumericVersion
         supported_bitness   = $SupportedBitness
+        vipm_database_resolution = $dbResolution.Resolution
+        requested_vipm_database_path = $dbResolution.RequestedPath
+        vipm_database_candidates = $dbResolution.CandidatePaths
         vipm_database_path  = $vipmDbPath
         expected_package_count = $expectedPackages.Count
         expected_packages   = $expectedPackages
