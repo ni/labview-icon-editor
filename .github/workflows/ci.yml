@@ -842,6 +842,7 @@ jobs:
         with:
           revert_bitness: 32
           close_labview: 'true'
+          close_executor: labviewcli
           close_bitness: 32
 
   build-ppl-x64:
@@ -896,6 +897,7 @@ jobs:
         with:
           revert_bitness: 64
           close_labview: 'true'
+          close_executor: labviewcli
           close_bitness: 64
 
   build-vip:

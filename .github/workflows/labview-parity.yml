@@ -317,6 +317,7 @@ jobs:
         with:
           repo_root: ${{ env.REPO_ROOT }}
           close_labview: 'true'
+          close_executor: labviewcli
           close_bitness: 64
           cleanup_worktree: 'true'
           release_lock: 'true'

@@ -12,6 +12,10 @@ inputs:
     description: Close LabVIEW using Close_LabVIEW.ps1.
     required: false
     default: 'false'
+  close_executor:
+    description: Teardown close executor (`gcli` or `labviewcli`).
+    required: false
+    default: 'gcli'
   close_bitness:
     description: LabVIEW bitness for close.
     required: false
@@ -108,9 +112,62 @@ runs:
           Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
         }
         $labviewVersion = $lvInfo.Raw
-        & "$repoRoot\\.github\\actions\\close-labview\\Close_LabVIEW.ps1" `
-          -LabVIEWVersion $labviewVersion `
-          -SupportedBitness $bitness
+        $closeExecutor = '${{ inputs.close_executor }}'
+        if ([string]::IsNullOrWhiteSpace($closeExecutor)) {
+          $closeExecutor = 'gcli'
+        }
+        $closeExecutor = $closeExecutor.Trim().ToLowerInvariant()
+
+        switch ($closeExecutor) {
+          'gcli' {
+            Write-Host 'Teardown close executor: g-cli'
+            & "$repoRoot\\.github\\actions\\close-labview\\Close_LabVIEW.ps1" `
+              -LabVIEWVersion $labviewVersion `
+              -SupportedBitness $bitness
+            break
+          }
+          'labviewcli' {
+            Write-Host 'Teardown close executor: LabVIEWCLI'
+            $stageScript = Join-Path $repoRoot 'Tooling\support\LabVIEWStage.ps1'
+            if (-not (Test-Path -Path $stageScript)) {
+              throw "LabVIEW stage helper not found at $stageScript"
+            }
+            . $stageScript
+
+            $installRoot = Get-LabVIEWInstallRoot -Version $labviewVersion -Bitness $bitness
+            if ([string]::IsNullOrWhiteSpace($installRoot)) {
+              throw ("Unable to resolve LabVIEW install root for version {0} ({1}-bit)." -f $labviewVersion, $bitness)
+            }
+            $labviewExecutablePath = Join-Path $installRoot 'LabVIEW.exe'
+            if (-not (Test-Path -Path $labviewExecutablePath -PathType Leaf)) {
+              throw "LabVIEW executable not found at $labviewExecutablePath"
+            }
+            $portResolution = Resolve-LabVIEWCliPort -Bitness $bitness -LabVIEWExecutablePath $labviewExecutablePath
+            Write-Host ("LabVIEWCLI close port: {0} (source: {1})" -f $portResolution.PortNumber, $portResolution.Source)
+            $closeResult = Invoke-LabVIEWCliWithConnectionRetry `
+              -OperationName ("CloseLabVIEW-{0}-bit-teardown" -f $bitness) `
+              -Arguments @(
+                '-OperationName', 'CloseLabVIEW',
+                '-LabVIEWPath', $labviewExecutablePath,
+                '-PortNumber', $portResolution.PortNumber.ToString()
+              ) `
+              -PrimaryPortNumber $portResolution.PortNumber `
+              -AllowImplicitPortFallback
+
+            if ($closeResult.ExitCode -ne 0) {
+              $attemptSummary = if ($closeResult.Attempts -and $closeResult.Attempts.Count -gt 0) {
+                $closeResult.Attempts -join '; '
+              } else {
+                'none'
+              }
+              throw ("LabVIEWCLI CloseLabVIEW failed with exit code {0}. Attempts: {1}" -f $closeResult.ExitCode, $attemptSummary)
+            }
+            break
+          }
+          default {
+            throw ("Unsupported close_executor '{0}'. Expected 'gcli' or 'labviewcli'." -f $closeExecutor)
+          }
+        }
     - name: Cleanup worktree
       if: ${{ inputs.cleanup_worktree == 'true' && always() }}
       shell: pwsh
