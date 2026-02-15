@@ -16,7 +16,7 @@ inputs:
   safe_directory_scope:
     description: Git safe.directory scope (System or Global).
     required: false
-    default: System
+    default: Global
 runs:
   using: composite
   steps:

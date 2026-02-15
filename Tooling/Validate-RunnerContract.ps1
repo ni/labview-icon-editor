@@ -34,14 +34,23 @@ function Test-Directory {
     }
 }
 
-function Get-GitSafeDirectoryEntry {
+function Get-GitSafeDirectoryEntryForScope {
+    param([ValidateSet('global', 'system')][string]$Scope)
+
     $entries = @()
     try {
-        $entries = & git config --system --get-all safe.directory 2>$null
+        $entries = & git config "--$Scope" --get-all safe.directory 2>$null
     } catch {
         $entries = @()
     }
+
     return $entries | Where-Object { $_ -and $_.Trim().Length -gt 0 }
+}
+
+function Get-GitSafeDirectoryEntry {
+    $globalEntries = @(Get-GitSafeDirectoryEntryForScope -Scope 'global')
+    $systemEntries = @(Get-GitSafeDirectoryEntryForScope -Scope 'system')
+    return @($globalEntries + $systemEntries) | Select-Object -Unique
 }
 
 $resolvedContract = Resolve-ContractPath -Path $ContractPath

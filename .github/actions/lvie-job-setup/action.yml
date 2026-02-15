@@ -20,7 +20,7 @@ inputs:
   safe_directory_scope:
     description: Git safe.directory scope (System or Global).
     required: false
-    default: System
+    default: Global
   download_runner_cli:
     description: Attempt to download runner-cli artifact for this branch (optional; worktree builds are preferred).
     required: false

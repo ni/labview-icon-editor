@@ -264,6 +264,59 @@ Describe 'Validate-RunnerContract.ps1' {
 
     BeforeAll {
         $Script:ValidateScript = Join-Path $Script:ToolingRoot 'Validate-RunnerContract.ps1'
+
+        function New-RunnerContractFixture {
+            $contract = @{
+                version       = 1
+                runner_root   = $Script:Dirs.runner_root
+                work_root     = $Script:Dirs.work_root
+                worktree_root = $Script:Dirs.worktree_root
+                artifact_root = $Script:Dirs.artifact_root
+                lock_root     = $Script:Dirs.lock_root
+                log_root      = $Script:Dirs.log_root
+            }
+            $contract | ConvertTo-Json | Set-Content -Path $Script:ContractFile
+            return $contract
+        }
+
+        function Invoke-ValidateWithGitScopeFixture {
+            param(
+                [string[]]$GlobalEntries = @(),
+                [string[]]$SystemEntries = @(),
+                [bool]$FailOnMissingSafeDirectory = $true
+            )
+
+            $globalConfig = Join-Path $Script:TempDir 'gitconfig-global'
+            $systemConfig = Join-Path $Script:TempDir 'gitconfig-system'
+            '' | Set-Content -Path $globalConfig -Encoding ascii
+            '' | Set-Content -Path $systemConfig -Encoding ascii
+
+            foreach ($entry in $GlobalEntries) {
+                & git config --file $globalConfig --add safe.directory $entry | Out-Null
+            }
+            foreach ($entry in $SystemEntries) {
+                & git config --file $systemConfig --add safe.directory $entry | Out-Null
+            }
+
+            $savedGlobal = if (Test-Path Env:GIT_CONFIG_GLOBAL) { $env:GIT_CONFIG_GLOBAL } else { $null }
+            $savedSystem = if (Test-Path Env:GIT_CONFIG_SYSTEM) { $env:GIT_CONFIG_SYSTEM } else { $null }
+            try {
+                $env:GIT_CONFIG_GLOBAL = $globalConfig
+                $env:GIT_CONFIG_SYSTEM = $systemConfig
+                & $Script:ValidateScript -ContractPath $Script:ContractFile -FailOnMissingSafeDirectory:$FailOnMissingSafeDirectory
+            } finally {
+                if ($null -eq $savedGlobal) {
+                    Remove-Item Env:GIT_CONFIG_GLOBAL -ErrorAction SilentlyContinue
+                } else {
+                    $env:GIT_CONFIG_GLOBAL = $savedGlobal
+                }
+                if ($null -eq $savedSystem) {
+                    Remove-Item Env:GIT_CONFIG_SYSTEM -ErrorAction SilentlyContinue
+                } else {
+                    $env:GIT_CONFIG_SYSTEM = $savedSystem
+                }
+            }
+        }
     }
 
     BeforeEach {
@@ -335,18 +388,29 @@ Describe 'Validate-RunnerContract.ps1' {
     }
 
     It 'succeeds when all directories exist (safe.directory warning only)' {
-        $contract = @{
-            version       = 1
-            runner_root   = $Script:Dirs.runner_root
-            work_root     = $Script:Dirs.work_root
-            worktree_root = $Script:Dirs.worktree_root
-            artifact_root = $Script:Dirs.artifact_root
-            lock_root     = $Script:Dirs.lock_root
-            log_root      = $Script:Dirs.log_root
-        }
-        $contract | ConvertTo-Json | Set-Content -Path $Script:ContractFile
+        New-RunnerContractFixture | Out-Null
 
         { & $Script:ValidateScript -ContractPath $Script:ContractFile -FailOnMissingSafeDirectory:$false } | Should -Not -Throw
+    }
+
+    It 'passes when safe.directory exists only in global scope' {
+        $contract = New-RunnerContractFixture
+        $safePattern = ($contract.work_root -replace '\\', '/') + '/*'
+
+        { Invoke-ValidateWithGitScopeFixture -GlobalEntries @($safePattern) -SystemEntries @() } | Should -Not -Throw
+    }
+
+    It 'passes when safe.directory exists only in system scope' {
+        $contract = New-RunnerContractFixture
+        $safePattern = ($contract.work_root -replace '\\', '/') + '/*'
+
+        { Invoke-ValidateWithGitScopeFixture -GlobalEntries @() -SystemEntries @($safePattern) } | Should -Not -Throw
+    }
+
+    It 'fails when safe.directory is missing from both scopes and strict mode is enabled' {
+        New-RunnerContractFixture | Out-Null
+
+        { Invoke-ValidateWithGitScopeFixture -GlobalEntries @() -SystemEntries @() -FailOnMissingSafeDirectory:$true } | Should -Throw '*Git safe.directory missing*'
     }
 }
 

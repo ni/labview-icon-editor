@@ -18,7 +18,7 @@
     Attempt to add a scoped safe.directory rule when missing.
 
 .PARAMETER SafeDirectoryScope
-    Target Git config scope for safe.directory. Defaults to System.
+    Target Git config scope for safe.directory. Defaults to Global.
 #>
 
 [CmdletBinding()]
@@ -28,7 +28,7 @@ param(
     [string]$RepoRoot,
     [switch]$FixSafeDirectory,
     [ValidateSet('System', 'Global')]
-    [string]$SafeDirectoryScope = 'System'
+    [string]$SafeDirectoryScope = 'Global'
 )
 
 $ErrorActionPreference = 'Stop'

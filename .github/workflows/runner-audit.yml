@@ -111,7 +111,7 @@ jobs:
       - name: Runner bootstrap (stateless)
         uses: ./.github/actions/runner-bootstrap
         with:
-          safe_directory_scope: System
+          safe_directory_scope: Global
       - name: Validate runner contract
         shell: pwsh
         run: |

@@ -583,7 +583,7 @@ jobs:
       - name: Runner sanity
         shell: pwsh
         run: |
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE\\Tooling\\Check-Runner.ps1" -SafeDirectoryScope System
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE\\Tooling\\Check-Runner.ps1" -SafeDirectoryScope Global
       - id: filter
         uses: dorny/paths-filter@v3
         with:
