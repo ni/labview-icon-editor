@@ -1431,9 +1431,13 @@ jobs:
           DISPLAY_INFORMATION_JSON: |
             ${{ steps.display-info.outputs.json }}
         run: |
-          $runnerCliProject = Join-Path $env:REPO_ROOT 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
-          if (-not (Test-Path -Path $runnerCliProject -PathType Leaf)) {
-            throw "runner-cli project not found at $runnerCliProject"
+          $runnerCliPath = $env:LVIE_RUNNER_CLI_PATH
+          $runnerCliProject = Join-Path $env:GITHUB_WORKSPACE 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+          $usePrebuiltRunnerCli = -not [string]::IsNullOrWhiteSpace($runnerCliPath) -and (Test-Path -Path $runnerCliPath -PathType Leaf)
+          if ($usePrebuiltRunnerCli) {
+            Write-Host ("Using prebuilt runner-cli at {0}" -f $runnerCliPath)
+          } elseif (-not (Test-Path -Path $runnerCliProject -PathType Leaf)) {
+            throw "runner-cli unavailable: LVIE_RUNNER_CLI_PATH is missing/unresolvable and runner-cli project was not found at $runnerCliProject"
           }
 
           $displayInformationJson = $Env:DISPLAY_INFORMATION_JSON
@@ -1453,7 +1457,14 @@ jobs:
             '--display-information-json', $displayInformationJson,
             '--vipm-timeout-seconds', $env:LVIE_VIPM_TIMEOUT_SECONDS
           )
-          & dotnet run --project $runnerCliProject --configuration Release -- @runnerCliArgs
+          if ($usePrebuiltRunnerCli) {
+            & $runnerCliPath @runnerCliArgs
+          } else {
+            & dotnet run --project $runnerCliProject --configuration Release -- @runnerCliArgs
+          }
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
       - name: Check VIP build status file
         id: vip-status
         shell: pwsh
