@@ -817,7 +817,7 @@ jobs:
         working-directory: ${{ env.REPO_ROOT }}
         run: |
           & ".github/actions/build-lvlibp/BuildProjectSpec.ps1" `
-            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_RAW `
             -SupportedBitness 32 `
             -RepoRoot "$env:REPO_ROOT" `
             -Major ${{ needs.version.outputs.MAJOR }} `
@@ -871,7 +871,7 @@ jobs:
         working-directory: ${{ env.REPO_ROOT }}
         run: |
           & ".github/actions/build-lvlibp/BuildProjectSpec.ps1" `
-            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_RAW `
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
             -Major ${{ needs.version.outputs.MAJOR }} `
@@ -1006,7 +1006,7 @@ jobs:
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
             -VIPBPath "Tooling/deployment/NI Icon editor.vipb" `
-            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_RAW `
             -LabVIEWMinorRevision $env:LABVIEW_MINOR_REVISION `
             -Major ${{ needs.version.outputs.MAJOR }} `
             -Minor ${{ needs.version.outputs.MINOR }} `
@@ -1026,7 +1026,7 @@ jobs:
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
             -VIPBPath "Tooling/deployment/NI Icon editor.vipb" `
-            -LabVIEWVersion $env:LABVIEW_VERSION_YEAR `
+            -LabVIEWVersion $env:LABVIEW_VERSION_RAW `
             -LabVIEWMinorRevision $env:LABVIEW_MINOR_REVISION `
             -Major ${{ needs.version.outputs.MAJOR }} `
             -Minor ${{ needs.version.outputs.MINOR }} `
