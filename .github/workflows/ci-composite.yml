@@ -10,8 +10,6 @@ env:
   LVIE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
   LVIE_EXPECTED_RUNNER_LABEL: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
   LVIE_CANONICAL_RUNNER_LABEL: self-hosted-windows-lv
-  LVIE_UNIT_TEST_TARGET_YEAR: ${{ vars.LVIE_UNIT_TEST_TARGET_YEAR || '2026' }}
-  LVIE_UNIT_TEST_TARGET_LVVERSION: ${{ vars.LVIE_UNIT_TEST_TARGET_LVVERSION || '26.0' }}
   LVIE_RUN_LV2020_EDGE_SMOKE: ${{ vars.LVIE_RUN_LV2020_EDGE_SMOKE || '0' }}
   LVIE_FORCE_NO_LABVIEW_DEVMODE: 1
   LVIE_RUNNER_ACL_CHECK: 1
@@ -31,7 +29,6 @@ on:
     branches:
       - main
       - develop
-      - 456-2020-migration
       - release/*
       - feature/*
       - hotfix/*
@@ -39,7 +36,6 @@ on:
     branches:
       - main
       - develop
-      - 456-2020-migration
       - release/*
       - feature/*
       - hotfix/*
@@ -1027,8 +1023,8 @@ jobs:
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
         run: |
-          $unitTestYear = if ([string]::IsNullOrWhiteSpace($env:LVIE_UNIT_TEST_TARGET_YEAR)) { $env:LABVIEW_VERSION_YEAR } else { $env:LVIE_UNIT_TEST_TARGET_YEAR }
-          $unitTestLvversion = if ([string]::IsNullOrWhiteSpace($env:LVIE_UNIT_TEST_TARGET_LVVERSION)) { $unitTestYear } else { $env:LVIE_UNIT_TEST_TARGET_LVVERSION }
+          $unitTestYear = $env:LABVIEW_VERSION_YEAR
+          $unitTestLvversion = if ([string]::IsNullOrWhiteSpace($env:LABVIEW_VERSION)) { $env:LVIE_REQUIRED_LABVIEW_VERSION } else { $env:LABVIEW_VERSION }
           Write-Host ("Unit-test LabVIEW target year: {0}" -f $unitTestYear)
           Write-Host ("Unit-test LabVIEW target .lvversion: {0}" -f $unitTestLvversion)
           Write-Host ("Source .lvversion year from job setup: {0}" -f $env:LABVIEW_VERSION_YEAR)
@@ -1059,8 +1055,7 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          $targetYear = if ([string]::IsNullOrWhiteSpace($env:LVIE_UNIT_TEST_TARGET_YEAR)) { $env:LABVIEW_VERSION_YEAR } else { $env:LVIE_UNIT_TEST_TARGET_YEAR }
-          $summaryLine = "- Unit Tests (LV {0}-bit): LUnit executor = g-cli (target={1}; source={2})" -f '${{ matrix.bitness }}', $targetYear, $env:LABVIEW_VERSION_YEAR
+          $summaryLine = "- Unit Tests (LV {0}-bit): LUnit executor = g-cli (target={1}; source={2})" -f '${{ matrix.bitness }}', $env:LABVIEW_VERSION_YEAR, $env:LABVIEW_VERSION_YEAR
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summaryLine
       - name: Upload unit test report (LV ${{ matrix.bitness }}-bit)
         if: failure()

@@ -5,7 +5,7 @@ param(
     [ValidateSet('validate', 'integrate', 'release')]
     [string]$Mode,
 
-    [string]$TargetBranch = '456-2020-migration',
+    [string]$TargetBranch = '456-2026-migration',
 
     [string]$SourceBranch = '',
 

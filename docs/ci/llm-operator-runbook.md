@@ -46,7 +46,7 @@ Runs validation, optional local parity, pushes branch, and opens/updates PR.
 ```powershell
 pwsh -NoProfile -File .\Tooling\Run-LlmSoloFlow.ps1 `
   -Mode integrate `
-  -TargetBranch 456-2020-migration `
+  -TargetBranch 456-2026-migration `
   -RunLocalParity `
   -MaxParityAttempts 3
 ```

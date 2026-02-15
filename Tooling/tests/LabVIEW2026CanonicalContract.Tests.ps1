@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 
-Describe 'LabVIEW 2020 canonical migration contract' {
+Describe 'LabVIEW 2026 canonical migration contract' {
     BeforeAll {
         $script:repoRoot = (Resolve-Path -Path (Join-Path $PSScriptRoot '..\..')).Path
 
@@ -12,6 +12,7 @@ Describe 'LabVIEW 2020 canonical migration contract' {
             'Tooling/container-parity/runlabview-windows.ps1',
             'AGENTS.md',
             'README.md',
+            'INSTALL.md',
             'docs/ci-workflows.md',
             'docs/powershell-dependency-scripts.md',
             'docs/powershell-cli-github-action-instructions.md',
@@ -30,12 +31,12 @@ Describe 'LabVIEW 2020 canonical migration contract' {
         ) | ForEach-Object { (Join-Path $script:repoRoot $_).ToLowerInvariant() }
     }
 
-    It '.lvversion is pinned to 20.0' {
+    It '.lvversion is pinned to 26.0' {
         $lvversionPath = Join-Path $script:repoRoot '.lvversion'
         (Test-Path -LiteralPath $lvversionPath -PathType Leaf) | Should -BeTrue
 
         $raw = (Get-Content -LiteralPath $lvversionPath -Raw).Trim()
-        $raw | Should -Be '20.0'
+        $raw | Should -Be '26.0'
     }
 
     It 'active workflow/script/docs surfaces do not reintroduce zip codex asset contract' {
@@ -50,30 +51,51 @@ Describe 'LabVIEW 2020 canonical migration contract' {
         $matchList.Count | Should -Be 0
     }
 
-    It 'active workflow/script/docs surfaces avoid legacy 2021/2026 canonical defaults' {
-        $legacyPatterns = @(
-            'LabVIEW 2021',
-            '21\.0',
-            'CONTAINER_PARITY_LABVIEW_VERSION=2026',
-            'LabVIEW 2026\\',
-            'LabVIEW-2026-64',
-            '2026q1-(linux|windows)'
+    It 'canonical workflow/scripts do not use 2020 fallback defaults' {
+        $fallbackChecks = @(
+            @{
+                Path    = Join-Path $script:repoRoot 'Tooling/support/LabVIEWStage.ps1'
+                Pattern = "resolvedVersion = '2020'"
+            },
+            @{
+                Path    = Join-Path $script:repoRoot 'Tooling/container-parity/runlabview-linux.sh'
+                Pattern = 'LV_YEAR:-2020'
+            },
+            @{
+                Path    = Join-Path $script:repoRoot 'Tooling/container-parity/runlabview-windows.ps1'
+                Pattern = "'2020'"
+            }
         )
 
         $matchList = @()
-        foreach ($filePath in $script:activeContractFiles) {
-            if (-not (Test-Path -LiteralPath $filePath -PathType Leaf)) {
+        foreach ($check in $fallbackChecks) {
+            if (-not (Test-Path -LiteralPath $check.Path -PathType Leaf)) {
                 continue
             }
-            foreach ($pattern in $legacyPatterns) {
-                $matchList += Select-String -Path $filePath -Pattern $pattern -SimpleMatch:$false
-            }
+            $matchList += Select-String -Path $check.Path -Pattern $check.Pattern -SimpleMatch:$true
         }
 
         $matchList.Count | Should -Be 0
     }
 
-    It 'non-historical docs do not claim LabVIEW 2021 as canonical baseline' {
+    It 'active workflows do not use temporary LV unit-test override env vars' {
+        $workflowFiles = @(
+            (Join-Path $script:repoRoot '.github/workflows/ci.yml'),
+            (Join-Path $script:repoRoot '.github/workflows/ci-composite.yml')
+        )
+
+        $matchList = @()
+        foreach ($filePath in $workflowFiles) {
+            if (-not (Test-Path -LiteralPath $filePath -PathType Leaf)) {
+                continue
+            }
+            $matchList += Select-String -Path $filePath -Pattern 'LVIE_UNIT_TEST_TARGET_YEAR|LVIE_UNIT_TEST_TARGET_LVVERSION' -SimpleMatch:$false
+        }
+
+        $matchList.Count | Should -Be 0
+    }
+
+    It 'non-historical docs do not claim LabVIEW 2020/2021 as canonical baseline' {
         $docRoot = Join-Path $script:repoRoot 'docs'
         $matchList = @()
         $docFiles = Get-ChildItem -Path $docRoot -Recurse -File -Filter *.md
@@ -81,13 +103,14 @@ Describe 'LabVIEW 2020 canonical migration contract' {
             if ($script:historicalDocsAllowList -contains $doc.FullName.ToLowerInvariant()) {
                 continue
             }
-            $matchList += Select-String -Path $doc.FullName -Pattern 'LabVIEW 2021|21\.0' -SimpleMatch:$false
+
+            $matchList += Select-String -Path $doc.FullName -Pattern 'LabVIEW 2020 \(20\.0\)|LabVIEW 2021|21\.0' -SimpleMatch:$false
         }
 
         $matchList.Count | Should -Be 0
     }
 
-    It 'canonical guidance documents explicitly call out LabVIEW 2020 baseline' {
+    It 'canonical guidance documents explicitly call out LabVIEW 2026 baseline' {
         $guidanceFiles = @(
             (Join-Path $script:repoRoot 'AGENTS.md'),
             (Join-Path $script:repoRoot 'docs/ci-workflows.md'),
@@ -96,7 +119,7 @@ Describe 'LabVIEW 2020 canonical migration contract' {
         foreach ($filePath in $guidanceFiles) {
             (Test-Path -LiteralPath $filePath -PathType Leaf) | Should -BeTrue
             $content = Get-Content -LiteralPath $filePath -Raw
-            $content | Should -Match 'LabVIEW 2020 \(20\.0\)'
+            $content | Should -Match 'LabVIEW 2026 \(26\.0\)'
         }
     }
 }

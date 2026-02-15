@@ -9,7 +9,7 @@
     the repo root to report pass/fail details.
 
 .PARAMETER LabVIEWVersion
-    LabVIEW version year (e.g., 2020) or numeric version (e.g., 20.0).
+    LabVIEW version year (e.g., 2026) or numeric version (e.g., 26.0).
 
 .PARAMETER SupportedBitness
     LabVIEW bitness to target ("32" or "64"). Defaults to "64".
@@ -696,5 +696,6 @@ finally {
 if ($preflight -and $preflight.CleanRoomAfter) {
     Invoke-PreflightCleanup -RepoRoot $preflight.RepoRoot -Phase 'after'
 }
+
 
 

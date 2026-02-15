@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 [CmdletBinding()]
 param(
-    [string]$Branch = '456-2020-migration',
+    [string]$Branch = '456-2026-migration',
     [string]$Repo = '',
     [switch]$DryRun
 )

@@ -11,7 +11,7 @@
     This is intended for local testing; revert should use the LabVIEW-based workflow.
 
 .PARAMETER LabVIEWVersion
-    LabVIEW version year (e.g., 2020) or numeric version (e.g., 20.0).
+    LabVIEW version year (e.g., 2026) or numeric version (e.g., 26.0).
 
 .PARAMETER SupportedBitness
     One or more bitness values ("32", "64") to run (default: both).
@@ -554,6 +554,7 @@ if ($MyInvocation.InvocationName -ne '.') {
         -SkipProcessCheck:$SkipProcessCheck `
         -SkipRepoVersionCheck:$SkipRepoVersionCheck
 }
+
 
 
 

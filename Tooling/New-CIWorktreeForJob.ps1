@@ -291,7 +291,7 @@ function Resolve-LabVIEWVersionInfo {
     }
 
     if (-not ($raw -match '^(?<major>\d{2,4})(?:\.(?<minor>\d+))?$')) {
-        throw ".lvversion value '$raw' is invalid. Expected formats like '20.0' or '2020.0'."
+        throw ".lvversion value '$raw' is invalid. Expected formats like '26.0' or '2026.0'."
     }
 
     $majorRaw = [int]$Matches['major']

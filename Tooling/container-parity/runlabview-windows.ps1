@@ -462,7 +462,7 @@ if ([string]::IsNullOrWhiteSpace($LabVIEWPath)) {
     } elseif (-not [string]::IsNullOrWhiteSpace($LabVIEWVersion)) {
         $LabVIEWVersion
     } else {
-        '2020'
+        '2026'
     }
     $LabVIEWPath = "C:\Program Files\National Instruments\LabVIEW $resolvedLabVIEWYear\LabVIEW.exe"
 }

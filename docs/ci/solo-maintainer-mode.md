@@ -9,7 +9,7 @@ Date adopted: **2026-02-11**
 ## Canonical Integration Lane
 
 - Source branch for current reconciliation cycle: `reconcile/issue-91-forward-port-456`
-- Immediate integration target branch: `456-2020-migration`
+- Immediate integration target branch: `456-2026-migration`
 - Integration model: **PR-gated** (no direct merge from automation scripts)
 - Merge strategy: **merge commits only** for CI/tooling auditability
 

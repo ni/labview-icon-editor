@@ -161,7 +161,7 @@ function Resolve-LabVIEWVersion {
         }
     }
     if ([string]::IsNullOrWhiteSpace($resolvedVersion)) {
-        $resolvedVersion = '2020'
+        $resolvedVersion = '2026'
     }
     return $resolvedVersion
 }
