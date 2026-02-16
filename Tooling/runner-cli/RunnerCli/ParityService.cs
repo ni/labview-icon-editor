@@ -263,10 +263,8 @@ public static class ParityService
             image,
             "powershell",
             "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            "C:\\workspace\\Tooling\\container-parity\\runlabview-windows.ps1"
+            "-Command",
+            "$ErrorActionPreference='Stop'; Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force; & 'C:\\workspace\\Tooling\\container-parity\\runlabview-windows.ps1'"
         };
 
         RunProcess("docker", runArgs, context.RepoRoot);

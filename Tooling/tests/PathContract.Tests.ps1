@@ -18,7 +18,7 @@ Describe 'PathContract shell compatibility' {
         $ps51Path = (Get-Command powershell.exe -ErrorAction Stop).Source
         $escapedPath = $Script:PathContractScript -replace "'", "''"
         $probeCommand = "& { . '$escapedPath'; 'PATH_CONTRACT_IMPORT_OK' }"
-        $output = & $ps51Path -NoProfile -ExecutionPolicy Bypass -Command $probeCommand 2>&1
+        $output = & $ps51Path -NoProfile -ExecutionPolicy RemoteSigned -Command $probeCommand 2>&1
 
         $LASTEXITCODE | Should -Be 0
         (($output | ForEach-Object { $_.ToString() }) -join [Environment]::NewLine) | Should -Match 'PATH_CONTRACT_IMPORT_OK'

@@ -53,7 +53,7 @@ public static class MissingInProjectService
         var args = new List<string>
         {
             "-NoProfile",
-            "-ExecutionPolicy", "Bypass",
+            "-ExecutionPolicy", "RemoteSigned",
             "-File", scriptPath,
             "-Arch", options.Arch,
             "-ProjectFile", projectFile

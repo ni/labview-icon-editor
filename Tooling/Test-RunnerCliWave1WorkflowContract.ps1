@@ -91,6 +91,28 @@ function Test-Pattern {
     }
 }
 
+function Test-ExecutionPolicyAllowlist {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FilePath,
+        [Parameter(Mandatory = $true)]
+        [string]$Content,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Allowlist
+    )
+
+    $matches = [regex]::Matches($Content, '(?im)-ExecutionPolicy\s+([A-Za-z]+)')
+    foreach ($match in $matches) {
+        $policyValue = [string]$match.Groups[1].Value
+        if ($Allowlist -notcontains $policyValue) {
+            Add-Finding `
+                -FilePath $FilePath `
+                -Code 'forbidden-legacy-call' `
+                -Message ("{0} uses non-allowlisted execution policy value '{1}'." -f [System.IO.Path]::GetFileName($FilePath), $policyValue)
+        }
+    }
+}
+
 $script:findings = @()
 $resolvedRepoRoot = Resolve-RepoRootPath -PathOverride $RepoRoot
 $ciPath = Resolve-PathFromRoot -Root $resolvedRepoRoot -Path '.github/workflows/ci.yml'
@@ -126,13 +148,38 @@ if ($script:findings.Count -eq 0) {
         -Message 'ci-composite.yml unit-tests lanes must invoke runner-cli lunit run.'
 
     Test-Pattern -FilePath $ciPath -Content $ciContent `
-        -Pattern "'vip', 'build'" `
+        -Pattern "'release', 'package'" `
         -Code 'missing-required-pattern' `
-        -Message 'ci.yml build-vip lane must invoke runner-cli vip build.'
+        -Message 'ci.yml build-vip lane must invoke runner-cli release package.'
     Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
-        -Pattern "'vip', 'build'" `
+        -Pattern "'release', 'package'" `
         -Code 'missing-required-pattern' `
-        -Message 'ci-composite.yml build-vip lane must invoke runner-cli vip build.'
+        -Message 'ci-composite.yml build-vip lane must invoke runner-cli release package.'
+
+    Test-Pattern -FilePath $ciPath -Content $ciContent `
+        -Pattern 'SHADOW_PROMOTION_MIN_GREENS:\s*5' `
+        -Code 'missing-required-pattern' `
+        -Message 'ci.yml must set SHADOW_PROMOTION_MIN_GREENS to 5.'
+    Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
+        -Pattern 'SHADOW_PROMOTION_MIN_GREENS:\s*5' `
+        -Code 'missing-required-pattern' `
+        -Message 'ci-composite.yml must set SHADOW_PROMOTION_MIN_GREENS to 5.'
+    Test-Pattern -FilePath $ciPath -Content $ciContent `
+        -Pattern 'build-vip-shadow:' `
+        -Code 'missing-required-pattern' `
+        -Message 'ci.yml must define non-gating build-vip-shadow lane.'
+    Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
+        -Pattern 'build-vip-shadow:' `
+        -Code 'missing-required-pattern' `
+        -Message 'ci-composite.yml must define non-gating build-vip-shadow lane.'
+    Test-Pattern -FilePath $ciPath -Content $ciContent `
+        -Pattern 'lvie\.shadow-run-performance-metrics' `
+        -Code 'missing-required-pattern' `
+        -Message 'ci.yml shadow lane must emit performance metrics schema markers.'
+    Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
+        -Pattern 'lvie\.shadow-run-performance-metrics' `
+        -Code 'missing-required-pattern' `
+        -Message 'ci-composite.yml shadow lane must emit performance metrics schema markers.'
 
     Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
         -Pattern "'vipc', 'assert'" `
@@ -204,11 +251,9 @@ if ($script:findings.Count -eq 0) {
         -Code 'forbidden-legacy-call' `
         -Message 'ci-composite.yml must not directly invoke runlabview-windows.ps1 in container PPL lanes after Wave 2 migration.' `
         -MustNotExist
-    Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
-        -Pattern '-ExecutionPolicy\s+Bypass' `
-        -Code 'forbidden-legacy-call' `
-        -Message 'ci-composite.yml must not directly invoke powershell -ExecutionPolicy Bypass for container PPL lanes after Wave 2 migration.' `
-        -MustNotExist
+    $allowedExecutionPolicies = @('RemoteSigned', 'AllSigned', 'Restricted', 'Undefined', 'Default')
+    Test-ExecutionPolicyAllowlist -FilePath $ciPath -Content $ciContent -Allowlist $allowedExecutionPolicies
+    Test-ExecutionPolicyAllowlist -FilePath $ciCompositePath -Content $ciCompositeContent -Allowlist $allowedExecutionPolicies
 }
 
 $status = [ordered]@{
