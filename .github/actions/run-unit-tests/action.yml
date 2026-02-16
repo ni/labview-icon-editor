@@ -1,5 +1,5 @@
 name: "Run Unit Tests"
-description: "Runs RunUnitTests.ps1 to execute LabVIEW unit tests via g-cli."
+description: "Runs RunUnitTests.ps1 to execute LabVIEW unit tests via LabVIEWCLI with optional g-cli fallback."
 runs:
   using: "composite"
   steps:
@@ -11,24 +11,58 @@ runs:
     - name: Run RunUnitTests.ps1
       shell: pwsh
       run: |
-        $lvVersion = "${{ inputs.labview_version }}"
-        if ([string]::IsNullOrWhiteSpace($lvVersion)) {
-          throw "labview_version is required."
+        $repoRoot = $env:GITHUB_WORKSPACE
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "GITHUB_WORKSPACE is required to resolve .lvversion."
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
+
+        $lvVersionInput = "${{ inputs.labview_version }}"
+        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+        if (-not (Test-Path -Path $assertScript)) {
+          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+        }
+        $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $lvVersionInput -Context 'run-unit-tests'
+        if ([string]::IsNullOrWhiteSpace($lvVersionInput)) {
+          Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
+        }
+        $lvVersion = $lvInfo.Year
+
+        $enableFallbackRaw = "${{ inputs.enable_gcli_fallback }}"
+        $enableFallback = @('1','true','yes','y','on') -contains $enableFallbackRaw.Trim().ToLowerInvariant()
+        $backendRaw = "${{ inputs.lunit_backend }}"
+        if (-not [string]::IsNullOrWhiteSpace($backendRaw)) {
+          $env:LVIE_LUNIT_BACKEND = $backendRaw.Trim()
         }
 
-        & "${{ github.action_path }}/RunUnitTests.ps1" `
-          -MinimumSupportedLVVersion $lvVersion `
-          -SupportedBitness ${{ inputs.supported_bitness }} `
-          -ProjectPath "${{ inputs.project_path }}"
+        $scriptArgs = @(
+          '-LabVIEWVersion', $lvVersion,
+          '-SupportedBitness', "${{ inputs.supported_bitness }}",
+          '-ProjectPath', "${{ inputs.project_path }}"
+        )
+        if ($enableFallback) {
+          $scriptArgs += '-EnableGcliFallback'
+        }
+
+        & "${{ github.action_path }}/RunUnitTests.ps1" @scriptArgs
 inputs:
   labview_version:
     description: 'LabVIEW version to run (year or numeric).'
-    required: true
+    required: false
   supported_bitness:
     description: '32 or 64'
     required: true
   project_path:
     description: 'Path to the LabVIEW project (.lvproj)'
     required: true
+  enable_gcli_fallback:
+    description: 'Set true/1/yes to allow g-cli fallback when LabVIEWCLI LUnit cannot run.'
+    required: false
+    default: 'false'
+  lunit_backend:
+    description: 'LUnit backend selection: labviewcli (default) or gcli.'
+    required: false
+    default: 'labviewcli'
+
 
 

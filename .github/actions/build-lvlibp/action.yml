@@ -1,5 +1,5 @@
 name: "Build Packed Library"
-description: "Runs Build_lvlibp.ps1 to create the editor packed library."
+description: "Compatibility wrapper around BuildProjectSpec for packed-library builds."
 runs:
   using: "composite"
   steps:
@@ -8,18 +8,33 @@ runs:
       with:
         fetch-depth: 0
 
-    - name: Run Build_lvlibp.ps1
+    - name: Run Build_lvlibp.ps1 compatibility shim
       shell: pwsh
       run: |
-        $lvVersion = "${{ inputs.labview_version }}"
-        if ([string]::IsNullOrWhiteSpace($lvVersion)) {
-          throw "labview_version is required."
+        $repoRoot = "${{ inputs.repo_root }}"
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          $repoRoot = $env:GITHUB_WORKSPACE
         }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "repo_root is required."
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
+
+        $lvVersionInput = "${{ inputs.labview_version }}"
+        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+        if (-not (Test-Path -Path $assertScript)) {
+          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+        }
+        $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $lvVersionInput -Context 'build-lvlibp'
+        if ([string]::IsNullOrWhiteSpace($lvVersionInput)) {
+          Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
+        }
+        $lvVersion = $lvInfo.Year
 
         & "${{ github.action_path }}/Build_lvlibp.ps1" `
-          -MinimumSupportedLVVersion $lvVersion `
+          -LabVIEWVersion $lvVersion `
           -SupportedBitness ${{ inputs.supported_bitness }} `
-          -RepoRoot "${{ inputs.repo_root }}" `
+          -RepoRoot $repoRoot `
           -Major ${{ inputs.major }} `
           -Minor ${{ inputs.minor }} `
           -Patch ${{ inputs.patch }} `
@@ -28,7 +43,7 @@ runs:
 inputs:
   labview_version:
     description: 'LabVIEW version to target (year or numeric).'
-    required: true
+    required: false
   supported_bitness:
     description: '32 or 64'
     required: true
@@ -50,5 +65,3 @@ inputs:
   commit:
     description: 'Commit identifier'
     required: true
-
-

@@ -20,6 +20,12 @@ Outline the changes made to fix the bug.
 
 Describe any implications this fix may have on other parts of the application.
 
+## Version Increment Label
+
+- [ ] Exactly one canonical release label is applied (`Version Increment: Major`, `Version Increment: Minor`, or `Version Increment: Patch`)
+
+- [ ] Compatibility aliases are accepted during migration (`major`, `minor`, `patch`) and will be deprecated after two release cycles
+
 ## Testing Strategy
 
 Explain how the fix has been tested to ensure the bug is resolved without introducing new issues.

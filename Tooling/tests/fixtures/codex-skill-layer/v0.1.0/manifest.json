@@ -1,0 +1,1 @@
+{"name":"lvie-codex-skill-layer","version":"0.1.0","license_spdx":"0BSD","license_file":"LICENSE","required_files":["ci-debt/Invoke-CiDebtAnalysis.ps1","ci-debt/Test-CiDebtPolicyGate.ps1","ci-debt/signatures.json","ci-debt/playbook.md","ci-debt/fixtures/run-21840801109.json","manifest.json","LICENSE"]}

@@ -8,6 +8,9 @@
     and optionally cleans known output folders before/after a run.
 #>
 
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    throw "git was not found on PATH."
+}
 function Convert-BoundParametersToArgumentList {
     param(
         [hashtable]$BoundParameters
@@ -55,11 +58,24 @@ function Resolve-RepoRoot {
         [string]$RepoRoot
     )
 
-    if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
-        throw 'RepoRoot is required.'
+    if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
+        return (Resolve-Path -Path $RepoRoot -ErrorAction Stop).Path
     }
 
-    return (Resolve-Path -Path $RepoRoot -ErrorAction Stop).Path
+    $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $PSCommandPath }
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        try {
+            $gitRoot = git -C $scriptRoot rev-parse --show-toplevel 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRoot)) {
+                return (Resolve-Path -Path $gitRoot.Trim() -ErrorAction Stop).Path
+            }
+        } catch {
+            Write-Verbose ("git rev-parse failed: {0}" -f $_.Exception.Message)
+        }
+    }
+
+    return (Resolve-Path -Path (Join-Path $scriptRoot '..') -ErrorAction Stop).Path
 }
 
 function Get-RepoRelativePath {
@@ -253,12 +269,23 @@ function Invoke-Preflight {
 
         [switch]$RequireGcli,
 
+        [switch]$RequireViValidate,
+
         [string]$RunnerCliPath,
 
         [switch]$RequireRunnerCli
     )
 
     $resolvedRepoRoot = Resolve-RepoRoot -RepoRoot $RepoRoot
+
+    $remoteCheckScript = Join-Path $resolvedRepoRoot 'Tooling\Test-ForkRemotes.ps1'
+    if ($env:GITHUB_ACTIONS -ne 'true' -and (Test-Path -Path $remoteCheckScript)) {
+        try {
+            & $remoteCheckScript -RepoRoot $resolvedRepoRoot | Out-Null
+        } catch {
+            Write-Warning ("Fork remote check failed: {0}" -f $_.Exception.Message)
+        }
+    }
 
     $contractScript = Join-Path $resolvedRepoRoot 'Tooling\support\RunnerContract.ps1'
     if (Test-Path -Path $contractScript) {
@@ -403,6 +430,10 @@ function Invoke-Preflight {
 
     if ($RequireGcli -and -not (Get-Command g-cli -ErrorAction SilentlyContinue)) {
         throw 'g-cli.exe not found in PATH.'
+    }
+
+    if ($RequireViValidate -and -not (Get-Command vi_validate -ErrorAction SilentlyContinue)) {
+        throw "vi_validate not found in PATH. Install pylavi (py -m pip install --user pylavi) and ensure the Python Scripts directory is on PATH."
     }
 
     $labviewInfo = $null

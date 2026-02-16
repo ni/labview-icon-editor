@@ -1,0 +1,392 @@
+name: Runner CLI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - release/*
+      - feature/*
+      - hotfix/*
+      - integrate/*
+    paths:
+      - 'Tooling/runner-cli/**'
+      - 'Tooling/pylavi/**'
+      - 'Tooling/Run-ViValidate.ps1'
+      - 'Tooling/Test-RunnerCliRequirementsA005.ps1'
+      - 'Tooling/Get-PylaviOffenders.ps1'
+      - 'Tooling/Fetch-PylaviOffenders.ps1'
+      - 'Tooling/docker/runner-cli/**'
+      - 'docs/runner-cli-requirements.md'
+      - 'docs/runner-cli-requirements-v5-acceptance.md'
+      - 'docs/runner-cli-requirements-v4-to-v5-trace.md'
+      - '.github/workflows/runner-cli.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'Tooling/runner-cli/**'
+      - 'Tooling/pylavi/**'
+      - 'Tooling/Run-ViValidate.ps1'
+      - 'Tooling/Test-RunnerCliRequirementsA005.ps1'
+      - 'Tooling/Get-PylaviOffenders.ps1'
+      - 'Tooling/Fetch-PylaviOffenders.ps1'
+      - 'Tooling/docker/runner-cli/**'
+      - 'docs/runner-cli-requirements.md'
+      - 'docs/runner-cli-requirements-v5-acceptance.md'
+      - 'docs/runner-cli-requirements-v4-to-v5-trace.md'
+      - '.github/workflows/runner-cli.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build & Test Runner CLI
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Tooling/runner-cli
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Lint A-005 requirements atomicity
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-RunnerCliRequirementsA005.ps1" -WriteSummary
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build RunnerCli/RunnerCli.csproj --no-restore --configuration Release
+
+      - name: Run tests
+        run: dotnet test RunnerCli.Tests/RunnerCli.Tests.csproj --configuration Release --verbosity normal
+
+      - name: Shutdown dotnet build servers
+        if: always()
+        run: dotnet build-server shutdown
+
+  windows-cli-timing-gate:
+    name: RunnerCliCliTests Timing Gate (Windows <= 60s)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: Tooling/runner-cli
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build test binaries
+        run: dotnet build RunnerCli.Tests/RunnerCli.Tests.csproj --configuration Release --no-restore
+
+      - name: Run RunnerCliCliTests and enforce timing budget
+        shell: pwsh
+        run: |
+          $resultsDir = Join-Path $PWD 'TestResults\runner-cli-cli-tests'
+          New-Item -ItemType Directory -Path $resultsDir -Force | Out-Null
+
+          $timer = [System.Diagnostics.Stopwatch]::StartNew()
+          dotnet test RunnerCli.Tests/RunnerCli.Tests.csproj `
+            --configuration Release `
+            --no-restore `
+            --no-build `
+            --filter "FullyQualifiedName~RunnerCli.Tests.RunnerCliCliTests" `
+            --logger "trx;LogFileName=RunnerCliCliTests.trx" `
+            --results-directory "$resultsDir" `
+            --verbosity normal
+          $testExitCode = $LASTEXITCODE
+          $timer.Stop()
+
+          $elapsedSeconds = [Math]::Round($timer.Elapsed.TotalSeconds, 2)
+          Write-Host "RunnerCliCliTests elapsed_seconds=$elapsedSeconds"
+          if ($testExitCode -ne 0) {
+            throw "RunnerCliCliTests failed with exit code $testExitCode."
+          }
+          if ($elapsedSeconds -gt 60) {
+            throw "RunnerCliCliTests exceeded 60s budget (elapsed=${elapsedSeconds}s)."
+          }
+
+      - name: Upload RunnerCliCliTests results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-cli-cli-tests-trx-windows
+          path: Tooling/runner-cli/TestResults/runner-cli-cli-tests/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Shutdown dotnet build servers
+        if: always()
+        run: dotnet build-server shutdown
+
+  publish:
+    name: Publish Runner CLI (${{ matrix.rid }})
+    needs:
+      - build-and-test
+      - windows-cli-timing-gate
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rid: [win-x64, linux-x64, linux-arm64, osx-x64, osx-arm64]
+    defaults:
+      run:
+        working-directory: Tooling/runner-cli
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish self-contained single-file
+        run: >
+          dotnet publish RunnerCli/RunnerCli.csproj
+          --configuration Release
+          --runtime ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:PublishTrimmed=true
+          --output ./publish/${{ matrix.rid }}
+
+      - name: Shutdown dotnet build servers
+        if: always()
+        run: dotnet build-server shutdown
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-cli-${{ matrix.rid }}
+          path: Tooling/runner-cli/publish/${{ matrix.rid }}/
+          if-no-files-found: error
+          retention-days: 90
+
+  smoke-pr:
+    name: Smoke Runner CLI (PR linux-x64)
+    needs:
+      - build-and-test
+      - windows-cli-timing-gate
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish runner-cli (linux-x64)
+        shell: pwsh
+        run: |
+          $outputDir = Join-Path $env:RUNNER_TEMP 'runner-cli-pr'
+          dotnet publish "Tooling/runner-cli/RunnerCli/RunnerCli.csproj" `
+            --configuration Release `
+            --runtime linux-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:PublishTrimmed=true `
+            --output $outputDir
+
+      - name: Smoke test runner-cli (linux-x64)
+        shell: pwsh
+        run: |
+          $cli = Join-Path $env:RUNNER_TEMP 'runner-cli-pr' 'runner-cli'
+          if (-not (Test-Path $cli)) {
+            Write-Error "runner-cli not found at $cli"
+            Get-ChildItem -Path $env:RUNNER_TEMP -Recurse -File | Select-Object -First 50 | ForEach-Object { Write-Host $_.FullName }
+            exit 1
+          }
+          chmod +x $cli
+          & $cli --help
+          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
+            throw "runner-cli --help failed with exit code $LASTEXITCODE"
+          }
+          & $cli version-gate --repo-root $env:GITHUB_WORKSPACE --json
+          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
+            throw "runner-cli version-gate failed with exit code $LASTEXITCODE"
+          }
+
+          $fixture = Join-Path $env:GITHUB_WORKSPACE 'Tooling' 'pylavi' 'fixtures' 'pylavi-offenders.sample.json'
+          if (-not (Test-Path $fixture)) {
+            throw "Pylavi fixture not found at $fixture"
+          }
+
+          $summaryPath = Join-Path $env:RUNNER_TEMP 'pylavi-summary.json'
+          $output = & $cli pylavi summarize --path $fixture --json --output-path $summaryPath | Out-String
+          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
+            throw "runner-cli pylavi summarize failed with exit code $LASTEXITCODE"
+          }
+
+          $report = $output | ConvertFrom-Json
+          if (-not $report.label) { throw "pylavi summarize JSON missing label" }
+          if ($report.total_fails -lt 1) { throw "pylavi summarize JSON missing total_fails" }
+          if (-not $report.top_offenders -or $report.top_offenders.Count -lt 1) { throw "pylavi summarize JSON missing top_offenders" }
+          if (-not $report.top_absolute_offenders -or $report.top_absolute_offenders.Count -lt 1) { throw "pylavi summarize JSON missing top_absolute_offenders" }
+
+          if (-not (Test-Path $summaryPath)) {
+            throw "pylavi summarize output file not found at $summaryPath"
+          }
+          $summary = Get-Content $summaryPath -Raw | ConvertFrom-Json
+          if (-not $summary.label) { throw "pylavi summarize output missing label" }
+          if (-not $summary.file -or ($summary.file -notlike "*pylavi-offenders.sample.json")) {
+            throw "pylavi summarize output missing file path"
+          }
+          if (-not $summary.has_findings) { throw "pylavi summarize output missing has_findings" }
+
+      - name: Shutdown dotnet build servers
+        if: always()
+        run: dotnet build-server shutdown
+
+  smoke:
+    name: Smoke Runner CLI (${{ matrix.rid }} on ${{ matrix.os }})
+    needs: publish
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: windows-latest
+            rid: win-x64
+          - os: macos-latest
+            rid: osx-x64
+          - os: macos-14
+            rid: osx-arm64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download runner-cli artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: runner-cli-${{ matrix.rid }}
+          path: runner-cli
+
+      - name: Ensure Rosetta for x64 on arm64
+        if: ${{ matrix.rid == 'osx-x64' && runner.os == 'macOS' }}
+        shell: bash
+        run: |
+          if [[ "$(uname -m)" == "arm64" ]]; then
+            sudo /usr/sbin/softwareupdate --install-rosetta --agree-to-license
+          fi
+
+      - name: Smoke test runner-cli
+        shell: pwsh
+        run: |
+          $cli = if ($IsWindows) {
+            Join-Path $PWD 'runner-cli' 'runner-cli.exe'
+          } else {
+            Join-Path $PWD 'runner-cli' 'runner-cli'
+          }
+          if (-not (Test-Path $cli)) {
+            Write-Error "runner-cli not found at $cli"
+            Get-ChildItem -Path $PWD -Recurse -File | Select-Object -First 50 | ForEach-Object { Write-Host $_.FullName }
+            exit 1
+          }
+          if (-not $IsWindows) {
+            chmod +x $cli
+          }
+          & $cli --help
+          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
+            throw "runner-cli --help failed with exit code $LASTEXITCODE"
+          }
+          & $cli version-gate --repo-root $env:GITHUB_WORKSPACE --json
+          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
+            throw "runner-cli version-gate failed with exit code $LASTEXITCODE"
+          }
+
+          $fixture = Join-Path $env:GITHUB_WORKSPACE 'Tooling' 'pylavi' 'fixtures' 'pylavi-offenders.sample.json'
+          if (-not (Test-Path $fixture)) {
+            throw "Pylavi fixture not found at $fixture"
+          }
+
+          $summaryPath = Join-Path $env:RUNNER_TEMP 'pylavi-summary.json'
+          $output = & $cli pylavi summarize --path $fixture --json --output-path $summaryPath | Out-String
+          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne $null) {
+            throw "runner-cli pylavi summarize failed with exit code $LASTEXITCODE"
+          }
+
+          $report = $output | ConvertFrom-Json
+          if (-not $report.label) { throw "pylavi summarize JSON missing label" }
+          if ($report.total_fails -lt 1) { throw "pylavi summarize JSON missing total_fails" }
+          if (-not $report.top_offenders -or $report.top_offenders.Count -lt 1) { throw "pylavi summarize JSON missing top_offenders" }
+          if (-not $report.top_absolute_offenders -or $report.top_absolute_offenders.Count -lt 1) { throw "pylavi summarize JSON missing top_absolute_offenders" }
+
+          if (-not (Test-Path $summaryPath)) {
+            throw "pylavi summarize output file not found at $summaryPath"
+          }
+          $summary = Get-Content $summaryPath -Raw | ConvertFrom-Json
+          if (-not $summary.label) { throw "pylavi summarize output missing label" }
+          if (-not $summary.file -or ($summary.file -notlike "*pylavi-offenders.sample.json")) {
+            throw "pylavi summarize output missing file path"
+          }
+          if (-not $summary.has_findings) { throw "pylavi summarize output missing has_findings" }
+
+  docker-linux:
+    name: Runner CLI Docker (Linux)
+    needs:
+      - build-and-test
+      - windows-cli-timing-gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build runner-cli docker image
+        shell: bash
+        run: |
+          docker build -t lvie-runner-cli:ci -f Tooling/docker/runner-cli/Dockerfile Tooling/docker/runner-cli
+
+      - name: Run runner-cli + pylavi checks
+        shell: bash
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo lvie-runner-cli:ci bash -lc "
+            set -euo pipefail
+            if ! command -v vi_validate >/dev/null 2>&1; then
+              echo '::error::vi_validate not found on PATH. Ensure pylavi is installed and vi_validate is exposed in the image.'
+              exit 1
+            fi
+            if ! vi_validate --version >/tmp/vi_validate_version.txt 2>&1; then
+              if grep -qi 'unrecognized arguments: --version' /tmp/vi_validate_version.txt; then
+                echo '::warning::vi_validate --version not supported; reporting pylavi version via pip.'
+                /opt/pylavi-venv/bin/python -m pip show pylavi | sed -n 's/^Version: /pylavi version: /p'
+              else
+                cat /tmp/vi_validate_version.txt
+                echo '::error::vi_validate --version failed. Verify pylavi installation and PATH.'
+                exit 1
+              fi
+            else
+              cat /tmp/vi_validate_version.txt
+            fi
+            dotnet test Tooling/runner-cli/RunnerCli.Tests/RunnerCli.Tests.csproj -c Release
+            dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj --configuration Release -- version-gate --repo-root /repo --json
+            dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj --configuration Release -- pylavi scan --repo-root /repo --config Tooling/pylavi/vi-validate.yml --report-only --offenders-path /tmp/pylavi-offenders.json --log-path /tmp/vi_validate.log
+            test -s /tmp/pylavi-offenders.json
+            test -s /tmp/vi_validate.log
+            dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj --configuration Release -- pylavi summarize --path /tmp/pylavi-offenders.json --json --output-path /tmp/pylavi-summary.json
+            test -s /tmp/pylavi-summary.json
+          "

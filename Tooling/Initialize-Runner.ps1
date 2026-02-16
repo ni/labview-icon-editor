@@ -190,7 +190,7 @@ if (-not [string]::IsNullOrWhiteSpace($primaryRunnerLabel)) {
 if (-not [string]::IsNullOrWhiteSpace($canonicalRunnerLabel)) {
     $runnerLabelsResolved += $canonicalRunnerLabel
 }
-$runnerLabelsResolved = $runnerLabelsResolved | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Unique
+$runnerLabelsResolved = [string[]]@($runnerLabelsResolved | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Unique)
 
 if ([string]::IsNullOrWhiteSpace($ContractPath)) {
     $ContractPath = Join-Path $workRootResolved 'lvie\runner-contract.json'

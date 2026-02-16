@@ -122,6 +122,14 @@ public static class ContractService
 
     private static List<string> GetGitSafeDirectories()
     {
+        var entries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        entries.UnionWith(GetGitSafeDirectoriesForScope("global"));
+        entries.UnionWith(GetGitSafeDirectoriesForScope("system"));
+        return entries.ToList();
+    }
+
+    private static List<string> GetGitSafeDirectoriesForScope(string scope)
+    {
         var entries = new List<string>();
         try
         {
@@ -134,7 +142,7 @@ public static class ContractService
                 CreateNoWindow = true
             };
             psi.ArgumentList.Add("config");
-            psi.ArgumentList.Add("--system");
+            psi.ArgumentList.Add($"--{scope}");
             psi.ArgumentList.Add("--get-all");
             psi.ArgumentList.Add("safe.directory");
 
@@ -155,7 +163,7 @@ public static class ContractService
         }
         catch
         {
-            // If git is missing or system config is inaccessible, treat as no entries.
+            // If git is missing or the selected config scope is inaccessible, treat as no entries.
         }
 
         return entries;

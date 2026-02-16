@@ -1,5 +1,32 @@
 #Requires -Version 7.0
 
+function ConvertTo-RunnerLabelArray {
+    param(
+        [AllowNull()]
+        [object]$RunnerLabels
+    )
+
+    if ($null -eq $RunnerLabels) {
+        return ,([string[]]@())
+    }
+
+    $values = @()
+    foreach ($label in @($RunnerLabels)) {
+        if ($null -eq $label) {
+            continue
+        }
+
+        $text = [string]$label
+        if ([string]::IsNullOrWhiteSpace($text)) {
+            continue
+        }
+
+        $values += $text.Trim()
+    }
+
+    return ,([string[]]@($values | Select-Object -Unique))
+}
+
 function Resolve-RunnerWorkRoot {
     param(
         [string]$RunnerRoot,
@@ -90,7 +117,17 @@ function Set-RunnerContract {
         New-Item -Path $dir -ItemType Directory -Force | Out-Null
     }
 
-    $Contract | ConvertTo-Json -Depth 6 | Set-Content -Path $ContractPath -Encoding ascii
+    $normalizedLabels = ConvertTo-RunnerLabelArray -RunnerLabels $Contract.runner_labels
+    $normalizedContract = [ordered]@{}
+    foreach ($property in $Contract.PSObject.Properties) {
+        if ($property.Name -eq 'runner_labels') {
+            continue
+        }
+        $normalizedContract[$property.Name] = $property.Value
+    }
+    $normalizedContract['runner_labels'] = $normalizedLabels
+
+    [pscustomobject]$normalizedContract | ConvertTo-Json -Depth 6 | Set-Content -Path $ContractPath -Encoding ascii
 }
 
 function Set-RunnerContractEnvironment {
@@ -124,8 +161,9 @@ function Set-RunnerContractEnvironment {
     if (-not [string]::IsNullOrWhiteSpace($Contract.runner_label) -and [string]::IsNullOrWhiteSpace($env:LVIE_RUNNER_LABEL)) {
         $env:LVIE_RUNNER_LABEL = $Contract.runner_label
     }
-    if ($Contract.runner_labels -and [string]::IsNullOrWhiteSpace($env:LVIE_RUNNER_LABELS)) {
-        $env:LVIE_RUNNER_LABELS = ($Contract.runner_labels -join ',')
+    $runnerLabels = ConvertTo-RunnerLabelArray -RunnerLabels $Contract.runner_labels
+    if ($runnerLabels.Count -gt 0 -and [string]::IsNullOrWhiteSpace($env:LVIE_RUNNER_LABELS)) {
+        $env:LVIE_RUNNER_LABELS = ($runnerLabels -join ',')
     }
     if (-not [string]::IsNullOrWhiteSpace($Contract.canonical_runner_label) -and [string]::IsNullOrWhiteSpace($env:LVIE_CANONICAL_RUNNER_LABEL)) {
         $env:LVIE_CANONICAL_RUNNER_LABEL = $Contract.canonical_runner_label

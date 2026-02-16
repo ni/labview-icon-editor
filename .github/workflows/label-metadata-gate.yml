@@ -1,0 +1,174 @@
+name: Label Metadata Gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Optional PR number to validate"
+        required: false
+        type: string
+      issue_number:
+        description: "Optional issue number to validate"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  pr_release_label_contract:
+    name: PR Release Label Contract
+    if: ${{ github.event_name == 'pull_request_target' || (github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != '') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate PR release label contract
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const path = require('path');
+            const {
+              loadLabelContract,
+              buildReleaseLabelMap,
+              normalizeLabels,
+            } = require(path.join(process.env.GITHUB_WORKSPACE || process.cwd(), '.github', 'scripts', 'label-metadata.js'));
+
+            function parsePositiveInt(value) {
+              const parsed = Number.parseInt(String(value || '').trim(), 10);
+              return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+            }
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const inputs = context.payload.inputs || {};
+            const prNumber =
+              context.eventName === 'pull_request_target'
+                ? parsePositiveInt(context.payload.pull_request && context.payload.pull_request.number)
+                : parsePositiveInt(inputs.pr_number);
+
+            if (!prNumber) {
+              core.notice('No PR number resolved for validation.');
+              return;
+            }
+
+            const contractPath = path.join(process.env.GITHUB_WORKSPACE || process.cwd(), '.github', 'labels', 'label-contract.json');
+            const contract = loadLabelContract(contractPath);
+            const releaseLabelMap = buildReleaseLabelMap(contract);
+
+            const pr = (await github.rest.pulls.get({ owner, repo, pull_number: prNumber })).data;
+            const labels = (pr.labels || []).map((entry) => String(entry.name || '').trim()).filter(Boolean);
+            const found = normalizeLabels(labels, releaseLabelMap);
+
+            const summary = [];
+            summary.push('## PR Release Label Contract');
+            summary.push('');
+            summary.push(`- PR: #${prNumber}`);
+            summary.push(`- Matched release labels: ${found.matchedRaw.length > 0 ? found.matchedRaw.join(', ') : '<none>'}`);
+            summary.push(`- Normalized bump types: ${found.normalized.length > 0 ? found.normalized.join(', ') : '<none>'}`);
+            summary.push('');
+            await core.summary.addRaw(summary.join('\n') + '\n').write();
+
+            if (found.normalized.length > 1) {
+              core.setFailed(`PR #${prNumber} has conflicting normalized release labels: ${found.matchedRaw.join(', ')}`);
+              return;
+            }
+
+            if (found.normalized.length === 0) {
+              core.setFailed(
+                `PR #${prNumber} is missing a release increment label. Apply exactly one canonical release label (` +
+                '`Version Increment: Major`, `Version Increment: Minor`, or `Version Increment: Patch`)' +
+                '. Compatibility aliases are accepted during migration.'
+              );
+              return;
+            }
+
+            core.info(`PR #${prNumber} satisfies release label contract with bump '${found.normalized[0]}'.`);
+
+  issue_type_contract:
+    name: Issue Type Contract
+    if: ${{ github.event_name == 'issues' || (github.event_name == 'workflow_dispatch' && github.event.inputs.issue_number != '') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate issue type contract
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const path = require('path');
+            const {
+              loadLabelContract,
+              buildIssueTypeLabelMap,
+              normalizeLabels,
+            } = require(path.join(process.env.GITHUB_WORKSPACE || process.cwd(), '.github', 'scripts', 'label-metadata.js'));
+
+            function parsePositiveInt(value) {
+              const parsed = Number.parseInt(String(value || '').trim(), 10);
+              return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+            }
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const inputs = context.payload.inputs || {};
+            const action = String(context.payload.action || '');
+            const issueNumber =
+              context.eventName === 'issues'
+                ? parsePositiveInt(context.payload.issue && context.payload.issue.number)
+                : parsePositiveInt(inputs.issue_number);
+
+            if (!issueNumber) {
+              core.notice('No issue number resolved for validation.');
+              return;
+            }
+
+            const enforceActions = new Set(['opened', 'reopened', 'labeled', 'unlabeled']);
+            const shouldEnforce = context.eventName !== 'issues' || enforceActions.has(action);
+
+            const contractPath = path.join(process.env.GITHUB_WORKSPACE || process.cwd(), '.github', 'labels', 'label-contract.json');
+            const contract = loadLabelContract(contractPath);
+            const issueTypeLabelMap = buildIssueTypeLabelMap(contract);
+
+            const issue = (await github.rest.issues.get({ owner, repo, issue_number: issueNumber })).data;
+            if (issue.pull_request) {
+              core.notice(`Issue #${issueNumber} is a pull request; skipping issue-type validation.`);
+              return;
+            }
+
+            const labels = (issue.labels || []).map((entry) => String(entry.name || '').trim()).filter(Boolean);
+            const found = normalizeLabels(labels, issueTypeLabelMap);
+
+            const summary = [];
+            summary.push('## Issue Type Contract');
+            summary.push('');
+            summary.push(`- Issue: #${issueNumber}`);
+            summary.push(`- Event action: ${action || '<n/a>'}`);
+            summary.push(`- Enforced on this event: ${shouldEnforce ? 'yes' : 'no'}`);
+            summary.push(`- Matched issue-type labels: ${found.matchedRaw.length > 0 ? found.matchedRaw.join(', ') : '<none>'}`);
+            summary.push(`- Normalized issue types: ${found.normalized.length > 0 ? found.normalized.join(', ') : '<none>'}`);
+            summary.push('');
+            await core.summary.addRaw(summary.join('\n') + '\n').write();
+
+            if (found.normalized.length === 1) {
+              core.info(`Issue #${issueNumber} satisfies issue-type contract with type '${found.normalized[0]}'.`);
+              return;
+            }
+
+            if (!shouldEnforce) {
+              core.notice(`Issue #${issueNumber} is not enforced for action '${action}'.`);
+              return;
+            }
+
+            if (found.normalized.length > 1) {
+              core.setFailed(`Issue #${issueNumber} has conflicting normalized issue-type labels: ${found.matchedRaw.join(', ')}`);
+              return;
+            }
+
+            core.setFailed(
+              `Issue #${issueNumber} is missing an issue-type label. Add exactly one normalized issue-type family label ` +
+              '(`Issue group: Bug` or `Type: Enhancement`; compatibility aliases accepted during migration).'
+            );

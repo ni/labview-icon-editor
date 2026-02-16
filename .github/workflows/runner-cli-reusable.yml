@@ -1,0 +1,63 @@
+name: Runner CLI Build (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      rid:
+        description: Runtime identifier to publish (e.g., linux-x64).
+        required: false
+        type: string
+        default: linux-x64
+      artifact_name:
+        description: Artifact name to upload.
+        required: false
+        type: string
+        default: runner-cli-linux-x64
+    outputs:
+      artifact_name:
+        description: Name of the uploaded artifact.
+        value: ${{ jobs.publish.outputs.artifact_name }}
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact_name: ${{ steps.meta.outputs.artifact_name }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish runner-cli
+        shell: pwsh
+        run: |
+          $rid = '${{ inputs.rid }}'
+          $outputDir = Join-Path $env:RUNNER_TEMP ("runner-cli-{0}" -f $rid)
+          dotnet publish "Tooling/runner-cli/RunnerCli/RunnerCli.csproj" `
+            --configuration Release `
+            --runtime $rid `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:PublishTrimmed=true `
+            --output $outputDir
+
+      - name: Set artifact name
+        id: meta
+        shell: pwsh
+        run: |
+          "artifact_name=${{ inputs.artifact_name }}" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding ascii
+
+      - name: Upload runner-cli artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ runner.temp }}/runner-cli-${{ inputs.rid }}/
+          if-no-files-found: error
+          retention-days: 7

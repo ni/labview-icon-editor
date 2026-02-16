@@ -1,0 +1,10 @@
+{
+  "worktree": {
+    "policy": "auto",
+    "root": "",
+    "reuse": false
+  },
+  "runner_cli": {
+    "build": "if-missing"
+  }
+}

@@ -16,7 +16,7 @@ inputs:
   safe_directory_scope:
     description: Git safe.directory scope (System or Global).
     required: false
-    default: System
+    default: Global
 runs:
   using: composite
   steps:
@@ -25,7 +25,8 @@ runs:
       shell: pwsh
       run: |
         # Try CLI first, fall back to PowerShell
-        $cli = Join-Path $env:RUNNER_TEMP 'runner-cli' 'runner-cli.exe'
+        $cliName = if ($IsWindows) { 'runner-cli.exe' } else { 'runner-cli' }
+        $cli = Join-Path $env:RUNNER_TEMP 'runner-cli' $cliName
         if (Test-Path $cli) {
           Write-Host 'Using runner-cli to initialize contract …'
           $contractPath = Join-Path $env:RUNNER_WORKSPACE 'lvie' 'runner-contract.json'

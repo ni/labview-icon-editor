@@ -1,0 +1,43 @@
+{
+  "repo": "svelderrainruiz/labview-icon-editor-codex-skills",
+  "tag": "v0.4.1",
+  "asset_name": "lvie-codex-skill-layer-installer.exe",
+  "sha256": "76ef764326ff1bc6f2bbd4534d616a5ebed0eed647b8cfe01f4217c622be2ff4",
+  "distribution": {
+    "type": "nsis-installer",
+    "silent_args": [
+      "/S"
+    ]
+  },
+  "license_spdx": "0BSD",
+  "required_files": [
+    "ci-debt/Invoke-CiDebtAnalysis.ps1",
+    "ci-debt/Test-CiDebtPolicyGate.ps1",
+    "ci-debt/signatures.json",
+    "ci-debt/playbook.md",
+    "ci-debt/fixtures/run-21840801109.json",
+    "lunit-contract/README.md",
+    "lunit-contract/contract.json",
+    "lunit-contract/fixtures/report-pass.xml",
+    "lunit-contract/fixtures/report-fail.xml",
+    "lunit-contract/fixtures/report-malformed.xml",
+    "proactive-loop/README.md",
+    "proactive-loop/sequence-mode-matrix.json",
+    "proactive-loop/sequence-diagnostics.schema.json",
+    "headless-parity/README.md",
+    "headless-parity/lvversion-lvproj-contract.json",
+    "linux-ppl-container-build/README.md",
+    "linux-ppl-container-build/SKILL.md",
+    "linux-ppl-container-build/contract.json",
+    "belt-suspenders/README.md",
+    "belt-suspenders/runbook.md",
+    "vipm-cli-machine/SKILL.md",
+    "vipm-cli-machine/agents/openai.yaml",
+    "vipm-cli-machine/references/machine-inventory.md",
+    "vipm-cli-machine/references/safety-runbook.md",
+    "vipm-cli-machine/references/tool-contracts.md",
+    "vipm-cli-machine/scripts/Invoke-VipmCliToolProbe.ps1",
+    "manifest.json",
+    "LICENSE"
+  ]
+}

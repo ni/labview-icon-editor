@@ -17,7 +17,6 @@
 
 .PARAMETER LabVIEWVersion
     LabVIEW major version year (e.g., 2021).
-    Alias: MinimumSupportedLVVersion.
 
 .PARAMETER LabVIEWMinorRevision
     Minor revision number of LabVIEW (e.g., 0 for 21.0).
@@ -44,7 +43,7 @@
     JSON string representing the VIPB display information to update.
 
 .EXAMPLE
-    .\build_vip.ps1 -SupportedBitness "64" -RepoRoot "C:\repo" -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -LabVIEWVersion 2021 -LabVIEWMinorRevision 0 -Major 1 -Minor 0 -Patch 0 -Build 2 -Commit "abcd123" -ReleaseNotesFile "Tooling\deployment\release_notes.md" -DisplayInformationJSON '{"Package Version":{"major":1,"minor":0,"patch":0,"build":2}}'
+    .\build_vip.ps1 -SupportedBitness "64" -RepoRoot "C:\repo" -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -Major 1 -Minor 0 -Patch 0 -Build 2 -Commit "abcd123" -ReleaseNotesFile "Tooling\deployment\release_notes.md" -DisplayInformationJSON '{"Package Version":{"major":1,"minor":0,"patch":0,"build":2}}'
 #>
 
 param (
@@ -54,9 +53,7 @@ param (
     [string]$WorktreeRoot,
     [switch]$SkipWorktreeRootCheck,
 
-    [Alias('MinimumSupportedLVVersion')]
-    [ValidateRange(2000, 2100)]
-    [int]$LabVIEWVersion,
+    [string]$LabVIEWVersion,
 
     [ValidateRange(0, 99)]
     [int]$LabVIEWMinorRevision = 0,
@@ -109,6 +106,29 @@ if (Test-Path -Path $preflightScript) {
         return
     }
     $ResolvedRepoRoot = $preflight.RepoRoot
+}
+
+# 1b) Resolve LabVIEW version against .lvversion (fail-fast on mismatch)
+$versionHelper = Join-Path $ResolvedRepoRoot 'Tooling\support\LabVIEWVersion.ps1'
+if (Test-Path -Path $versionHelper) {
+    . $versionHelper
+    $repoInfo = Get-LabVIEWVersionInfo -RepoRoot $ResolvedRepoRoot
+    $inputProvided = $PSBoundParameters.ContainsKey('LabVIEWVersion') -and -not [string]::IsNullOrWhiteSpace([string]$LabVIEWVersion)
+    if ($inputProvided) {
+        $inputInfo = Get-LabVIEWVersionInfo -VersionInput $LabVIEWVersion -RepoRoot $ResolvedRepoRoot
+        $LabVIEWVersion = [int]$inputInfo.Year
+    } else {
+        $LabVIEWVersion = [int]$repoInfo.Year
+        Write-Warning "LabVIEWVersion not provided; defaulting to .lvversion ($($repoInfo.Raw))."
+    }
+
+    if ($PSBoundParameters.ContainsKey('LabVIEWMinorRevision')) {
+        if ([int]$LabVIEWMinorRevision -ne [int]$repoInfo.MinorRevision) {
+            throw "LabVIEWMinorRevision '$LabVIEWMinorRevision' does not match .lvversion minor '$($repoInfo.MinorRevision)'."
+        }
+    } else {
+        $LabVIEWMinorRevision = [int]$repoInfo.MinorRevision
+    }
 }
 
 # 1b) Ensure VI Package output directory exists to avoid VIPM prompts

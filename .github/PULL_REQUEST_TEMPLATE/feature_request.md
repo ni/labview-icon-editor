@@ -20,6 +20,12 @@ List the major changes made in this pull request.
 
 Discuss any potential impacts this feature may have on existing functionalities.
 
+## Version Increment Label
+
+- [ ] Exactly one canonical release label is applied (`Version Increment: Major`, `Version Increment: Minor`, or `Version Increment: Patch`)
+
+- [ ] Compatibility aliases are accepted during migration (`major`, `minor`, `patch`) and will be deprecated after two release cycles
+
 ## Testing
 
 Describe how the feature has been tested, including both automated and manual testing strategies.

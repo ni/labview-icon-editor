@@ -16,6 +16,12 @@ Provide detailed information about the changes made to the documentation.
 
 Explain why these documentation changes are necessary.
 
+## Version Increment Label
+
+- [ ] Exactly one canonical release label is applied (`Version Increment: Major`, `Version Increment: Minor`, or `Version Increment: Patch`)
+
+- [ ] Compatibility aliases are accepted during migration (`major`, `minor`, `patch`) and will be deprecated after two release cycles
+
 ## Review Checklist
 
 - [ ] Spelling and grammar are correct

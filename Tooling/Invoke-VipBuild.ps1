@@ -12,9 +12,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$VIPBPath,
 
-    [Alias('MinimumSupportedLVVersion')]
-    [ValidateRange(2000, 2100)]
-    [int]$LabVIEWVersion,
+    [string]$LabVIEWVersion,
 
     [ValidateRange(0, 99)]
     [int]$LabVIEWMinorRevision = 0,
@@ -26,8 +24,8 @@ param(
     [string]$Commit,
     [string]$ReleaseNotesFile,
 
-    [Parameter(Mandatory = $true)]
     [string]$DisplayInformationJSON,
+    [string]$DisplayInformationJsonPath,
 
     [ValidateRange(60, 7200)]
     [int]$VipmTimeoutSeconds,
@@ -177,6 +175,28 @@ if (-not (Test-Path -Path $buildVipScript)) {
     throw "build_vip.ps1 not found at $buildVipScript"
 }
 
+$versionHelper = Join-Path $resolvedRepoRoot 'Tooling/support/LabVIEWVersion.ps1'
+if (Test-Path -Path $versionHelper) {
+    . $versionHelper
+    $repoInfo = Get-LabVIEWVersionInfo -RepoRoot $resolvedRepoRoot
+    $inputProvided = $PSBoundParameters.ContainsKey('LabVIEWVersion') -and -not [string]::IsNullOrWhiteSpace([string]$LabVIEWVersion)
+    if ($inputProvided) {
+        $inputInfo = Get-LabVIEWVersionInfo -VersionInput $LabVIEWVersion -RepoRoot $resolvedRepoRoot
+        $LabVIEWVersion = [string]$inputInfo.Raw
+    } else {
+        $LabVIEWVersion = [string]$repoInfo.Raw
+        Write-Warning "LabVIEWVersion not provided; defaulting to .lvversion ($($repoInfo.Raw))."
+    }
+
+    if ($PSBoundParameters.ContainsKey('LabVIEWMinorRevision')) {
+        if ([int]$LabVIEWMinorRevision -ne [int]$repoInfo.MinorRevision) {
+            throw "LabVIEWMinorRevision '$LabVIEWMinorRevision' does not match .lvversion minor '$($repoInfo.MinorRevision)'."
+        }
+    } else {
+        $LabVIEWMinorRevision = [int]$repoInfo.MinorRevision
+    }
+}
+
 $timeoutSecondsValue = if ($PSBoundParameters.ContainsKey('VipmTimeoutSeconds')) {
     $VipmTimeoutSeconds
 } else {
@@ -199,6 +219,22 @@ $statusPath = Resolve-StatusPath -ExplicitPath $StatusPath -RepoRoot $resolvedRe
 $logDirectory = Resolve-LogDirectory -RepoRoot $resolvedRepoRoot
 $null = New-Item -Path $logDirectory -ItemType Directory -Force
 $gcliLog = Join-Path -Path $logDirectory -ChildPath 'gcli-build.log'
+$resolvedDisplayInformationJsonPath = $null
+
+if (-not [string]::IsNullOrWhiteSpace($DisplayInformationJsonPath)) {
+    $displaySourcePath = $DisplayInformationJsonPath
+    if (-not [System.IO.Path]::IsPathRooted($displaySourcePath)) {
+        $displaySourcePath = Join-Path -Path $resolvedRepoRoot -ChildPath $displaySourcePath
+    }
+
+    if (-not (Test-Path -Path $displaySourcePath -PathType Leaf)) {
+        throw "DisplayInformationJsonPath '$displaySourcePath' does not exist."
+    }
+
+    $resolvedDisplayInformationJsonPath = (Resolve-Path -Path $displaySourcePath).Path
+} elseif ([string]::IsNullOrWhiteSpace($DisplayInformationJSON)) {
+    throw "DisplayInformationJSON was not provided. Pass -DisplayInformationJSON or -DisplayInformationJsonPath."
+}
 
 $startedAt = Get-Date
 $attempt = 0
@@ -213,7 +249,11 @@ while ($attempt -lt $maxAttemptsValue) {
 
     $displayInfoPath = Join-Path -Path $logDirectory -ChildPath 'vipb-display-info.json'
     try {
-        Set-Content -Path $displayInfoPath -Value $DisplayInformationJSON -Encoding utf8
+        if (-not [string]::IsNullOrWhiteSpace($resolvedDisplayInformationJsonPath)) {
+            Copy-Item -Path $resolvedDisplayInformationJsonPath -Destination $displayInfoPath -Force
+        } else {
+            Set-Content -Path $displayInfoPath -Value $DisplayInformationJSON -Encoding utf8
+        }
     } catch {
         throw "Failed to write display information JSON to $displayInfoPath. $($_.Exception.Message)"
     }

@@ -12,11 +12,15 @@ inputs:
     description: Close LabVIEW using Close_LabVIEW.ps1.
     required: false
     default: 'false'
+  close_executor:
+    description: Teardown close executor (`gcli` or `labviewcli`).
+    required: false
+    default: 'gcli'
   close_bitness:
     description: LabVIEW bitness for close.
     required: false
   labview_version:
-    description: LabVIEW version (year). Defaults to LABVIEW_VERSION_YEAR env var.
+    description: LabVIEW version (numeric or year). Defaults to LABVIEW_VERSION_RAW, then LABVIEW_VERSION_YEAR.
     required: false
   repo_root:
     description: Repo root override. Defaults to REPO_ROOT env var.
@@ -37,9 +41,6 @@ runs:
       shell: pwsh
       run: |
         $labviewVersion = '${{ inputs.labview_version }}'
-        if ([string]::IsNullOrWhiteSpace($labviewVersion)) {
-          $labviewVersion = $env:LABVIEW_VERSION_YEAR
-        }
         $bitness = '${{ inputs.revert_bitness }}'
         if ([string]::IsNullOrWhiteSpace($bitness)) {
           throw "revert_bitness input is required when revert_dev_mode is true."
@@ -48,8 +49,31 @@ runs:
         if ([string]::IsNullOrWhiteSpace($repoRoot)) {
           $repoRoot = $env:REPO_ROOT
         }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          $repoRoot = $env:GITHUB_WORKSPACE
+        }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "repo_root is required."
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
+
+        if ([string]::IsNullOrWhiteSpace($labviewVersion)) {
+          $labviewVersion = $env:LABVIEW_VERSION_RAW
+        }
+        if ([string]::IsNullOrWhiteSpace($labviewVersion)) {
+          $labviewVersion = $env:LABVIEW_VERSION_YEAR
+        }
+        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+        if (-not (Test-Path -Path $assertScript)) {
+          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+        }
+        $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $labviewVersion -Context 'lvie-job-teardown-revert'
+        if ([string]::IsNullOrWhiteSpace($labviewVersion)) {
+          Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
+        }
+        $labviewVersion = $lvInfo.Raw
         & "$repoRoot\\.github\\actions\\revert-development-mode\\RevertDevelopmentMode.ps1" `
-          -MinimumSupportedLVVersion $labviewVersion `
+          -LabVIEWVersion $labviewVersion `
           -SupportedBitness $bitness `
           -RepoRoot "$repoRoot"
     - name: Close LabVIEW
@@ -57,9 +81,6 @@ runs:
       shell: pwsh
       run: |
         $labviewVersion = '${{ inputs.labview_version }}'
-        if ([string]::IsNullOrWhiteSpace($labviewVersion)) {
-          $labviewVersion = $env:LABVIEW_VERSION_YEAR
-        }
         $bitness = '${{ inputs.close_bitness }}'
         if ([string]::IsNullOrWhiteSpace($bitness)) {
           throw "close_bitness input is required when close_labview is true."
@@ -68,9 +89,89 @@ runs:
         if ([string]::IsNullOrWhiteSpace($repoRoot)) {
           $repoRoot = $env:REPO_ROOT
         }
-        & "$repoRoot\\.github\\actions\\close-labview\\Close_LabVIEW.ps1" `
-          -MinimumSupportedLVVersion $labviewVersion `
-          -SupportedBitness $bitness
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          $repoRoot = $env:GITHUB_WORKSPACE
+        }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "repo_root is required."
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
+
+        if ([string]::IsNullOrWhiteSpace($labviewVersion)) {
+          $labviewVersion = $env:LABVIEW_VERSION_RAW
+        }
+        if ([string]::IsNullOrWhiteSpace($labviewVersion)) {
+          $labviewVersion = $env:LABVIEW_VERSION_YEAR
+        }
+        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+        if (-not (Test-Path -Path $assertScript)) {
+          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+        }
+        $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $labviewVersion -Context 'lvie-job-teardown-close'
+        if ([string]::IsNullOrWhiteSpace($labviewVersion)) {
+          Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
+        }
+        $labviewVersion = $lvInfo.Raw
+        $labviewInstallVersion = [string]$lvInfo.Year
+        if ([string]::IsNullOrWhiteSpace($labviewInstallVersion)) {
+          $labviewInstallVersion = $labviewVersion
+        }
+        $closeExecutor = '${{ inputs.close_executor }}'
+        if ([string]::IsNullOrWhiteSpace($closeExecutor)) {
+          $closeExecutor = 'gcli'
+        }
+        $closeExecutor = $closeExecutor.Trim().ToLowerInvariant()
+
+        switch ($closeExecutor) {
+          'gcli' {
+            Write-Host 'Teardown close executor: g-cli'
+            & "$repoRoot\\.github\\actions\\close-labview\\Close_LabVIEW.ps1" `
+              -LabVIEWVersion $labviewVersion `
+              -SupportedBitness $bitness
+            break
+          }
+          'labviewcli' {
+            Write-Host 'Teardown close executor: LabVIEWCLI'
+            $stageScript = Join-Path $repoRoot 'Tooling\support\LabVIEWStage.ps1'
+            if (-not (Test-Path -Path $stageScript)) {
+              throw "LabVIEW stage helper not found at $stageScript"
+            }
+            . $stageScript
+
+            $installRoot = Get-LabVIEWInstallRoot -Version $labviewInstallVersion -Bitness $bitness
+            if ([string]::IsNullOrWhiteSpace($installRoot)) {
+              throw ("Unable to resolve LabVIEW install root for version {0} ({1}-bit)." -f $labviewInstallVersion, $bitness)
+            }
+            $labviewExecutablePath = Join-Path $installRoot 'LabVIEW.exe'
+            if (-not (Test-Path -Path $labviewExecutablePath -PathType Leaf)) {
+              throw "LabVIEW executable not found at $labviewExecutablePath"
+            }
+            $portResolution = Resolve-LabVIEWCliPort -Bitness $bitness -LabVIEWExecutablePath $labviewExecutablePath
+            Write-Host ("LabVIEWCLI close port: {0} (source: {1})" -f $portResolution.PortNumber, $portResolution.Source)
+            $closeResult = Invoke-LabVIEWCliWithConnectionRetry `
+              -OperationName ("CloseLabVIEW-{0}-bit-teardown" -f $bitness) `
+              -Arguments @(
+                '-OperationName', 'CloseLabVIEW',
+                '-LabVIEWPath', $labviewExecutablePath,
+                '-PortNumber', $portResolution.PortNumber.ToString()
+              ) `
+              -PrimaryPortNumber $portResolution.PortNumber `
+              -AllowImplicitPortFallback
+
+            if ($closeResult.ExitCode -ne 0) {
+              $attemptSummary = if ($closeResult.Attempts -and $closeResult.Attempts.Count -gt 0) {
+                $closeResult.Attempts -join '; '
+              } else {
+                'none'
+              }
+              throw ("LabVIEWCLI CloseLabVIEW failed with exit code {0}. Attempts: {1}" -f $closeResult.ExitCode, $attemptSummary)
+            }
+            break
+          }
+          default {
+            throw ("Unsupported close_executor '{0}'. Expected 'gcli' or 'labviewcli'." -f $closeExecutor)
+          }
+        }
     - name: Cleanup worktree
       if: ${{ inputs.cleanup_worktree == 'true' && always() }}
       shell: pwsh
@@ -106,3 +207,4 @@ runs:
           exit 0
         }
         pwsh -NoProfile -File $lockScript -Mode Release
+

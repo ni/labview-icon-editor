@@ -14,7 +14,7 @@ This document provides a collection of common **troubleshooting** scenarios (wit
    5. [No. 5: Dev Mode Still Enabled After Build](#no-5-dev-mode-still-enabled-after-build)
    6. [No. 6: Release Not Created](#no-6-release-not-created)
    7. [No. 7: Branch Protection Blocks Merge](#no-7-branch-protection-blocks-merge)
-   8. [No. 8: Incorrect Pre-Release Suffix (Alpha/Beta/RC)](#no-8-incorrect-pre-release-suffix-alphabetarc)
+   8. [No. 8: Incorrect Pre-Release Suffix (Legacy Alpha/Beta/RC Channels)](#no-8-incorrect-pre-release-suffix-legacy-alphabetarc-channels)
    9. [No. 9: Hotfix Not Tagged as Expected](#no-9-hotfix-not-tagged-as-expected)
    10. [No. 10: Double-Dash Parameters Not Recognized](#no-10-double-dash-parameters-not-recognized)
    11. [No. 11: Company/Author Fields Not Populating](#no-11-companyauthor-fields-not-populating)
@@ -22,6 +22,8 @@ This document provides a collection of common **troubleshooting** scenarios (wit
    13. [No. 13: Repository Forks Not Displaying Correct Metadata](#no-13-repository-forks-not-displaying-correct-metadata)
    14. [No. 14: Dev Mode Failure Missing Paths](#no-14-dev-mode-failure-missing-paths)
    15. [No. 15: Verify IE Paths Gate Fails in CI](#no-15-verify-ie-paths-gate-fails-in-ci)
+   16. [No. 16: Expected Job Is Skipped (Profile-Based Behavior)](#no-16-expected-job-is-skipped-profile-based-behavior)
+   17. [No. 17: PR Merge Blocked Despite Green Required Checks](#no-17-pr-merge-blocked-despite-green-required-checks)
 
 
 2. [FAQ](#faq)
@@ -44,7 +46,7 @@ This document provides a collection of common **troubleshooting** scenarios (wit
 
 ## Troubleshooting
 
-Below are 14 possible issues you might encounter, along with suggested steps to resolve them.
+Below are 17 possible issues you might encounter, along with suggested steps to resolve them.
 
 ### No. 1: LabVIEW Not Found on Runner
 
@@ -56,7 +58,7 @@ Below are 14 possible issues you might encounter, along with suggested steps to 
 - The environment variable or path to LabVIEW isn’t set correctly.
 
 **Solution**:
-1. Ensure you’ve actually installed LabVIEW on the machine (e.g., LabVIEW 2021 (21.0)).
+1. Ensure you’ve actually installed LabVIEW on the machine (e.g., LabVIEW 2026 (26.1)).
 2. Double-check your PATH or environment variables.  
 3. See `runner-setup-guide.md` for details on configuring the runner to locate LabVIEW.
 
@@ -90,7 +92,7 @@ Below are 14 possible issues you might encounter, along with suggested steps to 
 **Solution**:
 1. Make sure the label is exactly `major`, `minor`, or `patch` in lowercase (unless your workflow script also checks for capitalized labels).  
 2. Confirm you’re actually using a Pull Request event (not a direct push).  
-3. Check the CI Pipeline (Composite) logs for the **version** job’s “Determine bump type” step (from `.github/actions/compute-version`).
+3. Check the CI Pipeline logs for the **version** job’s “Determine bump type” step (from `.github/actions/compute-version`).
 
 ---
 
@@ -117,7 +119,7 @@ Below are 14 possible issues you might encounter, along with suggested steps to 
 
 **Possible Causes**:
 - You forgot to run the “disable” step of the Development Mode Toggle.  
-- Another step re-applied the `Set_Development_Mode.ps1` script.
+- A manual/local script re-applied `Set_Development_Mode.ps1`.
 
 **Solution**:
 1. Manually run the “Development Mode Toggle” workflow with `mode=disable`.  
@@ -131,51 +133,64 @@ Below are 14 possible issues you might encounter, along with suggested steps to 
 - The workflow completes, but you see no new release in GitHub’s “Releases” section.
 
 **Possible Causes**:
-- The composite pipeline only uploads artifacts and does not create releases automatically.
-- The build was triggered by a Pull Request, and your workflow logic only creates releases on “push” or merges to main.
+- The run did not include explicit publish intent (`workflow_dispatch` + publish inputs).
+- The publish step failed or was skipped due to eligibility, profile-specific gate checks, freshness requirements, assets, or API errors.
 
 **Solution**:
-1. Create releases manually through GitHub’s interface or configure a separate workflow to publish them.
-2. Check your workflow triggers if you expect another workflow to handle releases on certain branches.
-3. Confirm you have “Read and write” permissions for Actions in your repo settings.
+1. Identify the exact SHA you want to publish.
+2. Confirm the run is an eligible publish path: `workflow_dispatch` with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`.
+3. For `release-priority` (`workflow_dispatch` + `force_gcli_lunit=true`), confirm there is a successful `full` profile run on `develop` in the previous 24 hours.
+4. Inspect the `publish-gate` and `publish-prerelease` job logs for explicit failure/skip reason output.
+5. Inspect the `prerelease-publish-status` artifact for machine-readable failure details and required-asset validation results.
+
+Deterministic backfill command:
+```powershell
+$repo = pwsh -NoProfile -File .\Tooling\Resolve-GitHubRepo.ps1
+$mergeSha = gh pr view <pr-number> --repo $repo --json mergeCommit --jq .mergeCommit.oid
+gh workflow run ci.yml --repo $repo `
+  -f publish_prerelease=true `
+  -f expected_sha=$mergeSha `
+  -f strict_sha=true
+```
 
 ---
 
 ### No. 7: Branch Protection Blocks Merge
 
 **Symptoms**:
-- You can’t merge into `main` or `release-alpha/*`; GitHub says “Branch is protected.”
+- You can’t merge into `main`, `develop`, or `release/*`; GitHub says “Branch is protected.”
 
 **Possible Causes**:
 - Strict branch protection rules require approvals or passing checks before merging.
-- The [`issue-status`](../../.github/workflows/ci-composite.yml#issue-status) job determined the branch name or issue status was invalid, so downstream checks were skipped.
-- You’re lacking the required PR reviews or status checks.
+- The branch-protection required status-check contexts are misconfigured for the profile-aware CI contract.
 
 **Solution**:
 1. Have the required reviewers approve your Pull Request.
-2. Ensure all required status checks pass:
-   - [`issue-status`](../../.github/workflows/ci-composite.yml#issue-status) – verifies branch naming and issue status. If it fails or is skipped, downstream jobs won’t run.
-   - [`changes`](../../.github/workflows/ci-composite.yml#changes) – detects `.vipc` file changes.
-   - [`apply-deps`](../../.github/workflows/ci-composite.yml#apply-deps) – applies VIPC dependencies when needed.
-   - [`missing-in-project`](../../.github/workflows/ci-composite.yml#missing-in-project) – validates project file membership.
-   - [`Run Unit Tests`](../../.github/workflows/ci-composite.yml#test) – executes unit tests.
-   - [`Build VI Package`](../../.github/workflows/ci-composite.yml#build-vi-package) – produces the `.vip` artifact.
-3. Update your `CONTRIBUTING.md` to specify the merging rules so contributors know what’s needed.
+2. Ensure the required branch-protection status context is green:
+   - `CI Pipeline / Pipeline Contract`
+   - `CI Pipeline / Pipeline Contract` is companion-only and should remain non-required.
+3. Verify branch-protection configuration with:
+   - `pwsh -NoProfile -File .\Tooling\Test-CiBranchProtection.ps1`
+4. If branch protection is configured with stale per-job contexts, ask a repository admin to update required contexts to:
+   - `CI Pipeline / Pipeline Contract`
+   - Remove any required `CI Pipeline / Pipeline Contract` entry if present.
+5. Update your `CONTRIBUTING.md` to specify the merging rules so contributors know what’s needed.
 
 ---
 
-### No. 8: Incorrect Pre-Release Suffix (Alpha/Beta/RC)
+### No. 8: Incorrect Pre-Release Suffix (Legacy Alpha/Beta/RC Channels)
 
 **Symptoms**:
 - You expected a `-beta.<N>` suffix, but got `-alpha.<N>` or no suffix at all.
 
 **Possible Causes**:
-- Your branch name doesn’t match the required pattern: `release-beta/*`.  
-- The script that checks for alpha/beta/rc might not be updated for your custom naming.
+- Your repository intentionally uses legacy channel branch names and your branch name does not match the expected pattern (for example, `release-beta/*`).  
+- The script that checks legacy alpha/beta/rc suffixes is not updated for your custom naming.
 
 **Solution**:
-1. Rename your branch to the correct pattern: `release-beta/2.0`, `release-rc/2.0`, etc.  
-2. If you changed naming conventions, update your workflow logic to detect them (e.g., a RegEx match).
+1. If your repository uses legacy channels, rename your branch to the expected pattern (for example, `release-beta/2.0` or `release-rc/2.0`).  
+2. If your repository follows `develop` pre-release direction, ignore alpha/beta/rc suffix expectations and validate pre-release publication from `develop` merges instead.
+3. If you changed naming conventions, update version suffix detection logic accordingly.
 
 ---
 
@@ -206,7 +221,7 @@ Below are 14 possible issues you might encounter, along with suggested steps to 
 - The script has no parameter named `lv-ver` or `arch`, so passing `--lv-ver` or `--arch` triggers a parsing error.
 
 **Solution**:
-1. Remove or replace `--lv-ver` and `--arch` with valid single-dash parameters your script actually declares, such as `-LabVIEWVersion 2021` and `-SupportedBitness 64`.  
+1. Remove or replace `--lv-ver` and `--arch` with valid single-dash parameters your script actually declares, such as `-LabVIEWVersion <year>` (or omit it to use `.lvversion`) and `-SupportedBitness 64`.  
 2. If you really want `--lv-ver`, you must update the script’s `param()` block to accept that alias.
 
 ---
@@ -280,13 +295,67 @@ Below are 14 possible issues you might encounter, along with suggested steps to 
 - The job logs show missing paths or an archived `missing_IE_paths.txt` file.
 
 **Possible Causes**:
-- One or more LabVIEW Icon API files are missing in the LabVIEW 2021 (21.0) install.
+- One or more LabVIEW Icon API files are missing in the LabVIEW 2026 (26.1) install.
 - The runner is in development mode (missing `LabVIEW Icon API` or `lv_icon.lvlibp`).
 
 **Solution**:
 1. Open the “verify-iepaths-32-bit” or “verify-iepaths-64-bit” artifact attached to the failed job.
 2. Check the comma-separated list of missing paths in `missing_IE_paths.txt`.
 3. Restore the missing files (or revert dev mode) and re-run the workflow.
+
+---
+
+### No. 16: Expected Job Is Skipped (Profile-Based Behavior)
+
+**Symptoms**:
+- One or more jobs show `skipped`, but the workflow still proceeds to publish checks.
+- Common examples: `dev-mode-gate`, `unit-tests`, `build-ppl-x64`, `build-ppl-x86`, `build-vip`.
+
+**Possible Causes**:
+- The run used a different `ci_profile`:
+  - `release-priority` (`workflow_dispatch` + `force_gcli_lunit=true`) intentionally skips heavy self-hosted validation/build jobs.
+  - `pr-fast` (`pull_request`) keeps the jobs but uses 64-bit-only matrices for smoke/unit tests.
+  - `full` runs the full matrix and full self-hosted flow.
+- You are looking at `CI Pipeline` (`ci.yml`), which is a PR-only non-publishing companion workflow.
+
+**Solution**:
+1. Check `prerelease-context` outputs for `ci_profile`.
+2. For `release-priority`, confirm skipped jobs are from the intentional skip list and that required jobs (`run-metadata`, `prerelease-context`, `version`, container packed-library jobs, `codex-skill-layer-asset`, `publish-gate`, `publish-prerelease`, `pipeline-contract`) succeeded.
+3. If full validation is required, rerun without `force_gcli_lunit=true` (or use a `pull_request`/`push` run path).
+
+---
+
+### No. 17: PR Merge Blocked Despite Green Required Checks
+
+**Symptoms**:
+- Pull request is `MERGEABLE` but `BLOCKED` even though required checks are green.
+- `gh pr merge` fails with: “the base branch policy prohibits the merge.”
+
+**Evidence Pattern**:
+- `gh pr checks <pr-number>` shows required checks passing.
+- `gh run view <run-id> --json status,conclusion,jobs` shows a `pending` or `queued` workflow run with `jobs: []`.
+- PR merge state remains blocked until the stale pending run is canceled or cleared.
+
+**Incident Reference (2026-02-10)**:
+- Pull request: `#82`
+- Stale pending run: `21853308619` (`CI Pipeline`), head SHA `c5fc1ecf2175127cf4734cf7bde38ae9b648853c`
+- Older queued/in-progress run on same branch: `21852840202`
+- Merge commit after manual unblock: `aa5a705bc45f54f26f0b3b5ac0893958de4a3e5c`
+
+**Diagnostic Command Set**:
+```powershell
+gh pr view <pr-number> --json mergeStateStatus,mergeable,statusCheckRollup
+gh pr checks <pr-number>
+gh run list --branch <branch> --workflow "CI Pipeline"
+gh run view <run-id> --json status,conclusion,jobs
+```
+
+**Immediate Unblock Playbook**:
+1. Cancel stale pending run(s): `gh run cancel <run-id>`.
+2. Re-run stale failed required checks if present (use `gh run rerun <run-id> --failed`).
+3. If required check context is still stale, push one empty refresh commit.
+4. Re-check merge state and required contexts.
+5. Use `--admin` merge only as a last resort when required checks are green but policy remains blocked.
 
 ## FAQ
 
@@ -302,7 +371,7 @@ By default, the workflow calculates the build number with `git rev-list --count 
 ### Q2: How Do I Create a Release?
 
 **Answer**:
-The composite pipeline only uploads artifacts and does not create GitHub releases automatically. Create releases manually through the GitHub interface or set up a separate workflow dedicated to publishing them.
+Repository policy uses manual publish intent. Dispatch `ci.yml` with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`, then review `prerelease-publish-status` when troubleshooting.
 
 ---
 
@@ -330,7 +399,7 @@ Yes. In standard Gitflow, after merging a `hotfix/*` into `main`, you also merge
 ### Q6: What About Draft Releases?
 
 **Answer**:
-The composite pipeline doesn’t create releases, so draft releases are not generated. If you require a draft or published release, create it manually or configure a separate workflow to handle release creation.
+The prerelease contract currently publishes with `draft=false` and `prerelease=true`. If you need draft behavior instead, change the `publish-prerelease` payload in `.github/workflows/ci.yml` and update requirements/acceptance artifacts accordingly.
 
 ---
 
@@ -351,7 +420,7 @@ The Dev Mode Toggle scripts rely on a self-hosted runner context. If you’re tr
 ### Q9: Can I Use a Different LabVIEW Version?
 
 **Answer**:  
-CI usage is standardized on **LabVIEW 2021 (21.0), 32-bit and 64-bit**. Other versions aren’t supported for the default workflows. If you want to use a different version locally, you’ll need to fork and update the scripts/workflows to match that version.
+CI usage is standardized on **LabVIEW 2026 (26.1), 32-bit and 64-bit** as the minimum supported baseline. If you want to use a different version locally, keep `.lvversion` and workflow/script overrides aligned.
 
 ---
 
@@ -390,3 +459,4 @@ PowerShell **named parameters** typically start with a single dash (`-Parameter`
 
 **Answer**:  
 Absolutely. You can modify `$jsonObject` in your script to include new keys, such as `"Product Description"` or `"Special Internal ID"`. Just be sure that the VI that updates the `.vipb` file (`Modify_VIPB_Display_Information.vi`) knows how to handle those additional fields, or they might be ignored.
+
