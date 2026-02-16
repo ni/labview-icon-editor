@@ -10,7 +10,12 @@ mode="${LVIE_PARITY_MODE:-linux-container}"
 configuration="${LVIE_DOTNET_CONFIGURATION:-Release}"
 build_spec_raw="${LVIE_PARITY_BUILD_SPEC:-true}"
 run_psscriptanalyzer_raw="${LVIE_RUN_PSSCRIPTANALYZER:-true}"
+run_pylavi_raw="${LVIE_RUN_PYLAVI:-true}"
 pwsh_bin="${LVIE_PWSH_BIN:-pwsh}"
+pylavi_profile="${LVIE_PYLAVI_PROFILE:-strict}"
+pylavi_config_path="${LVIE_PYLAVI_CONFIG_PATH:-}"
+pylavi_report_only_raw="${LVIE_PYLAVI_REPORT_ONLY:-false}"
+pylavi_skip_version_gate_raw="${LVIE_PYLAVI_SKIP_VERSION_GATE:-false}"
 context_path="${LVIE_PARITY_CONTEXT_PATH:-$repo_root/TestResults/container-parity/${mode}-context.json}"
 
 if ! command -v "$dotnet_bin" >/dev/null 2>&1; then
@@ -57,6 +62,36 @@ run_powershell_lint() {
   )
 }
 
+run_pylavi_gate() {
+  local enabled_raw="${1:-true}"
+  if ! normalize_bool "$enabled_raw"; then
+    echo "Skipping pylavi vi_validate gate (LVIE_RUN_PYLAVI=${enabled_raw})"
+    return 0
+  fi
+
+  if ! command -v "$pwsh_bin" >/dev/null 2>&1; then
+    echo "ERROR: pwsh was not found on PATH (LVIE_PWSH_BIN=${pwsh_bin}); cannot run Tooling/Run-ViValidate.ps1." >&2
+    exit 1
+  fi
+
+  local vi_validate_args=(-NoProfile -File "./Tooling/Run-ViValidate.ps1" -ViValidateProfile "$pylavi_profile")
+  if [[ -n "$pylavi_config_path" ]]; then
+    vi_validate_args+=(-ViValidateConfigPath "$pylavi_config_path")
+  fi
+  if normalize_bool "$pylavi_report_only_raw"; then
+    vi_validate_args+=(-ViValidateReportOnly)
+  fi
+  if normalize_bool "$pylavi_skip_version_gate_raw"; then
+    vi_validate_args+=(-ViValidateSkipVersionGate)
+  fi
+
+  echo "Running pylavi vi_validate gate..."
+  (
+    cd "$repo_root"
+    "$pwsh_bin" "${vi_validate_args[@]}"
+  )
+}
+
 derive_lv_year() {
   local lv_path="$repo_root/.lvversion"
   if [[ ! -f "$lv_path" ]]; then
@@ -87,6 +122,7 @@ derive_lv_year() {
 }
 
 run_powershell_lint "$run_psscriptanalyzer_raw"
+run_pylavi_gate "$run_pylavi_raw"
 
 if [[ "$mode" == "linux-container" ]]; then
   if ! command -v docker >/dev/null 2>&1; then

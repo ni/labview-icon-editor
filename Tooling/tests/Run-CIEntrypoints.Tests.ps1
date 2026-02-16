@@ -27,7 +27,7 @@ Describe 'Run-CI parity entrypoint contract' {
         }
     }
 
-    It 'Run-CI.sh enforces explicit build-spec boolean forwarding' {
+    It 'Run-CI.sh enforces explicit build-spec boolean forwarding and required local gates' {
         (Test-Path -LiteralPath $script:runCiSh -PathType Leaf) | Should -BeTrue
         $content = Get-Content -Path $script:runCiSh -Raw
         $content | Should -Match '--build-spec'
@@ -35,5 +35,7 @@ Describe 'Run-CI parity entrypoint contract' {
         $content | Should -Match 'run_args\+=\(false\)'
         $content | Should -Match 'LVIE_RUN_PSSCRIPTANALYZER'
         $content | Should -Match 'Invoke-PSScriptAnalyzer\.ps1'
+        $content | Should -Match 'LVIE_RUN_PYLAVI'
+        $content | Should -Match 'Run-ViValidate\.ps1'
     }
 }
