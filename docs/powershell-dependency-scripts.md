@@ -4,7 +4,7 @@ This document lists the PowerShell scripts used to build, test, and distribute t
 
 Local entrypoints enforce short-path worktree usage by default. If a script fails because the repo is not under the worktree root, use `Tooling\New-CIWorktree.ps1` or `Tooling\Invoke-InWorktree.ps1`. Set `LVIE_SKIP_WORKTREE_ROOT_CHECK=1` or pass `-SkipWorktreeRootCheck` only when you intentionally want to bypass the guard.
 
-CI workflows can use a hybrid worktree model where `lvie-job-setup` resolves `LVIE_WORKTREE_ROOT` from `RUNNER_TEMP` (`worktree_root_mode: runner_temp`) while keeping runner contract roots (`LVIE_ARTIFACT_ROOT`, `LVIE_LOCK_ROOT`, `LVIE_LOG_ROOT`) under the stable runner work root. Local runs remain unchanged by default and continue to use `LVIE_WORKTREE_ROOT` or the local fallback (`C:\dev`).
+CI workflows can use a hybrid worktree model where `lvie-job-setup` resolves `LVIE_WORKTREE_ROOT` from `RUNNER_TEMP` (`worktree_root_mode: runner_temp`) while keeping runner contract roots (`LVIE_ARTIFACT_ROOT`, `LVIE_LOCK_ROOT`, `LVIE_LOG_ROOT`) under the stable runner work root. Local runs remain unchanged by default and continue to use `LVIE_WORKTREE_ROOT` or a repo-derived deterministic fallback (`<repo-context>\worktrees`).
 
 Per-run artifacts are written under `$WORKTREE_ROOT\artifacts\<runid>` when guardrails are active. Use `-RunId` or `-ArtifactRoot` to override, and `-CleanRoom` to purge known output folders before and after a run. Artifact roots are disabled by default inside GitHub Actions unless `LVIE_ENABLE_ARTIFACT_ROOT=1` (or an explicit `-ArtifactRoot`/`-RunId` is provided).
 
@@ -51,10 +51,10 @@ Canonical project-spec builder. Runs LabVIEWCLI `MassCompile` + source sync + `E
 Compatibility wrapper that forwards to `BuildProjectSpec.ps1` with packed-library defaults (`Editor Packed Library` -> `resource/plugins/lv_icon.lvlibp`). Deprecated and retained temporarily for compatibility.
 
 ## build_vip.ps1
-Modifies a `.vipb` file and builds the final VI Package with g-cli, using version data and display information provided by `Build.ps1`.
+Builds the final VI Package with VIPM CLI using the repository `.vipb` metadata and deterministic timeout/log handling.
 
 ## Close_LabVIEW.ps1
-Gracefully shuts down a running LabVIEW instance using g-cli's `QuitLabVIEW` command. Called throughout the pipeline to ensure LabVIEW exits cleanly.
+Gracefully shuts down a running LabVIEW instance using LabVIEWCLI `CloseLabVIEW` with strict port-contract resolution. Called throughout the pipeline to ensure deterministic LabVIEW shutdown.
 
 ## Invoke-MissingIEFilesFromLVInstall.ps1
 Runs `VerifyIEPaths.vi` via g-cli to validate the LabVIEW Icon API installation. The VI writes a status file to the repo root (default: `missing_IE_paths.txt`). An empty file indicates success; a comma-separated list of paths indicates missing files and should be treated as a failure. The script deletes any prior status file before running, waits for a new one (with timeout), and then deletes or archives it after reading. Use `-StatusFileArchiveDirectory` to preserve a copy. Set `-ConnectTimeoutMs`, `-ProcessTimeoutMs`, and `-StatusFileTimeoutMs` to control g-cli and status-file timing behavior.

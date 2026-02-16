@@ -98,7 +98,7 @@ pwsh -NoProfile -File "$repoRoot\Tooling\Invoke-VipBuild.ps1" `
 ## 6. Collect evidence
 
 - `builds/status/vip-build.json`
-- `builds/logs/gcli-build.log`
+- `builds/logs/vipm-build.log`
 - `builds/logs/vip/vipb-display-info.json` (or equivalent under artifact/log root)
 - Console output from runner-cli and `Invoke-VipBuild.ps1`
 

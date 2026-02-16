@@ -41,4 +41,23 @@ Describe 'Run-CI parity entrypoint contract' {
         $content | Should -Match 'LVIE_RUN_VI_ANALYZER'
         $content | Should -Match 'Run-ViAnalyzer\.ps1'
     }
+
+    It 'local entrypoint guidance no longer depends on C:\\dev defaults' {
+        $agentsPath = Join-Path (Split-Path -Parent $script:toolingRoot) 'AGENTS.md'
+        $dependencyDocPath = Join-Path (Split-Path -Parent $script:toolingRoot) 'docs\powershell-dependency-scripts.md'
+        $worktreeScriptPath = Join-Path $script:toolingRoot 'New-CIWorktree.ps1'
+
+        (Get-Content -Path $agentsPath -Raw) | Should -Not -Match 'Default to `C:\\dev`'
+        (Get-Content -Path $dependencyDocPath -Raw) | Should -Not -Match 'local fallback \(`C:\\dev`\)'
+        (Get-Content -Path $worktreeScriptPath -Raw) | Should -Not -Match 'defaults to C:\\dev'
+    }
+
+    It 'Close_LabVIEW uses LabVIEWCLI close semantics and avoids g-cli quit' {
+        $closeScriptPath = Join-Path (Split-Path -Parent $script:toolingRoot) '.github\actions\close-labview\Close_LabVIEW.ps1'
+        $content = Get-Content -Path $closeScriptPath -Raw
+        $content | Should -Match 'CloseLabVIEW'
+        $content | Should -Match 'LabVIEWCLI'
+        $content | Should -Not -Match 'QuitLabVIEW'
+        $content | Should -Not -Match 'g-cli'
+    }
 }

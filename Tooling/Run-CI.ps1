@@ -1475,7 +1475,7 @@ function Copy-LatestVipToBuild {
     return $targetPath
 }
 
-function Write-GCliBuildLogTail {
+function Write-VipBuildLogTail {
     param(
         [string]$RepoRoot,
         [int]$TailLines = 120,
@@ -1483,19 +1483,28 @@ function Write-GCliBuildLogTail {
     )
 
     $artifactRootResolved = if ([string]::IsNullOrWhiteSpace($ArtifactRoot)) { $env:LVIE_ARTIFACT_ROOT } else { $ArtifactRoot }
-    $logFile = if ([string]::IsNullOrWhiteSpace($artifactRootResolved)) {
-        Join-Path $RepoRoot 'builds/logs/gcli-build.log'
+    $logRoot = if ([string]::IsNullOrWhiteSpace($artifactRootResolved)) {
+        Join-Path $RepoRoot 'builds/logs'
     } else {
-        Join-Path $artifactRootResolved 'builds/logs/gcli-build.log'
+        Join-Path $artifactRootResolved 'builds/logs'
     }
-    if (-not (Test-Path -Path $logFile)) {
-        Write-Host ("g-cli build log not found at {0}" -f $logFile)
+    $primaryLog = Join-Path $logRoot 'vipm-build.log'
+    $legacyLog = Join-Path $logRoot 'gcli-build.log'
+    $logFile = if (Test-Path -Path $primaryLog) {
+        $primaryLog
+    } elseif (Test-Path -Path $legacyLog) {
+        $legacyLog
+    } else {
+        $null
+    }
+    if ([string]::IsNullOrWhiteSpace($logFile)) {
+        Write-Host ("VIP build log not found under {0}." -f $logRoot)
         return
     }
 
-    Write-Host ("---- g-cli build log (last {0} lines) ----" -f $TailLines)
+    Write-Host ("---- VIP build log (last {0} lines) ----" -f $TailLines)
     Get-Content -Path $logFile -Tail $TailLines | ForEach-Object { Write-Host $_ }
-    Write-Host "---- end g-cli build log ----"
+    Write-Host "---- end VIP build log ----"
 }
 
 function Get-RunnerCliRuntime {
@@ -2537,13 +2546,13 @@ try {
             }
         }
         catch {
-            Write-GCliBuildLogTail -RepoRoot $repoRoot -ArtifactRoot $artifactRootResolved
+            Write-VipBuildLogTail -RepoRoot $repoRoot -ArtifactRoot $artifactRootResolved
             throw
         }
 
         $vipOutput = Copy-LatestVipToBuild -RepoRoot $repoRoot -Since $vipBuildStart -ArtifactRoot $artifactRootResolved
         if (-not $vipOutput) {
-            Write-GCliBuildLogTail -RepoRoot $repoRoot -ArtifactRoot $artifactRootResolved
+            Write-VipBuildLogTail -RepoRoot $repoRoot -ArtifactRoot $artifactRootResolved
             throw "VIP build did not produce a .vip after $($vipBuildStart.ToString('yyyy-MM-dd HH:mm:ss'))."
         }
 

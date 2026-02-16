@@ -169,10 +169,6 @@ function Resolve-WorktreeRoot {
         $root = Join-Path $RepoRootResolved $root
     }
 
-    if ([string]::IsNullOrWhiteSpace($root)) {
-        return $null
-    }
-
     $ensureScript = Join-Path $RepoRootResolved 'Tooling\Ensure-WorktreeRoot.ps1'
     if (-not (Test-Path -Path $ensureScript)) {
         throw "Ensure-WorktreeRoot.ps1 not found at $ensureScript"

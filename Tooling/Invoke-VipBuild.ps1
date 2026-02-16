@@ -218,7 +218,8 @@ $retryDelayValue = if ($PSBoundParameters.ContainsKey('RetryDelaySeconds')) {
 $statusPath = Resolve-StatusPath -ExplicitPath $StatusPath -RepoRoot $resolvedRepoRoot
 $logDirectory = Resolve-LogDirectory -RepoRoot $resolvedRepoRoot
 $null = New-Item -Path $logDirectory -ItemType Directory -Force
-$gcliLog = Join-Path -Path $logDirectory -ChildPath 'gcli-build.log'
+$vipmLog = Join-Path -Path $logDirectory -ChildPath 'vipm-build.log'
+$legacyGcliLog = Join-Path -Path $logDirectory -ChildPath 'gcli-build.log'
 $resolvedDisplayInformationJsonPath = $null
 
 if (-not [string]::IsNullOrWhiteSpace($DisplayInformationJsonPath)) {
@@ -313,8 +314,18 @@ $vip = Get-LatestVip -RepoRoot $resolvedRepoRoot
 $vipPath = if ($vip) { $vip.FullName } else { $null }
 
 $reason = $null
-if (-not $success -and (Test-Path -Path $gcliLog)) {
-    $timeoutMatch = Select-String -Path $gcliLog -Pattern 'Timeout waiting on VIPM' -SimpleMatch -Quiet
+if (-not $success) {
+    $timeoutLogPath = if (Test-Path -Path $vipmLog) {
+        $vipmLog
+    } elseif (Test-Path -Path $legacyGcliLog) {
+        $legacyGcliLog
+    } else {
+        $null
+    }
+    $timeoutMatch = $false
+    if (-not [string]::IsNullOrWhiteSpace($timeoutLogPath)) {
+        $timeoutMatch = Select-String -Path $timeoutLogPath -Pattern 'Timeout waiting on VIPM' -SimpleMatch -Quiet
+    }
     if ($timeoutMatch) {
         $reason = 'vipm_timeout'
     }
@@ -334,7 +345,8 @@ $status = @{
     finished_at      = $finishedAt.ToString('o')
     duration_seconds = $durationSeconds
     vip_path         = $vipPath
-    gcli_log         = if (Test-Path -Path $gcliLog) { $gcliLog } else { $null }
+    vipm_log         = if (Test-Path -Path $vipmLog) { $vipmLog } else { $null }
+    gcli_log         = if (Test-Path -Path $legacyGcliLog) { $legacyGcliLog } else { $null }
     vipm_logs        = if ($vipmLogsCopied) { (Join-Path $logDirectory 'vipm') } else { $null }
     repo_root        = $resolvedRepoRoot
 }

@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Resolves paths, merges version details into DisplayInformation JSON, and
-    calls g-cli to modify the VIPB file and create the final VI package.
+    invokes VIPM CLI to build the final VI package.
 
 .PARAMETER SupportedBitness
     LabVIEW bitness for the build ("32" or "64").
@@ -275,50 +275,79 @@ if (Test-Path -Path $vipFullPath) {
     Remove-Item -Path $vipFullPath -Force -ErrorAction SilentlyContinue
 }
 
-# 6) Construct reusable g-cli arguments
-$gcliArgs = @(
-    "--lv-ver", $LabVIEWVersion.ToString(),
-    "--arch", $SupportedBitness,
-    "--connect-timeout", "120000",
-    "--kill",
-    "--kill-timeout", "20000",
-    "--verbose",
-    "vipb", "--",
-    "--buildspec", $ResolvedVIPBPath,
-    "-v", "$Major.$Minor.$Patch.$Build",
-    "--release-notes", $ResolvedReleaseNotesFile,
-    "--timeout", $VipmTimeoutSeconds.ToString()
+# 6) Construct reusable VIPM CLI arguments
+$vipmCommand = Get-Command vipm -ErrorAction SilentlyContinue
+if (-not $vipmCommand) {
+    $errorObject = [PSCustomObject]@{
+        error = "VIPM CLI is not available on PATH."
+    }
+    $errorObject | ConvertTo-Json -Depth 10
+    exit 1
+}
+
+$vipmArgs = @(
+    '--labview-version', $LabVIEWVersion.ToString(),
+    '--labview-bitness', $SupportedBitness,
+    'build',
+    $ResolvedVIPBPath
 )
 
-$prettyCommand = "g-cli " + ($gcliArgs -join ' ')
+$prettyCommand = "{0} {1}" -f $vipmCommand.Source, ($vipmArgs -join ' ')
 Write-Output "Base build command:"
 Write-Output $prettyCommand
+Write-Output ("Release notes source: {0}" -f $ResolvedReleaseNotesFile)
+Write-Output ("Build metadata: version={0}.{1}.{2}.{3} commit={4}" -f $Major, $Minor, $Patch, $Build, $Commit)
 
 # 7) Execute the command once with log capture
-$logFile = Join-Path -Path $LogDirectory -ChildPath "gcli-build.log"
-Write-Host "Starting g-cli build. Logs: $logFile"
+$logFile = Join-Path -Path $LogDirectory -ChildPath "vipm-build.log"
+Write-Host "Starting VIPM CLI build. Logs: $logFile"
 
-try {
-    & g-cli @gcliArgs 2>&1 | Tee-Object -FilePath $logFile
-}
-catch {
-    $_ | Out-String | Tee-Object -FilePath $logFile -Append | Out-Null
-    $LASTEXITCODE = 1
+$runnerHelper = Join-Path -Path $ResolvedRepoRoot -ChildPath 'Tooling\support\GcliRunner.ps1'
+if (-not (Test-Path -Path $runnerHelper -PathType Leaf)) {
+    $errorObject = [PSCustomObject]@{
+        error = "Command runner helper not found at $runnerHelper."
+    }
+    $errorObject | ConvertTo-Json -Depth 10
+    exit 1
 }
 
-if ($LASTEXITCODE -ne 0) {
+. $runnerHelper
+
+$timeoutMs = [int]([Math]::Min([long]$VipmTimeoutSeconds * 1000, 2147483647))
+$commandResult = Invoke-GCliCommand -ExecutablePath $vipmCommand.Source -Arguments $vipmArgs -TimeoutMs $timeoutMs
+$combinedOutput = @()
+if ($commandResult.OutputLines) {
+    $combinedOutput += @($commandResult.OutputLines)
+}
+if ($commandResult.ErrorLines) {
+    $combinedOutput += @($commandResult.ErrorLines)
+}
+if ($combinedOutput.Count -gt 0) {
+    $combinedOutput | Set-Content -Path $logFile -Encoding utf8
+} else {
+    '' | Set-Content -Path $logFile -Encoding utf8
+}
+
+$effectiveExitCode = if ($commandResult.TimedOut) { 124 } else { [int]$commandResult.ExitCode }
+if ($commandResult.TimedOut) {
+    $timeoutLine = ("Timeout waiting on VIPM after {0} seconds." -f $VipmTimeoutSeconds)
+    Add-Content -Path $logFile -Value $timeoutLine
+    Write-Warning $timeoutLine
+}
+
+if ($effectiveExitCode -ne 0) {
     if (Test-Path $logFile) {
-        Write-Host ("---- g-cli build log ({0}) ----" -f $logFile)
+        Write-Host ("---- VIPM CLI build log ({0}) ----" -f $logFile)
         Get-Content -Path $logFile | ForEach-Object { Write-Host $_ }
-        Write-Host ("---- end g-cli build log ----")
+        Write-Host ("---- end VIPM CLI build log ----")
     }
     else {
-        Write-Host ("g-cli build log not found at {0}" -f $logFile)
+        Write-Host ("VIPM CLI build log not found at {0}" -f $logFile)
     }
 
     $errorObject = [PSCustomObject]@{
-        error    = "g-cli build failed."
-        exitCode = $LASTEXITCODE
+        error    = if ($commandResult.TimedOut) { "VIPM CLI build timed out." } else { "VIPM CLI build failed." }
+        exitCode = $effectiveExitCode
         log      = $logFile
     }
     $errorObject | ConvertTo-Json -Depth 10

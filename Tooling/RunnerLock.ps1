@@ -105,7 +105,12 @@ function Resolve-LockRoot {
         return $env:LVIE_WORKTREE_ROOT
     }
 
-    return 'C:\dev'
+    $ensureWorktreeScript = Join-Path $PSScriptRoot 'Ensure-WorktreeRoot.ps1'
+    if (-not (Test-Path -Path $ensureWorktreeScript -PathType Leaf)) {
+        throw "Ensure-WorktreeRoot.ps1 not found at '$ensureWorktreeScript'."
+    }
+
+    return (& $ensureWorktreeScript)
 }
 
 function Get-LockMetadataRecord {
