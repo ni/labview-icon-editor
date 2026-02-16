@@ -19,6 +19,11 @@ Invoke **`RunUnitTests.ps1`** to execute LabVIEW unit tests via **LabVIEWCLI** (
     project_path: ${{ env.REPO_ROOT }}/lv_icon_editor.lvproj
 ```
 
+## Execution vs Parse Modes
+- **Execution mode (default):** runs unit tests and requires `-ProjectPath`.
+- **Parse-only mode:** pass `-SkipGcli` to validate an existing `UnitTestReport.xml` without executing tests.
+- Recommended parse-only entrypoint: `runner-cli lunit validate`.
+
 ## Prerequisites
 - `LabVIEWCLI` is available on `PATH`.
 - `g-cli` is available on `PATH` only if fallback mode is enabled.

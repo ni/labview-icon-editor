@@ -285,7 +285,7 @@ components remain unchanged and only the build number increases.
       $report = Join-Path $env:REPO_ROOT '.github/actions/run-unit-tests/UnitTestReport.xml'
       & g-cli --lv-ver $env:LABVIEW_VERSION_YEAR --arch ${{ matrix.bitness }} lunit -- -r $report "$env:PROJECT_PATH"
       $gcliExit = $LASTEXITCODE
-      & pwsh -NoProfile -File .github/actions/run-unit-tests/RunUnitTests.ps1 -LabVIEWVersion $env:LABVIEW_VERSION_YEAR -SupportedBitness ${{ matrix.bitness }} -ReportPath $report
+      & dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj --configuration Release -- lunit validate --repo-root "$env:REPO_ROOT" --labview-version $env:LABVIEW_VERSION_YEAR --bitness ${{ matrix.bitness }} --report-path "$report"
       $parserExit = $LASTEXITCODE
       if ($gcliExit -ne 0) { exit $gcliExit }
       exit $parserExit

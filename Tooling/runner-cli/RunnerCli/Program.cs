@@ -834,7 +834,7 @@ missingCmd.SetHandler((InvocationContext context) =>
 // ── lunit run/validate ────────────────────────────────────────────
 var lunitCmd = new Command("lunit", "Run and validate LUnit workflows using existing script contracts.");
 var lunitRunCmd = new Command("run", "Run g-cli LUnit then parse/validate UnitTestReport.xml.");
-var lunitValidateCmd = new Command("validate", "Validate UnitTestReport.xml using RunUnitTests.ps1 parser mode.");
+var lunitValidateCmd = new Command("validate", "Validate UnitTestReport.xml using RunUnitTests.ps1 parse-only mode.");
 
 var lunitYearOption = new Option<string>(
     name: "--year",

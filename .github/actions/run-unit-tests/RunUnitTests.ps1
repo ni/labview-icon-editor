@@ -19,11 +19,11 @@
     Required path to the LabVIEW project file to execute tests against.
 
 .PARAMETER ReportPath
-    Optional path to an existing UnitTestReport.xml. When provided with -SkipGcli,
-    parsing runs without invoking external test execution.
+    Optional path to UnitTestReport.xml.
+    In parse mode (-SkipGcli), this points to an existing report to validate.
 
 .PARAMETER SkipGcli
-    Compatibility switch name. Skips external test execution and parses an existing report.
+    Parse mode switch. Skips external test execution and validates an existing report.
 
 .PARAMETER ConnectTimeoutMs
     Compatibility parameter kept for callers that still pass this value.
@@ -42,14 +42,14 @@
 [CmdletBinding(DefaultParameterSetName = 'Run')]
 param(
     [Parameter(Mandatory = $false, ParameterSetName = 'Run')]
-    [Parameter(Mandatory = $false, ParameterSetName = 'ReportOnly')]
+    [Parameter(Mandatory = $false, ParameterSetName = 'Parse')]
     [AllowNull()]
     [AllowEmptyString()]
     [string]
     $LabVIEWVersion,
 
     [Parameter(Mandatory = $true, ParameterSetName = 'Run')]
-    [Parameter(Mandatory = $true, ParameterSetName = 'ReportOnly')]
+    [Parameter(Mandatory = $true, ParameterSetName = 'Parse')]
     [ValidateSet("32","64")]
     [string]
     $SupportedBitness,
@@ -58,21 +58,21 @@ param(
     [string]
     $ProjectPath,
 
-    [Parameter(Mandatory = $true, ParameterSetName = 'ReportOnly')]
+    [Parameter(Mandatory = $true, ParameterSetName = 'Parse')]
     [switch]
     $SkipGcli,
 
     [Parameter(Mandatory = $false, ParameterSetName = 'Run')]
-    [Parameter(Mandatory = $false, ParameterSetName = 'ReportOnly')]
+    [Parameter(Mandatory = $false, ParameterSetName = 'Parse')]
     [string]
     $ReportPath,
 
     [Parameter(Mandatory = $false, ParameterSetName = 'Run')]
-    [Parameter(Mandatory = $false, ParameterSetName = 'ReportOnly')]
+    [Parameter(Mandatory = $false, ParameterSetName = 'Parse')]
     [string]$WorktreeRoot,
 
     [Parameter(Mandatory = $false, ParameterSetName = 'Run')]
-    [Parameter(Mandatory = $false, ParameterSetName = 'ReportOnly')]
+    [Parameter(Mandatory = $false, ParameterSetName = 'Parse')]
     [switch]$SkipWorktreeRootCheck,
 
     [Parameter(Mandatory = $false, ParameterSetName = 'Run')]
@@ -155,25 +155,35 @@ if (-not (Test-Path -Path $labviewExecutableHelper)) {
 $AbsoluteProjectPath = $null
 
 if ($PSCmdlet.ParameterSetName -eq 'Run') {
-    if (Test-Path $ProjectPath) {
+    if ([string]::IsNullOrWhiteSpace($ProjectPath)) {
+        $Script:OriginalExitCode = 3
+        $Script:TestsHadFailures = $true
+        $Script:ParseError = "ProjectPath is required in run mode."
+        throw "ProjectPath is required in run mode."
+    }
+
+    if (Test-Path -Path $ProjectPath -PathType Leaf) {
         $AbsoluteProjectPath = (Resolve-Path -Path $ProjectPath).Path
     } else {
-        Write-Warning "Provided ProjectPath does not exist: $ProjectPath"
         $Script:OriginalExitCode = 3
         $Script:TestsHadFailures = $true
         $Script:ParseError = "ProjectPath does not exist: $ProjectPath"
+        throw "Provided ProjectPath does not exist: $ProjectPath"
     }
 }
 
-$Script:SkipRun = ($PSCmdlet.ParameterSetName -eq 'ReportOnly') -or ($null -eq $AbsoluteProjectPath)
+$Script:SkipRun = ($PSCmdlet.ParameterSetName -eq 'Parse')
 
 if ($AbsoluteProjectPath) {
     Write-Host "Using LabVIEW project file: $AbsoluteProjectPath"
 } else {
-    if ($PSCmdlet.ParameterSetName -eq 'ReportOnly') {
-        Write-Host "Project path not set; running in report-only mode."
+    if ($PSCmdlet.ParameterSetName -eq 'Parse') {
+        Write-Host "Project path is not required in parse mode."
     } else {
-        Write-Warning "Project path not set; skipping unit test execution."
+        $Script:OriginalExitCode = 3
+        $Script:TestsHadFailures = $true
+        $Script:ParseError = "ProjectPath resolution failed in run mode."
+        throw "ProjectPath resolution failed in run mode."
     }
 }
 
@@ -181,7 +191,7 @@ if ($AbsoluteProjectPath) {
 function Setup {
     Write-Host "=== Setup ==="
     if ($Script:SkipRun) {
-        Write-Host "Skipping unit test execution; report-only mode."
+        Write-Host "Skipping unit test execution; parse mode selected."
         return
     }
     $reportDir = Split-Path -Parent $ReportPath
@@ -843,12 +853,16 @@ function Resolve-LUnitBackendMode {
 # ------------------------  MAIN SEQUENCE  ----------------------
 function MainSequence {
     Write-Host "`n=== MainSequence ==="
-    Write-Host "Running unit tests for LabVIEW $labviewYear ($SupportedBitness-bit)"
-    Write-Host "Project Path: $AbsoluteProjectPath"
+    if ($Script:SkipRun) {
+        Write-Host "Validating existing unit test report for LabVIEW $labviewYear ($SupportedBitness-bit)"
+    } else {
+        Write-Host "Running unit tests for LabVIEW $labviewYear ($SupportedBitness-bit)"
+        Write-Host "Project Path: $AbsoluteProjectPath"
+    }
     Write-Host "Report will be saved at: $ReportPath"
 
     if ($Script:SkipRun) {
-        Write-Host "Skipping unit test execution."
+        Write-Host "Parse mode selected; skipping unit test execution and validating existing report."
         return
     }
 
