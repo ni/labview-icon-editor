@@ -72,7 +72,7 @@ Describe 'Codex skill layer helpers' {
             LockPath = Join-Path (Split-Path -Parent $script:toolingRoot) 'Tooling/codex-skill-layer.lock.json'
             Lock = [pscustomobject]@{
                 repo = 'example/repo'
-                tag = 'v0.4.1'
+                tag = 'v1.0.0'
                 asset_name = 'lvie-codex-skill-layer-installer.exe'
                 sha256 = 'deadbeef'
                 license_spdx = '0BSD'
@@ -87,7 +87,7 @@ Describe 'Codex skill layer helpers' {
                 )
             }
             LayerRoot = Join-Path $TestDrive 'installed'
-            VersionRoot = Join-Path (Join-Path $TestDrive 'installed') 'v0.4.1'
+            VersionRoot = Join-Path (Join-Path $TestDrive 'installed') 'v1.0.0'
         }
 
         function global:gh {
