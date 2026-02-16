@@ -315,7 +315,7 @@ function Invoke-PublishWorkflowDispatch {
     )
 
     $dispatchArgs = @(
-        'workflow', 'run', 'ci-composite.yml',
+        'workflow', 'run', 'ci.yml',
         '--repo', $RepoName,
         '-f', 'publish_prerelease=true',
         '-f', ("expected_sha={0}" -f $Sha),
@@ -337,7 +337,7 @@ function Resolve-DispatchedRun {
         $listArgs = @(
             'run', 'list',
             '--repo', $RepoName,
-            '--workflow', 'ci-composite.yml',
+            '--workflow', 'ci.yml',
             '--event', 'workflow_dispatch',
             '--json', 'databaseId,headSha,url,status,createdAt',
             '--limit', '20'

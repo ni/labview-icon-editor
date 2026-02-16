@@ -51,10 +51,10 @@ Review the scan results in the GitHub Actions logs for your experiment branch. I
 Your experiment branch doesn’t trigger CI jobs after pushing or opening a PR.
 
 **Cause**
-The branch name might not match the workflow’s trigger patterns, or the workflow is disabled in the repository settings. Another common cause is that the push/PR event doesn’t match the configured branches in `ci-composite.yml`.
+The branch name might not match the workflow’s trigger patterns, or the workflow is disabled in the repository settings. Another common cause is that the push/PR event doesn’t match the configured branches in `ci.yml`.
 
 **Solution (One Paragraph)**
-Confirm the branch name matches the patterns in `.github/workflows/ci-composite.yml` (for example, `feature/*`, `release/*`, `hotfix/*`, or `main`/`develop`). Verify the workflow is enabled in **Actions** settings and that the event type matches (push vs. pull_request). If needed, run the workflow manually with **workflow_dispatch** to validate the pipeline end-to-end.
+Confirm the branch name matches the patterns in `.github/workflows/ci.yml` (for example, `feature/*`, `release/*`, `hotfix/*`, or `main`/`develop`). Verify the workflow is enabled in **Actions** settings and that the event type matches (push vs. pull_request). If needed, run the workflow manually with **workflow_dispatch** to validate the pipeline end-to-end.
 
 ---
 

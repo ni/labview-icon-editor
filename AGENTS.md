@@ -182,7 +182,7 @@ Notes:
 - Use `-Name` to label the worktree directory.
 - Use `-WorktreeRoot` (or `LVIE_WORKTREE_ROOT`) to override the default.
 
-## CI worktree naming (ci-composite.yml)
+## CI worktree naming (ci.yml)
 CI jobs create short-path worktrees under `LVIE_WORKTREE_ROOT` with a deterministic name:
 - `ci-<workflowhash>-<jobhash>-<bitness>-<runid>-<attempt>`
 - Some workflows insert an extra variant token (e.g. LabVIEW version) between `<jobhash>` and `<bitness>`.
@@ -211,11 +211,11 @@ LabVIEW workflows are serialized on the shared self-hosted runner label to avoid
 
 Notes:
 - Workflows share a concurrency group keyed by repository + runner label (e.g., `labview-<repo>-self-hosted-windows-lv-ie`).
-- Missing-in-project is inlined in `ci-composite.yml` to avoid reusable workflow skips; the standalone workflow is manual only.
+- Missing-in-project is inlined in `ci.yml` to avoid reusable workflow skips; the standalone workflow is manual only.
 - Self-hosted LabVIEW jobs acquire a runner lock at `<lock_root>\labview-runner.lock` via `Tooling\RunnerLock.ps1`. The lock auto-expires stale entries (lease + optional GitHub run status check) and logs owner metadata. Env overrides: `LVIE_LOCK_ROOT`, `LVIE_RUNNER_LOCK_TIMEOUT_SECONDS`, `LVIE_RUNNER_LOCK_LEASE_SECONDS`, `LVIE_RUNNER_LOCK_STALE_SECONDS`, `LVIE_RUNNER_LOCK_GITHUB_CHECK`, `LVIE_RUNNER_LOCK_GITHUB_MIN_AGE_SECONDS`, `LVIE_RUNNER_LOCK_GITHUB_CHECK_INTERVAL_SECONDS`.
 
 ## Local CI Parity (recommended)
-Run the local parity script that mirrors `ci-composite.yml` (preferred entrypoint is the worktree orchestrator):
+Run the local parity script that mirrors `ci.yml` (preferred entrypoint is the worktree orchestrator):
 ```
 pwsh -NoProfile -File .\Tooling\Invoke-WorktreeOrchestrator.ps1 `
   -Run `
@@ -282,7 +282,7 @@ pwsh -NoProfile -File .\Tooling\Invoke-BeltAndSuspendersCI.ps1 `
 
 What it does:
 - Runs `Run-CICompositeLocal-Auto.ps1` in standardized local mode (`-SuccessTarget ppl -SkipVerifyIEPaths -SkipMissingInProject -SkipBuildVip`) unless `-SkipLocalParity` is set.
-- Dispatches `CI Pipeline (Composite)` for the exact target SHA via a temp `ci-run/*` branch.
+- Dispatches `CI Pipeline` for the exact target SHA via a temp `ci-run/*` branch.
 - Waits for completion and runs `Tooling\Invoke-CiDebtAnalysis.ps1` automatically on non-success.
 
 Useful switches:

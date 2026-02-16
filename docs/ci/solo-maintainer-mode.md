@@ -16,7 +16,7 @@ Date adopted: **2026-02-11**
 ## Publish Policy
 
 - Publish model: **manual publish intent**
-- `ci-composite.yml` does not auto-publish prereleases from `push` events.
+- `ci.yml` does not auto-publish prereleases from `push` events.
 - Prerelease dispatch requires:
   - `workflow_dispatch`
   - `publish_prerelease=true`
@@ -27,8 +27,8 @@ Date adopted: **2026-02-11**
 
 For protected integration branches in solo mode, require only:
 
-- `CI Pipeline (Composite) / Pipeline Contract`
-- `CI Pipeline (No Smoke) / Pipeline Contract`
+- `CI Pipeline / Pipeline Contract`
+- `CI Pipeline / Pipeline Contract`
 
 No reviewer count is required in branch protection for solo-maintainer operation.
 

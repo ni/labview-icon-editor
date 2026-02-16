@@ -657,7 +657,7 @@ var tokenOption = new Option<string?>(
     description: "GitHub token (or set GH_TOKEN/GITHUB_TOKEN).");
 var workflowOption = new Option<string>(
     name: "--workflow",
-    getDefaultValue: () => "ci-composite.yml",
+    getDefaultValue: () => "ci.yml",
     description: "Workflow file name to query.");
 var branchOption = new Option<string?>(
     name: "--branch",
@@ -704,7 +704,7 @@ pylaviFetchCmd.SetHandler((InvocationContext context) =>
         var repoRoot = context.ParseResult.GetValueForOption(repoRootOption);
         var repo = context.ParseResult.GetValueForOption(repoOption);
         var token = context.ParseResult.GetValueForOption(tokenOption);
-        var workflow = context.ParseResult.GetValueForOption(workflowOption) ?? "ci-composite.yml";
+        var workflow = context.ParseResult.GetValueForOption(workflowOption) ?? "ci.yml";
         var branch = context.ParseResult.GetValueForOption(branchOption);
         var sha = context.ParseResult.GetValueForOption(fetchShaOption);
         var runId = context.ParseResult.GetValueForOption(runIdOption);

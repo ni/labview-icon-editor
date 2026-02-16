@@ -65,7 +65,7 @@ By adopting these patterns, maintainers can run alpha, beta, and RC pipelines in
   - `main`, `develop`, `hotfix/*` produce final releases with no alpha/beta/rc suffix.
   - No label => major/minor/patch remain unchanged; build increments only.
 
-The accompanying GitHub Actions workflow (`ci-composite.yml`) lists `release-alpha/*`, `release-beta/*`, and `release-rc/*` in its trigger patterns so commits or pull requests to these branches automatically run this pipeline.
+The accompanying GitHub Actions workflow (`ci.yml`) lists `release-alpha/*`, `release-beta/*`, and `release-rc/*` in its trigger patterns so commits or pull requests to these branches automatically run this pipeline.
 
 To enable these pre-release branches, ensure the workflow's `on.push.branches` and `on.pull_request.branches` sections include the patterns:
 
@@ -99,7 +99,7 @@ Use whichever patterns best fit your project’s branching model. If you prefer 
 <a name="workflow-steps"></a>
 ## **4. Workflow Steps**
 
-Below is a **high-level** breakdown. In your `.github/workflows/ci-composite.yml`, these steps typically appear in order:
+Below is a **high-level** breakdown. In your `.github/workflows/ci.yml`, these steps typically appear in order:
 
 <a name="fetch--determine-version"></a>
 ### **Fetch & Determine Version**

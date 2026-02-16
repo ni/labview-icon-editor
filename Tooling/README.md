@@ -24,12 +24,12 @@ Common entrypoints:
 - `Invoke-BeltAndSuspendersCI.ps1` (recommended proactive loop)
   Canonical "belt and suspenders" flow for exact-SHA confidence:
   1) local parity auto-loop until PPL success target is met,
-  2) dispatch `ci-composite.yml` for the same SHA,
+  2) dispatch `ci.yml` for the same SHA,
   3) wait for completion and run CI debt analysis on failure.
   Example: `pwsh -NoProfile -File .\\Tooling\\Invoke-BeltAndSuspendersCI.ps1 -Sha HEAD`
   Useful switches: `-SkipLocalParity`, `-FullLocalParity`, `-DispatchCleanupRemote`, `-CiDebtFailOnUnknown`.
 - `Run-CICompositeForCommit.ps1`
-  Dispatches `CI Pipeline (Composite)` for an explicit SHA via a temporary branch.
+  Dispatches `CI Pipeline` for an explicit SHA via a temporary branch.
   Example: `pwsh -NoProfile -File .\\Tooling\\Run-CICompositeForCommit.ps1 -Sha <commit>`
 - `Invoke-WorktreeOrchestrator.ps1`
   Resolves worktree policy/root, builds runner-cli in the selected worktree, and can invoke local CI parity.

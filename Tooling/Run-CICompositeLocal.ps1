@@ -4,7 +4,7 @@
     Runs a local, CI-composite parity sequence for LabVIEW Icon Editor.
 
 .DESCRIPTION
-    Executes the key LabVIEW steps from ci-composite.yml locally:
+    Executes the key LabVIEW steps from ci.yml locally:
     - Verify IE Paths gate (version 32/64)
     - Audit VIPC dependencies (version 32/64)
     - Optional VIPC apply diagnostics (version 32/64)

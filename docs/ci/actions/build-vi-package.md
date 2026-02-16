@@ -93,12 +93,12 @@ It eliminates confusion around versioning, keeps everything in one pipeline, and
 ## 3. **Action Configuration & Usage**
 
 ### 3.1 How the Action Is Triggered
-The `build-vi-package` directory defines a **composite action**. It does not listen for events on its own; instead, the CI workflow in [`ci-composite.yml`](../../../.github/workflows/ci-composite.yml) invokes it.
-That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Early jobs like `run-metadata`, `prerelease-context`, `version-gate`, and `changes` run on GitHub-hosted `ubuntu-latest`. Windows self-hosted jobs handle LabVIEW validation and packaging (`dev-mode-gate`, `unit-tests`, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) when the active `ci_profile` requires them. Current branch filters for push/PR triggers are `main`, `develop`, `release/*`, `feature/*`, and `hotfix/*` in `ci-composite.yml`.
+The `build-vi-package` directory defines a **composite action**. It does not listen for events on its own; instead, the CI workflow in [`ci.yml`](../../../.github/workflows/ci.yml) invokes it.
+That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Early jobs like `run-metadata`, `prerelease-context`, `version-gate`, and `changes` run on GitHub-hosted `ubuntu-latest`. Windows self-hosted jobs handle LabVIEW validation and packaging (`dev-mode-gate`, `unit-tests`, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) when the active `ci_profile` requires them. Current branch filters for push/PR triggers are `main`, `develop`, `release/*`, `feature/*`, and `hotfix/*` in `ci.yml`.
 Companion workflow note: [`ci.yml`](../../../.github/workflows/ci.yml) is PR-only (`pull_request`) and intentionally omits publish-path jobs.
 
 ### 3.2 Configurable Inputs / Parameters
-`ci-composite.yml` calls this action and provides all required inputs automatically. When invoking
+`ci.yml` calls this action and provides all required inputs automatically. When invoking
 `build-vi-package` from another workflow, supply the following parameters
 (see [action.yml](../../../.github/actions/build-vi-package/action.yml) for details):
 
@@ -119,13 +119,13 @@ The action automatically uses the first `.vipb` file found in `.github/actions/b
 
 The `major`, `minor`, and `patch` inputs are derived from pull-request labels (`major`,
 `minor`, `patch`) by the `version` job (which runs the `compute-version` action) in
-`ci-composite.yml`. If a pull request lacks these labels, the `compute-version` action
+`ci.yml`. If a pull request lacks these labels, the `compute-version` action
 defaults to bumping the patch version. For direct pushes without labels, the version
 components remain unchanged and only the build number increases.
 
 ### 3.3 Customization & Fork Setup
 - **Fork Setup**:
-  1. **Copy** the workflow file (`.github/workflows/ci-composite.yml`) into your fork.
+  1. **Copy** the workflow file (`.github/workflows/ci.yml`) into your fork.
   2. **Update** any references to the official repo name (`ni/labview-icon-editor`) if your fork is named differently.
  3. **Self-Hosted Runner**: Confirm your runner uses the `self-hosted-windows-lv-ie` label (or the value set in `LVIE_RUNNER_LABEL`) or update `runs-on` to match your runner’s labels.
   4. **Write Permissions**: In fork settings → Actions → General, ensure “Workflow Permissions” = “Read and write.”
@@ -227,7 +227,7 @@ components remain unchanged and only the build number increases.
 
 ### 6.4 Delegating Workflow Administration
 - If multiple maintainers handle the Action:
-  1. Document who can change the `.github/workflows/ci-composite.yml` file.
+  1. Document who can change the `.github/workflows/ci.yml` file.
   2. Decide if changes to the workflow require a PR review or certain status checks.
 
 
@@ -265,7 +265,7 @@ components remain unchanged and only the build number increases.
 
 
 ### 8.1 Fork Testing
-1. **Fork the Repo**: Copy `.github/workflows/ci-composite.yml` to your fork.
+1. **Fork the Repo**: Copy `.github/workflows/ci.yml` to your fork.
 2. **Push Changes**: Create or modify a branch in your fork.
 3. **Open PR (optional)**: If you label it, watch the logs to see if the version increments properly.
 4. **Check Artifacts**: Ensure a `.vip` file is built and uploaded as an artifact for your run.

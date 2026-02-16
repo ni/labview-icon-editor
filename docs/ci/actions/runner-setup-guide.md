@@ -56,13 +56,13 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
    - (Optional) Toggle LabVIEW dev mode (`Set_Development_Mode.ps1` or `RevertDevelopmentMode.ps1`) via the **Development Mode Toggle** workflow.
 
 5. **Run Tests**
-    - Run tests using **CI Pipeline (Composite)**.
+    - Run tests using **CI Pipeline**.
     - `pull_request` runs use the `pr-fast` profile (64-bit smoke/missing/unit).
     - `workflow_dispatch` with `force_gcli_lunit=true` uses `release-priority` and skips heavy self-hosted validation jobs.
-    - **CI Pipeline (No Smoke)** (`.github/workflows/ci.yml`) runs on `pull_request` only as a companion signal and intentionally excludes publish-path jobs.
+    - **CI Pipeline** (`.github/workflows/ci.yml`) runs on `pull_request` only as a companion signal and intentionally excludes publish-path jobs.
 
 6. **Build VI Package**
-     - Invoke the **Build VI Package** job within the CI Pipeline (Composite) workflow to produce a `.vip` using the version computed by the workflow's separate **version** job (see that job's output for the generated version).
+     - Invoke the **Build VI Package** job within the CI Pipeline workflow to produce a `.vip` using the version computed by the workflow's separate **version** job (see that job's output for the generated version).
     - Pre-release publication behavior is specified by [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md), including eligibility, assets, and failure policy.
     - Prerelease-driving changes should use merge commits (`--merge`), not squash/rebase.
     - Prerelease publication is manual-intent only and requires `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`.
@@ -97,7 +97,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
    - `labview_version` (defaults to `.lvversion`; if provided it must match).
    - Great for reconfiguring LabVIEW for local dev vs. distribution builds.
 
-2. **CI Pipeline (Composite)**
+2. **CI Pipeline**
    - Includes `unit-tests`, `version`, and `build-vip` jobs, plus container packed-library and prerelease publication jobs.
    - Execution profile is computed as `ci_profile`:
      - `release-priority` = `workflow_dispatch` + `force_gcli_lunit=true` (target <= 25 minutes).
@@ -114,10 +114,10 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
       - You can **pass** metadata parameters like `-CompanyName` and `-AuthorName` into the build script. These map to fields in the **VI Package** (e.g., “Company Name,” “Author Name (Person or Company)”).
       - This means each package can show the **organization** and **repository** that produced it, providing a **unique ID** if you have multiple forks or parallel versions.
 
-3. **CI Pipeline (No Smoke)**
+3. **CI Pipeline**
    - PR-only companion workflow (`.github/workflows/ci.yml`) for additional validation signal.
    - Uses `ci_profile=pr-fast` and never publishes prereleases.
-   - In solo mode, require both `CI Pipeline (Composite) / Pipeline Contract` and `CI Pipeline (No Smoke) / Pipeline Contract` in branch protection.
+   - In solo mode, require both `CI Pipeline / Pipeline Contract` and `CI Pipeline / Pipeline Contract` in branch protection.
 
 
 <a name="setting-up-a-self-hosted-runner"></a>
@@ -196,7 +196,7 @@ With your runner online:
    - **Actions → Development Mode Toggle**, set `mode: enable`.
    - `labview_version` must match `.lvversion` if provided.
 
-2. **Run Tests via CI Pipeline (Composite)**
+2. **Run Tests via CI Pipeline**
    - Execute the workflow and review `unit-tests` logs (`pr-fast`: 64-bit only, `full`: 64/32).
 
 3. **Build VI Package**
@@ -252,17 +252,17 @@ Notes:
 ### 5. Example Developer Workflow
 
 1. **Enable Development Mode**: if you plan to actively modify the Icon Editor code inside LabVIEW.  
-2. **Code & Test**: Make changes, run the **CI Pipeline (Composite)** workflow (its **test** job runs unit tests) to confirm stability.
+2. **Code & Test**: Make changes, run the **CI Pipeline** workflow (its **test** job runs unit tests) to confirm stability.
 3. **Open a Pull Request**:  
    - Assign a version bump label if you want `major`, `minor`, or `patch`.  
    - The workflow checks this label upon merging.  
 4. **Merge**:
-   - The **CI Pipeline (Composite)** workflow triggers, with the **version** job computing the version and the **Build VI Package** job using that version to package and upload the `.vip`.
+   - The **CI Pipeline** workflow triggers, with the **version** job computing the version and the **Build VI Package** job using that version to package and upload the `.vip`.
    - Use merge commits for prerelease-driving PRs: `gh pr merge <pr-number> --merge --delete-branch`.
    - Direction: a merge-commit merge to `develop` should result in a GitHub pre-release that includes the `.vip` and release notes.
    - Manual backfill is deterministic only when pinned to the merged SHA:
      ```powershell
-     gh workflow run ci-composite.yml --repo <owner/repo> `
+     gh workflow run ci.yml --repo <owner/repo> `
        -f publish_prerelease=true `
        -f expected_sha=<merged-develop-sha> `
        -f strict_sha=true

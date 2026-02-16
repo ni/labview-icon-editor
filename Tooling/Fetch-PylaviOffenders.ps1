@@ -15,7 +15,7 @@
     GitHub token (defaults to env:GH_TOKEN or env:GITHUB_TOKEN). Needs actions:read.
 
 .PARAMETER Workflow
-    Workflow file name (default: ci-composite.yml).
+    Workflow file name (default: ci.yml).
 
 .PARAMETER Sha
     Commit SHA to fetch (deterministic; selects the latest run for that SHA).
@@ -51,7 +51,7 @@ param(
     [string]$Token,
 
     [Parameter(Mandatory = $false)]
-    [string]$Workflow = 'ci-composite.yml',
+    [string]$Workflow = 'ci.yml',
 
     [Parameter(Mandatory = $false)]
     [string]$Sha,

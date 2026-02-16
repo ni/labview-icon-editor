@@ -12,7 +12,7 @@ $repoRootPath = (Resolve-Path -Path $RepoRoot -ErrorAction Stop).Path
 $allowedLiteralPathSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 @(
     '.github/workflows/labview-parity.yml',
-    '.github/workflows/ci-composite.yml',
+    '.github/workflows/ci.yml',
     'Tooling/container-parity/path-contract.sh',
     'Tooling/container-parity/runlabview-linux.sh',
     'Tooling/container-parity/runlabview-windows.ps1',

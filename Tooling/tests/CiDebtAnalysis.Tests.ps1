@@ -51,7 +51,7 @@ Describe 'Invoke-CiDebtAnalysis' {
 {
   "run": {
     "databaseId": 123456,
-    "workflowName": "CI Pipeline (Composite)",
+    "workflowName": "CI Pipeline",
     "url": "https://example.invalid/run/123456",
     "status": "completed",
     "conclusion": "failure",

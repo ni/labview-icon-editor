@@ -13,7 +13,6 @@ $repoRootPath = (Resolve-Path -Path $RepoRoot -ErrorAction Stop).Path
 
 $allTargetFiles = @(
     '.github/workflows/ci.yml',
-    '.github/workflows/ci-composite.yml',
     '.github/workflows/labview-parity.yml',
     '.github/workflows/development-mode-toggle.yml',
     'Tooling/container-parity/runlabview-windows.ps1',
@@ -42,7 +41,6 @@ $ruleList = @(
         Message = 'Automation workflows must not invoke dev-mode toggle scripts.'
         Files   = @(
             '.github/workflows/ci.yml',
-            '.github/workflows/ci-composite.yml',
             '.github/workflows/labview-parity.yml',
             '.github/workflows/development-mode-toggle.yml'
         )
@@ -53,16 +51,15 @@ $ruleList = @(
         Message = 'CI workflows must not pass revert_dev_mode teardown inputs.'
         Files   = @(
             '.github/workflows/ci.yml',
-            '.github/workflows/ci-composite.yml',
             '.github/workflows/labview-parity.yml'
         )
     },
     [pscustomobject]@{
         Type    = 'workflow-devmode-smoke-job'
         Pattern = 'devmode-no-labview-smoke|DevMode\.NoLabVIEW Smoke'
-        Message = 'ci-composite.yml must not include the devmode-no-labview-smoke job or dependencies.'
+        Message = 'ci.yml must not include the devmode-no-labview-smoke job or dependencies.'
         Files   = @(
-            '.github/workflows/ci-composite.yml'
+            '.github/workflows/ci.yml'
         )
     },
     [pscustomobject]@{
@@ -70,7 +67,7 @@ $ruleList = @(
         Pattern = 'devmode-linux\.sh'
         Message = 'Container parity workflows must not call devmode-linux.sh.'
         Files   = @(
-            '.github/workflows/ci-composite.yml',
+            '.github/workflows/ci.yml',
             '.github/workflows/labview-parity.yml'
         )
     },

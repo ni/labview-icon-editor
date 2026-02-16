@@ -21,7 +21,7 @@ This guide explains how to automate build, test, and distribution steps for the 
        - [Examples: Calling This Workflow](#413-examples-calling-this-workflow)
        - [Customization](#414-customization)
        - [Additional Resources](#415-additional-resources)
-   2. [CI Pipeline (Composite)](#42-ci-pipeline-composite)
+   2. [CI Pipeline](#42-ci-pipeline-composite)
 5. [Gitflow Branching and Versioning](#5-gitflow-branching--versioning)
    1. [Branching Overview](#51-branching-overview)
    2. [Multi-Channel Pre-Releases](#52-multi-channel-pre-releases)  
@@ -55,7 +55,7 @@ This workflow ensures that all **forks** of the repository can sync the latest b
 1. **Set up `.github/workflows`**
    Ensure the following workflows exist (or adapt names as needed):
    - `development-mode-toggle.yml` (Development Mode Toggle)
-   - `ci-composite.yml` (CI Pipeline (Composite); includes the **Build VI Package** job)
+   - `ci.yml` (CI Pipeline; includes the **Build VI Package** job)
 
 2. **Configure Permissions**
    - In **Settings → Actions → General**, set **Workflow permissions** to allow the workflow to read repository contents and upload artifacts.
@@ -227,15 +227,15 @@ All dev-mode logic resides in two PowerShell scripts:
 ---
 
 <a name="42-ci-pipeline-composite"></a>
-### 4.2 CI Pipeline (Composite)
+### 4.2 CI Pipeline
 
- - **File Name**: `ci-composite.yml`
+ - **File Name**: `ci.yml`
  - **Purpose**: A dedicated **version** job (using `compute-version`) derives the version from PR labels and commit count, and the **Build VI Package** job builds the `.vip` artifact using that version output.
 - **Features**:
     - **Issue status gating**: skips most jobs unless the branch name contains `issue-<number>` (e.g., `issue-123`, `feature/issue-123`) and the linked issue has Status **In Progress**.
     - **Label-based** version bump (`major`, `minor`, `patch`); unlabeled pull requests
       default to `patch` (see `.github/actions/compute-version/action.yml`, used by
-      `compute-version` in `ci-composite.yml`).
+      `compute-version` in `ci.yml`).
     - **Commit-based build number**: `vX.Y.Z-build<commitCount>` (plus optional pre-release suffix).
     - **Multi-Channel** detection for `release-alpha/*`, `release-beta/*`, `release-rc/*`.
     - **Upload Artifact**: Builds the `.vip` file and uploads it as a workflow artifact (no automatic GitHub Release attachment).
@@ -301,7 +301,7 @@ When you open a **Pull Request** into `develop`, `release-alpha/*`, or `release-
 In order to **enforce** the Gitflow approach “hands-off”:
 1. **Enable Branch Protection Rules**:  
    - For example, protect `main`, `release-alpha/*`, `release-beta/*`, and `release-rc/*` so that only approved Pull Requests can be merged, preventing direct pushes.  
-   - Require the **Build VI Package** job from the CI Pipeline (Composite) workflow to pass before merging.
+   - Require the **Build VI Package** job from the CI Pipeline workflow to pass before merging.
 2. **Refer to `CONTRIBUTING.md`**:  
    - Document your team’s policies on how merges flow from feature → develop → alpha/beta/rc → main.  
    - Outline any required approvals or code reviews.  

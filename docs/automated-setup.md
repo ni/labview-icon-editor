@@ -26,7 +26,7 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 - **Prerequisites**:
   1. **LabVIEW 2020 (20.0), both 32-bit and 64-bit**.
   2. **PowerShell 7+** and **Git**.  
-  3. **Apply** `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2020 (20.0), 32-bit & 64-bit**—matching the `apply-deps` matrix in [`../.github/workflows/ci-composite.yml`](../.github/workflows/ci-composite.yml).
+  3. **Apply** `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2020 (20.0), 32-bit & 64-bit**—matching the `apply-deps` matrix in [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
 ---
 
@@ -103,7 +103,7 @@ We provide **GitHub Actions** that wrap these same PowerShell scripts for buildi
 - **Development Mode Toggle**: Uses `Set_Development_Mode.ps1` or `RevertDevelopmentMode.ps1`.
 - **Build VI Package**: Internally calls `Build.ps1` to produce a `.vip` artifact (and can draft a release if configured).
 
-Unit tests run within the `test` job of the composite CI workflow defined in `.github/workflows/ci-composite.yml`.
+Unit tests run within the `test` job of the composite CI workflow defined in `.github/workflows/ci.yml`.
 
 ### Injecting Organization/Repo for Unique Builds
 
@@ -185,7 +185,7 @@ Passing these metadata fields ensures the final `.vip` clearly identifies **whic
    - Label (`major`, `minor`, `patch`) for semver bump.
    - Actions use `Build.ps1` to produce `.vip` on merges.
 4. **Merge**
-   - The [`.github/workflows/ci-composite.yml`](../.github/workflows/ci-composite.yml) workflow uploads the built `.vip` as an artifact in its "Upload VI Package" step.
+   - The [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) workflow uploads the built `.vip` as an artifact in its "Upload VI Package" step.
    - It does not automatically create a GitHub Release; draft one manually and attach the artifact if desired.
 5. **Disable Dev Mode**
    - Revert environment.

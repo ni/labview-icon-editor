@@ -17,16 +17,7 @@ Describe 'Test-SoloMaintainerWorkflowContract.ps1' {
 
         $workflowContents = @{
             'ci.yml' = @(
-                'name: CI'
-                'on:'
-                '  pull_request:'
-                'jobs:'
-                '  pipeline-contract:'
-                '    runs-on: ubuntu-latest'
-                '    steps: []'
-            ) -join [Environment]::NewLine
-            'ci-composite.yml' = @(
-                'name: CI Composite'
+                'name: CI Pipeline'
                 'on:'
                 '  push:'
                 '  workflow_dispatch:'
@@ -187,8 +178,8 @@ Describe 'Test-SoloMaintainerWorkflowContract.ps1' {
         { & $Script:GuardScript -RepoRoot $Script:TempDir } | Should -Throw '*workflow-not-manual-only*'
     }
 
-    It 'fails when ci-composite still includes auto publish mode' {
-        Add-Content -LiteralPath (Join-Path $Script:TempDir '.github\workflows\ci-composite.yml') -Value "publishMode = 'auto'"
+    It 'fails when ci workflow includes auto publish mode' {
+        Add-Content -LiteralPath (Join-Path $Script:TempDir '.github\workflows\ci.yml') -Value "publishMode = 'auto'"
 
         { & $Script:GuardScript -RepoRoot $Script:TempDir } | Should -Throw '*publish-not-explicit-intent*'
     }

@@ -6,7 +6,6 @@ Describe 'LabVIEW 2026 canonical migration contract' {
 
         $script:activeContractFiles = @(
             '.github/workflows/ci.yml',
-            '.github/workflows/ci-composite.yml',
             'Tooling/support/LabVIEWStage.ps1',
             'Tooling/container-parity/runlabview-linux.sh',
             'Tooling/container-parity/runlabview-windows.ps1',
@@ -80,8 +79,7 @@ Describe 'LabVIEW 2026 canonical migration contract' {
 
     It 'active workflows do not use temporary LV unit-test override env vars' {
         $workflowFiles = @(
-            (Join-Path $script:repoRoot '.github/workflows/ci.yml'),
-            (Join-Path $script:repoRoot '.github/workflows/ci-composite.yml')
+            (Join-Path $script:repoRoot '.github/workflows/ci.yml')
         )
 
         $matchList = @()

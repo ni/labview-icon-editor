@@ -619,7 +619,7 @@ Options
 |---|---|---|---|
 | --repo | No | resolved | Defaults to --repo, GITHUB_REPOSITORY, or git remote. |
 | --token | No | none | Falls back to GH_TOKEN or GITHUB_TOKEN. |
-| --workflow | No | ci-composite.yml | Workflow file name. |
+| --workflow | No | ci.yml | Workflow file name. |
 | --branch | No | develop | Branch to query for runs. |
 | --sha | No | none | Deterministic selection by commit SHA. |
 | --run-id | No | 0 | Deterministic selection by run id when non-zero. |

@@ -41,7 +41,7 @@
     Branch name used when FetchLatest is set (default: develop).
 
 .PARAMETER FetchWorkflow
-    Workflow file name used when FetchLatest is set (default: ci-composite.yml).
+    Workflow file name used when FetchLatest is set (default: ci.yml).
 
 .PARAMETER FetchRepo
     GitHub repo (owner/name) override used when FetchLatest is set.
@@ -116,7 +116,7 @@ param(
     [string]$FetchBranch = 'develop',
 
     [Parameter(Mandatory = $false)]
-    [string]$FetchWorkflow = 'ci-composite.yml',
+    [string]$FetchWorkflow = 'ci.yml',
 
     [Parameter(Mandatory = $false)]
     [string]$FetchRepo,

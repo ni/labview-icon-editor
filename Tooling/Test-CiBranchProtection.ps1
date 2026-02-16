@@ -18,7 +18,7 @@ param(
     [string]$Branch = 'develop',
 
     [Parameter(Mandatory = $false)]
-    [string]$RequiredContext = 'CI Pipeline (Composite) / Pipeline Contract',
+    [string]$RequiredContext = 'CI Pipeline / Pipeline Contract',
 
     [Parameter(Mandatory = $false)]
     [string]$OutputPath = 'TestResults/agent-logs/branch-protection-status.latest.json',

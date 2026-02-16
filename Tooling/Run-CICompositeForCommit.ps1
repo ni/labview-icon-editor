@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-    Trigger CI Pipeline (Composite) for a specific commit by creating a temp branch.
+    Trigger CI Pipeline for a specific commit by creating a temp branch.
 
 .DESCRIPTION
     Creates (or reuses) a short-lived branch on the remote that points to the
@@ -17,7 +17,7 @@
     Remote name to push to. Default: origin.
 
 .PARAMETER WorkflowName
-    Workflow display name for gh workflow run. Default: CI Pipeline (Composite).
+    Workflow display name for gh workflow run. Default: CI Pipeline.
 
 .PARAMETER Force
     Force-update the remote branch if it already exists.
@@ -41,7 +41,7 @@ param(
     [string]$Remote = 'origin',
 
     [Parameter(Mandatory = $false)]
-    [string]$WorkflowName = 'CI Pipeline (Composite)',
+    [string]$WorkflowName = 'CI Pipeline',
 
     [Parameter(Mandatory = $false)]
     [switch]$Force,

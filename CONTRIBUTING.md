@@ -29,7 +29,7 @@ All interactions should be respectful and follow our [Code of Conduct](CODE_OF_C
    - **Issue Reference** – Link the issue number if one exists.
    - **Testing** – How can reviewers test or reproduce the change?
 8. **Respond to Feedback:** Maintainers will review your PR. You may see comments requesting changes or asking questions. This is a normal part of the process. Update your code as needed and push new commits; they will automatically be added to the PR.
-9. **CI Builds:** When you open a PR, our continuous integration will automatically attempt to build the VI Package and run tests. You’ll see a check for the **CI Pipeline (Composite)** workflow with a job named **Build VI Package** – if it fails, inspect the logs (e.g., missing dependencies or failing tests) and update your code. Successful CI will produce a `.vip` artifact that maintainers and you can download to test your changes in LabVIEW.
+9. **CI Builds:** When you open a PR, our continuous integration will automatically attempt to build the VI Package and run tests. You’ll see a check for the **CI Pipeline** workflow with a job named **Build VI Package** – if it fails, inspect the logs (e.g., missing dependencies or failing tests) and update your code. Successful CI will produce a `.vip` artifact that maintainers and you can download to test your changes in LabVIEW.
 
 > Note: When opening a PR, apply exactly one release label (major, minor, or patch) to request the version bump. The CI pipeline will fail if no label (or multiple labels) are set, since it relies on a single label to determine the new version.
 

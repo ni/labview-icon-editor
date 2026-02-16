@@ -1,6 +1,6 @@
 # LabVIEW Icon Editor
 
-[![CI Status](https://img.shields.io/github/actions/workflow/status/ni/labview-icon-editor/ci-composite.yml?branch=main)](https://github.com/ni/labview-icon-editor/actions/workflows/ci-composite.yml)
+[![CI Status](https://img.shields.io/github/actions/workflow/status/ni/labview-icon-editor/ci.yml?branch=main)](https://github.com/ni/labview-icon-editor/actions/workflows/ci.yml)
 [![Latest Release](https://img.shields.io/github/v/release/ni/labview-icon-editor?label=release)](https://github.com/ni/labview-icon-editor/releases/latest)
 [![Discord Chat](https://img.shields.io/discord/1319915996789739540?label=Discord&logo=discord&style=flat)](https://discord.gg/q4d3ggrFVA)
 [![License: MIT](https://img.shields.io/github/license/ni/labview-icon-editor?style=flat)](LICENSE)
@@ -86,7 +86,7 @@ For detailed contribution guidelines (branching strategy, coding style, etc.), p
 **Standard Feature Contribution Workflow:**
 
 1. **Propose & Discuss** – Start by proposing your idea via [GitHub Discussions](https://github.com/ni/labview-icon-editor/discussions) or by opening an issue. Discussing first helps refine the idea and get feedback.
-2. **Issue Approval & Assignment** – Once the idea is approved, maintainers label the issue `Workflow: Open to contribution`. After you volunteer, a maintainer assigns the issue and sets up a branch such as `feature/<issue number>-<short-description>`, ensuring the issue is marked `In Progress`. The workflow defined in [ci-composite.yml](.github/workflows/ci-composite.yml) triggers, but its jobs run only when the `issue-status` gate passes (branch pattern `issue-<number>` and issue Status `In Progress`). Runs failing this gate appear in GitHub Actions but skip subsequent jobs.
+2. **Issue Approval & Assignment** – Once the idea is approved, maintainers label the issue `Workflow: Open to contribution`. After you volunteer, a maintainer assigns the issue and sets up a branch such as `feature/<issue number>-<short-description>`, ensuring the issue is marked `In Progress`. The workflow defined in [ci.yml](.github/workflows/ci.yml) triggers, but its jobs run only when the `issue-status` gate passes (branch pattern `issue-<number>` and issue Status `In Progress`). Runs failing this gate appear in GitHub Actions but skip subsequent jobs.
 3. **Development Setup** – Fork the repository and clone your fork. Check out the feature branch. Prepare your LabVIEW environment (recommend LabVIEW 2025 (25.0) or newer with required dependencies applied). You can develop straight from the project.
 **NOTE:** You will be able to run the lv_icon.vi from the project, but it will not be the active icon editor in the IDE. It is recommended to build the PPL and VI Package and install the package to test in the IDE.
 4. **Implement & Test** – Develop your changes using LabVIEW. Test the editor manually in LabVIEW to ensure your changes work. Run any available unit tests.

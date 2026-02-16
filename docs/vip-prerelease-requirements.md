@@ -6,7 +6,7 @@
 |---|---|
 | Document ID | LVIE-VPR-REQ-v1 |
 | Semantic Revision | v1.0 |
-| Product | CI Pipeline (Composite) pre-release publication |
+| Product | CI Pipeline pre-release publication |
 | Scope | develop prerelease publication |
 | Status | Draft v1.0 |
 
@@ -100,7 +100,7 @@ VR-OPS-003: Manual backfill publication shall reuse Core upsert and asset replac
 VR-OPS-004: Manual backfill shall emit publish status outputs even when publication is skipped.
 VR-OPS-005: Manual backfill with `publish_prerelease=true` shall require `strict_sha=true`.
 VR-OPS-006: Manual backfill with `publish_prerelease=true` shall require `expected_sha` to resolve to an eligible merged `develop` merge commit.
-VR-OPS-007: Develop branch required status-check policy shall require only `CI Pipeline (Composite) / Pipeline Contract` as a mandatory context.
+VR-OPS-007: Develop branch required status-check policy shall require only `CI Pipeline / Pipeline Contract` as a mandatory context.
 VR-OPS-008: Operational runtime baseline reporting shall compute P50 and P90 duration metrics per `ci_profile` from successful CI runs.
 VR-OPS-009: Operational runtime baseline reports shall be written under `TestResults/agent-logs`.
 
@@ -128,7 +128,7 @@ VR-GOV-004: All changed or new VR IDs shall map to at least one acceptance scena
 
 ## 10. Public Interface Summary (Normative)
 
-- `ci-composite.yml` dispatch inputs `publish_prerelease` (boolean, default `false`), `expected_sha` (string), `strict_sha` (boolean), and `force_gcli_lunit` (boolean).
+- `ci.yml` dispatch inputs `publish_prerelease` (boolean, default `false`), `expected_sha` (string), `strict_sha` (boolean), and `force_gcli_lunit` (boolean).
 - `prerelease-context` outputs include `ci_profile` values `release-priority`, `pr-fast`, and `full`.
 - `.github/actions/compute-version/action.yml` input `bump_type_override` (optional).
 - `build-vip` job outputs for VIP and release-notes artifact identifiers.

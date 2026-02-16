@@ -18,23 +18,20 @@ Describe 'Test-RunnerCliWave1WorkflowContract.ps1' {
         { & $Script:ContractScript -RepoRoot $Script:RepoRoot } | Should -Not -Throw
     }
 
-    It 'fails when ci-composite.yml is missing runner-cli vipc apply invocation marker' {
+    It 'fails when ci.yml is missing runner-cli vipc apply invocation marker' {
         $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("lvie-wave1-contract-{0}" -f [guid]::NewGuid().ToString('N'))
         $workflowDir = Join-Path $tempRoot '.github\workflows'
         New-Item -Path $workflowDir -ItemType Directory -Force | Out-Null
 
         try {
             $ciSource = Join-Path $Script:RepoRoot '.github\workflows\ci.yml'
-            $ciCompositeSource = Join-Path $Script:RepoRoot '.github\workflows\ci-composite.yml'
             $ciDest = Join-Path $workflowDir 'ci.yml'
-            $ciCompositeDest = Join-Path $workflowDir 'ci-composite.yml'
 
             Copy-Item -LiteralPath $ciSource -Destination $ciDest -Force
-            Copy-Item -LiteralPath $ciCompositeSource -Destination $ciCompositeDest -Force
 
-            $ciCompositeContent = Get-Content -LiteralPath $ciCompositeDest -Raw
-            $ciCompositeContent = $ciCompositeContent -replace "'vipc', 'apply'", "'vipc', 'applx'"
-            Set-Content -LiteralPath $ciCompositeDest -Value $ciCompositeContent -Encoding utf8
+            $ciContent = Get-Content -LiteralPath $ciDest -Raw
+            $ciContent = $ciContent -replace "'vipc', 'apply'", "'vipc', 'applx'"
+            Set-Content -LiteralPath $ciDest -Value $ciContent -Encoding utf8
 
             { & $Script:ContractScript -RepoRoot $tempRoot } | Should -Throw '*missing-required-pattern*'
         }
@@ -52,12 +49,9 @@ Describe 'Test-RunnerCliWave1WorkflowContract.ps1' {
 
         try {
             $ciSource = Join-Path $Script:RepoRoot '.github\workflows\ci.yml'
-            $ciCompositeSource = Join-Path $Script:RepoRoot '.github\workflows\ci-composite.yml'
             $ciDest = Join-Path $workflowDir 'ci.yml'
-            $ciCompositeDest = Join-Path $workflowDir 'ci-composite.yml'
 
             Copy-Item -LiteralPath $ciSource -Destination $ciDest -Force
-            Copy-Item -LiteralPath $ciCompositeSource -Destination $ciCompositeDest -Force
 
             $ciContent = Get-Content -LiteralPath $ciDest -Raw
             $ciContent = $ciContent -replace "'ppl', 'build'", "'ppl', 'buld'"

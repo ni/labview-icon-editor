@@ -4,7 +4,7 @@
     Computes CI runtime baseline metrics by ci_profile from GitHub Actions runs.
 
 .DESCRIPTION
-    Fetches CI Pipeline (Composite) workflow runs, infers ci_profile, and writes
+    Fetches CI Pipeline workflow runs, infers ci_profile, and writes
     P50/P90 wall-clock runtime metrics to TestResults/agent-logs. Wall-clock
     duration uses createdAt -> updatedAt and includes queue + execution time.
 #>
@@ -15,7 +15,7 @@ param(
     [string]$Repo,
 
     [Parameter(Mandatory = $false)]
-    [string]$Workflow = 'ci-composite.yml',
+    [string]$Workflow = 'ci.yml',
 
     [Parameter(Mandatory = $false)]
     [int]$Limit = 300,

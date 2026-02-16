@@ -116,7 +116,7 @@ function Test-ExecutionPolicyAllowlist {
 $script:findings = @()
 $resolvedRepoRoot = Resolve-RepoRootPath -PathOverride $RepoRoot
 $ciPath = Resolve-PathFromRoot -Root $resolvedRepoRoot -Path '.github/workflows/ci.yml'
-$ciCompositePath = Resolve-PathFromRoot -Root $resolvedRepoRoot -Path '.github/workflows/ci-composite.yml'
+$ciCompositePath = Resolve-PathFromRoot -Root $resolvedRepoRoot -Path '.github/workflows/ci.yml'
 $statusPath = Resolve-PathFromRoot -Root $resolvedRepoRoot -Path $StatusOutputPath
 
 foreach ($workflowPath in @($ciPath, $ciCompositePath)) {
@@ -136,7 +136,7 @@ if ($script:findings.Count -eq 0) {
     Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
         -Pattern 'Tooling/runner-cli/RunnerCli/RunnerCli\.csproj' `
         -Code 'missing-required-pattern' `
-        -Message 'ci-composite.yml must resolve runner-cli project path.'
+        -Message 'ci.yml must resolve runner-cli project path.'
 
     Test-Pattern -FilePath $ciPath -Content $ciContent `
         -Pattern "'lunit', 'run'" `
@@ -145,50 +145,25 @@ if ($script:findings.Count -eq 0) {
     Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
         -Pattern "'lunit', 'run'" `
         -Code 'missing-required-pattern' `
-        -Message 'ci-composite.yml unit-tests lanes must invoke runner-cli lunit run.'
+        -Message 'ci.yml unit-tests lanes must invoke runner-cli lunit run.'
 
     Test-Pattern -FilePath $ciPath -Content $ciContent `
-        -Pattern "'release', 'package'" `
+        -Pattern "'vip', 'build'" `
         -Code 'missing-required-pattern' `
-        -Message 'ci.yml build-vip lane must invoke runner-cli release package.'
+        -Message 'ci.yml build-vip lane must invoke runner-cli vip build.'
     Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
-        -Pattern "'release', 'package'" `
+        -Pattern "'vip', 'build'" `
         -Code 'missing-required-pattern' `
-        -Message 'ci-composite.yml build-vip lane must invoke runner-cli release package.'
-
-    Test-Pattern -FilePath $ciPath -Content $ciContent `
-        -Pattern 'SHADOW_PROMOTION_MIN_GREENS:\s*5' `
-        -Code 'missing-required-pattern' `
-        -Message 'ci.yml must set SHADOW_PROMOTION_MIN_GREENS to 5.'
-    Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
-        -Pattern 'SHADOW_PROMOTION_MIN_GREENS:\s*5' `
-        -Code 'missing-required-pattern' `
-        -Message 'ci-composite.yml must set SHADOW_PROMOTION_MIN_GREENS to 5.'
-    Test-Pattern -FilePath $ciPath -Content $ciContent `
-        -Pattern 'build-vip-shadow:' `
-        -Code 'missing-required-pattern' `
-        -Message 'ci.yml must define non-gating build-vip-shadow lane.'
-    Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
-        -Pattern 'build-vip-shadow:' `
-        -Code 'missing-required-pattern' `
-        -Message 'ci-composite.yml must define non-gating build-vip-shadow lane.'
-    Test-Pattern -FilePath $ciPath -Content $ciContent `
-        -Pattern 'lvie\.shadow-run-performance-metrics' `
-        -Code 'missing-required-pattern' `
-        -Message 'ci.yml shadow lane must emit performance metrics schema markers.'
-    Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
-        -Pattern 'lvie\.shadow-run-performance-metrics' `
-        -Code 'missing-required-pattern' `
-        -Message 'ci-composite.yml shadow lane must emit performance metrics schema markers.'
+        -Message 'ci.yml build-vip lane must invoke runner-cli vip build.'
 
     Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
         -Pattern "'vipc', 'assert'" `
         -Code 'missing-required-pattern' `
-        -Message 'ci-composite.yml apply-deps lanes must invoke runner-cli vipc assert.'
+        -Message 'ci.yml apply-deps lanes must invoke runner-cli vipc assert.'
     Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
         -Pattern "'vipc', 'apply'" `
         -Code 'missing-required-pattern' `
-        -Message 'ci-composite.yml apply-deps informational lanes must invoke runner-cli vipc apply.'
+        -Message 'ci.yml apply-deps informational lanes must invoke runner-cli vipc apply.'
 
     Test-Pattern -FilePath $ciPath -Content $ciContent `
         -Pattern "'ppl', 'build'" `
@@ -197,11 +172,11 @@ if ($script:findings.Count -eq 0) {
     Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
         -Pattern "'ppl', 'build'" `
         -Code 'missing-required-pattern' `
-        -Message 'ci-composite.yml build-ppl lanes must invoke runner-cli ppl build.'
+        -Message 'ci.yml build-ppl lanes must invoke runner-cli ppl build.'
     Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
         -Pattern "parity\s+run" `
         -Code 'missing-required-pattern' `
-        -Message 'ci-composite.yml container PPL lanes must invoke runner-cli parity run.'
+        -Message 'ci.yml container PPL lanes must invoke runner-cli parity run.'
 
     Test-Pattern -FilePath $ciPath -Content $ciContent `
         -Pattern 'Invoke-VipBuild\.ps1' `
@@ -211,7 +186,7 @@ if ($script:findings.Count -eq 0) {
     Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
         -Pattern 'Invoke-VipBuild\.ps1' `
         -Code 'forbidden-legacy-call' `
-        -Message 'ci-composite.yml must not call Invoke-VipBuild.ps1 directly after Wave 1 migration.' `
+        -Message 'ci.yml must not call Invoke-VipBuild.ps1 directly after Wave 1 migration.' `
         -MustNotExist
 
     Test-Pattern -FilePath $ciPath -Content $ciContent `
@@ -222,13 +197,13 @@ if ($script:findings.Count -eq 0) {
     Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
         -Pattern 'RunUnitTests\.ps1' `
         -Code 'forbidden-legacy-call' `
-        -Message 'ci-composite.yml must not call RunUnitTests.ps1 directly in unit-test lanes after Wave 1 migration.' `
+        -Message 'ci.yml must not call RunUnitTests.ps1 directly in unit-test lanes after Wave 1 migration.' `
         -MustNotExist
 
     Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
         -Pattern 'ApplyVIPC\.ps1' `
         -Code 'forbidden-legacy-call' `
-        -Message 'ci-composite.yml must not call ApplyVIPC.ps1 directly in apply-deps lanes after Wave 1 migration.' `
+        -Message 'ci.yml must not call ApplyVIPC.ps1 directly in apply-deps lanes after Wave 1 migration.' `
         -MustNotExist
 
     Test-Pattern -FilePath $ciPath -Content $ciContent `
@@ -239,17 +214,17 @@ if ($script:findings.Count -eq 0) {
     Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
         -Pattern 'BuildProjectSpec\.ps1' `
         -Code 'forbidden-legacy-call' `
-        -Message 'ci-composite.yml must not call BuildProjectSpec.ps1 directly in build-ppl lanes after Wave 2 migration.' `
+        -Message 'ci.yml must not call BuildProjectSpec.ps1 directly in build-ppl lanes after Wave 2 migration.' `
         -MustNotExist
     Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
         -Pattern 'runlabview-linux\.sh' `
         -Code 'forbidden-legacy-call' `
-        -Message 'ci-composite.yml must not directly invoke runlabview-linux.sh in container PPL lanes after Wave 2 migration.' `
+        -Message 'ci.yml must not directly invoke runlabview-linux.sh in container PPL lanes after Wave 2 migration.' `
         -MustNotExist
     Test-Pattern -FilePath $ciCompositePath -Content $ciCompositeContent `
         -Pattern 'runlabview-windows\.ps1' `
         -Code 'forbidden-legacy-call' `
-        -Message 'ci-composite.yml must not directly invoke runlabview-windows.ps1 in container PPL lanes after Wave 2 migration.' `
+        -Message 'ci.yml must not directly invoke runlabview-windows.ps1 in container PPL lanes after Wave 2 migration.' `
         -MustNotExist
     $allowedExecutionPolicies = @('RemoteSigned', 'AllSigned', 'Restricted', 'Undefined', 'Default')
     Test-ExecutionPolicyAllowlist -FilePath $ciPath -Content $ciContent -Allowlist $allowedExecutionPolicies
@@ -260,7 +235,7 @@ $status = [ordered]@{
     status = if ($script:findings.Count -eq 0) { 'pass' } else { 'fail' }
     generated_utc = (Get-Date).ToUniversalTime().ToString('o')
     repo_root = $resolvedRepoRoot
-    workflow_paths = @($ciPath, $ciCompositePath)
+    workflow_paths = @($ciPath)
     finding_count = $script:findings.Count
     findings = $script:findings
 }

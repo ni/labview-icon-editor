@@ -46,8 +46,7 @@ if ([string]::IsNullOrWhiteSpace($resolvedRepo)) {
 }
 
 $requiredContexts = @(
-    'CI Pipeline (Composite) / Pipeline Contract',
-    'CI Pipeline (No Smoke) / Pipeline Contract'
+    'CI Pipeline / Pipeline Contract'
 )
 
 $branchPayload = [ordered]@{

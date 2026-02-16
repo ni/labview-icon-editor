@@ -44,7 +44,7 @@ We achieve this by:
 
 ## GitHub Actions and PowerShell
 
-An abbreviated **GitHub Actions** example below mirrors the [`ci-composite.yml`](../../../.github/workflows/ci-composite.yml) workflow. A **`version`** job first computes the semantic version and outputs `MAJOR`, `MINOR`, `PATCH`, and `BUILD` for downstream steps. The **`build-ppl`** job uses a matrix to compile both 32- and 64-bit packed libraries, and the **`build-vi-package`** job injects the display metadata and creates the final `.vip` file. Referring to the jobs by name—rather than line numbers—helps avoid future drift. The snippet highlights key steps such as `compute-version`, `build-project-spec`, `modify-vipb-display-info`, and `build-vi-package`:
+An abbreviated **GitHub Actions** example below mirrors the [`ci.yml`](../../../.github/workflows/ci.yml) workflow. A **`version`** job first computes the semantic version and outputs `MAJOR`, `MINOR`, `PATCH`, and `BUILD` for downstream steps. The **`build-ppl`** job uses a matrix to compile both 32- and 64-bit packed libraries, and the **`build-vi-package`** job injects the display metadata and creates the final `.vip` file. Referring to the jobs by name—rather than line numbers—helps avoid future drift. The snippet highlights key steps such as `compute-version`, `build-project-spec`, `modify-vipb-display-info`, and `build-vi-package`:
 
 ```yaml
 jobs:

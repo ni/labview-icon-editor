@@ -11,7 +11,6 @@ $repoRootPath = (Resolve-Path -Path $RepoRoot -ErrorAction Stop).Path
 
 $coreWorkflowFiles = @(
     '.github/workflows/ci.yml',
-    '.github/workflows/ci-composite.yml',
     '.github/workflows/labview-parity.yml',
     '.github/workflows/development-mode-toggle.yml',
     '.github/workflows/runner-cli.yml',
@@ -30,8 +29,7 @@ $manualOnlyWorkflowFiles = @(
 )
 
 $pipelineContractFiles = @(
-    '.github/workflows/ci.yml',
-    '.github/workflows/ci-composite.yml'
+    '.github/workflows/ci.yml'
 )
 
 function Get-LeadingWhitespaceCount {
@@ -318,34 +316,34 @@ foreach ($relativePathRaw in ($pipelineContractFiles + '.github/workflows/develo
     }
 }
 
-$ciCompositePath = Resolve-RepoFilePath -RepoRootPath $repoRootPath -RelativePath '.github/workflows/ci-composite.yml'
-if (Test-Path -LiteralPath $ciCompositePath -PathType Leaf) {
-    $ciCompositeContent = Get-Content -LiteralPath $ciCompositePath -Raw -ErrorAction Stop
+$ciWorkflowPath = Resolve-RepoFilePath -RepoRootPath $repoRootPath -RelativePath '.github/workflows/ci.yml'
+if (Test-Path -LiteralPath $ciWorkflowPath -PathType Leaf) {
+    $ciWorkflowContent = Get-Content -LiteralPath $ciWorkflowPath -Raw -ErrorAction Stop
 
-    if ($ciCompositeContent -match "publishMode\s*=\s*'auto'") {
+    if ($ciWorkflowContent -match "publishMode\s*=\s*'auto'") {
         $violationList.Add([pscustomobject]@{
                 Type    = 'publish-not-explicit-intent'
-                File    = '.github/workflows/ci-composite.yml'
+                File    = '.github/workflows/ci.yml'
                 Line    = 0
                 Pattern = "publishMode = 'auto'"
                 Message = 'Publish mode must not auto-publish on push. Manual intent is required.'
             }) | Out-Null
     }
 
-    if ($ciCompositeContent -match 'develop-push-merged-pr-merge-commit') {
+    if ($ciWorkflowContent -match 'develop-push-merged-pr-merge-commit') {
         $violationList.Add([pscustomobject]@{
                 Type    = 'publish-auto-reason-present'
-                File    = '.github/workflows/ci-composite.yml'
+                File    = '.github/workflows/ci.yml'
                 Line    = 0
                 Pattern = 'develop-push-merged-pr-merge-commit'
                 Message = 'Legacy auto-publish reason token is forbidden in solo mode.'
             }) | Out-Null
     }
 
-    if ($ciCompositeContent -notmatch 'manual-intent-required-develop-push') {
+    if ($ciWorkflowContent -notmatch 'manual-intent-required-develop-push') {
         $violationList.Add([pscustomobject]@{
                 Type    = 'manual-intent-reason-missing'
-                File    = '.github/workflows/ci-composite.yml'
+                File    = '.github/workflows/ci.yml'
                 Line    = 0
                 Pattern = 'manual-intent-required-develop-push'
                 Message = 'Solo manual-intent publish reason token is required for develop push events.'

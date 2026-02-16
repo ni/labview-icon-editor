@@ -1,6 +1,6 @@
 # Composite GitHub Actions
 
-This repository defines several reusable [composite actions](https://docs.github.com/actions/creating-actions/creating-a-composite-action) in [`.github/actions`](../../../.github/actions). These actions wrap common LabVIEW build and test tasks and can be called from workflows in this or other repositories. Workflows such as [`.github/workflows/ci-composite.yml`](../../../.github/workflows/ci-composite.yml) rely on the [`build-project-spec`](../../../.github/actions/build-project-spec) and [`build-vi-package`](../../../.github/actions/build-vi-package) actions for their build steps.
+This repository defines several reusable [composite actions](https://docs.github.com/actions/creating-actions/creating-a-composite-action) in [`.github/actions`](../../../.github/actions). These actions wrap common LabVIEW build and test tasks and can be called from workflows in this or other repositories. Workflows such as [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) rely on the [`build-project-spec`](../../../.github/actions/build-project-spec) and [`build-vi-package`](../../../.github/actions/build-vi-package) actions for their build steps.
 
 | Action | Description |
 |---|---|

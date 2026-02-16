@@ -92,7 +92,7 @@ Below are 17 possible issues you might encounter, along with suggested steps to 
 **Solution**:
 1. Make sure the label is exactly `major`, `minor`, or `patch` in lowercase (unless your workflow script also checks for capitalized labels).  
 2. Confirm you’re actually using a Pull Request event (not a direct push).  
-3. Check the CI Pipeline (Composite) logs for the **version** job’s “Determine bump type” step (from `.github/actions/compute-version`).
+3. Check the CI Pipeline logs for the **version** job’s “Determine bump type” step (from `.github/actions/compute-version`).
 
 ---
 
@@ -147,7 +147,7 @@ Deterministic backfill command:
 ```powershell
 $repo = pwsh -NoProfile -File .\Tooling\Resolve-GitHubRepo.ps1
 $mergeSha = gh pr view <pr-number> --repo $repo --json mergeCommit --jq .mergeCommit.oid
-gh workflow run ci-composite.yml --repo $repo `
+gh workflow run ci.yml --repo $repo `
   -f publish_prerelease=true `
   -f expected_sha=$mergeSha `
   -f strict_sha=true
@@ -167,13 +167,13 @@ gh workflow run ci-composite.yml --repo $repo `
 **Solution**:
 1. Have the required reviewers approve your Pull Request.
 2. Ensure the required branch-protection status context is green:
-   - `CI Pipeline (Composite) / Pipeline Contract`
-   - `CI Pipeline (No Smoke) / Pipeline Contract` is companion-only and should remain non-required.
+   - `CI Pipeline / Pipeline Contract`
+   - `CI Pipeline / Pipeline Contract` is companion-only and should remain non-required.
 3. Verify branch-protection configuration with:
    - `pwsh -NoProfile -File .\Tooling\Test-CiBranchProtection.ps1`
 4. If branch protection is configured with stale per-job contexts, ask a repository admin to update required contexts to:
-   - `CI Pipeline (Composite) / Pipeline Contract`
-   - Remove any required `CI Pipeline (No Smoke) / Pipeline Contract` entry if present.
+   - `CI Pipeline / Pipeline Contract`
+   - Remove any required `CI Pipeline / Pipeline Contract` entry if present.
 5. Update your `CONTRIBUTING.md` to specify the merging rules so contributors know what’s needed.
 
 ---
@@ -316,7 +316,7 @@ gh workflow run ci-composite.yml --repo $repo `
   - `release-priority` (`workflow_dispatch` + `force_gcli_lunit=true`) intentionally skips heavy self-hosted validation/build jobs.
   - `pr-fast` (`pull_request`) keeps the jobs but uses 64-bit-only matrices for smoke/unit tests.
   - `full` runs the full matrix and full self-hosted flow.
-- You are looking at `CI Pipeline (No Smoke)` (`ci.yml`), which is a PR-only non-publishing companion workflow.
+- You are looking at `CI Pipeline` (`ci.yml`), which is a PR-only non-publishing companion workflow.
 
 **Solution**:
 1. Check `prerelease-context` outputs for `ci_profile`.
@@ -338,7 +338,7 @@ gh workflow run ci-composite.yml --repo $repo `
 
 **Incident Reference (2026-02-10)**:
 - Pull request: `#82`
-- Stale pending run: `21853308619` (`CI Pipeline (Composite)`), head SHA `c5fc1ecf2175127cf4734cf7bde38ae9b648853c`
+- Stale pending run: `21853308619` (`CI Pipeline`), head SHA `c5fc1ecf2175127cf4734cf7bde38ae9b648853c`
 - Older queued/in-progress run on same branch: `21852840202`
 - Merge commit after manual unblock: `aa5a705bc45f54f26f0b3b5ac0893958de4a3e5c`
 
@@ -346,7 +346,7 @@ gh workflow run ci-composite.yml --repo $repo `
 ```powershell
 gh pr view <pr-number> --json mergeStateStatus,mergeable,statusCheckRollup
 gh pr checks <pr-number>
-gh run list --branch <branch> --workflow "CI Pipeline (Composite)"
+gh run list --branch <branch> --workflow "CI Pipeline"
 gh run view <run-id> --json status,conclusion,jobs
 ```
 
@@ -371,7 +371,7 @@ By default, the workflow calculates the build number with `git rev-list --count 
 ### Q2: How Do I Create a Release?
 
 **Answer**:
-Repository policy uses manual publish intent. Dispatch `ci-composite.yml` with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`, then review `prerelease-publish-status` when troubleshooting.
+Repository policy uses manual publish intent. Dispatch `ci.yml` with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`, then review `prerelease-publish-status` when troubleshooting.
 
 ---
 
@@ -399,7 +399,7 @@ Yes. In standard Gitflow, after merging a `hotfix/*` into `main`, you also merge
 ### Q6: What About Draft Releases?
 
 **Answer**:
-The prerelease contract currently publishes with `draft=false` and `prerelease=true`. If you need draft behavior instead, change the `publish-prerelease` payload in `.github/workflows/ci-composite.yml` and update requirements/acceptance artifacts accordingly.
+The prerelease contract currently publishes with `draft=false` and `prerelease=true`. If you need draft behavior instead, change the `publish-prerelease` payload in `.github/workflows/ci.yml` and update requirements/acceptance artifacts accordingly.
 
 ---
 

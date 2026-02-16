@@ -21,11 +21,7 @@ Describe 'Test-CiPipelineSelectorDevModeContract.ps1' {
 
         $fileMap = @{
             '.github/workflows/ci.yml' = @(
-                'name: CI'
-                'jobs: {}'
-            ) -join [Environment]::NewLine
-            '.github/workflows/ci-composite.yml' = @(
-                'name: CI Composite'
+                'name: CI Pipeline'
                 'jobs: {}'
             ) -join [Environment]::NewLine
             '.github/workflows/labview-parity.yml' = @(
@@ -79,22 +75,22 @@ Describe 'Test-CiPipelineSelectorDevModeContract.ps1' {
         { & $Script:GuardScript -RepoRoot $Script:TempDir } | Should -Throw '*workflow-devmode-script*'
     }
 
-    It 'fails when ci-composite includes devmode-no-labview-smoke references' {
-        $ciCompositePath = Join-Path $Script:TempDir '.github\workflows\ci-composite.yml'
+    It 'fails when ci workflow includes devmode-no-labview-smoke references' {
+        $ciCompositePath = Join-Path $Script:TempDir '.github\workflows\ci.yml'
         Add-Content -LiteralPath $ciCompositePath -Value '  devmode-no-labview-smoke:'
 
         { & $Script:GuardScript -RepoRoot $Script:TempDir } | Should -Throw '*workflow-devmode-smoke-job*'
     }
 
-    It 'passes in ci-only scope when ci-composite.yml is missing' {
-        $ciCompositePath = Join-Path $Script:TempDir '.github\workflows\ci-composite.yml'
+    It 'fails in ci-only scope when ci.yml is missing' {
+        $ciCompositePath = Join-Path $Script:TempDir '.github\workflows\ci.yml'
         Remove-Item -LiteralPath $ciCompositePath -Force
 
-        { & $Script:GuardScript -RepoRoot $Script:TempDir -Scope ci-only } | Should -Not -Throw
+        { & $Script:GuardScript -RepoRoot $Script:TempDir -Scope ci-only } | Should -Throw '*missing-target-file*'
     }
 
-    It 'fails in all scope when ci-composite.yml is missing' {
-        $ciCompositePath = Join-Path $Script:TempDir '.github\workflows\ci-composite.yml'
+    It 'fails in all scope when ci.yml is missing' {
+        $ciCompositePath = Join-Path $Script:TempDir '.github\workflows\ci.yml'
         Remove-Item -LiteralPath $ciCompositePath -Force
 
         { & $Script:GuardScript -RepoRoot $Script:TempDir -Scope all } | Should -Throw '*missing-target-file*'

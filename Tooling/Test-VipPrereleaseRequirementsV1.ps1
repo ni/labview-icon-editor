@@ -23,7 +23,7 @@ param(
     [string]$TracePath = 'docs/vip-prerelease-requirements-v0-to-v1-trace.md',
 
     [Parameter(Mandatory = $false)]
-    [string]$WorkflowPath = '.github/workflows/ci-composite.yml',
+    [string]$WorkflowPath = '.github/workflows/ci.yml',
 
     [Parameter(Mandatory = $false)]
     [string]$ComputeVersionActionPath = '.github/actions/compute-version/action.yml',
