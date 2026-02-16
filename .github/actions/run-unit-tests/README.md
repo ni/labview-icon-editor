@@ -41,13 +41,9 @@ Invoke **`RunUnitTests.ps1`** to execute LabVIEW unit tests via **LabVIEWCLI** (
 When backend mode is `gcli`, the script skips all LabVIEWCLI path/port/operation resolution and executes `g-cli lunit` directly.
 
 ## LabVIEWCLI Port Resolution
-`RunUnitTests.ps1` resolves `-PortNumber` in this order:
-1. `LVIE_LUNIT_PORT_<BITNESS>` (`LVIE_LUNIT_PORT_64` or `LVIE_LUNIT_PORT_32`)
-2. `LVIE_LUNIT_PORT`
-3. `server.tcp.port` from `LabVIEW.ini` next to the resolved `LabVIEW.exe`
-4. default `3363`
+`RunUnitTests.ps1` resolves `-PortNumber` from `Tooling/labviewcli-port-contract.json` using LabVIEW year+bitness, then validates `server.tcp.enabled` and `server.tcp.port` in `LabVIEW.ini` next to the resolved `LabVIEW.exe`.
 
-If `server.tcp.enabled` is explicitly false and no `LVIE_LUNIT_PORT*` override is set, the script fails unless g-cli fallback is enabled.
+If the contract is missing/invalid, VI Server TCP is disabled, or `LabVIEW.ini` port does not match the contract, the LabVIEWCLI path fails fast.
 
 ## LabVIEWCLI LUnit Operation Resolution
 `RunUnitTests.ps1` resolves the `LUnit` operation root in this order:

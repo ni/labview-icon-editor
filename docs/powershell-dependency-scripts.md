@@ -25,7 +25,7 @@ Per-run artifacts are written under `$WORKTREE_ROOT\artifacts\<runid>` when guar
 - [Set_Development_Mode.ps1](#set_development_modeps1)
 - [RevertDevelopmentMode.ps1](#revertdevelopmentmodeps1)
 - [RunUnitTests.ps1](#rununittestsps1)
-- [Run-CICompositeLocal.ps1](#run-cicompositelocalps1)
+- [Run-CI.ps1](#run-cips1)
 - [Invoke-DevModeNoLabVIEWSmoke.ps1](#invoke-devmodenolabviewsmokeps1)
 - [Invoke-InWorktree.ps1](#invoke-inworktreeps1)
 - [WorktreeGuard.ps1](#worktreeguardps1)
@@ -80,7 +80,7 @@ Policy-disabled for automation. The script now fails fast to enforce repository 
 ## RunUnitTests.ps1
 Parser-only utility that reads an existing `UnitTestReport.xml` and outputs a table/summary with deterministic pass/fail exit semantics. Callers must execute `g-cli lunit` first, then invoke the parser as a child process (for example, `pwsh -NoProfile -File .github/actions/run-unit-tests/RunUnitTests.ps1 -ReportPath <path>`). Legacy backend knobs (`LVIE_LUNIT_BACKEND`, `LVIE_FORCE_GCLI_LUNIT`) are hard-removed and now fail fast if set.
 
-## Run-CICompositeLocal.ps1
+## Run-CI.ps1
 Runs a local CI parity sequence based on `ci.yml`. This script validates Verify IE Paths, applies VIPC dependencies, runs missing-in-project checks and unit tests for the LabVIEW version declared in `.lvversion` (canonical baseline `26.1`), 32- and 64-bit, builds packed libraries, and produces the VI package using the 64-bit install of that version. Local orchestration enters through runner-cli for migrated surfaces (`missing-in-project`, `ppl build`), while backend execution semantics remain unchanged. Unit tests execute directly through `g-cli lunit`; report parsing/summary uses `RunUnitTests.ps1`. The script always runs both 64-bit and 32-bit steps for the selected LabVIEW version, and most steps can be skipped via switches. Outputs are stored under `TestResults/ci-local`. Use `-ConnectTimeoutMs`, `-ProcessTimeoutMs`, and `-StatusFileTimeoutMs` to tune g-cli and status-file timing for your machine. Dev-mode request flags (`-EnsureCleanState`, `-SkipDevModeNoLabVIEWSmoke`, `-DevModeNoLabVIEWSmokeDepth`, `-UseLabVIEWDevMode`) are policy-disabled and throw when passed.
 
 ## Invoke-DevModeNoLabVIEWSmoke.ps1

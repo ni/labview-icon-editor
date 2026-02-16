@@ -194,17 +194,17 @@ Describe 'Resolve-RunnerWorkRoot' {
     It 'derives from GITHUB_WORKSPACE (grandparent)' {
         $env:GITHUB_WORKSPACE = '/actions-runner/_work/repo/repo'
         $result = Resolve-RunnerWorkRoot -WorkRoot '' -RunnerRoot ''
-        $result | Should -Be '/actions-runner/_work'
+        ($result -replace '\\', '/') | Should -Be '/actions-runner/_work'
     }
 
     It 'appends _work to RunnerRoot when leaf is not _work' {
         $result = Resolve-RunnerWorkRoot -WorkRoot '' -RunnerRoot '/runner'
-        $result | Should -Be '/runner/_work'
+        ($result -replace '\\', '/') | Should -Be '/runner/_work'
     }
 
     It 'returns RunnerRoot as-is when leaf is _work' {
         $result = Resolve-RunnerWorkRoot -WorkRoot '' -RunnerRoot '/runner/_work'
-        $result | Should -Be '/runner/_work'
+        ($result -replace '\\', '/') | Should -Be '/runner/_work'
     }
 
     It 'returns null when nothing is available' {
@@ -477,7 +477,11 @@ Describe 'Path normalization' {
 
     It 'preserves root paths' {
         $result = Resolve-NormalizedPath -Path '/'
-        $result | Should -Be '/'
+        if ($IsWindows) {
+            $result | Should -Match '^[A-Za-z]:\\$'
+        } else {
+            $result | Should -Be '/'
+        }
     }
 
     It 'returns input for null or whitespace' {

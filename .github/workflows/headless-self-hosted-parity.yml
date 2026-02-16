@@ -46,17 +46,15 @@ jobs:
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
         run: |
-          pwsh -NoProfile -File .\Tooling\Run-CICompositeLocal-Auto.ps1 `
+          pwsh -NoProfile -File .\Tooling\Run-CI.ps1 `
             -LabVIEWBitness 64 `
             -EnableSingleBitnessRecoverySequence `
-            -SuccessTarget ppl-single `
-            -MaxAttempts 3 `
             -SkipVerifyIEPaths `
             -SkipMissingInProject `
             -SkipBuildVip `
-            -UseWorktree:$false `
             -RepoRoot "$env:REPO_ROOT" `
-            -WorktreeRoot "$env:LVIE_WORKTREE_ROOT"
+            -WorktreeRoot "$env:LVIE_WORKTREE_ROOT" `
+            -SkipWorktreeRootCheck
 
       - name: Resolve artifact root
         if: always()

@@ -94,7 +94,7 @@ function Test-Pattern {
 
 $script:findings = @()
 $resolvedRepoRoot = Resolve-RepoRootPath -PathOverride $RepoRoot
-$localScriptPath = Resolve-PathFromRoot -Root $resolvedRepoRoot -Path 'Tooling/Run-CICompositeLocal.ps1'
+$localScriptPath = Resolve-PathFromRoot -Root $resolvedRepoRoot -Path 'Tooling/Run-CI.ps1'
 $setDevModePath = Resolve-PathFromRoot -Root $resolvedRepoRoot -Path '.github/actions/set-development-mode/Set_Development_Mode.ps1'
 $revertDevModePath = Resolve-PathFromRoot -Root $resolvedRepoRoot -Path '.github/actions/revert-development-mode/RevertDevelopmentMode.ps1'
 $statusPath = Resolve-PathFromRoot -Root $resolvedRepoRoot -Path $StatusOutputPath
@@ -113,15 +113,15 @@ if ($script:findings.Count -eq 0) {
     Test-Pattern -FilePath $localScriptPath -Content $localContent `
         -Pattern 'Invoke-RunnerCliCommand' `
         -Code 'missing-required-pattern' `
-        -Message 'Run-CICompositeLocal.ps1 must route orchestration through Invoke-RunnerCliCommand.'
+        -Message 'Run-CI.ps1 must route orchestration through Invoke-RunnerCliCommand.'
     Test-Pattern -FilePath $localScriptPath -Content $localContent `
         -Pattern "missing-in-project" `
         -Code 'missing-required-pattern' `
-        -Message 'Run-CICompositeLocal.ps1 must invoke runner-cli missing-in-project.'
+        -Message 'Run-CI.ps1 must invoke runner-cli missing-in-project.'
     Test-Pattern -FilePath $localScriptPath -Content $localContent `
         -Pattern "'ppl',\s*'build'" `
         -Code 'missing-required-pattern' `
-        -Message 'Run-CICompositeLocal.ps1 must invoke runner-cli ppl build.'
+        -Message 'Run-CI.ps1 must invoke runner-cli ppl build.'
 
     Test-Pattern -FilePath $setDevModePath -Content $setDevModeContent `
         -Pattern "'dev-mode',\s*'prepare-source'" `
@@ -135,12 +135,12 @@ if ($script:findings.Count -eq 0) {
     Test-Pattern -FilePath $localScriptPath -Content $localContent `
         -Pattern 'Invoke-MissingInProjectCLI\.ps1' `
         -Code 'forbidden-legacy-call' `
-        -Message 'Run-CICompositeLocal.ps1 must not directly call Invoke-MissingInProjectCLI.ps1 after Wave 3 migration.' `
+        -Message 'Run-CI.ps1 must not directly call Invoke-MissingInProjectCLI.ps1 after Wave 3 migration.' `
         -MustNotExist
     Test-Pattern -FilePath $localScriptPath -Content $localContent `
         -Pattern 'BuildProjectSpec\.ps1' `
         -Code 'forbidden-legacy-call' `
-        -Message 'Run-CICompositeLocal.ps1 must not directly call BuildProjectSpec.ps1 after Wave 3 migration.' `
+        -Message 'Run-CI.ps1 must not directly call BuildProjectSpec.ps1 after Wave 3 migration.' `
         -MustNotExist
     Test-Pattern -FilePath $setDevModePath -Content $setDevModeContent `
         -Pattern '&\s*\$PrepareScript' `

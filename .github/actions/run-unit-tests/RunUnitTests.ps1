@@ -442,97 +442,6 @@ function Test-ReportHasTestcases {
     return [bool]($testCases -and $testCases.Count -gt 0)
 }
 
-function ConvertTo-LUnitPortNumber {
-    param(
-        [AllowNull()]
-        [AllowEmptyString()]
-        [string]$RawValue,
-
-        [Parameter(Mandatory = $true)]
-        [string]$Source
-    )
-
-    if ([string]::IsNullOrWhiteSpace($RawValue)) {
-        return $null
-    }
-
-    $parsedPort = 0
-    if (-not [int]::TryParse($RawValue.Trim(), [ref]$parsedPort) -or $parsedPort -lt 1 -or $parsedPort -gt 65535) {
-        Write-Warning ("Ignoring invalid LUnit port value '{0}' from {1}. Expected integer range 1-65535." -f $RawValue, $Source)
-        return $null
-    }
-
-    return $parsedPort
-}
-
-function Get-LabVIEWIniTcpSettings {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$LabVIEWExecutablePath
-    )
-
-    $iniPath = Join-Path -Path (Split-Path -Path $LabVIEWExecutablePath -Parent) -ChildPath 'LabVIEW.ini'
-    $portRaw = $null
-    $enabledRaw = $null
-    $enabledValue = $null
-
-    if (-not (Test-Path -Path $iniPath -PathType Leaf)) {
-        return [pscustomobject]@{
-            IniPath       = $iniPath
-            PortRaw       = $portRaw
-            EnabledRaw    = $enabledRaw
-            EnabledValue  = $enabledValue
-        }
-    }
-
-    try {
-        $lines = Get-Content -Path $iniPath -ErrorAction Stop
-    }
-    catch {
-        Write-Warning ("Unable to read LabVIEW.ini at {0}: {1}" -f $iniPath, $_.Exception.Message)
-        return [pscustomobject]@{
-            IniPath       = $iniPath
-            PortRaw       = $portRaw
-            EnabledRaw    = $enabledRaw
-            EnabledValue  = $enabledValue
-        }
-    }
-
-    foreach ($line in $lines) {
-        if ($null -eq $line) {
-            continue
-        }
-        if ($line -match '^\s*server\.tcp\.port\s*=\s*(.+?)\s*$') {
-            $portRaw = $Matches[1].Trim()
-            continue
-        }
-        if ($line -match '^\s*server\.tcp\.enabled\s*=\s*(.+?)\s*$') {
-            $enabledRaw = $Matches[1].Trim()
-            continue
-        }
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($enabledRaw)) {
-        $normalized = $enabledRaw.Trim().ToLowerInvariant()
-        if (@('true', 't', '1', 'yes', 'y') -contains $normalized) {
-            $enabledValue = $true
-        }
-        elseif (@('false', 'f', '0', 'no', 'n') -contains $normalized) {
-            $enabledValue = $false
-        }
-        else {
-            Write-Warning ("Ignoring unrecognized server.tcp.enabled value '{0}' in {1}." -f $enabledRaw, $iniPath)
-        }
-    }
-
-    return [pscustomobject]@{
-        IniPath       = $iniPath
-        PortRaw       = $portRaw
-        EnabledRaw    = $enabledRaw
-        EnabledValue  = $enabledValue
-    }
-}
-
 function Resolve-LUnitPort {
     param(
         [Parameter(Mandatory = $true)]
@@ -543,52 +452,24 @@ function Resolve-LUnitPort {
         [string]$LabVIEWExecutablePath
     )
 
-    $bitnessEnvName = "LVIE_LUNIT_PORT_{0}" -f $Bitness
-    $bitnessEnvValue = [Environment]::GetEnvironmentVariable($bitnessEnvName)
-    $genericEnvValue = [Environment]::GetEnvironmentVariable('LVIE_LUNIT_PORT')
-    $hasEnvOverride = -not [string]::IsNullOrWhiteSpace($bitnessEnvValue) -or -not [string]::IsNullOrWhiteSpace($genericEnvValue)
-
-    $iniSettings = Get-LabVIEWIniTcpSettings -LabVIEWExecutablePath $LabVIEWExecutablePath
-
-    $bitnessPort = ConvertTo-LUnitPortNumber -RawValue $bitnessEnvValue -Source ('$env:{0}' -f $bitnessEnvName)
-    if ($null -ne $bitnessPort) {
-        return [pscustomobject]@{
-            PortNumber     = $bitnessPort
-            Source         = ('$env:{0}' -f $bitnessEnvName)
-            IniPath        = $iniSettings.IniPath
-            ViServerEnabled = $iniSettings.EnabledValue
-            HasEnvOverride = $hasEnvOverride
-        }
+    $portContractHelper = Join-Path $repoRoot 'Tooling\support\LabVIEWCliPortContract.ps1'
+    if (-not (Test-Path -Path $portContractHelper -PathType Leaf)) {
+        throw "LabVIEW CLI port contract helper not found at $portContractHelper"
     }
+    . $portContractHelper
 
-    $genericPort = ConvertTo-LUnitPortNumber -RawValue $genericEnvValue -Source '$env:LVIE_LUNIT_PORT'
-    if ($null -ne $genericPort) {
-        return [pscustomobject]@{
-            PortNumber      = $genericPort
-            Source          = '$env:LVIE_LUNIT_PORT'
-            IniPath         = $iniSettings.IniPath
-            ViServerEnabled = $iniSettings.EnabledValue
-            HasEnvOverride  = $hasEnvOverride
-        }
-    }
-
-    $iniPort = ConvertTo-LUnitPortNumber -RawValue $iniSettings.PortRaw -Source ('{0} (server.tcp.port)' -f $iniSettings.IniPath)
-    if ($null -ne $iniPort) {
-        return [pscustomobject]@{
-            PortNumber      = $iniPort
-            Source          = ('{0} (server.tcp.port)' -f $iniSettings.IniPath)
-            IniPath         = $iniSettings.IniPath
-            ViServerEnabled = $iniSettings.EnabledValue
-            HasEnvOverride  = $hasEnvOverride
-        }
-    }
+    $resolved = Resolve-LabVIEWCliPortFromContract `
+        -RepoRoot $repoRoot `
+        -LabVIEWVersion $labviewYear `
+        -Bitness $Bitness `
+        -LabVIEWExecutablePath $LabVIEWExecutablePath
 
     return [pscustomobject]@{
-        PortNumber      = 3363
-        Source          = 'default:3363'
-        IniPath         = $iniSettings.IniPath
-        ViServerEnabled = $iniSettings.EnabledValue
-        HasEnvOverride  = $hasEnvOverride
+        PortNumber      = $resolved.PortNumber
+        Source          = $resolved.Source
+        IniPath         = $resolved.IniPath
+        ViServerEnabled = $true
+        HasEnvOverride  = $false
     }
 }
 

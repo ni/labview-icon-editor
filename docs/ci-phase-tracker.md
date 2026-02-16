@@ -7,8 +7,8 @@ Branch: experimental/447-test
 - [x] Add Tooling/Assert-LabVIEWVersion.ps1 (parse .lvversion, enforce mismatch rules)
 - [x] Call Assert-LabVIEWVersion.ps1 from Tooling/New-CIWorktreeForJob.ps1
 - [x] Extend Tooling/Check-Runner.ps1 to verify installed LabVIEW year/minor
-- [x] Enforce .lvversion in Tooling/Run-CICompositeLocal.ps1 (with explicit override switch)
-- [x] Enforce .lvversion in Tooling/Run-CICompositeLocal-Auto.ps1 (with explicit override switch)
+- [x] Enforce .lvversion in Tooling/Run-CI.ps1 (with explicit override switch)
+- [x] Enforce .lvversion in Tooling/Run-CI.sh (Linux parity path)
 - [x] CI: add a version gate job that fails fast and exports version outputs
 
 ## Phase B (Runner and Workflow Hardening)

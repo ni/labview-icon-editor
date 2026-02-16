@@ -5,7 +5,7 @@
 
 .DESCRIPTION
     Resolves repo/worktree roots, applies a worktree policy (strict/auto/relaxed),
-    builds runner-cli in the selected worktree, and can invoke Run-CICompositeLocal.ps1.
+    builds runner-cli in the selected worktree, and can invoke Run-CI.ps1.
 
 .PARAMETER RepoRoot
     Optional repo root override. Defaults to git root or script location.
@@ -29,7 +29,7 @@
     Invoke the run script after orchestration.
 
 .PARAMETER RunScript
-    Script to execute when Run is set. Default: Tooling/Run-CICompositeLocal.ps1
+    Script to execute when Run is set. Default: Tooling/Run-CI.ps1
 
 .PARAMETER RunArgs
     Arguments forwarded to the run script.
@@ -60,7 +60,7 @@ param(
     [switch]$Run,
 
     [Parameter(Mandatory = $false)]
-    [string]$RunScript = 'Tooling/Run-CICompositeLocal.ps1',
+    [string]$RunScript = 'Tooling/Run-CI.ps1',
 
     [Parameter(Mandatory = $false)]
     [string[]]$RunArgs = @()
@@ -321,7 +321,7 @@ if ($shouldRun) {
     if ($RunArgs) {
         $argsToUse += $RunArgs
     }
-    if ($scriptPath -like '*Run-CICompositeLocal.ps1' -and ($argsToUse -notcontains '-Orchestrated')) {
+    if ($scriptPath -like '*Run-CI.ps1' -and ($argsToUse -notcontains '-Orchestrated')) {
         $argsToUse += '-Orchestrated'
     }
 

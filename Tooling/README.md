@@ -13,14 +13,14 @@ Common entrypoints:
   Example: `pwsh -NoProfile -File .\\Tooling\\Run-ViValidate.ps1`
   Profiles: `-ViValidateProfile strict|legacy|both`, optional `-ViValidateReportOnly`, `-ViValidateSkipVersionGate`.
   Optional absolute-path focus: set `LVIE_PYLAVI_ABSOLUTE_PATH_ROOTS` (semicolon-delimited) to flag specific roots without committing sensitive paths. CI redacts configured roots in logs and the uploaded pylavi log artifact, uploads a redacted top-offenders report (`pylavi-validate-offenders-<label>`), and prints a top-offenders table in the step summary.
-- `Run-CICompositeLocal.ps1`
+- `Run-CI.ps1`
   Local CI parity run (Verify IE Paths, VIPC, unit tests, PPLs, VIP build).
-  Example: `pwsh -NoProfile -File .\\Tooling\\Run-CICompositeLocal.ps1`
+  Example: `pwsh -NoProfile -File .\\Tooling\\Run-CI.ps1`
   Dev-mode request flags are policy-disabled and now fail fast.
-  Note: Direct execution is deprecated; use `Invoke-WorktreeOrchestrator.ps1` for worktree-aware runs.
-- `Run-CICompositeLocal-Auto.ps1`
-  Retry loop for local CI parity with adaptive timeouts and selectable success contracts (`vip|ppl|script`).
-  Example: `pwsh -NoProfile -File .\\Tooling\\Run-CICompositeLocal-Auto.ps1 -MaxAttempts 5`
+- `Run-CI.sh`
+  Linux parity launcher that runs `runner-cli parity context/run` in `linux-container` mode by default.
+  Example: `bash ./Tooling/Run-CI.sh`
+  Optional env: `LVIE_PARITY_MODE`, `LVIE_PARITY_BUILD_SPEC`, `LABVIEW_LINUX_IMAGE`, `LVIE_PARITY_CONTEXT_PATH`.
 - `Invoke-BeltAndSuspendersCI.ps1` (recommended proactive loop)
   Canonical "belt and suspenders" flow for exact-SHA confidence:
   1) local parity auto-loop until PPL success target is met,
@@ -28,9 +28,6 @@ Common entrypoints:
   3) wait for completion and run CI debt analysis on failure.
   Example: `pwsh -NoProfile -File .\\Tooling\\Invoke-BeltAndSuspendersCI.ps1 -Sha HEAD`
   Useful switches: `-SkipLocalParity`, `-FullLocalParity`, `-DispatchCleanupRemote`, `-CiDebtFailOnUnknown`.
-- `Run-CICompositeForCommit.ps1`
-  Dispatches `CI Pipeline` for an explicit SHA via a temporary branch.
-  Example: `pwsh -NoProfile -File .\\Tooling\\Run-CICompositeForCommit.ps1 -Sha <commit>`
 - `Invoke-WorktreeOrchestrator.ps1`
   Resolves worktree policy/root, builds runner-cli in the selected worktree, and can invoke local CI parity.
   Example: `pwsh -NoProfile -File .\\Tooling\\Invoke-WorktreeOrchestrator.ps1 -Run -RunArgs -LabVIEWVersion 2021`

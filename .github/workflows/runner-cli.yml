@@ -61,7 +61,7 @@ jobs:
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '8.0.418'
 
       - name: Restore dependencies
         run: dotnet restore
@@ -89,7 +89,7 @@ jobs:
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '8.0.418'
 
       - name: Restore dependencies
         run: dotnet restore
@@ -157,7 +157,7 @@ jobs:
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '8.0.418'
 
       - name: Publish self-contained single-file
         run: >
@@ -195,7 +195,7 @@ jobs:
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '8.0.418'
 
       - name: Publish runner-cli (linux-x64)
         shell: pwsh

@@ -24,9 +24,13 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
   - Debug locally the same steps used in CI, ensuring consistent results.
 
 - **Prerequisites**:
-  1. **LabVIEW 2020 (20.0), both 32-bit and 64-bit**.
+  1. **LabVIEW 2026 (26.1), both 32-bit and 64-bit**.
   2. **PowerShell 7+** and **Git**.  
-  3. **Apply** `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2020 (20.0), 32-bit & 64-bit**—matching the `apply-deps` matrix in [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+  3. **Apply** `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2026 (26.1), 32-bit & 64-bit**—matching the `apply-deps` matrix in [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+
+- **Source format note**:
+  - Project sources are saved in **LabVIEW 2020 (20.0)** file format.
+  - Build/CI execution targets **LabVIEW 2026 (26.1)** from `.lvversion`.
 
 ---
 
@@ -40,14 +44,14 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 2. **Clone** the [Icon Editor](https://github.com/ni/labview-icon-editor.git) to your development location.
 
 3. **Apply** dependencies:  
-   `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2020 (20.0), 32-bit & 64-bit**.
+   `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2026 (26.1), 32-bit & 64-bit**.
 
 4. **Open** PowerShell (Admin):
    Navigate to `.github\actions\set-development-mode`
 
 5. **Enable Dev Mode**:
    ```powershell
-   .\Set_Development_Mode.ps1 -LabVIEWVersion 2021
+   .\Set_Development_Mode.ps1 -LabVIEWVersion 2026
    ```
 
    Removes the default `lv_icon.lvlibp` and points LabVIEW to your local Icon Editor code.
@@ -62,8 +66,8 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 ## 3. Distribution Guide (VI Package via PowerShell)
 
 1. **Apply Dependencies** in VIPM:
-   - Set LabVIEW to 2021 (32-bit) and apply `.github\actions\apply-vipc\runner_dependencies.vipc`.
-   - Repeat for **2021 (64-bit)** so both bitnesses are covered.
+   - Set LabVIEW to 2026 (32-bit) and apply `.github\actions\apply-vipc\runner_dependencies.vipc`.
+   - Repeat for **2026 (64-bit)** so both bitnesses are covered.
 
 2. **Disable LabVIEW Security Warnings** *(to prevent popups from "run when opened" VIs)*:
    - **Tools → Options → Security** → **Run VI Without Warnings**.

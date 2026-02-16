@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-    Runs a local, CI-composite parity sequence for LabVIEW Icon Editor.
+    Runs a local CI parity sequence for LabVIEW Icon Editor.
 
 .DESCRIPTION
     Executes the key LabVIEW steps from ci.yml locally:
@@ -313,8 +313,6 @@ Assert-DevModePolicyParameterNotBound `
 if (-not $Orchestrated) {
     $orchestrator = Join-Path $PSScriptRoot 'Invoke-WorktreeOrchestrator.ps1'
     if (Test-Path -Path $orchestrator) {
-        Write-Warning "Direct execution of Run-CICompositeLocal.ps1 is deprecated. Use Invoke-WorktreeOrchestrator.ps1."
-
         $forward = @()
         foreach ($entry in $PSBoundParameters.GetEnumerator()) {
             if ($entry.Key -eq 'Orchestrated') {
@@ -1754,7 +1752,7 @@ Initialize-CsvHeader -Path $script:RunHistoryPath -Header 'timestamp,status,dura
 Initialize-CsvHeader -Path $script:StepHistoryPath -Header 'timestamp,step,status,duration_seconds'
 $env:LABVIEW_CLOSE_METRICS_PATH = $script:CloseHistoryPath
 $runLog = Join-Path $logRoot "ci-local-$runTimestamp.log"
-$commandLine = "Run-CICompositeLocal.ps1 -LabVIEWVersion $LabVIEWVersion -LabVIEWBitness $LabVIEWBitness -AllowVersionMismatch:$AllowVersionMismatch -DryRun:$DryRun -SkipVerifyIEPaths:$SkipVerifyIEPaths -SkipVipc:$SkipVipc -VipcMode $VipcMode -SkipMissingInProject:$SkipMissingInProject -SkipUnitTests:$SkipUnitTests -SkipBuildPpl:$SkipBuildPpl -SkipBuildVip:$SkipBuildVip -EnableSingleBitnessRecoverySequence:$EnableSingleBitnessRecoverySequence -AllowSequenceFaultInjection:$AllowSequenceFaultInjection -SequenceFaultProfile $SequenceFaultProfile -SkipViValidate:$SkipViValidate -ViValidateConfigPath $ViValidateConfigPath -ViValidateProfile $ViValidateProfile -ViValidateReportOnly:$ViValidateReportOnly -ViValidateSkipVersionGate:$ViValidateSkipVersionGate -ViValidateOnly:$ViValidateOnly -BumpType $BumpType -ConnectTimeoutMs $ConnectTimeoutMs -ProcessTimeoutMs $ProcessTimeoutMs -StatusFileTimeoutMs $StatusFileTimeoutMs -VipmTimeoutSeconds $VipmTimeoutSeconds -CloseLabVIEWMode $CloseLabVIEWMode -WorktreeRoot $WorktreeRoot -SkipWorktreeRootCheck:$SkipWorktreeRootCheck -AutoWorktree:$AutoWorktree -RunId $RunId -ArtifactRoot $ArtifactRoot -CleanRoom:$CleanRoom -RunnerCliPath $RunnerCliPath -RequireRunnerCli:$requireRunnerCliEnabled"
+$commandLine = "Run-CI.ps1 -LabVIEWVersion $LabVIEWVersion -LabVIEWBitness $LabVIEWBitness -AllowVersionMismatch:$AllowVersionMismatch -DryRun:$DryRun -SkipVerifyIEPaths:$SkipVerifyIEPaths -SkipVipc:$SkipVipc -VipcMode $VipcMode -SkipMissingInProject:$SkipMissingInProject -SkipUnitTests:$SkipUnitTests -SkipBuildPpl:$SkipBuildPpl -SkipBuildVip:$SkipBuildVip -EnableSingleBitnessRecoverySequence:$EnableSingleBitnessRecoverySequence -AllowSequenceFaultInjection:$AllowSequenceFaultInjection -SequenceFaultProfile $SequenceFaultProfile -SkipViValidate:$SkipViValidate -ViValidateConfigPath $ViValidateConfigPath -ViValidateProfile $ViValidateProfile -ViValidateReportOnly:$ViValidateReportOnly -ViValidateSkipVersionGate:$ViValidateSkipVersionGate -ViValidateOnly:$ViValidateOnly -BumpType $BumpType -ConnectTimeoutMs $ConnectTimeoutMs -ProcessTimeoutMs $ProcessTimeoutMs -StatusFileTimeoutMs $StatusFileTimeoutMs -VipmTimeoutSeconds $VipmTimeoutSeconds -CloseLabVIEWMode $CloseLabVIEWMode -WorktreeRoot $WorktreeRoot -SkipWorktreeRootCheck:$SkipWorktreeRootCheck -AutoWorktree:$AutoWorktree -RunId $RunId -ArtifactRoot $ArtifactRoot -CleanRoom:$CleanRoom -RunnerCliPath $RunnerCliPath -RequireRunnerCli:$requireRunnerCliEnabled"
 $script:TranscriptStarted = $false
 try {
     Start-Transcript -Path $runLog -Append | Out-Null

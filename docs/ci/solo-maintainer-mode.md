@@ -15,9 +15,9 @@ Date adopted: **2026-02-11**
 
 ## Publish Policy
 
-- Publish model: **manual publish intent**
-- `ci.yml` does not auto-publish prereleases from `push` events.
-- Prerelease dispatch requires:
+- Publish model: **auto publish on eligible develop merges + deterministic manual backfill**
+- `ci.yml` auto-publishes prereleases for `push` events on `develop` when `github.sha` is the merged PR merge commit targeting `develop`.
+- Prerelease dispatch backfill requires:
   - `workflow_dispatch`
   - `publish_prerelease=true`
   - `expected_sha=<sha>`

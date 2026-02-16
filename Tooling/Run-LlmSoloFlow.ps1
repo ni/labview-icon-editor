@@ -190,13 +190,17 @@ function Invoke-LocalParity {
         [int]$Attempts
     )
 
-    $parityScript = Join-Path $RepoRootPath 'Tooling\Run-CICompositeLocal-Auto.ps1'
+    $parityScript = Join-Path $RepoRootPath 'Tooling\Run-CI.ps1'
     if (-not (Test-Path -LiteralPath $parityScript -PathType Leaf)) {
-        throw "Run-CICompositeLocal-Auto.ps1 not found at $parityScript"
+        throw "Run-CI.ps1 not found at $parityScript"
     }
 
-    Write-Host ("[integrate] Running local parity loop (max attempts: {0})" -f $Attempts)
-    & pwsh -NoProfile -File $parityScript -MaxAttempts $Attempts -UseWorktree:$false -SkipWorktreeRootCheck
+    if ($Attempts -gt 1) {
+        Write-Warning ("MaxParityAttempts={0} requested, but auto-loop mode was removed. Running a single local parity attempt." -f $Attempts)
+    }
+
+    Write-Host "[integrate] Running local parity single attempt"
+    & pwsh -NoProfile -File $parityScript -RepoRoot $RepoRootPath -SkipWorktreeRootCheck
     if ($LASTEXITCODE -ne 0) {
         throw "Local parity failed with exit code $LASTEXITCODE."
     }
@@ -321,7 +325,7 @@ function Invoke-PublishWorkflowDispatch {
         '-f', ("expected_sha={0}" -f $Sha),
         '-f', 'strict_sha=true'
     )
-    $null = Invoke-GhCommand -Arguments $dispatchArgs -Description 'Dispatch ci-composite workflow'
+    $null = Invoke-GhCommand -Arguments $dispatchArgs -Description 'Dispatch ci workflow'
 }
 
 function Resolve-DispatchedRun {
@@ -342,7 +346,7 @@ function Resolve-DispatchedRun {
             '--json', 'databaseId,headSha,url,status,createdAt',
             '--limit', '20'
         )
-        $runsRaw = Invoke-GhCommand -Arguments $listArgs -Description 'List ci-composite workflow_dispatch runs'
+        $runsRaw = Invoke-GhCommand -Arguments $listArgs -Description 'List ci workflow_dispatch runs'
         $runsJson = ($runsRaw -join [Environment]::NewLine).Trim()
         $runs = if ([string]::IsNullOrWhiteSpace($runsJson)) { @() } else { @($runsJson | ConvertFrom-Json) }
         $match = $runs | Where-Object { [string]$_.headSha -eq $Sha } | Select-Object -First 1

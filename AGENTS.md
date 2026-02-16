@@ -144,7 +144,7 @@ Metadata quick-checks:
 - If `vi_validate` is not found, ensure your Python Scripts folder is on PATH (typical: `%APPDATA%\Python\Python3x\Scripts`).
 - Skip the gate if needed:
   - `pwsh -NoProfile -File .\Tooling\Invoke-WorktreeOrchestrator.ps1 -Run -RunArgs -SkipViValidate`
-  - `pwsh -NoProfile -File .\Tooling\Run-CICompositeLocal-Auto.ps1 -SkipViValidate`
+  - `pwsh -NoProfile -File .\Tooling\Run-CI.ps1 -SkipViValidate`
 - Smoke run (pylavi only):
   - `pwsh -NoProfile -File .\Tooling\Invoke-WorktreeOrchestrator.ps1 -Run -RunArgs -ViValidateOnly`
   - `pwsh -NoProfile -File .\Tooling\Run-ViValidate.ps1`
@@ -281,7 +281,7 @@ pwsh -NoProfile -File .\Tooling\Invoke-BeltAndSuspendersCI.ps1 `
 ```
 
 What it does:
-- Runs `Run-CICompositeLocal-Auto.ps1` in standardized local mode (`-SuccessTarget ppl -SkipVerifyIEPaths -SkipMissingInProject -SkipBuildVip`) unless `-SkipLocalParity` is set.
+- Runs `Run-CI.ps1` in standardized local mode (`-SkipVerifyIEPaths -SkipMissingInProject -SkipBuildVip`) unless `-SkipLocalParity` is set.
 - Dispatches `CI Pipeline` for the exact target SHA via a temp `ci-run/*` branch.
 - Waits for completion and runs `Tooling\Invoke-CiDebtAnalysis.ps1` automatically on non-success.
 
@@ -294,17 +294,15 @@ Useful switches:
 
 Local-only fallback:
 ```
-pwsh -NoProfile -File .\Tooling\Run-CICompositeLocal-Auto.ps1 `
-  -MaxAttempts 5
+pwsh -NoProfile -File .\Tooling\Run-CI.ps1 `
+  -SkipVerifyIEPaths `
+  -SkipMissingInProject `
+  -SkipBuildVip
 ```
 
 Notes:
 - Logs/status are written under `TestResults\agent-logs`.
-- The local loop waits for existing `g-cli`/`LabVIEW` processes and never terminates them.
-- By default, local parity auto-loop creates a *new* short-path worktree under the configured worktree root (`C:\dev` unless `LVIE_WORKTREE_ROOT` is set).
-  - Naming: `<repo>-ci-parity-auto-<yyyyMMdd-HHmmss>`
-  - Old worktrees accumulate over time; see **Worktree cleanup** below.
-- Set `-LocalUseWorktree:$false` (wrapper) or `-UseWorktree:$false` (local-only script) to run directly from the current repo path.
+- Local parity waits for existing `g-cli`/`LabVIEW` processes and never terminates them.
 
 ## Worktree cleanup
 To keep `C:\dev` tidy, remove old worktrees after you’re done with them.
@@ -325,14 +323,14 @@ git worktree prune
 ```
 
 ## Run CI for a specific commit (workflow_dispatch)
-Use the helper to target a specific commit without relying on PR pushes:
+Dispatch against a temporary branch that points to the target SHA:
 ```
-pwsh -NoProfile -File .\Tooling\Run-CICompositeForCommit.ps1 -Sha <commit>
+git push origin <commit>:refs/heads/ci-run/<shortsha>
+gh workflow run "CI Pipeline" --ref ci-run/<shortsha> -f expected_sha=<commit> -f strict_sha=true
 ```
 
 Notes:
-- The script creates a temporary branch under `ci-run/<shortsha>` and dispatches the workflow.
-- Use `-CleanupRemote` if you want the temporary branch deleted after dispatch.
+- Delete the temporary branch after dispatch when no longer needed: `git push origin --delete ci-run/<shortsha>`.
 
 ## Background automation safety
 Some automation may be running in the background and must not be killed. Do not terminate `g-cli` or `LabVIEW` processes unless you have explicit confirmation it is safe.

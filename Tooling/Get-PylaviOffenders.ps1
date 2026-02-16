@@ -4,7 +4,7 @@
     Summarize the latest pylavi offenders report for automation.
 
 .DESCRIPTION
-    Reads the latest pylavi offenders JSON report written by Run-CICompositeLocal
+    Reads the latest pylavi offenders JSON report written by Run-CI
     and prints a concise summary for agent handoffs or automation.
 
 .PARAMETER RepoRoot
@@ -79,9 +79,6 @@
       5 = offenders exceed threshold (when -FailOnThreshold is used)
 #>
 
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    throw "git was not found on PATH."
-}
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $false)]
@@ -144,6 +141,10 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    throw "git was not found on PATH."
+}
 
 function Resolve-RepoRoot {
     param([string]$Override)

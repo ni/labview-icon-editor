@@ -30,7 +30,7 @@ BeforeAll {
             if ($relative -eq 'manifest.json') {
                 $manifest = [ordered]@{
                     name = 'lvie-codex-skill-layer'
-                    version = '0.4.1'
+                    version = '1.0.0'
                     license_spdx = $License
                 }
                 $manifest | ConvertTo-Json -Depth 4 | Set-Content -Path $targetPath -Encoding utf8

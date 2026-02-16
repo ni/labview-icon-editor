@@ -7,7 +7,7 @@ This runbook is the deterministic execution path for LLM-driven repository opera
 - Do not use destructive git commands (`reset --hard`, `checkout --`, force-push history rewrites).
 - Do not merge directly in automation scripts; open/update PRs only.
 - Keep merge strategy as merge commits.
-- Use manual publish intent only.
+- Use auto publish on eligible merged-PR pushes to `develop`; use manual dispatch only for deterministic backfill.
 
 Optional policy setup helper:
 
@@ -114,7 +114,7 @@ Expected result:
 | --- | --- | --- |
 | Contract guard failure | Guard script output | Fix violated contract; rerun `-Mode validate`. |
 | Workflow contract failure | `Test-SoloMaintainerWorkflowContract.ps1` | Restore manual-only triggers / pipeline-contract / publish-intent tokens. |
-| Container parity failure | `Run-CICompositeLocal-Auto.ps1` logs | Re-run with same mode; inspect `TestResults/agent-logs`. |
+| Container parity failure | `Run-CI.ps1` / `Run-CI.sh` logs | Re-run with same mode; inspect `TestResults/agent-logs`. |
 | Release gate failure | `publish-gate` or `publish-prerelease` logs | Confirm dispatch inputs and required asset pipeline outcomes. |
 
 ## Related Policy

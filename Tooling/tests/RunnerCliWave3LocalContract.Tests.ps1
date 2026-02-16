@@ -18,7 +18,7 @@ Describe 'Test-RunnerCliWave3LocalContract.ps1' {
         { & $Script:ContractScript -RepoRoot $Script:RepoRoot } | Should -Not -Throw
     }
 
-    It 'fails when Run-CICompositeLocal.ps1 loses runner-cli ppl build marker' {
+    It 'fails when Run-CI.ps1 loses runner-cli ppl build marker' {
         $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("lvie-wave3-contract-{0}" -f [guid]::NewGuid().ToString('N'))
         $workflowDir = Join-Path $tempRoot '.github\actions'
         $toolingDir = Join-Path $tempRoot 'Tooling'
@@ -28,11 +28,11 @@ Describe 'Test-RunnerCliWave3LocalContract.ps1' {
         New-Item -Path (Join-Path $workflowDir 'revert-development-mode') -ItemType Directory -Force | Out-Null
 
         try {
-            $localSource = Join-Path $Script:RepoRoot 'Tooling\Run-CICompositeLocal.ps1'
+            $localSource = Join-Path $Script:RepoRoot 'Tooling\Run-CI.ps1'
             $setSource = Join-Path $Script:RepoRoot '.github\actions\set-development-mode\Set_Development_Mode.ps1'
             $revertSource = Join-Path $Script:RepoRoot '.github\actions\revert-development-mode\RevertDevelopmentMode.ps1'
 
-            $localDest = Join-Path $toolingDir 'Run-CICompositeLocal.ps1'
+            $localDest = Join-Path $toolingDir 'Run-CI.ps1'
             $setDest = Join-Path $workflowDir 'set-development-mode\Set_Development_Mode.ps1'
             $revertDest = Join-Path $workflowDir 'revert-development-mode\RevertDevelopmentMode.ps1'
 

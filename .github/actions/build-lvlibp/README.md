@@ -10,7 +10,7 @@ Behavior notes:
 - Icon Editor sources are synchronized into the resolved LabVIEW install (`resource\plugins` and `vi.lib\LabVIEW Icon API`) before build-spec execution.
 - `major`, `minor`, `patch`, and `build` are stamped into the `Editor Packed Library` build spec before execution.
 - The script restores `lv_icon_editor.lvproj` from backup after the build step.
-- LabVIEWCLI `-PortNumber` is resolved from `LVIE_LABVIEWCLI_PORT_<bitness>`, then `LVIE_LABVIEWCLI_PORT`, then `LabVIEW.ini` (`server.tcp.port`), then default `3363`.
+- LabVIEWCLI `-PortNumber` is resolved from `Tooling/labviewcli-port-contract.json` by LabVIEW year+bitness and validated against `LabVIEW.ini` (`server.tcp.enabled` + `server.tcp.port`).
 - LabVIEWCLI captured logs are written under `builds/logs` using `labviewcli-masscompile-*` and `labviewcli-executebuildspec-*` names.
 - `Build_lvlibp.ps1` is deprecated and retained for compatibility for two release cycles.
 
