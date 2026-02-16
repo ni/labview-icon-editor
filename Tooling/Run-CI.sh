@@ -9,6 +9,8 @@ runner_cli_project="${LVIE_RUNNER_CLI_PROJECT:-$repo_root/Tooling/runner-cli/Run
 mode="${LVIE_PARITY_MODE:-linux-container}"
 configuration="${LVIE_DOTNET_CONFIGURATION:-Release}"
 build_spec_raw="${LVIE_PARITY_BUILD_SPEC:-true}"
+run_psscriptanalyzer_raw="${LVIE_RUN_PSSCRIPTANALYZER:-true}"
+pwsh_bin="${LVIE_PWSH_BIN:-pwsh}"
 context_path="${LVIE_PARITY_CONTEXT_PATH:-$repo_root/TestResults/container-parity/${mode}-context.json}"
 
 if ! command -v "$dotnet_bin" >/dev/null 2>&1; then
@@ -28,6 +30,31 @@ normalize_bool() {
     1|true|yes|on) shopt -u nocasematch; return 0 ;;
     *) shopt -u nocasematch; return 1 ;;
   esac
+}
+
+run_powershell_lint() {
+  local enabled_raw="${1:-true}"
+  if ! normalize_bool "$enabled_raw"; then
+    echo "Skipping PSScriptAnalyzer (LVIE_RUN_PSSCRIPTANALYZER=${enabled_raw})"
+    return 0
+  fi
+
+  if ! command -v "$pwsh_bin" >/dev/null 2>&1; then
+    echo "ERROR: pwsh was not found on PATH (LVIE_PWSH_BIN=${pwsh_bin})." >&2
+    exit 1
+  fi
+
+  echo "Ensuring PSScriptAnalyzer module is installed..."
+  (
+    cd "$repo_root"
+    "$pwsh_bin" -NoProfile -Command "\$ErrorActionPreference='Stop'; if (-not (Get-Module -ListAvailable -Name PSScriptAnalyzer)) { Install-Module PSScriptAnalyzer -Scope CurrentUser -Force -AllowClobber }"
+  )
+
+  echo "Running PSScriptAnalyzer..."
+  (
+    cd "$repo_root"
+    "$pwsh_bin" -NoProfile -File "./Tooling/Invoke-PSScriptAnalyzer.ps1" -WriteSummary
+  )
 }
 
 derive_lv_year() {
@@ -58,6 +85,8 @@ derive_lv_year() {
   echo "ERROR: Unable to derive LabVIEW year from .lvversion value '$raw'." >&2
   return 1
 }
+
+run_powershell_lint "$run_psscriptanalyzer_raw"
 
 if [[ "$mode" == "linux-container" ]]; then
   if ! command -v docker >/dev/null 2>&1; then

@@ -21,10 +21,10 @@ Describe 'Dotnet version pin contract' {
             Test-Path -Path $fullPath -PathType Leaf | Should -BeTrue -Because ("Expected workflow file is missing: {0}" -f $relativePath)
 
             $content = Get-Content -Path $fullPath -Raw
-            $matches = [regex]::Matches($content, "(?im)dotnet-version:\s*'([^']+)'")
-            $matches.Count | Should -BeGreaterThan 0 -Because ("No dotnet-version pins found in {0}" -f $relativePath)
+            $versionMatches = [regex]::Matches($content, "(?im)dotnet-version:\s*'([^']+)'")
+            $versionMatches.Count | Should -BeGreaterThan 0 -Because ("No dotnet-version pins found in {0}" -f $relativePath)
 
-            foreach ($match in $matches) {
+            foreach ($match in $versionMatches) {
                 $version = [string]$match.Groups[1].Value
                 $version | Should -Be $script:pinnedVersion -Because ("Unexpected dotnet-version in {0}" -f $relativePath)
             }

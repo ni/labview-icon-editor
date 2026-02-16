@@ -33,5 +33,7 @@ Describe 'Run-CI parity entrypoint contract' {
         $content | Should -Match '--build-spec'
         $content | Should -Match 'run_args\+=\(true\)'
         $content | Should -Match 'run_args\+=\(false\)'
+        $content | Should -Match 'LVIE_RUN_PSSCRIPTANALYZER'
+        $content | Should -Match 'Invoke-PSScriptAnalyzer\.ps1'
     }
 }

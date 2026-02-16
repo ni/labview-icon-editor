@@ -391,7 +391,7 @@ function Invoke-LabVIEWCliWithConnectionRetry {
     $result = Invoke-LabVIEWCli -Arguments $portArgs
     return New-LabVIEWCliResultWithRetryInfo `
         -Result $result `
-        -Attempts @(("port:{0} source:primary exit:{1}" -f $PrimaryPortNumber, $result.ExitCode)) `
+        -Attempts @(("{0}: port:{1} source:primary exit:{2}" -f $OperationName, $PrimaryPortNumber, $result.ExitCode)) `
         -PortNumber $PrimaryPortNumber `
         -PortSource 'primary' `
         -UsedImplicitPort:$false
