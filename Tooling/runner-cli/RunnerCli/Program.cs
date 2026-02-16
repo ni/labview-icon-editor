@@ -1322,7 +1322,7 @@ var parityRunContextOption = new Option<string>(
 var parityBuildSpecOption = new Option<bool>(
     name: "--build-spec",
     getDefaultValue: () => true,
-    description: "Enable ExecuteBuildSpec parity execution.");
+    description: "Execute build specification parity path (mandatory; only true is supported).");
 var parityLabVIEWPathOption = new Option<string?>(
     name: "--labview-path",
     description: "Optional LabVIEW executable override (self-hosted-windows mode).");
@@ -1359,6 +1359,11 @@ parityRunCmd.SetHandler((InvocationContext context) =>
         if (string.IsNullOrWhiteSpace(labviewBitness))
         {
             labviewBitness = "64";
+        }
+        if (!buildSpec)
+        {
+            throw new InvalidOperationException(
+                "Build-spec disable is unsupported. Parity runs require build-spec execution; omit --build-spec or set --build-spec true.");
         }
 
         var parityContext = ParityService.LoadContext(contextPath);

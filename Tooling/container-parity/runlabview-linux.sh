@@ -34,7 +34,6 @@ BUILD_SPEC_NAME="${CONTAINER_PARITY_BUILD_SPEC_NAME:-Editor Packed Library}"
 TARGET_NAME="${CONTAINER_PARITY_TARGET_NAME:-My Computer}"
 BUILD_OUTPUT_RELATIVE_PATH="${CONTAINER_PARITY_BUILD_OUTPUT_RELATIVE_PATH:-resource/plugins/lv_icon.lvlibp}"
 BUILD_OUTPUT_PATH="$(join_lvie_repo_path "$LVIE_REPO_ROOT" "$BUILD_OUTPUT_RELATIVE_PATH")"
-BUILD_SPEC_ENABLED_RAW="${CONTAINER_PARITY_BUILD_SPEC:-false}"
 LOG_ROOT="$(join_lvie_repo_path "$LVIE_REPO_ROOT" "TestResults/container-parity/linux/logs")"
 LABVIEW_ROOT="$(dirname "$LABVIEW_PATH")"
 
@@ -162,6 +161,11 @@ if ! command -v LabVIEWCLI >/dev/null 2>&1; then
   exit 1
 fi
 
+if [[ -n "${CONTAINER_PARITY_BUILD_SPEC:-}" ]] && ! is_enabled_value "${CONTAINER_PARITY_BUILD_SPEC}"; then
+  echo "ERROR: CONTAINER_PARITY_BUILD_SPEC disable is unsupported. Build-spec execution is mandatory; unset CONTAINER_PARITY_BUILD_SPEC or set it to true." >&2
+  exit 1
+fi
+
 if [[ ! -d "$TARGET_DIR" ]]; then
   echo "ERROR: Target directory does not exist: $TARGET_DIR" >&2
   exit 1
@@ -204,11 +208,6 @@ if ! invoke_labviewcli "MassCompile" \
 fi
 
 echo "MassCompile completed successfully."
-
-if ! is_enabled_value "$BUILD_SPEC_ENABLED_RAW"; then
-  echo "Build specification step disabled (set CONTAINER_PARITY_BUILD_SPEC=true to enable)."
-  exit 0
-fi
 
 if [[ ! -f "$PROJECT_PATH" ]]; then
   echo "ERROR: Project file does not exist: $PROJECT_PATH" >&2

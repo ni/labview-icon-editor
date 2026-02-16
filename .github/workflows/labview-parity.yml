@@ -6,10 +6,6 @@ on:
       lv_release:
         required: false
         type: string
-      run_build_spec:
-        required: false
-        type: boolean
-        default: true
       run_self_hosted:
         required: false
         type: boolean
@@ -23,11 +19,6 @@ on:
         description: Optional LabVIEW release tag override (for example, 2020q1). Defaults from .lvversion.
         required: false
         type: string
-      run_build_spec:
-        description: Run ExecuteBuildSpec parity for Editor Packed Library
-        required: false
-        type: boolean
-        default: true
       run_self_hosted:
         description: Run self-hosted parity lane in this workflow
         required: false
@@ -58,7 +49,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       lv_release_input: ${{ steps.resolve.outputs.lv_release_input }}
-      run_build_spec: ${{ steps.resolve.outputs.run_build_spec }}
       run_self_hosted: ${{ steps.resolve.outputs.run_self_hosted }}
     steps:
       - id: resolve
@@ -84,15 +74,6 @@ jobs:
             $lvReleaseInput = ''
           }
 
-          $runBuildSpecRaw = '${{ inputs.run_build_spec }}'
-          if ([string]::IsNullOrWhiteSpace($runBuildSpecRaw)) {
-            $runBuildSpecRaw = '${{ github.event.inputs.run_build_spec }}'
-          }
-          $runBuildSpec = 'true'
-          if (-not [string]::IsNullOrWhiteSpace($runBuildSpecRaw) -and $runBuildSpecRaw.Equals('false', [System.StringComparison]::OrdinalIgnoreCase)) {
-            $runBuildSpec = 'false'
-          }
-
           $runSelfHostedRaw = '${{ inputs.run_self_hosted }}'
           if ([string]::IsNullOrWhiteSpace($runSelfHostedRaw)) {
             $runSelfHostedRaw = '${{ github.event.inputs.run_self_hosted }}'
@@ -103,7 +84,6 @@ jobs:
           }
 
           "lv_release_input=$lvReleaseInput" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-          "run_build_spec=$runBuildSpec" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "run_self_hosted=$runSelfHosted" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
   parity-linux:
@@ -150,10 +130,9 @@ jobs:
             parity run \
             --mode linux-container \
             --context "$PARITY_CONTEXT_PATH" \
-            --build-spec "${{ needs.resolve-parity-context.outputs.run_build_spec }}"
+            --build-spec true
 
       - name: Verify built specification output (Linux container)
-        if: ${{ needs.resolve-parity-context.outputs.run_build_spec == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -166,7 +145,6 @@ jobs:
           echo "Built specification artifact: $output_path ($bytes bytes)"
 
       - name: Upload built specification artifact (Linux container)
-        if: ${{ needs.resolve-parity-context.outputs.run_build_spec == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: labview-container-editor-packed-library-linux
@@ -175,7 +153,7 @@ jobs:
           retention-days: 14
 
       - name: Upload LabVIEWCLI logs (Linux container)
-        if: ${{ needs.resolve-parity-context.outputs.run_build_spec == 'true' || failure() }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: labview-container-logs-linux
@@ -268,14 +246,13 @@ jobs:
             --mode self-hosted-windows `
             --context "$env:PARITY_CONTEXT_PATH" `
             --labview-bitness 64 `
-            --build-spec "${{ needs.resolve-parity-context.outputs.run_build_spec }}"
+            --build-spec true
 
           if ($LASTEXITCODE -ne 0) {
             throw "runner-cli parity run failed with exit code $LASTEXITCODE."
           }
 
       - name: Verify built specification output (Self-hosted)
-        if: ${{ needs.resolve-parity-context.outputs.run_build_spec == 'true' }}
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
         run: |
@@ -303,7 +280,7 @@ jobs:
           retention-days: 14
 
       - name: Upload built specification artifact (Self-hosted)
-        if: ${{ always() && needs.resolve-parity-context.outputs.run_build_spec == 'true' }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: labview-parity-self-hosted-editor-packed-library
@@ -374,14 +351,13 @@ jobs:
             parity run `
             --mode windows-container `
             --context "$env:PARITY_CONTEXT_PATH" `
-            --build-spec "${{ needs.resolve-parity-context.outputs.run_build_spec }}"
+            --build-spec true
 
           if ($LASTEXITCODE -ne 0) {
             throw "runner-cli parity run failed with exit code $LASTEXITCODE."
           }
 
       - name: Verify built specification output (Windows container)
-        if: ${{ needs.resolve-parity-context.outputs.run_build_spec == 'true' }}
         shell: pwsh
         run: |
           $outputPath = Join-Path $env:GITHUB_WORKSPACE 'resource\plugins\lv_icon.lvlibp'
@@ -392,7 +368,6 @@ jobs:
           Write-Host ("Built specification artifact: {0} ({1} bytes)" -f $item.FullName, $item.Length)
 
       - name: Upload built specification artifact (Windows container)
-        if: ${{ needs.resolve-parity-context.outputs.run_build_spec == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: labview-container-editor-packed-library-windows
@@ -401,7 +376,7 @@ jobs:
           retention-days: 14
 
       - name: Upload LabVIEWCLI logs (Windows container)
-        if: ${{ needs.resolve-parity-context.outputs.run_build_spec == 'true' || failure() }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: labview-container-logs-windows

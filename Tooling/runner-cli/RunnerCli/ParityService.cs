@@ -115,6 +115,11 @@ public static class ParityService
         {
             throw new ArgumentNullException(nameof(context));
         }
+        if (!buildSpecEnabled)
+        {
+            throw new InvalidOperationException(
+                "Build-spec disable is unsupported. Parity runs require build-spec execution.");
+        }
 
         var mode = NormalizeMode(modeInput);
         var buildOutputPath = ResolveRepoPath(context.RepoRoot, context.BuildOutputRelativePath);
@@ -122,13 +127,13 @@ public static class ParityService
         switch (mode)
         {
             case "linux-container":
-                RunLinuxContainer(context, buildSpecEnabled);
+                RunLinuxContainer(context);
                 break;
             case "windows-container":
-                RunWindowsContainer(context, buildSpecEnabled);
+                RunWindowsContainer(context);
                 break;
             case "self-hosted-windows":
-                RunSelfHostedWindows(context, buildSpecEnabled, labviewPathOverride, labviewBitness);
+                RunSelfHostedWindows(context, labviewPathOverride, labviewBitness);
                 break;
             default:
                 throw new InvalidOperationException($"Unsupported parity mode '{modeInput}'.");
@@ -147,7 +152,7 @@ public static class ParityService
         };
     }
 
-    private static void RunLinuxContainer(ParityContext context, bool buildSpecEnabled)
+    private static void RunLinuxContainer(ParityContext context)
     {
         var selectedRelease = ResolveContainerRelease(context.LvReleaseResolved, "linux", context.RepoRoot);
         var containerYear = ResolveReleaseYear(selectedRelease, context.LabVIEWYear);
@@ -182,7 +187,7 @@ public static class ParityService
             "-e",
             $"CONTAINER_PARITY_EXCLUDE_FILES={string.Join(';', context.ExcludeFiles)}",
             "-e",
-            $"CONTAINER_PARITY_BUILD_SPEC={(buildSpecEnabled ? "true" : "false")}",
+            "CONTAINER_PARITY_BUILD_SPEC=true",
             "-e",
             $"CONTAINER_PARITY_BUILD_SPEC_NAME={context.BuildSpecName}",
             "-e",
@@ -198,10 +203,10 @@ public static class ParityService
         };
 
         RunProcess("docker", runArgs, context.RepoRoot);
-        VerifyBuildOutput(context, buildSpecEnabled);
+        VerifyBuildOutput(context);
     }
 
-    private static void RunWindowsContainer(ParityContext context, bool buildSpecEnabled)
+    private static void RunWindowsContainer(ParityContext context)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -251,7 +256,7 @@ public static class ParityService
             "-e",
             $"CONTAINER_PARITY_EXCLUDE_FILES={string.Join(';', context.ExcludeFiles)}",
             "-e",
-            $"CONTAINER_PARITY_BUILD_SPEC={(buildSpecEnabled ? "true" : "false")}",
+            "CONTAINER_PARITY_BUILD_SPEC=true",
             "-e",
             $"CONTAINER_PARITY_BUILD_SPEC_NAME={context.BuildSpecName}",
             "-e",
@@ -268,12 +273,11 @@ public static class ParityService
         };
 
         RunProcess("docker", runArgs, context.RepoRoot);
-        VerifyBuildOutput(context, buildSpecEnabled);
+        VerifyBuildOutput(context);
     }
 
     private static void RunSelfHostedWindows(
         ParityContext context,
-        bool buildSpecEnabled,
         string? labviewPathOverride,
         string labviewBitness)
     {
@@ -324,27 +328,19 @@ public static class ParityService
             context.LabVIEWYear
         };
 
-        if (buildSpecEnabled)
-        {
-            args.Add("-BuildProjectSpec");
-        }
+        args.Add("-BuildProjectSpec");
 
         RunProcess(
             "pwsh",
             args,
             context.RepoRoot,
-            BuildParityEnvironment(context, buildSpecEnabled, windowsStyle: true));
+            BuildParityEnvironment(context, windowsStyle: true));
 
-        VerifyBuildOutput(context, buildSpecEnabled);
+        VerifyBuildOutput(context);
     }
 
-    private static void VerifyBuildOutput(ParityContext context, bool buildSpecEnabled)
+    private static void VerifyBuildOutput(ParityContext context)
     {
-        if (!buildSpecEnabled)
-        {
-            return;
-        }
-
         var outputPath = ResolveRepoPath(context.RepoRoot, context.BuildOutputRelativePath);
         if (!File.Exists(outputPath))
         {
@@ -354,7 +350,6 @@ public static class ParityService
 
     private static Dictionary<string, string> BuildParityEnvironment(
         ParityContext context,
-        bool buildSpecEnabled,
         bool windowsStyle)
     {
         var projectRelative = windowsStyle
@@ -378,7 +373,7 @@ public static class ParityService
             ["PROJECT_PATH_REL"] = projectRelative,
             ["TARGET_DIR_REL"] = targetDirRel,
             ["CONTAINER_PARITY_EXCLUDE_FILES"] = string.Join(';', context.ExcludeFiles),
-            ["CONTAINER_PARITY_BUILD_SPEC"] = buildSpecEnabled ? "true" : "false",
+            ["CONTAINER_PARITY_BUILD_SPEC"] = "true",
             ["CONTAINER_PARITY_BUILD_SPEC_NAME"] = context.BuildSpecName,
             ["CONTAINER_PARITY_TARGET_NAME"] = context.TargetName,
             ["CONTAINER_PARITY_BUILD_OUTPUT_RELATIVE_PATH"] = buildOutputRel,

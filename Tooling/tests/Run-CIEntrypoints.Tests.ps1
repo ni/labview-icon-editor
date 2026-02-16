@@ -27,12 +27,13 @@ Describe 'Run-CI parity entrypoint contract' {
         }
     }
 
-    It 'Run-CI.sh enforces explicit build-spec boolean forwarding and required local gates' {
+    It 'Run-CI.sh enforces mandatory build-spec and required local gates' {
         (Test-Path -LiteralPath $script:runCiSh -PathType Leaf) | Should -BeTrue
         $content = Get-Content -Path $script:runCiSh -Raw
         $content | Should -Match '--build-spec'
-        $content | Should -Match 'run_args\+=\(true\)'
-        $content | Should -Match 'run_args\+=\(false\)'
+        $content | Should -Match '--build-spec true'
+        $content | Should -Not -Match 'run_args\+=\(false\)'
+        $content | Should -Match 'LVIE_PARITY_BUILD_SPEC disable is unsupported'
         $content | Should -Match 'LVIE_RUN_PSSCRIPTANALYZER'
         $content | Should -Match 'Invoke-PSScriptAnalyzer\.ps1'
         $content | Should -Match 'LVIE_RUN_PYLAVI'

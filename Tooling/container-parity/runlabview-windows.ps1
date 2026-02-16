@@ -11,6 +11,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+if ($PSBoundParameters.ContainsKey('BuildProjectSpec') -and -not $BuildProjectSpec.IsPresent) {
+    throw "BuildProjectSpec disable is unsupported. Build-spec execution is mandatory."
+}
+
 if (-not [string]::IsNullOrWhiteSpace($LabVIEWVersion)) {
     Write-Host ("LabVIEW version hint: {0}" -f $LabVIEWVersion)
 }
@@ -368,7 +372,10 @@ if ([string]::IsNullOrWhiteSpace($TargetName)) {
     }
 }
 
-$buildSpecEnabled = $BuildProjectSpec.IsPresent -or (Test-EnabledValue -Value $env:CONTAINER_PARITY_BUILD_SPEC)
+$containerBuildSpecRaw = $env:CONTAINER_PARITY_BUILD_SPEC
+if (-not [string]::IsNullOrWhiteSpace($containerBuildSpecRaw) -and -not (Test-EnabledValue -Value $containerBuildSpecRaw)) {
+    throw "CONTAINER_PARITY_BUILD_SPEC disable is unsupported. Build-spec execution is mandatory; unset CONTAINER_PARITY_BUILD_SPEC or set it to true."
+}
 $buildOutputRelativePath = if ([string]::IsNullOrWhiteSpace($env:CONTAINER_PARITY_BUILD_OUTPUT_RELATIVE_PATH)) {
     'resource\plugins\lv_icon.lvlibp'
 } else {
@@ -444,11 +451,6 @@ try {
     }
 
     Write-Output "MassCompile completed successfully."
-
-    if (-not $buildSpecEnabled) {
-        Write-Output "Build specification step disabled (set CONTAINER_PARITY_BUILD_SPEC=true to enable)."
-        return
-    }
 
     if (-not (Test-Path -LiteralPath $ProjectPath -PathType Leaf)) {
         throw "Project file does not exist: $ProjectPath"

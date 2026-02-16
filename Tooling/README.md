@@ -24,7 +24,8 @@ Common entrypoints:
 - `Run-CI.sh`
   Linux parity launcher that runs `runner-cli parity context/run` in `linux-container` mode by default.
   Example: `bash ./Tooling/Run-CI.sh`
-  Optional env: `LVIE_PARITY_MODE`, `LVIE_PARITY_BUILD_SPEC`, `LVIE_RUN_PSSCRIPTANALYZER`, `LVIE_RUN_PYLAVI`, `LVIE_RUN_VI_ANALYZER`, `LABVIEW_LINUX_IMAGE`, `LVIE_PARITY_CONTEXT_PATH`.
+  Optional env: `LVIE_PARITY_MODE`, `LVIE_RUN_PSSCRIPTANALYZER`, `LVIE_RUN_PYLAVI`, `LVIE_RUN_VI_ANALYZER`, `LABVIEW_LINUX_IMAGE`, `LVIE_PARITY_CONTEXT_PATH`.
+  Build-spec execution is mandatory for parity; `LVIE_PARITY_BUILD_SPEC=false` is unsupported and fails fast.
   `LVIE_RUN_VI_ANALYZER=auto|true|false` defaults to `auto` (run only when `pwsh` and `LabVIEWCLI` are available).
 - `Invoke-BeltAndSuspendersCI.ps1` (recommended proactive loop)
   Canonical "belt and suspenders" flow for exact-SHA confidence:

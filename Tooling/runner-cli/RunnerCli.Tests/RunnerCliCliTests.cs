@@ -91,6 +91,16 @@ public class RunnerCliCliTests
     }
 
     [Fact]
+    public void ParityRun_rejects_build_spec_false()
+    {
+        var repoRoot = FindRepoRoot();
+        var (exitCode, _, stderr) = RunCli(repoRoot, "parity run --mode linux-container --context fake-context.json --build-spec false");
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("Build-spec disable is unsupported", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void ConformanceCheck_json_reports_non_windows_not_applicable_treatment()
     {
         var repoRoot = FindRepoRoot();

@@ -8,7 +8,6 @@ dotnet_bin="${DOTNET_BIN:-dotnet}"
 runner_cli_project="${LVIE_RUNNER_CLI_PROJECT:-$repo_root/Tooling/runner-cli/RunnerCli/RunnerCli.csproj}"
 mode="${LVIE_PARITY_MODE:-linux-container}"
 configuration="${LVIE_DOTNET_CONFIGURATION:-Release}"
-build_spec_raw="${LVIE_PARITY_BUILD_SPEC:-true}"
 run_psscriptanalyzer_raw="${LVIE_RUN_PSSCRIPTANALYZER:-true}"
 run_pylavi_raw="${LVIE_RUN_PYLAVI:-true}"
 run_vi_analyzer_raw="${LVIE_RUN_VI_ANALYZER:-auto}"
@@ -36,6 +35,19 @@ normalize_bool() {
     1|true|yes|on) shopt -u nocasematch; return 0 ;;
     *) shopt -u nocasematch; return 1 ;;
   esac
+}
+
+validate_mandatory_build_spec() {
+  if [[ -z "${LVIE_PARITY_BUILD_SPEC+x}" ]]; then
+    return 0
+  fi
+
+  if normalize_bool "${LVIE_PARITY_BUILD_SPEC}"; then
+    return 0
+  fi
+
+  echo "ERROR: LVIE_PARITY_BUILD_SPEC disable is unsupported. Build-spec execution is mandatory; unset LVIE_PARITY_BUILD_SPEC or set it to true." >&2
+  exit 1
 }
 
 run_powershell_lint() {
@@ -164,6 +176,7 @@ derive_lv_year() {
   return 1
 }
 
+validate_mandatory_build_spec
 run_powershell_lint "$run_psscriptanalyzer_raw"
 run_pylavi_gate "$run_pylavi_raw"
 run_vi_analyzer_gate "$run_vi_analyzer_raw"
@@ -188,12 +201,7 @@ mkdir -p "$(dirname "$context_path")"
 echo "Generating parity context: $context_path"
 "$dotnet_bin" run --project "$runner_cli_project" --configuration "$configuration" -- parity context --repo-root "$repo_root" --output "$context_path"
 
-run_args=(parity run --mode "$mode" --context "$context_path" --build-spec)
-if normalize_bool "$build_spec_raw"; then
-  run_args+=(true)
-else
-  run_args+=(false)
-fi
+run_args=(parity run --mode "$mode" --context "$context_path" --build-spec true)
 
-echo "Running parity mode '$mode' (build-spec: $build_spec_raw)"
+echo "Running parity mode '$mode' (build-spec: true, mandatory)"
 "$dotnet_bin" run --project "$runner_cli_project" --configuration "$configuration" -- "${run_args[@]}" "$@"

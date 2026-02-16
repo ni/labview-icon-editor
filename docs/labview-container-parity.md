@@ -19,18 +19,16 @@ The workflow defaults to release tag `2026q1`, and supports override via `workfl
 
 ## Default Build-Spec Behavior
 
-Build-spec parity is enabled by default and is a blocking check.
+Build-spec parity is mandatory and is a blocking check.
 
-- Manual input: `run_build_spec` (`true` or `false`, default `true`).
 - Gate behavior:
   - `pull_request`: Linux parity runs by default; Windows parity is intentionally skipped to keep PR feedback fast for collaborators.
   - `push` to `develop`: both Linux and Windows parity run, including `ExecuteBuildSpec`.
-  - `workflow_dispatch`: both Linux and Windows parity run by default; set `run_build_spec=false` only when explicitly skipping build-spec diagnostics.
-- Hard-fail policy: when build-spec is enabled (default), Linux and Windows lanes must both pass.
+  - `workflow_dispatch`: both Linux and Windows parity run with `ExecuteBuildSpec`.
+- Hard-fail policy: Linux and Windows lanes always execute build-spec parity and must pass.
 
 Build-spec environment contract used by container scripts:
 
-- `CONTAINER_PARITY_BUILD_SPEC`
 - `CONTAINER_PARITY_BUILD_SPEC_NAME`
 - `CONTAINER_PARITY_TARGET_NAME`
 - `CONTAINER_PARITY_BUILD_OUTPUT_RELATIVE_PATH`
@@ -67,7 +65,7 @@ Manual run:
 
 1. Open Actions and run **LabVIEW Parity**.
 2. Optionally set `lv_release` (for example `2026q1`).
-3. Leave `run_build_spec=true` (default) to keep packed-library parity enabled; set it to `false` only when intentionally bypassing build-spec execution.
+3. Build-spec parity is always executed (no skip toggle).
 
 PR run:
 
