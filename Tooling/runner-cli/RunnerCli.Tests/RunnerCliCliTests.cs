@@ -704,6 +704,40 @@ public class RunnerCliCliTests
     }
 
     [Fact]
+    public void Vip_build_dry_run_accepts_display_information_json_path()
+    {
+        var repoRoot = FindRepoRoot();
+        var tempDir = Directory.CreateTempSubdirectory("lvie-cli-vip-display");
+        var displayInfoPath = Path.Combine(tempDir.FullName, "display-information.json");
+        File.WriteAllText(displayInfoPath, "{}");
+
+        var args = string.Join(' ', new[]
+        {
+            "vip build",
+            $"--repo-root \"{repoRoot}\"",
+            "--supported-bitness 64",
+            "--vipb-path \"Tooling/deployment/NI Icon editor.vipb\"",
+            "--labview-version 26.1",
+            "--labview-minor-revision 1",
+            "--major 0",
+            "--minor 0",
+            "--patch 0",
+            "--build 1",
+            "--commit deadbeef",
+            "--release-notes-file \"Tooling/deployment/release_notes.md\"",
+            $"--display-information-json-path \"{displayInfoPath}\"",
+            "--vipm-timeout-seconds 900",
+            "--dry-run"
+        });
+        var (exitCode, stdout, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(0, exitCode);
+        Assert.True(string.IsNullOrWhiteSpace(stdout), $"stdout: {stdout}");
+        Assert.Contains("vip build command:", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("-DisplayInformationJsonPath", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Ppl_build_dry_run_emits_build_project_spec_command()
     {
         var repoRoot = FindRepoRoot();

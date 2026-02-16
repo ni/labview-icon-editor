@@ -24,8 +24,8 @@ param(
     [string]$Commit,
     [string]$ReleaseNotesFile,
 
-    [Parameter(Mandatory = $true)]
     [string]$DisplayInformationJSON,
+    [string]$DisplayInformationJsonPath,
 
     [ValidateRange(60, 7200)]
     [int]$VipmTimeoutSeconds,
@@ -219,6 +219,22 @@ $statusPath = Resolve-StatusPath -ExplicitPath $StatusPath -RepoRoot $resolvedRe
 $logDirectory = Resolve-LogDirectory -RepoRoot $resolvedRepoRoot
 $null = New-Item -Path $logDirectory -ItemType Directory -Force
 $gcliLog = Join-Path -Path $logDirectory -ChildPath 'gcli-build.log'
+$resolvedDisplayInformationJsonPath = $null
+
+if (-not [string]::IsNullOrWhiteSpace($DisplayInformationJsonPath)) {
+    $displaySourcePath = $DisplayInformationJsonPath
+    if (-not [System.IO.Path]::IsPathRooted($displaySourcePath)) {
+        $displaySourcePath = Join-Path -Path $resolvedRepoRoot -ChildPath $displaySourcePath
+    }
+
+    if (-not (Test-Path -Path $displaySourcePath -PathType Leaf)) {
+        throw "DisplayInformationJsonPath '$displaySourcePath' does not exist."
+    }
+
+    $resolvedDisplayInformationJsonPath = (Resolve-Path -Path $displaySourcePath).Path
+} elseif ([string]::IsNullOrWhiteSpace($DisplayInformationJSON)) {
+    throw "DisplayInformationJSON was not provided. Pass -DisplayInformationJSON or -DisplayInformationJsonPath."
+}
 
 $startedAt = Get-Date
 $attempt = 0
@@ -233,7 +249,11 @@ while ($attempt -lt $maxAttemptsValue) {
 
     $displayInfoPath = Join-Path -Path $logDirectory -ChildPath 'vipb-display-info.json'
     try {
-        Set-Content -Path $displayInfoPath -Value $DisplayInformationJSON -Encoding utf8
+        if (-not [string]::IsNullOrWhiteSpace($resolvedDisplayInformationJsonPath)) {
+            Copy-Item -Path $resolvedDisplayInformationJsonPath -Destination $displayInfoPath -Force
+        } else {
+            Set-Content -Path $displayInfoPath -Value $DisplayInformationJSON -Encoding utf8
+        }
     } catch {
         throw "Failed to write display information JSON to $displayInfoPath. $($_.Exception.Message)"
     }
