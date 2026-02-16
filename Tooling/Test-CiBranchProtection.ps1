@@ -4,8 +4,8 @@
     Verifies develop branch required status-check policy for CI profile rollout.
 
 .DESCRIPTION
-    Queries GitHub branch protection required status checks and validates that only
-    the pipeline-contract context is required. If the current token cannot read
+    Queries GitHub branch protection required status checks and validates that the
+    configured required contexts match policy. If the current token cannot read
     branch protection, emits a handoff-ready status record for repository admins.
 #>
 
@@ -18,7 +18,11 @@ param(
     [string]$Branch = 'develop',
 
     [Parameter(Mandatory = $false)]
-    [string]$RequiredContext = 'CI Pipeline / Pipeline Contract',
+    [Alias('RequiredContext')]
+    [string[]]$RequiredContexts = @(
+        'CI Pipeline / PowerShell Lint',
+        'CI Pipeline / Pipeline Contract'
+    ),
 
     [Parameter(Mandatory = $false)]
     [string]$OutputPath = 'TestResults/agent-logs/branch-protection-status.latest.json',
@@ -85,6 +89,11 @@ function Write-StatusFile {
 $resolvedRepo = Resolve-Repository -RepoInput $Repo
 $apiPath = "repos/$resolvedRepo/branches/$Branch/protection/required_status_checks"
 
+$expectedContexts = @($RequiredContexts | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
+if ($expectedContexts.Count -eq 0) {
+    throw 'At least one required status-check context must be provided.'
+}
+
 $rawResponse = $null
 $apiError = $null
 try {
@@ -102,7 +111,7 @@ if (-not [string]::IsNullOrWhiteSpace($apiError)) {
         reason = 'branch-protection-api-unavailable'
         repository = $resolvedRepo
         branch = $Branch
-        required_context_expected = @($RequiredContext)
+        required_context_expected = $expectedContexts
         required_contexts_actual = @()
         strict_required_status_checks = $null
         generated_utc = (Get-Date).ToUniversalTime().ToString('o')
@@ -125,7 +134,6 @@ if ($null -ne $parsed.contexts) {
     $actualContexts = @($parsed.contexts | ForEach-Object { [string]$_ } | Sort-Object -Unique)
 }
 
-$expectedContexts = @($RequiredContext)
 $missing = @($expectedContexts | Where-Object { $_ -notin $actualContexts })
 $extra = @($actualContexts | Where-Object { $_ -notin $expectedContexts })
 $exactMatch = ($missing.Count -eq 0 -and $extra.Count -eq 0)
@@ -157,6 +165,6 @@ Write-Warning ("Missing contexts: {0}" -f ($(if ($missing.Count -gt 0) { $missin
 Write-Warning ("Extra contexts: {0}" -f ($(if ($extra.Count -gt 0) { $extra -join ', ' } else { '<none>' })))
 
 if ($FailOnMismatch) {
-    throw 'Branch protection required status-check policy does not match expected pipeline-contract-only configuration.'
+    throw 'Branch protection required status-check policy does not match expected configured contexts.'
 }
 

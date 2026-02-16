@@ -25,9 +25,9 @@ Date adopted: **2026-02-11**
 
 ## Required Merge Checks
 
-For protected integration branches in solo mode, require only:
+For protected integration branches in solo mode, require:
 
-- `CI Pipeline / Pipeline Contract`
+- `CI Pipeline / PowerShell Lint`
 - `CI Pipeline / Pipeline Contract`
 
 No reviewer count is required in branch protection for solo-maintainer operation.

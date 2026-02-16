@@ -214,7 +214,7 @@ The `build-ppl` job uses a matrix to produce both bitnesses rather than distinct
 | `workflow_dispatch` (`full`, `force_gcli_lunit=false`) | Runs (required) |
 | `workflow_dispatch` (`release-priority`, `force_gcli_lunit=true`) | Skipped intentionally |
 
-Branch protection recommendation for solo mode: require only `CI Pipeline / Pipeline Contract` and `CI Pipeline / Pipeline Contract` for pull requests.
+Branch protection recommendation for solo mode: require `CI Pipeline / PowerShell Lint` and `CI Pipeline / Pipeline Contract` for pull requests.
 
 *(The **Run Unit Tests** workflow has been consolidated into the main CI process.)*
 

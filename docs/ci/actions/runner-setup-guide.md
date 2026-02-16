@@ -121,7 +121,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 3. **CI Pipeline**
    - PR-only companion workflow (`.github/workflows/ci.yml`) for additional validation signal.
    - Uses `ci_profile=pr-fast` and never publishes prereleases.
-   - In solo mode, require both `CI Pipeline / Pipeline Contract` and `CI Pipeline / Pipeline Contract` in branch protection.
+   - In solo mode, require `CI Pipeline / PowerShell Lint` and `CI Pipeline / Pipeline Contract` in branch protection.
 
 
 <a name="setting-up-a-self-hosted-runner"></a>
