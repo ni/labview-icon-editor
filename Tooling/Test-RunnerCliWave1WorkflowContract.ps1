@@ -101,8 +101,8 @@ function Test-ExecutionPolicyAllowlist {
         [string[]]$Allowlist
     )
 
-    $matches = [regex]::Matches($Content, '(?im)-ExecutionPolicy\s+([A-Za-z]+)')
-    foreach ($match in $matches) {
+    $policyMatches = [regex]::Matches($Content, '(?im)-ExecutionPolicy\s+([A-Za-z]+)')
+    foreach ($match in $policyMatches) {
         $policyValue = [string]$match.Groups[1].Value
         if ($Allowlist -notcontains $policyValue) {
             Add-Finding `
