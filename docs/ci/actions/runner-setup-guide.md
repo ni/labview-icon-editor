@@ -29,6 +29,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 
 > **Prerequisites**:
 > - **LabVIEW 2026 (26.1), 32-bit and 64-bit** (minimum supported baseline).
+> - **LabVIEWCLI** available on PATH on self-hosted runners (required by the blocking `vi-analyzer` CI job).
 > - The relevant **VIPC** file is now at `.github/actions/apply-vipc/runner_dependencies.vipc`.
 > - [PowerShell 7+](https://github.com/PowerShell/PowerShell/releases/latest)
 > - [Git for Windows](https://github.com/git-for-windows/git/releases/latest)
@@ -59,6 +60,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
     - Run tests using **CI Pipeline**.
     - `pull_request` runs use the `pr-fast` profile (64-bit smoke/missing/unit).
     - `workflow_dispatch` with `force_gcli_lunit=true` uses `release-priority` and skips heavy self-hosted validation jobs.
+    - All profiles require the `vi-analyzer` job to pass.
     - **CI Pipeline** (`.github/workflows/ci.yml`) runs on `pull_request` only as a companion signal and intentionally excludes publish-path jobs.
 
 6. **Build VI Package**
@@ -100,6 +102,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 
 2. **CI Pipeline**
    - Includes `unit-tests`, `version`, and `build-vip` jobs, plus container packed-library and prerelease publication jobs.
+   - Includes a blocking `vi-analyzer` job that executes `Tooling/Run-ViAnalyzer.ps1` against `Tooling/vi-analyzer/tasks.json`.
    - Execution profile is computed as `ci_profile`:
      - `release-priority` = `workflow_dispatch` + `force_gcli_lunit=true` (target <= 25 minutes).
      - `pr-fast` = `pull_request` (target <= 35 minutes).

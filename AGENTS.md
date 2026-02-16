@@ -150,6 +150,22 @@ Metadata quick-checks:
   - `pwsh -NoProfile -File .\Tooling\Run-ViValidate.ps1`
   - Profiles: `-ViValidateProfile strict|legacy|both` (optional `-ViValidateReportOnly`, `-ViValidateSkipVersionGate`)
 
+## VI Analyzer gate
+- Canonical task registry: `Tooling\vi-analyzer\tasks.json` (exactly three tasks for API, plugins, and tooling scopes).
+- Canonical executor: `Tooling\Run-ViAnalyzer.ps1`.
+- Local smoke run:
+  - `pwsh -NoProfile -File .\Tooling\Run-ViAnalyzer.ps1 -RepoRoot . -SupportedBitness 64`
+- Run-CI controls:
+  - `pwsh -NoProfile -File .\Tooling\Run-CI.ps1 -ViAnalyzerOnly`
+  - `pwsh -NoProfile -File .\Tooling\Run-CI.ps1 -SkipViAnalyzer`
+- Linux parity control:
+  - `LVIE_RUN_VI_ANALYZER=auto|true|false ./Tooling/Run-CI.sh`
+  - `auto` runs the gate only when both `pwsh` and `LabVIEWCLI` are available; otherwise it prints an explicit skip reason.
+- CI evidence:
+  - artifact `vi-analyzer-reports` from `builds/vi-analyzer`
+  - artifact `vi-analyzer-status` from `builds/status/vi-analyzer-summary.json`
+  - step summary table emitted by `Run-ViAnalyzer.ps1`.
+
 ## Worktree root (short paths)
 Use a short path for worktrees to avoid Windows path-length issues. Default to `C:\dev` for local dev; for self-hosted runners, standardize under the runner directory (example: `C:\actions-runner\_work\lvie\w`).
 

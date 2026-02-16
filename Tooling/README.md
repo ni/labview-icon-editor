@@ -13,14 +13,19 @@ Common entrypoints:
   Example: `pwsh -NoProfile -File .\\Tooling\\Run-ViValidate.ps1`
   Profiles: `-ViValidateProfile strict|legacy|both`, optional `-ViValidateReportOnly`, `-ViValidateSkipVersionGate`.
   Optional absolute-path focus: set `LVIE_PYLAVI_ABSOLUTE_PATH_ROOTS` (semicolon-delimited) to flag specific roots without committing sensitive paths. CI redacts configured roots in logs and the uploaded pylavi log artifact, uploads a redacted top-offenders report (`pylavi-validate-offenders-<label>`), and prints a top-offenders table in the step summary.
+- `Run-ViAnalyzer.ps1`
+  Runs deterministic LabVIEWCLI VI Analyzer tasks from `Tooling/vi-analyzer/tasks.json` using strict port-contract resolution.
+  Example: `pwsh -NoProfile -File .\\Tooling\\Run-ViAnalyzer.ps1 -RepoRoot . -SupportedBitness 64`
 - `Run-CI.ps1`
   Local CI parity run (Verify IE Paths, VIPC, unit tests, PPLs, VIP build).
   Example: `pwsh -NoProfile -File .\\Tooling\\Run-CI.ps1`
   Dev-mode request flags are policy-disabled and now fail fast.
+  VI gates: `-ViValidateOnly`, `-SkipViValidate`, `-ViAnalyzerOnly`, `-SkipViAnalyzer`.
 - `Run-CI.sh`
   Linux parity launcher that runs `runner-cli parity context/run` in `linux-container` mode by default.
   Example: `bash ./Tooling/Run-CI.sh`
-  Optional env: `LVIE_PARITY_MODE`, `LVIE_PARITY_BUILD_SPEC`, `LABVIEW_LINUX_IMAGE`, `LVIE_PARITY_CONTEXT_PATH`.
+  Optional env: `LVIE_PARITY_MODE`, `LVIE_PARITY_BUILD_SPEC`, `LVIE_RUN_PSSCRIPTANALYZER`, `LVIE_RUN_PYLAVI`, `LVIE_RUN_VI_ANALYZER`, `LABVIEW_LINUX_IMAGE`, `LVIE_PARITY_CONTEXT_PATH`.
+  `LVIE_RUN_VI_ANALYZER=auto|true|false` defaults to `auto` (run only when `pwsh` and `LabVIEWCLI` are available).
 - `Invoke-BeltAndSuspendersCI.ps1` (recommended proactive loop)
   Canonical "belt and suspenders" flow for exact-SHA confidence:
   1) local parity auto-loop until PPL success target is met,

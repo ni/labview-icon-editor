@@ -37,5 +37,7 @@ Describe 'Run-CI parity entrypoint contract' {
         $content | Should -Match 'Invoke-PSScriptAnalyzer\.ps1'
         $content | Should -Match 'LVIE_RUN_PYLAVI'
         $content | Should -Match 'Run-ViValidate\.ps1'
+        $content | Should -Match 'LVIE_RUN_VI_ANALYZER'
+        $content | Should -Match 'Run-ViAnalyzer\.ps1'
     }
 }

@@ -11,6 +11,7 @@ configuration="${LVIE_DOTNET_CONFIGURATION:-Release}"
 build_spec_raw="${LVIE_PARITY_BUILD_SPEC:-true}"
 run_psscriptanalyzer_raw="${LVIE_RUN_PSSCRIPTANALYZER:-true}"
 run_pylavi_raw="${LVIE_RUN_PYLAVI:-true}"
+run_vi_analyzer_raw="${LVIE_RUN_VI_ANALYZER:-auto}"
 pwsh_bin="${LVIE_PWSH_BIN:-pwsh}"
 pylavi_profile="${LVIE_PYLAVI_PROFILE:-strict}"
 pylavi_config_path="${LVIE_PYLAVI_CONFIG_PATH:-}"
@@ -92,6 +93,48 @@ run_pylavi_gate() {
   )
 }
 
+run_vi_analyzer_gate() {
+  local mode_raw="${1:-auto}"
+  local mode="${mode_raw,,}"
+
+  case "$mode" in
+    false|0|no|off)
+      echo "Skipping VI Analyzer gate (LVIE_RUN_VI_ANALYZER=${mode_raw})"
+      return 0
+      ;;
+    auto|true|1|yes|on)
+      ;;
+    *)
+      echo "ERROR: LVIE_RUN_VI_ANALYZER must be one of auto|true|false (received '${mode_raw}')." >&2
+      exit 1
+      ;;
+  esac
+
+  if ! command -v "$pwsh_bin" >/dev/null 2>&1; then
+    if [[ "$mode" == "auto" ]]; then
+      echo "Skipping VI Analyzer gate in auto mode: pwsh not found on PATH (LVIE_PWSH_BIN=${pwsh_bin})."
+      return 0
+    fi
+    echo "ERROR: pwsh was not found on PATH (LVIE_PWSH_BIN=${pwsh_bin}); cannot run Tooling/Run-ViAnalyzer.ps1." >&2
+    exit 1
+  fi
+
+  if ! command -v LabVIEWCLI >/dev/null 2>&1; then
+    if [[ "$mode" == "auto" ]]; then
+      echo "Skipping VI Analyzer gate in auto mode: LabVIEWCLI not found on PATH."
+      return 0
+    fi
+    echo "ERROR: LabVIEWCLI was not found on PATH; VI Analyzer gate cannot run." >&2
+    exit 1
+  fi
+
+  echo "Running LabVIEWCLI VI Analyzer gate..."
+  (
+    cd "$repo_root"
+    "$pwsh_bin" -NoProfile -File "./Tooling/Run-ViAnalyzer.ps1" -RepoRoot "$repo_root" -SupportedBitness 64
+  )
+}
+
 derive_lv_year() {
   local lv_path="$repo_root/.lvversion"
   if [[ ! -f "$lv_path" ]]; then
@@ -123,6 +166,7 @@ derive_lv_year() {
 
 run_powershell_lint "$run_psscriptanalyzer_raw"
 run_pylavi_gate "$run_pylavi_raw"
+run_vi_analyzer_gate "$run_vi_analyzer_raw"
 
 if [[ "$mode" == "linux-container" ]]; then
   if ! command -v docker >/dev/null 2>&1; then
