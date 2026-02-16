@@ -5,9 +5,9 @@ $ErrorActionPreference = 'Stop'
 
 Describe 'LabVIEW parity workflow build-spec contract' {
     BeforeAll {
-        $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-        $workflowPath = Join-Path $repoRoot '.github/workflows/labview-parity.yml'
-        $workflowContent = Get-Content -Path $workflowPath -Raw
+        $script:repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+        $script:workflowPath = Join-Path $script:repoRoot '.github/workflows/labview-parity.yml'
+        $script:workflowContent = Get-Content -Path $script:workflowPath -Raw
     }
 
     It 'removes run_build_spec input surface and output wiring' {
