@@ -11,7 +11,7 @@ fi
 # shellcheck disable=SC1090
 source "$PATH_CONTRACT_SCRIPT"
 
-resolve_lvie_repo_root "/workspace" > /dev/null
+resolve_lvie_repo_root "${PWD:-}" > /dev/null
 LVIE_REPO_ROOT="${LVIE_RESOLVED_REPO_ROOT:-}"
 LVIE_REPO_ROOT_SOURCE="${LVIE_RESOLVED_REPO_ROOT_SOURCE:-unknown}"
 TASKS_PATH="${LVIE_VI_ANALYZER_TASKS_PATH:-$(join_lvie_repo_path "$LVIE_REPO_ROOT" "Tooling/vi-analyzer/tasks.json")}"
