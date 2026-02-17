@@ -25,6 +25,10 @@ param(
     ),
 
     [Parameter(Mandatory = $false)]
+    [ValidateRange(1, 2147483647)]
+    [int]$RequiredCheckAppId = 15368,
+
+    [Parameter(Mandatory = $false)]
     [string]$OutputPath = 'TestResults/agent-logs/branch-protection-status.latest.json',
 
     [switch]$FailOnMismatch
@@ -134,9 +138,72 @@ if ($null -ne $parsed.contexts) {
     $actualContexts = @($parsed.contexts | ForEach-Object { [string]$_ } | Sort-Object -Unique)
 }
 
+$actualChecks = @()
+if ($null -ne $parsed.checks) {
+    foreach ($entry in $parsed.checks) {
+        if ($null -eq $entry) {
+            continue
+        }
+
+        $context = [string]$entry.context
+        if ([string]::IsNullOrWhiteSpace($context)) {
+            continue
+        }
+
+        $appId = $null
+        try {
+            if ($null -ne $entry.app_id -and -not [string]::IsNullOrWhiteSpace([string]$entry.app_id)) {
+                $parsedAppId = 0
+                if ([int]::TryParse([string]$entry.app_id, [ref]$parsedAppId)) {
+                    $appId = $parsedAppId
+                }
+            }
+        } catch {
+            $appId = $null
+        }
+
+        $actualChecks += [pscustomobject]@{
+            context = $context
+            app_id  = $appId
+        }
+    }
+}
+
+if ($actualContexts.Count -eq 0 -and $actualChecks.Count -gt 0) {
+    $actualContexts = @($actualChecks | ForEach-Object { $_.context } | Sort-Object -Unique)
+}
+
 $missing = @($expectedContexts | Where-Object { $_ -notin $actualContexts })
 $extra = @($actualContexts | Where-Object { $_ -notin $expectedContexts })
-$exactMatch = ($missing.Count -eq 0 -and $extra.Count -eq 0)
+$contextsMatch = ($missing.Count -eq 0 -and $extra.Count -eq 0)
+
+$appIdMismatches = @()
+foreach ($expectedContext in $expectedContexts) {
+    $matchingChecks = @($actualChecks | Where-Object { $_.context -eq $expectedContext })
+    if ($matchingChecks.Count -eq 0) {
+        $appIdMismatches += [ordered]@{
+            context         = $expectedContext
+            expected_app_id = $RequiredCheckAppId
+            actual_app_id   = $null
+            reason          = 'missing-check-entry'
+        }
+        continue
+    }
+
+    foreach ($check in $matchingChecks) {
+        if ($check.app_id -ne $RequiredCheckAppId) {
+            $appIdMismatches += [ordered]@{
+                context         = $expectedContext
+                expected_app_id = $RequiredCheckAppId
+                actual_app_id   = $check.app_id
+                reason          = 'app-id-mismatch'
+            }
+        }
+    }
+}
+
+$appIdMatch = ($appIdMismatches.Count -eq 0)
+$exactMatch = ($contextsMatch -and $appIdMatch)
 
 $status = [ordered]@{
     status = if ($exactMatch) { 'pass' } else { 'mismatch' }
@@ -144,10 +211,13 @@ $status = [ordered]@{
     repository = $resolvedRepo
     branch = $Branch
     strict_required_status_checks = $parsed.strict
+    required_check_app_id_expected = $RequiredCheckAppId
     required_context_expected = $expectedContexts
     required_contexts_actual = $actualContexts
+    required_checks_actual = $actualChecks
     missing_contexts = $missing
     extra_contexts = $extra
+    app_id_mismatches = $appIdMismatches
     generated_utc = (Get-Date).ToUniversalTime().ToString('o')
 }
 
@@ -163,6 +233,9 @@ if ($exactMatch) {
 
 Write-Warning ("Missing contexts: {0}" -f ($(if ($missing.Count -gt 0) { $missing -join ', ' } else { '<none>' })))
 Write-Warning ("Extra contexts: {0}" -f ($(if ($extra.Count -gt 0) { $extra -join ', ' } else { '<none>' })))
+if ($appIdMismatches.Count -gt 0) {
+    Write-Warning ("App-id mismatches: {0}" -f (($appIdMismatches | ConvertTo-Json -Compress)))
+}
 
 if ($FailOnMismatch) {
     throw 'Branch protection required status-check policy does not match expected configured contexts.'

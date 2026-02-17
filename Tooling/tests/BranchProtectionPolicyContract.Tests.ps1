@@ -10,18 +10,22 @@ Describe 'Branch protection policy contract' {
         $script:verifyPolicyPath = Join-Path $script:toolingRoot 'Test-CiBranchProtection.ps1'
     }
 
-    It 'Set-SoloMaintainerBranchProtection enforces PowerShell Lint + Pipeline Contract contexts' {
+    It 'Set-SoloMaintainerBranchProtection enforces app-pinned required checks' {
         (Test-Path -LiteralPath $script:setPolicyPath -PathType Leaf) | Should -BeTrue
         $content = Get-Content -Path $script:setPolicyPath -Raw
+        $content | Should -Match 'RequiredCheckAppId'
         $content | Should -Match 'CI Pipeline / PowerShell Lint'
         $content | Should -Match 'CI Pipeline / Pipeline Contract'
+        $content | Should -Match 'app_id'
     }
 
-    It 'Test-CiBranchProtection defaults to PowerShell Lint + Pipeline Contract contexts' {
+    It 'Test-CiBranchProtection validates context and app-id alignment' {
         (Test-Path -LiteralPath $script:verifyPolicyPath -PathType Leaf) | Should -BeTrue
         $content = Get-Content -Path $script:verifyPolicyPath -Raw
         $content | Should -Match 'RequiredContexts'
+        $content | Should -Match 'RequiredCheckAppId'
         $content | Should -Match 'CI Pipeline / PowerShell Lint'
         $content | Should -Match 'CI Pipeline / Pipeline Contract'
+        $content | Should -Match 'app_id_mismatches'
     }
 }
