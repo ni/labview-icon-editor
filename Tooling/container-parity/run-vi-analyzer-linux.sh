@@ -10,6 +10,14 @@ fi
 
 # shellcheck disable=SC1090
 source "$PATH_CONTRACT_SCRIPT"
+SYNC_MANIFEST_SCRIPT="$SCRIPT_DIR/source-sync-manifest.sh"
+if [[ ! -f "$SYNC_MANIFEST_SCRIPT" ]]; then
+  echo "ERROR: Source sync manifest helper was not found: $SYNC_MANIFEST_SCRIPT" >&2
+  exit 1
+fi
+
+# shellcheck disable=SC1090
+source "$SYNC_MANIFEST_SCRIPT"
 
 resolve_lvie_repo_root "${PWD:-}" > /dev/null
 LVIE_REPO_ROOT="${LVIE_RESOLVED_REPO_ROOT:-}"
@@ -17,24 +25,73 @@ LVIE_REPO_ROOT_SOURCE="${LVIE_RESOLVED_REPO_ROOT_SOURCE:-unknown}"
 TASKS_PATH="${LVIE_VI_ANALYZER_TASKS_PATH:-$(join_lvie_repo_path "$LVIE_REPO_ROOT" "Tooling/vi-analyzer/tasks.json")}"
 REPORTS_ROOT="${LVIE_VI_ANALYZER_REPORTS_ROOT:-$(join_lvie_repo_path "$LVIE_REPO_ROOT" "builds/vi-analyzer")}"
 LOG_ROOT="${LVIE_VI_ANALYZER_LOG_ROOT:-$(join_lvie_repo_path "$LVIE_REPO_ROOT" "TestResults/container-parity/linux/vi-analyzer/logs")}"
+SOURCE_SYNC_MANIFEST_PATH="${LVIE_SOURCE_SYNC_MANIFEST_PATH:-$(join_lvie_repo_path "$LVIE_REPO_ROOT" "builds/status/source-sync-manifest-vi-analyzer-linux.json")}"
 TARGET_DIR_REL="${LVIE_VI_ANALYZER_MASSCOMPILE_TARGET_REL:-Test/Templates}"
 TARGET_DIR="$(join_lvie_repo_path "$LVIE_REPO_ROOT" "$TARGET_DIR_REL")"
 EXCLUDE_LIST="${LVIE_VI_ANALYZER_EXCLUDE_FILES:-Polymorphic Template.vi}"
 LV_YEAR="${LVIE_VI_ANALYZER_LABVIEW_YEAR:-${CONTAINER_PARITY_LABVIEW_VERSION:-${LV_YEAR:-2026}}}"
 LABVIEW_PATH="${LVIE_VI_ANALYZER_LABVIEW_PATH:-/usr/local/natinst/LabVIEW-${LV_YEAR}-64/labviewprofull}"
 LABVIEW_ROOT="$(dirname "$LABVIEW_PATH")"
+PORT_NUMBER="${LVIE_VI_ANALYZER_PORT_NUMBER:-${LABVIEWCLI_PORT:-3363}}"
+CLOSE_BETWEEN_TASKS_RAW="${LVIE_VI_ANALYZER_CLOSE_BETWEEN_TASKS:-false}"
+XVFB_SERVER_ARGS="${LVIE_XVFB_SERVER_ARGS:--screen 0 1920x1080x24}"
+XVFB_BIN="${LVIE_XVFB_BIN:-$(command -v Xvfb || true)}"
+XVFB_DISPLAY="${LVIE_XVFB_DISPLAY:-:99}"
+XVFB_PID=""
+LABVIEWCLI_HEARTBEAT_SECONDS="${LVIE_LABVIEWCLI_HEARTBEAT_SECONDS:-30}"
 
 echo "Resolved repo root: $LVIE_REPO_ROOT (source: $LVIE_REPO_ROOT_SOURCE)"
 echo "Resolved tasks path: $TASKS_PATH"
 echo "Resolved reports root: $REPORTS_ROOT"
 echo "Resolved logs root: $LOG_ROOT"
+echo "Resolved source sync manifest path: $SOURCE_SYNC_MANIFEST_PATH"
 echo "Resolved target directory: $TARGET_DIR (source: \$LVIE_VI_ANALYZER_MASSCOMPILE_TARGET_REL)"
 echo "Using LabVIEW path: $LABVIEW_PATH"
+echo "Using LabVIEWCLI port: $PORT_NUMBER"
+echo "Close between tasks: $CLOSE_BETWEEN_TASKS_RAW"
+echo "LabVIEWCLI heartbeat interval: ${LABVIEWCLI_HEARTBEAT_SECONDS}s"
+if [[ -n "${DISPLAY:-}" ]]; then
+  echo "Using existing DISPLAY=$DISPLAY"
+fi
 
 if ! command -v LabVIEWCLI >/dev/null 2>&1; then
   echo "ERROR: LabVIEWCLI is not available on PATH inside the container." >&2
   exit 1
 fi
+
+if [[ -z "${DISPLAY:-}" && -z "$XVFB_BIN" ]]; then
+  echo "ERROR: DISPLAY is unset and Xvfb was not found. Install Xvfb or provide DISPLAY for LabVIEWCLI operations." >&2
+  exit 1
+fi
+
+if [[ -z "${DISPLAY:-}" ]]; then
+  if [[ -e "/tmp/.X11-unix/X${XVFB_DISPLAY#:}" ]]; then
+    echo "DISPLAY $XVFB_DISPLAY already exists; reusing it."
+    export DISPLAY="$XVFB_DISPLAY"
+  else
+    echo "Starting Xvfb on DISPLAY $XVFB_DISPLAY (args: $XVFB_SERVER_ARGS)"
+    "$XVFB_BIN" "$XVFB_DISPLAY" $XVFB_SERVER_ARGS >/tmp/lvie-xvfb.log 2>&1 &
+    XVFB_PID="$!"
+    sleep 1
+    if ! kill -0 "$XVFB_PID" 2>/dev/null; then
+      echo "ERROR: Xvfb failed to start on $XVFB_DISPLAY. Log: /tmp/lvie-xvfb.log" >&2
+      exit 1
+    fi
+    export DISPLAY="$XVFB_DISPLAY"
+  fi
+  echo "Virtual display is ready on DISPLAY=$DISPLAY"
+fi
+
+is_enabled_value() {
+  local value="${1:-}"
+  shopt -s nocasematch
+  if [[ "$value" == "1" || "$value" == "true" || "$value" == "yes" ]]; then
+    shopt -u nocasematch
+    return 0
+  fi
+  shopt -u nocasematch
+  return 1
+}
 
 if [[ ! -f "$TASKS_PATH" ]]; then
   echo "ERROR: VI Analyzer task registry was not found: $TASKS_PATH" >&2
@@ -67,6 +124,22 @@ sync_icon_editor_sources_for_build_spec() {
     "$repo_plugins/lv_icon.vi"
     "$repo_icon_api"
   )
+  local plugin_root_files=(
+    "lv_IconEditor.lvlib"
+    "lv_icon.vi"
+    "lv_icon.vit"
+    "SAMPLE_lv_icon.vi"
+  )
+
+  local plugin_root_stage
+  plugin_root_stage="$(mktemp -d)"
+  local snapshot_plugins_dir
+  snapshot_plugins_dir="$(mktemp)"
+  local snapshot_plugins_root_files
+  snapshot_plugins_root_files="$(mktemp)"
+  local snapshot_icon_api
+  snapshot_icon_api="$(mktemp)"
+  trap 'rm -f "$snapshot_plugins_dir" "$snapshot_plugins_root_files" "$snapshot_icon_api"; rm -rf "$plugin_root_stage"' RETURN
 
   for path in "${required_paths[@]}"; do
     if [[ ! -e "$path" ]]; then
@@ -75,9 +148,20 @@ sync_icon_editor_sources_for_build_spec() {
     fi
   done
 
+  for file_name in "${plugin_root_files[@]}"; do
+    local source_path="$repo_plugins/$file_name"
+    if [[ -f "$source_path" ]]; then
+      cp -a "$source_path" "$plugin_root_stage/"
+    fi
+  done
+
+  sync_manifest_capture_before_state "$repo_plugins/NIIconEditor" "$install_plugins/NIIconEditor" "$snapshot_plugins_dir"
+  sync_manifest_capture_before_state "$plugin_root_stage" "$install_plugins" "$snapshot_plugins_root_files"
+  sync_manifest_capture_before_state "$repo_icon_api" "$install_icon_api" "$snapshot_icon_api"
+
   mkdir -p "$install_plugins"
   cp -a "$repo_plugins/NIIconEditor" "$install_plugins/"
-  for file_name in lv_IconEditor.lvlib lv_icon.vi lv_icon.vit SAMPLE_lv_icon.vi; do
+  for file_name in "${plugin_root_files[@]}"; do
     local source_path="$repo_plugins/$file_name"
     if [[ -e "$source_path" ]]; then
       cp -a "$source_path" "$install_plugins/"
@@ -93,9 +177,19 @@ sync_icon_editor_sources_for_build_spec() {
     return 1
   fi
 
+  sync_manifest_write \
+    "$SOURCE_SYNC_MANIFEST_PATH" \
+    "$LVIE_REPO_ROOT" \
+    "$LABVIEW_ROOT" \
+    "vi-analyzer-linux" \
+    "resource-plugins-niiconeditor" "$repo_plugins/NIIconEditor" "$install_plugins/NIIconEditor" "$snapshot_plugins_dir" \
+    "resource-plugins-root-files" "$plugin_root_stage" "$install_plugins" "$snapshot_plugins_root_files" \
+    "labview-icon-api" "$repo_icon_api" "$install_icon_api" "$snapshot_icon_api"
+
   echo "Synchronized Icon Editor sources into LabVIEW install:"
   echo "  resource/plugins -> $install_plugins"
   echo "  vi.lib/LabVIEW Icon API -> $install_icon_api"
+  echo "  source sync manifest -> $SOURCE_SYNC_MANIFEST_PATH"
 }
 
 list_labviewcli_temp_logs() {
@@ -112,11 +206,32 @@ invoke_labviewcli() {
   before_logs_file="$(mktemp)"
   list_labviewcli_temp_logs > "$before_logs_file"
 
+  local output_file
+  output_file="$(mktemp)"
   local status
+  local cli_pid
+  local started_at
+  started_at="$(date +%s)"
+
+  LabVIEWCLI "$@" >"$output_file" 2>&1 &
+  cli_pid="$!"
+  while kill -0 "$cli_pid" 2>/dev/null; do
+    sleep "$LABVIEWCLI_HEARTBEAT_SECONDS"
+    if kill -0 "$cli_pid" 2>/dev/null; then
+      local now elapsed
+      now="$(date +%s)"
+      elapsed="$((now - started_at))"
+      echo "[${operation}] LabVIEWCLI still running (${elapsed}s elapsed)..."
+    fi
+  done
+
   set +e
-  LabVIEWCLI "$@"
+  wait "$cli_pid"
   status=$?
   set -e
+
+  cat "$output_file"
+  rm -f "$output_file"
 
   local timestamp
   timestamp="$(date +%Y%m%d-%H%M%S)"
@@ -151,14 +266,30 @@ invoke_labviewcli() {
 
 close_labview_deterministic() {
   local label="$1"
-  echo "Closing LabVIEW ($label)."
-  if ! invoke_labviewcli "CloseLabVIEW-${label}" \
-    -LogToConsole TRUE \
-    -OperationName CloseLabVIEW \
-    -LabVIEWPath "$LABVIEW_PATH"; then
-    echo "ERROR: CloseLabVIEW failed for '$label'." >&2
+  local pids_before=()
+  mapfile -t pids_before < <(pgrep -f "$LABVIEW_PATH" || true)
+  if [[ "${#pids_before[@]}" -eq 0 ]]; then
+    echo "No active LabVIEW process detected for '$label'; close not required."
+    return 0
+  fi
+
+  echo "Closing LabVIEW process(es) ($label); PID(s): ${pids_before[*]}"
+  kill "${pids_before[@]}" 2>/dev/null || true
+  sleep 2
+  local pids_after=()
+  mapfile -t pids_after < <(pgrep -f "$LABVIEW_PATH" || true)
+  if [[ "${#pids_after[@]}" -gt 0 ]]; then
+    echo "WARNING: Force-killing LabVIEW PID(s): ${pids_after[*]}" >&2
+    kill -9 "${pids_after[@]}" 2>/dev/null || true
+    sleep 1
+    mapfile -t pids_after < <(pgrep -f "$LABVIEW_PATH" || true)
+  fi
+
+  if [[ "${#pids_after[@]}" -gt 0 ]]; then
+    echo "ERROR: LabVIEW process remained after deterministic close for '$label': ${pids_after[*]}" >&2
     return 1
   fi
+
   return 0
 }
 
@@ -183,6 +314,9 @@ echo "Excluded templates: $EXCLUDE_LIST"
 
 STAGING_DIR="$(mktemp -d)"
 cleanup() {
+  if [[ -n "$XVFB_PID" ]]; then
+    kill "$XVFB_PID" 2>/dev/null || true
+  fi
   rm -rf "$STAGING_DIR"
 }
 trap cleanup EXIT
@@ -206,6 +340,7 @@ if ! invoke_labviewcli "MassCompile-ViAnalyzer" \
   -OperationName MassCompile \
   -DirectoryToCompile "$STAGING_DIR" \
   -LabVIEWPath "$LABVIEW_PATH" \
+  -PortNumber "$PORT_NUMBER" \
   -Headless; then
   echo "ERROR: LabVIEWCLI MassCompile failed before VI Analyzer." >&2
   exit 1
@@ -217,8 +352,15 @@ if ! sync_icon_editor_sources_for_build_spec; then
   exit 1
 fi
 
-if ! close_labview_deterministic "pre-run"; then
-  echo "WARNING: Initial CloseLabVIEW failed; continuing with task execution."
+close_between_tasks_enabled=false
+if is_enabled_value "$CLOSE_BETWEEN_TASKS_RAW"; then
+  close_between_tasks_enabled=true
+fi
+
+if [[ "$close_between_tasks_enabled" == "true" ]]; then
+  if ! close_labview_deterministic "pre-run"; then
+    echo "WARNING: Initial CloseLabVIEW failed; continuing with task execution."
+  fi
 fi
 
 mapfile -t task_pairs < <(read_vi_analyzer_tasks "$TASKS_PATH")
@@ -244,7 +386,7 @@ for entry in "${task_pairs[@]}"; do
     continue
   fi
 
-  safe_task_id="$(echo "$task_id" | tr -cs 'A-Za-z0-9_.-' '-')"
+  safe_task_id="$(printf '%s' "$task_id" | tr -cs 'A-Za-z0-9_.-' '-')"
   report_path="$REPORTS_ROOT/vi-analyzer-${safe_task_id}.txt"
   rm -f "$report_path"
 
@@ -257,6 +399,7 @@ for entry in "${task_pairs[@]}"; do
   if ! invoke_labviewcli "RunVIAnalyzer-${safe_task_id}" \
     -LogToConsole TRUE \
     -OperationName RunVIAnalyzer \
+    -PortNumber "$PORT_NUMBER" \
     -ConfigPath "$config_path" \
     -ReportPath "$report_path" \
     -ReportSaveType ASCII \
@@ -266,8 +409,10 @@ for entry in "${task_pairs[@]}"; do
     task_failed=1
   fi
 
-  if ! close_labview_deterministic "$safe_task_id"; then
-    task_failed=1
+  if [[ "$close_between_tasks_enabled" == "true" ]]; then
+    if ! close_labview_deterministic "$safe_task_id"; then
+      task_failed=1
+    fi
   fi
 
   if [[ "$task_failed" -ne 0 ]]; then

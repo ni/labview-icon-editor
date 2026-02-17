@@ -16,6 +16,7 @@ Common entrypoints:
 - `Run-ViAnalyzer.ps1`
   Runs deterministic LabVIEWCLI VI Analyzer tasks from `Tooling/vi-analyzer/tasks.json` through the Linux container worker (`Tooling/container-parity/run-vi-analyzer-linux.sh`).
   Example: `pwsh -NoProfile -File .\\Tooling\\Run-ViAnalyzer.ps1 -RepoRoot . -SupportedBitness 64`
+  Linux worker sync evidence: `builds/status/source-sync-manifest-vi-analyzer-linux.json` (override with `LVIE_SOURCE_SYNC_MANIFEST_PATH`).
 - `Run-CI.ps1`
   Local CI parity run (Verify IE Paths, VIPC, unit tests, PPLs, VIP build).
   Example: `pwsh -NoProfile -File .\\Tooling\\Run-CI.ps1`
@@ -27,6 +28,7 @@ Common entrypoints:
   Optional env: `LVIE_PARITY_MODE`, `LVIE_RUN_PSSCRIPTANALYZER`, `LVIE_RUN_PYLAVI`, `LVIE_RUN_VI_ANALYZER`, `LABVIEW_LINUX_IMAGE`, `LVIE_PARITY_CONTEXT_PATH`.
   Build-spec execution is mandatory for parity; `LVIE_PARITY_BUILD_SPEC=false` is unsupported and fails fast.
   `LVIE_RUN_VI_ANALYZER=auto|true|false` defaults to `auto` (run only when `pwsh` and `docker` are available).
+  Linux build-spec sync evidence: `builds/status/source-sync-manifest-parity-linux.json` (override with `LVIE_SOURCE_SYNC_MANIFEST_PATH`).
 - `Invoke-BeltAndSuspendersCI.ps1` (recommended proactive loop)
   Canonical "belt and suspenders" flow for exact-SHA confidence:
   1) local parity auto-loop until PPL success target is met,

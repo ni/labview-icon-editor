@@ -161,6 +161,15 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Upload source sync manifest (Linux container)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-container-source-sync-manifest-linux
+          path: builds/status/source-sync-manifest-parity-linux.json
+          if-no-files-found: warn
+          retention-days: 14
+
   parity-self-hosted:
     name: Parity (Self-Hosted Runner)
     needs: [resolve-parity-context]
