@@ -1066,8 +1066,6 @@ var vipBuildDisplayInfoPathOption = new Option<string?>(
     name: "--display-information-json-path",
     description: "Path to display information JSON payload.");
 var vipBuildVipmTimeoutOption = new Option<string?>("--vipm-timeout-seconds", "VIPM timeout in seconds.");
-var vipBuildMaxAttemptsOption = new Option<string?>("--max-attempts", "Max retry attempts.");
-var vipBuildRetryDelayOption = new Option<string?>("--retry-delay-seconds", "Retry delay in seconds.");
 var vipBuildStatusPathOption = new Option<string?>("--status-path", "Optional explicit VIP status JSON output path.");
 var vipBuildWorktreeRootOption = new Option<string?>("--worktree-root", "Optional explicit worktree root.");
 var vipBuildSkipWorktreeCheckOption = new Option<bool>(
@@ -1093,8 +1091,6 @@ vipBuildCmd.AddOption(vipBuildReleaseNotesOption);
 vipBuildCmd.AddOption(vipBuildDisplayInfoOption);
 vipBuildCmd.AddOption(vipBuildDisplayInfoPathOption);
 vipBuildCmd.AddOption(vipBuildVipmTimeoutOption);
-vipBuildCmd.AddOption(vipBuildMaxAttemptsOption);
-vipBuildCmd.AddOption(vipBuildRetryDelayOption);
 vipBuildCmd.AddOption(vipBuildStatusPathOption);
 vipBuildCmd.AddOption(vipBuildWorktreeRootOption);
 vipBuildCmd.AddOption(vipBuildSkipWorktreeCheckOption);
@@ -1121,8 +1117,6 @@ vipBuildCmd.SetHandler((InvocationContext context) =>
             DisplayInformationJson: context.ParseResult.GetValueForOption(vipBuildDisplayInfoOption) ?? string.Empty,
             DisplayInformationJsonPath: context.ParseResult.GetValueForOption(vipBuildDisplayInfoPathOption),
             VipmTimeoutSeconds: context.ParseResult.GetValueForOption(vipBuildVipmTimeoutOption),
-            MaxAttempts: context.ParseResult.GetValueForOption(vipBuildMaxAttemptsOption),
-            RetryDelaySeconds: context.ParseResult.GetValueForOption(vipBuildRetryDelayOption),
             StatusPath: context.ParseResult.GetValueForOption(vipBuildStatusPathOption),
             WorktreeRoot: context.ParseResult.GetValueForOption(vipBuildWorktreeRootOption),
             SkipWorktreeRootCheck: context.ParseResult.GetValueForOption(vipBuildSkipWorktreeCheckOption),

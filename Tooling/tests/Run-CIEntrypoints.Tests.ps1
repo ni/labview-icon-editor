@@ -39,6 +39,9 @@ Describe 'Run-CI parity entrypoint contract' {
         $content | Should -Match 'LVIE_RUN_PYLAVI'
         $content | Should -Match 'Run-ViValidate\.ps1'
         $content | Should -Match 'LVIE_RUN_VI_ANALYZER'
+        $content | Should -Match 'Linux VI Analyzer gate'
+        $content | Should -Match 'docker (was )?not found on PATH; Linux VI Analyzer gate cannot run'
+        $content | Should -Not -Match 'LabVIEWCLI was not found on PATH; VI Analyzer gate cannot run'
         $content | Should -Match 'Run-ViAnalyzer\.ps1'
     }
 

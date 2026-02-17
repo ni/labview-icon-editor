@@ -1,12 +1,12 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-    Runs LabVIEWCLI VI Analyzer tasks from a deterministic task registry.
+    Runs LabVIEWCLI VI Analyzer tasks through the Linux container parity worker.
 
 .DESCRIPTION
-    Executes each VI Analyzer task listed in Tooling/vi-analyzer/tasks.json
-    using LabVIEWCLI RunVIAnalyzer with strict LabVIEWCLI port-contract
-    resolution.
+    Executes Tooling/container-parity/run-vi-analyzer-linux.sh in a LabVIEW Linux
+    container, then parses generated ASCII reports from tasks listed in
+    Tooling/vi-analyzer/tasks.json and enforces deterministic pass/fail rules.
 #>
 
 [CmdletBinding()]
@@ -30,7 +30,12 @@ param(
     [string]$ReportsRoot = 'builds/vi-analyzer',
 
     [Parameter(Mandatory = $false)]
-    [string]$StatusPath = 'builds/status/vi-analyzer-summary.json'
+    [string]$StatusPath = 'builds/status/vi-analyzer-summary.json',
+
+    [Parameter(Mandatory = $false)]
+    [AllowNull()]
+    [AllowEmptyString()]
+    [string]$ContainerImage = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -48,7 +53,8 @@ function Resolve-RepoRootPath {
         if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRoot)) {
             return (Resolve-Path -Path $gitRoot.Trim() -ErrorAction Stop).Path
         }
-    } catch {
+    }
+    catch {
         Write-Verbose ("git rev-parse failed: {0}" -f $_.Exception.Message)
     }
 
@@ -78,6 +84,45 @@ function Initialize-Directory {
     }
 }
 
+function Convert-ToUnixPath {
+    param([string]$Value)
+
+    return ($Value -replace '\\', '/')
+}
+
+function Resolve-ContainerRelativePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$AbsolutePath,
+        [Parameter(Mandatory = $true)]
+        [string]$Label
+    )
+
+    $repoRootFull = [System.IO.Path]::GetFullPath($RepoRoot)
+    $targetFull = [System.IO.Path]::GetFullPath($AbsolutePath)
+
+    $comparison = [System.StringComparison]::OrdinalIgnoreCase
+    $rootWithSeparator = if ($repoRootFull.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
+        $repoRootFull
+    }
+    else {
+        $repoRootFull + [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    if (-not $targetFull.Equals($repoRootFull, $comparison) -and -not $targetFull.StartsWith($rootWithSeparator, $comparison)) {
+        throw ("{0} must resolve inside repo root for container execution. RepoRoot='{1}' Path='{2}'" -f $Label, $repoRootFull, $targetFull)
+    }
+
+    $relative = [System.IO.Path]::GetRelativePath($repoRootFull, $targetFull)
+    if ($relative.StartsWith('..', [System.StringComparison]::Ordinal)) {
+        throw ("{0} resolved outside repo root after normalization: {1}" -f $Label, $targetFull)
+    }
+
+    return Convert-ToUnixPath -Value $relative
+}
+
 function Get-CountFromText {
     param(
         [AllowNull()]
@@ -98,21 +143,6 @@ function Get-CountFromText {
     return [int]$match.Groups['n'].Value
 }
 
-function Get-LabVIEWCliSummaryCount {
-    param([string[]]$Lines)
-
-    $text = if ($Lines -and $Lines.Count -gt 0) { $Lines -join [Environment]::NewLine } else { '' }
-    return [ordered]@{
-        passed          = Get-CountFromText -Text $text -Pattern '^\s*(?<n>\d+)\s+tests?\s+passed\.\s*$'
-        failed          = Get-CountFromText -Text $text -Pattern '^\s*(?<n>\d+)\s+tests?\s+failed\.\s*$'
-        skipped         = Get-CountFromText -Text $text -Pattern '^\s*(?<n>\d+)\s+tests?\s+skipped\.\s*$'
-        vi_unloadable   = Get-CountFromText -Text $text -Pattern '^\s*(?<n>\d+)\s+VIs?\s+were\s+unloadable\.\s*$'
-        test_unloadable = Get-CountFromText -Text $text -Pattern '^\s*(?<n>\d+)\s+tests?\s+were\s+unloadable\.\s*$'
-        test_unrunnable = Get-CountFromText -Text $text -Pattern '^\s*(?<n>\d+)\s+tests?\s+were\s+unrun(?:a|n)ble\.\s*$'
-        test_error      = Get-CountFromText -Text $text -Pattern '^\s*(?<n>\d+)\s+tests?\s+produced\s+error\.\s*$'
-    }
-}
-
 function Get-ViAnalyzerReportCount {
     param([string]$ReportPath)
 
@@ -121,7 +151,7 @@ function Get-ViAnalyzerReportCount {
     }
 
     $text = Get-Content -Path $ReportPath -Raw -ErrorAction Stop
-    return [ordered]@{
+    $counts = [ordered]@{
         passed          = Get-CountFromText -Text $text -Pattern '^\s*Passed Tests\s+(?<n>\d+)\s*$'
         failed          = Get-CountFromText -Text $text -Pattern '^\s*Failed Tests\s+(?<n>\d+)\s*$'
         skipped         = Get-CountFromText -Text $text -Pattern '^\s*Skipped Tests\s+(?<n>\d+)\s*$'
@@ -130,33 +160,15 @@ function Get-ViAnalyzerReportCount {
         test_unrunnable = Get-CountFromText -Text $text -Pattern '^\s*Test not runnable\s+(?<n>\d+)\s*$'
         test_error      = Get-CountFromText -Text $text -Pattern '^\s*Test error out\s+(?<n>\d+)\s*$'
     }
-}
 
-function Join-ViAnalyzerCount {
-    param(
-        [hashtable]$CliCounts,
-        [hashtable]$ReportCounts
-    )
-
-    $keys = @('passed', 'failed', 'skipped', 'vi_unloadable', 'test_unloadable', 'test_unrunnable', 'test_error')
-    $merged = [ordered]@{}
-    foreach ($key in $keys) {
-        $value = $null
-        if ($CliCounts -and $CliCounts.Contains($key) -and $null -ne $CliCounts[$key]) {
-            $value = [int]$CliCounts[$key]
-        } elseif ($ReportCounts -and $ReportCounts.Contains($key) -and $null -ne $ReportCounts[$key]) {
-            $value = [int]$ReportCounts[$key]
-        }
-        $merged[$key] = $value
+    if ($null -ne $counts.passed -and $null -ne $counts.failed -and $null -ne $counts.skipped) {
+        $counts['analyzed_total'] = ([int]$counts.passed + [int]$counts.failed + [int]$counts.skipped)
+    }
+    else {
+        $counts['analyzed_total'] = $null
     }
 
-    if ($null -ne $merged.passed -and $null -ne $merged.failed -and $null -ne $merged.skipped) {
-        $merged['analyzed_total'] = ([int]$merged.passed + [int]$merged.failed + [int]$merged.skipped)
-    } else {
-        $merged['analyzed_total'] = $null
-    }
-
-    return $merged
+    return $counts
 }
 
 function Get-DisplayCount {
@@ -174,7 +186,9 @@ function Add-ViAnalyzerSummary {
         [object[]]$TaskResults,
         [bool]$OverallSuccess,
         [string]$ReportsRoot,
-        [string]$StatusPath
+        [string]$StatusPath,
+        [int]$WorkerExitCode,
+        [string]$ContainerImageValue
     )
 
     if ([string]::IsNullOrWhiteSpace($SummaryPath)) {
@@ -182,9 +196,11 @@ function Add-ViAnalyzerSummary {
     }
 
     $lines = @()
-    $lines += '### VI Analyzer (LabVIEWCLI)'
+    $lines += '### VI Analyzer (LabVIEWCLI, Linux container)'
     $lines += ''
     $lines += ("- Overall result: **{0}**" -f $(if ($OverallSuccess) { 'pass' } else { 'fail' }))
+    $lines += ('- Worker container image: `{0}`' -f $ContainerImageValue)
+    $lines += ('- Worker exit code: `{0}`' -f $WorkerExitCode)
     $lines += ('- Reports root: `{0}`' -f $ReportsRoot)
     $lines += ('- Status file: `{0}`' -f $StatusPath)
     $lines += ''
@@ -193,20 +209,68 @@ function Add-ViAnalyzerSummary {
     foreach ($task in $TaskResults) {
         $counts = $task.counts
         $lines += ("| {0} | {1} | {2} | {3} | {4} | {5} | {6} | {7} | {8} | {9} | {10} |" -f `
-            $task.id, `
-            (Get-DisplayCount -Value $counts.analyzed_total), `
-            (Get-DisplayCount -Value $counts.passed), `
-            (Get-DisplayCount -Value $counts.failed), `
-            (Get-DisplayCount -Value $counts.skipped), `
-            (Get-DisplayCount -Value $counts.vi_unloadable), `
-            (Get-DisplayCount -Value $counts.test_unloadable), `
-            (Get-DisplayCount -Value $counts.test_unrunnable), `
-            (Get-DisplayCount -Value $counts.test_error), `
-            $task.exit_code, `
-            $(if ($task.succeeded) { 'pass' } else { 'fail' }))
+                $task.id, `
+                (Get-DisplayCount -Value $counts.analyzed_total), `
+                (Get-DisplayCount -Value $counts.passed), `
+                (Get-DisplayCount -Value $counts.failed), `
+                (Get-DisplayCount -Value $counts.skipped), `
+                (Get-DisplayCount -Value $counts.vi_unloadable), `
+                (Get-DisplayCount -Value $counts.test_unloadable), `
+                (Get-DisplayCount -Value $counts.test_unrunnable), `
+                (Get-DisplayCount -Value $counts.test_error), `
+                $task.exit_code, `
+                $(if ($task.succeeded) { 'pass' } else { 'fail' }))
     }
 
     Add-Content -Path $SummaryPath -Value ($lines -join [Environment]::NewLine)
+}
+
+function Invoke-LinuxAnalyzerWorker {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRootPath,
+        [Parameter(Mandatory = $true)]
+        [string]$TasksPathInContainer,
+        [Parameter(Mandatory = $true)]
+        [string]$ReportsRootInContainer,
+        [Parameter(Mandatory = $true)]
+        [string]$LabVIEWYear,
+        [Parameter(Mandatory = $true)]
+        [string]$Image
+    )
+
+    $dockerCommand = Get-Command docker -ErrorAction SilentlyContinue
+    if (-not $dockerCommand) {
+        throw 'docker was not found on PATH; Linux VI Analyzer worker requires Docker.'
+    }
+
+    $workerScriptHost = Join-Path $RepoRootPath 'Tooling/container-parity/run-vi-analyzer-linux.sh'
+    if (-not (Test-Path -Path $workerScriptHost -PathType Leaf)) {
+        throw "Linux VI Analyzer worker script was not found: $workerScriptHost"
+    }
+
+    $workerScriptContainer = '/workspace/Tooling/container-parity/run-vi-analyzer-linux.sh'
+    $commandText = "chmod +x $workerScriptContainer && $workerScriptContainer"
+
+    $dockerArgs = @(
+        'run', '--rm',
+        '-v', ("{0}:/workspace" -f $RepoRootPath),
+        '-w', '/workspace',
+        '-e', 'LVIE_REPO_ROOT=/workspace',
+        '-e', ("LVIE_VI_ANALYZER_TASKS_PATH={0}" -f $TasksPathInContainer),
+        '-e', ("LVIE_VI_ANALYZER_REPORTS_ROOT={0}" -f $ReportsRootInContainer),
+        '-e', ("LVIE_VI_ANALYZER_LABVIEW_YEAR={0}" -f $LabVIEWYear),
+        $Image,
+        'bash', '-lc', $commandText
+    )
+
+    Write-Host "Running Linux VI Analyzer worker container..."
+    Write-Host ("Container image: {0}" -f $Image)
+    Write-Host ("Tasks path (container): {0}" -f $TasksPathInContainer)
+    Write-Host ("Reports root (container): {0}" -f $ReportsRootInContainer)
+
+    & $dockerCommand.Source @dockerArgs
+    return (if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE })
 }
 
 $resolvedRepoRoot = Resolve-RepoRootPath -PathOverride $RepoRoot
@@ -228,44 +292,42 @@ if (-not $tasks -or $tasks.Count -eq 0) {
 }
 
 $versionHelperPath = Join-Path $resolvedRepoRoot 'Tooling\support\LabVIEWVersion.ps1'
-$labviewExeHelperPath = Join-Path $resolvedRepoRoot 'Tooling\support\LabVIEWExecutablePath.ps1'
-$portContractHelperPath = Join-Path $resolvedRepoRoot 'Tooling\support\LabVIEWCliPortContract.ps1'
-foreach ($helperPath in @($versionHelperPath, $labviewExeHelperPath, $portContractHelperPath)) {
-    if (-not (Test-Path -Path $helperPath -PathType Leaf)) {
-        throw "Required helper script not found: $helperPath"
-    }
+if (-not (Test-Path -Path $versionHelperPath -PathType Leaf)) {
+    throw "Required helper script not found: $versionHelperPath"
 }
-
 . $versionHelperPath
-. $labviewExeHelperPath
-. $portContractHelperPath
-
 $labviewInfo = Get-LabVIEWVersionInfo -VersionInput $LabVIEWVersion -RepoRoot $resolvedRepoRoot
 $resolvedLabVIEWVersionRaw = [string]$labviewInfo.Raw
 $resolvedLabVIEWYear = [string]$labviewInfo.Year
 if ([string]::IsNullOrWhiteSpace($resolvedLabVIEWYear)) {
-    throw "LabVIEW version year could not be resolved from .lvversion."
+    throw 'LabVIEW year could not be resolved from .lvversion.'
 }
 
-$labviewExecutablePath = Resolve-LabVIEWExecutablePath -VersionYear $resolvedLabVIEWYear -Bitness $SupportedBitness
-$portResolution = Resolve-LabVIEWCliPortFromContract `
-    -RepoRoot $resolvedRepoRoot `
-    -LabVIEWVersion $resolvedLabVIEWVersionRaw `
-    -Bitness $SupportedBitness `
-    -LabVIEWExecutablePath $labviewExecutablePath
+$tasksPathRelativeUnix = Resolve-ContainerRelativePath -RepoRoot $resolvedRepoRoot -AbsolutePath $tasksPathResolved -Label 'TasksPath'
+$reportsRootRelativeUnix = Resolve-ContainerRelativePath -RepoRoot $resolvedRepoRoot -AbsolutePath $reportsRootResolved -Label 'ReportsRoot'
+$tasksPathInContainer = "/workspace/{0}" -f $tasksPathRelativeUnix
+$reportsRootInContainer = "/workspace/{0}" -f $reportsRootRelativeUnix
 
-$labviewCliCommand = Get-Command LabVIEWCLI -ErrorAction SilentlyContinue
-if (-not $labviewCliCommand) {
-    throw "LabVIEWCLI is not available on PATH."
+$resolvedContainerImage = if (-not [string]::IsNullOrWhiteSpace($ContainerImage)) {
+    $ContainerImage
+}
+elseif (-not [string]::IsNullOrWhiteSpace($env:LABVIEW_LINUX_IMAGE)) {
+    $env:LABVIEW_LINUX_IMAGE
+}
+else {
+    "nationalinstruments/labview:{0}q1-linux" -f $resolvedLabVIEWYear
 }
 
-Write-Host ("Resolved LabVIEW: raw={0}, year={1}, bitness={2}" -f $resolvedLabVIEWVersionRaw, $resolvedLabVIEWYear, $SupportedBitness)
-Write-Host ("LabVIEW executable: {0}" -f $labviewExecutablePath)
-Write-Host ("Using LabVIEWCLI port {0} (source: {1})" -f $portResolution.PortNumber, $portResolution.Source)
-Write-Host ("Running VI Analyzer tasks from: {0}" -f $tasksPathResolved)
+$dockerExitCode = Invoke-LinuxAnalyzerWorker `
+    -RepoRootPath $resolvedRepoRoot `
+    -TasksPathInContainer $tasksPathInContainer `
+    -ReportsRootInContainer $reportsRootInContainer `
+    -LabVIEWYear $resolvedLabVIEWYear `
+    -Image $resolvedContainerImage
 
 $taskResults = New-Object 'System.Collections.Generic.List[object]'
-$overallSuccess = $true
+$overallSuccess = ($dockerExitCode -eq 0)
+$workerFailed = ($dockerExitCode -ne 0)
 
 foreach ($task in $tasks) {
     $taskId = [string]$task.id
@@ -284,69 +346,45 @@ foreach ($task in $tasks) {
 
     $safeTaskId = ($taskId -replace '[^A-Za-z0-9_.-]', '-')
     $reportPath = Join-Path $reportsRootResolved ("vi-analyzer-{0}.txt" -f $safeTaskId)
-    if (Test-Path -Path $reportPath -PathType Leaf) {
-        Remove-Item -Path $reportPath -Force -ErrorAction SilentlyContinue
-    }
-
-    Write-Host ""
-    Write-Host ("=== VI Analyzer task: {0} ===" -f $taskId)
-    $start = Get-Date
-    $cliArgs = @(
-        '-OperationName', 'RunVIAnalyzer',
-        '-LabVIEWPath', $labviewExecutablePath,
-        '-PortNumber', $portResolution.PortNumber.ToString(),
-        '-ConfigPath', $configPathResolved,
-        '-ReportPath', $reportPath,
-        '-ReportSaveType', 'ASCII',
-        '-LogToConsole', 'TRUE',
-        '-Headless'
-    )
-
-    $rawOutput = & $labviewCliCommand.Source @cliArgs 2>&1
-    $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
-    $outputLines = @()
-    foreach ($entry in @($rawOutput)) {
-        if ($null -ne $entry) {
-            $line = [string]$entry
-            $outputLines += $line
-            Write-Host $line
-        }
-    }
-    $durationMs = [int][Math]::Round(((Get-Date) - $start).TotalMilliseconds)
-
-    $cliCounts = Get-LabVIEWCliSummaryCount -Lines $outputLines
-    $reportCounts = Get-ViAnalyzerReportCount -ReportPath $reportPath
-    $counts = Join-ViAnalyzerCount -CliCounts $cliCounts -ReportCounts $reportCounts
+    $counts = Get-ViAnalyzerReportCount -ReportPath $reportPath
 
     $failureReasons = New-Object 'System.Collections.Generic.List[string]'
     if (-not (Test-Path -Path $reportPath -PathType Leaf)) {
         $failureReasons.Add('Report file missing.') | Out-Null
     }
-    if ($exitCode -ne 0) {
-        $failureReasons.Add(("Non-zero exit code: {0}" -f $exitCode)) | Out-Null
+
+    if ($null -eq $counts) {
+        $failureReasons.Add('Report counts were not parsed.') | Out-Null
     }
-    foreach ($requiredKey in @('passed', 'failed', 'skipped', 'vi_unloadable', 'test_unloadable', 'test_unrunnable', 'test_error', 'analyzed_total')) {
-        if ($null -eq $counts[$requiredKey]) {
-            $failureReasons.Add(("Missing parsed count: {0}" -f $requiredKey)) | Out-Null
+    else {
+        foreach ($requiredKey in @('passed', 'failed', 'skipped', 'vi_unloadable', 'test_unloadable', 'test_unrunnable', 'test_error', 'analyzed_total')) {
+            if ($null -eq $counts[$requiredKey]) {
+                $failureReasons.Add(("Missing parsed count: {0}" -f $requiredKey)) | Out-Null
+            }
+        }
+
+        if ($null -ne $counts.analyzed_total -and [int]$counts.analyzed_total -le 0) {
+            $failureReasons.Add('No tests were analyzed (analyzed_total = 0).') | Out-Null
+        }
+        if ($null -ne $counts.failed -and [int]$counts.failed -gt 0) {
+            $failureReasons.Add(("Failed tests count is {0}" -f $counts.failed)) | Out-Null
+        }
+        if ($null -ne $counts.vi_unloadable -and [int]$counts.vi_unloadable -gt 0) {
+            $failureReasons.Add(("VI unloadable count is {0}" -f $counts.vi_unloadable)) | Out-Null
+        }
+        if ($null -ne $counts.test_unloadable -and [int]$counts.test_unloadable -gt 0) {
+            $failureReasons.Add(("Test unloadable count is {0}" -f $counts.test_unloadable)) | Out-Null
+        }
+        if ($null -ne $counts.test_unrunnable -and [int]$counts.test_unrunnable -gt 0) {
+            $failureReasons.Add(("Test unrunnable count is {0}" -f $counts.test_unrunnable)) | Out-Null
+        }
+        if ($null -ne $counts.test_error -and [int]$counts.test_error -gt 0) {
+            $failureReasons.Add(("Test error count is {0}" -f $counts.test_error)) | Out-Null
         }
     }
-    if ($null -ne $counts.analyzed_total -and [int]$counts.analyzed_total -le 0) {
-        $failureReasons.Add('No tests were analyzed (analyzed_total = 0).') | Out-Null
-    }
-    if ($null -ne $counts.failed -and [int]$counts.failed -gt 0) {
-        $failureReasons.Add(("Failed tests count is {0}" -f $counts.failed)) | Out-Null
-    }
-    if ($null -ne $counts.vi_unloadable -and [int]$counts.vi_unloadable -gt 0) {
-        $failureReasons.Add(("VI unloadable count is {0}" -f $counts.vi_unloadable)) | Out-Null
-    }
-    if ($null -ne $counts.test_unloadable -and [int]$counts.test_unloadable -gt 0) {
-        $failureReasons.Add(("Test unloadable count is {0}" -f $counts.test_unloadable)) | Out-Null
-    }
-    if ($null -ne $counts.test_unrunnable -and [int]$counts.test_unrunnable -gt 0) {
-        $failureReasons.Add(("Test unrunnable count is {0}" -f $counts.test_unrunnable)) | Out-Null
-    }
-    if ($null -ne $counts.test_error -and [int]$counts.test_error -gt 0) {
-        $failureReasons.Add(("Test error count is {0}" -f $counts.test_error)) | Out-Null
+
+    if ($workerFailed -and $failureReasons.Count -eq 0) {
+        $failureReasons.Add(("Linux analyzer worker exited with code {0}." -f $dockerExitCode)) | Out-Null
     }
 
     $taskSucceeded = $failureReasons.Count -eq 0
@@ -358,8 +396,7 @@ foreach ($task in $tasks) {
             id              = $taskId
             config_path     = $configPathResolved
             report_path     = $reportPath
-            exit_code       = $exitCode
-            duration_ms     = $durationMs
+            exit_code       = if ($taskSucceeded) { 0 } else { 1 }
             succeeded       = $taskSucceeded
             counts          = [pscustomobject]$counts
             failure_reasons = @($failureReasons)
@@ -373,18 +410,16 @@ $status = [ordered]@{
     reports_root     = $reportsRootResolved
     overall_success  = $overallSuccess
     task_count       = $taskResults.Count
+    worker           = [ordered]@{
+        mode         = 'linux-container'
+        image        = $resolvedContainerImage
+        exit_code    = $dockerExitCode
+    }
     labview          = [ordered]@{
         raw             = $resolvedLabVIEWVersionRaw
         year            = $resolvedLabVIEWYear
         minor_revision  = [int]$labviewInfo.MinorRevision
         bitness         = $SupportedBitness
-        executable_path = $labviewExecutablePath
-    }
-    port             = [ordered]@{
-        number        = [int]$portResolution.PortNumber
-        source        = [string]$portResolution.Source
-        contract_path = [string]$portResolution.ContractPath
-        ini_path      = [string]$portResolution.IniPath
     }
     task_results     = $taskResults
 }
@@ -397,13 +432,15 @@ if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY)) {
         -TaskResults $taskResults `
         -OverallSuccess $overallSuccess `
         -ReportsRoot $reportsRootResolved `
-        -StatusPath $statusPathResolved
+        -StatusPath $statusPathResolved `
+        -WorkerExitCode $dockerExitCode `
+        -ContainerImageValue $resolvedContainerImage
 }
 
 Write-Host ("VI Analyzer status written to {0}" -f $statusPathResolved)
 if (-not $overallSuccess) {
     $failedTasks = @($taskResults | Where-Object { -not $_.succeeded })
-    $labels = if ($failedTasks.Count -gt 0) { ($failedTasks | ForEach-Object { $_.id }) -join ', ' } else { 'unknown' }
+    $labels = if ($failedTasks.Count -gt 0) { ($failedTasks | ForEach-Object { $_.id }) -join ', ' } else { 'worker' }
     throw ("VI Analyzer failed for task(s): {0}. See {1}" -f $labels, $statusPathResolved)
 }
 

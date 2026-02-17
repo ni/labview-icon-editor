@@ -177,7 +177,7 @@ Below are the **key GitHub Actions** provided in this repository:
 The [`ci.yml`](../.github/workflows/ci.yml) pipeline breaks the build into several jobs:
 
 - **pylavi-validate** – report-only LabVIEW file validation using `vi_validate` (strict + legacy profiles) with `.lvversion`-synced version gating and optional baseline/delta reporting.
-- **vi-analyzer** – blocking LabVIEWCLI `RunVIAnalyzer` gate using `Tooling/Run-ViAnalyzer.ps1` and deterministic task registry `Tooling/vi-analyzer/tasks.json`; uploads artifacts `vi-analyzer-reports` and `vi-analyzer-status` (`builds/status/vi-analyzer-summary.json`).
+- **vi-analyzer** – blocking LabVIEWCLI `RunVIAnalyzer` gate on `ubuntu-latest` via `Tooling/Run-ViAnalyzer.ps1` + Linux worker `Tooling/container-parity/run-vi-analyzer-linux.sh`, using deterministic task registry `Tooling/vi-analyzer/tasks.json`; uploads artifacts `vi-analyzer-reports` and `vi-analyzer-status` (`builds/status/vi-analyzer-summary.json`).
 - **prerelease-context** – computes prerelease publish eligibility, reason, merged-PR bump override context, and the execution profile (`ci_profile`: `release-priority`, `pr-fast`, `full`).
 - **changes** – checks out the repository and detects `.vipc` file changes for diagnostics/reporting in downstream jobs.
 - **apply-deps** – runs VIPC audit (`Assert-VipcApplied`) for both bitnesses on every run (hard-stop on mismatch), then optionally runs informational VIPC apply diagnostics when manually dispatched with `vipc_apply_info=true`.

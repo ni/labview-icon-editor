@@ -3,15 +3,15 @@
   "tasks": [
     {
       "id": "labview-icon-api",
-      "config_path": "Tooling/vi-analyzer/brokenVIsOnLabVIEWIconAPI.viancfg"
+      "config_path": "brokenVIsOnLabVIEWIconAPI.viancfg"
     },
     {
       "id": "plugins",
-      "config_path": "Tooling/vi-analyzer/brokenVIsOnPlugins.viancfg"
+      "config_path": "brokenVIsOnPlugins.viancfg"
     },
     {
       "id": "tooling",
-      "config_path": "Tooling/vi-analyzer/brokenVIsOnTooling.viancfg"
+      "config_path": "brokenVIsOnTooling.viancfg"
     }
   ]
 }

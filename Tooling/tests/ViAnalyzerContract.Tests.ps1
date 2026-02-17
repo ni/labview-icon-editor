@@ -41,7 +41,8 @@ Describe 'VI Analyzer contract' {
 
         $content = Get-Content -Raw -Path $script:ciPath
         $content | Should -Match '(?ms)^\s*vi-analyzer:\s*$'
-        $content | Should -Match '(?ms)^\s*vi-analyzer:\s*.*?needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-x86\s*\]'
+        $content | Should -Match '(?ms)^\s*vi-analyzer:\s*.*?needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate\s*\]'
+        $content | Should -Match '(?ms)^\s*vi-analyzer:\s*.*?runs-on:\s*ubuntu-latest'
         $content | Should -Match '(?ms)publish-gate:\s*.*?needs:\s*.*?\n\s*-\s*vi-analyzer\s*$'
         $content | Should -Match '(?ms)pipeline-contract:\s*.*?needs:\s*.*?\n\s*-\s*vi-analyzer\s*$'
         $content | Should -Match '(?ms)\$requiredCommon\s*=\s*@\(\s*.*?''vi-analyzer'''
@@ -51,6 +52,8 @@ Describe 'VI Analyzer contract' {
         (Test-Path -LiteralPath $script:runViAnalyzerPath -PathType Leaf) | Should -BeTrue
 
         $content = Get-Content -Raw -Path $script:runViAnalyzerPath
+        $content | Should -Match 'run-vi-analyzer-linux\.sh'
+        $content | Should -Match 'docker'
         $content | Should -Match 'analyzed_total'
         $content | Should -Match 'No tests were analyzed'
     }

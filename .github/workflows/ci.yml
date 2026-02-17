@@ -979,54 +979,44 @@ jobs:
 
   vi-analyzer:
     name: VI Analyzer (LabVIEWCLI)
-    needs: [run-metadata, prerelease-context, version-gate, apply-deps-x86]
-    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
-    env:
-      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
-      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
-      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
-      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
+    needs: [run-metadata, prerelease-context, version-gate]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Job setup
-        uses: ./.github/actions/lvie-job-setup
-        with:
-          checkout: 'false'
-          bitness: 64
-          create_worktree: 'true'
-          worktree_root_mode: runner_temp
+      - name: Pull LabVIEW Linux image
+        shell: bash
+        env:
+          LV_RELEASE: ${{ format('{0}q1', needs.version-gate.outputs.year) }}
+        run: |
+          set -euo pipefail
+          image="nationalinstruments/labview:${LV_RELEASE}-linux"
+          echo "Using image: ${image}"
+          docker pull "${image}"
+          echo "LABVIEW_LINUX_IMAGE=${image}" >> "$GITHUB_ENV"
       - name: Run VI Analyzer tasks (LV 64-bit)
         shell: pwsh
-        working-directory: ${{ env.REPO_ROOT }}
         run: |
-          pwsh -NoProfile -File "$env:REPO_ROOT\Tooling\Run-ViAnalyzer.ps1" `
-            -RepoRoot "$env:REPO_ROOT" `
-            -LabVIEWVersion $env:LABVIEW_VERSION_RAW `
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Run-ViAnalyzer.ps1" `
+            -RepoRoot "$env:GITHUB_WORKSPACE" `
+            -LabVIEWVersion '${{ needs.version-gate.outputs.raw }}' `
             -SupportedBitness 64
       - name: Upload VI Analyzer reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: vi-analyzer-reports
-          path: ${{ env.REPO_ROOT }}/builds/vi-analyzer
+          path: ${{ github.workspace }}/builds/vi-analyzer
           if-no-files-found: warn
       - name: Upload VI Analyzer status
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: vi-analyzer-status
-          path: ${{ env.REPO_ROOT }}/builds/status/vi-analyzer-summary.json
+          path: ${{ github.workspace }}/builds/status/vi-analyzer-summary.json
           if-no-files-found: error
-      - name: Job teardown
-        if: always()
-        uses: ./.github/actions/lvie-job-teardown
-        with:
-          close_labview: 'true'
-          close_executor: labviewcli
-          close_bitness: 64
 
   version:
     name: Compute Version
@@ -1375,8 +1365,6 @@ jobs:
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
       LVIE_VIPM_TIMEOUT_SECONDS: 900
-      LVIE_VIPM_MAX_ATTEMPTS: 2
-      LVIE_VIPM_RETRY_DELAY_SECONDS: 30
       LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
       LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
       LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
@@ -1456,14 +1444,18 @@ jobs:
           }
 
           $json = $info | ConvertTo-Json -Depth 5 -Compress
-          "json=$json" >> $Env:GITHUB_OUTPUT
+          $displayInfoDirectory = Join-Path $env:RUNNER_TEMP 'lvie-vip-build'
+          New-Item -Path $displayInfoDirectory -ItemType Directory -Force | Out-Null
+          $displayInformationJsonPath = Join-Path $displayInfoDirectory 'display-information.json'
+          Set-Content -Path $displayInformationJsonPath -Value $json -Encoding utf8
+          "display_information_json_path=$displayInformationJsonPath" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
       - name: Modify VIPB display info (LV 64-bit)
         shell: pwsh
-        env:
-          DISPLAY_INFORMATION_JSON: |
-            ${{ steps.display-info.outputs.json }}
         run: |
-          $displayInformationJson = $Env:DISPLAY_INFORMATION_JSON
+          $displayInformationJsonPath = '${{ steps.display-info.outputs.display_information_json_path }}'
+          if ([string]::IsNullOrWhiteSpace($displayInformationJsonPath) -or -not (Test-Path -Path $displayInformationJsonPath -PathType Leaf)) {
+            throw "Display information JSON path output was missing or invalid: '$displayInformationJsonPath'"
+          }
           & "$env:REPO_ROOT\\.github\\actions\\modify-vipb-display-info\\ModifyVIPBDisplayInfo.ps1" `
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
@@ -1476,12 +1468,9 @@ jobs:
             -Build ${{ needs.version.outputs.BUILD }} `
             -Commit "${{ github.sha }}" `
             -ReleaseNotesFile "$env:REPO_ROOT\\Tooling\\deployment\\release_notes.md" `
-            -DisplayInformationJSON $displayInformationJson
+            -DisplayInformationJsonPath $displayInformationJsonPath
       - name: Build VI Package (LV 64-bit)
         shell: pwsh
-        env:
-          DISPLAY_INFORMATION_JSON: |
-            ${{ steps.display-info.outputs.json }}
         run: |
           $runnerCliPath = $env:LVIE_RUNNER_CLI_PATH
           $ensureRunnerCliScript = @(
@@ -1505,14 +1494,10 @@ jobs:
             throw "runner-cli unavailable: no usable LVIE_RUNNER_CLI_PATH and no runner-cli project found under REPO_ROOT/GITHUB_WORKSPACE."
           }
 
-          $displayInformationJson = $Env:DISPLAY_INFORMATION_JSON
-          if ([string]::IsNullOrWhiteSpace($displayInformationJson)) {
-            throw "DISPLAY_INFORMATION_JSON was empty; cannot run runner-cli vip build."
+          $displayInformationJsonPath = '${{ steps.display-info.outputs.display_information_json_path }}'
+          if ([string]::IsNullOrWhiteSpace($displayInformationJsonPath) -or -not (Test-Path -Path $displayInformationJsonPath -PathType Leaf)) {
+            throw "Display information JSON path output was missing or invalid: '$displayInformationJsonPath'"
           }
-          $displayInfoDirectory = Join-Path $env:RUNNER_TEMP 'lvie-vip-build'
-          New-Item -Path $displayInfoDirectory -ItemType Directory -Force | Out-Null
-          $displayInformationJsonPath = Join-Path $displayInfoDirectory 'display-information.json'
-          Set-Content -Path $displayInformationJsonPath -Value $displayInformationJson -Encoding utf8
 
           $runnerCliArgs = @(
             'vip', 'build',
@@ -2613,9 +2598,6 @@ jobs:
           } else {
             Write-Host 'Pipeline contract satisfied.'
           }
-
-
-
 
 
 

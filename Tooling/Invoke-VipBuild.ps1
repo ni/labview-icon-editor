@@ -30,12 +30,6 @@ param(
     [ValidateRange(60, 7200)]
     [int]$VipmTimeoutSeconds,
 
-    [ValidateRange(1, 5)]
-    [int]$MaxAttempts,
-
-    [ValidateRange(5, 600)]
-    [int]$RetryDelaySeconds,
-
     [string]$StatusPath,
 
     [string]$WorktreeRoot,
@@ -65,6 +59,21 @@ function Resolve-IntSetting {
 
     Write-Warning "Ignoring invalid $Name value '$raw'; using $Fallback."
     return $Fallback
+}
+
+function Assert-DeprecatedVipmRetrySettingsUnset {
+    $deprecatedSettings = @('LVIE_VIPM_MAX_ATTEMPTS', 'LVIE_VIPM_RETRY_DELAY_SECONDS')
+    foreach ($setting in $deprecatedSettings) {
+        if (-not (Test-Path -Path "Env:$setting")) {
+            continue
+        }
+        $value = (Get-Item -Path "Env:$setting").Value
+        if ([string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        throw ("Deprecated VIPM retry setting '{0}' is set to '{1}'. Retry configuration was removed; clear this variable and rerun." -f $setting, $value)
+    }
 }
 
 function Resolve-StatusPath {
@@ -202,18 +211,7 @@ $timeoutSecondsValue = if ($PSBoundParameters.ContainsKey('VipmTimeoutSeconds'))
 } else {
     Resolve-IntSetting -Name 'LVIE_VIPM_TIMEOUT_SECONDS' -Fallback 300
 }
-
-$maxAttemptsValue = if ($PSBoundParameters.ContainsKey('MaxAttempts')) {
-    $MaxAttempts
-} else {
-    Resolve-IntSetting -Name 'LVIE_VIPM_MAX_ATTEMPTS' -Fallback 2
-}
-
-$retryDelayValue = if ($PSBoundParameters.ContainsKey('RetryDelaySeconds')) {
-    $RetryDelaySeconds
-} else {
-    Resolve-IntSetting -Name 'LVIE_VIPM_RETRY_DELAY_SECONDS' -Fallback 30
-}
+Assert-DeprecatedVipmRetrySettingsUnset
 
 $statusPath = Resolve-StatusPath -ExplicitPath $StatusPath -RepoRoot $resolvedRepoRoot
 $logDirectory = Resolve-LogDirectory -RepoRoot $resolvedRepoRoot
@@ -238,73 +236,64 @@ if (-not [string]::IsNullOrWhiteSpace($DisplayInformationJsonPath)) {
 }
 
 $startedAt = Get-Date
-$attempt = 0
-$success = $false
+$attempt = 1
+$success = $true
 $lastExitCode = $null
 $lastError = $null
+$attemptStart = Get-Date
+Write-Host 'VIP build attempt 1 of 1'
 
-while ($attempt -lt $maxAttemptsValue) {
-    $attempt++
-    $attemptStart = Get-Date
-    Write-Host ("VIP build attempt {0} of {1}" -f $attempt, $maxAttemptsValue)
-
-    $displayInfoPath = Join-Path -Path $logDirectory -ChildPath 'vipb-display-info.json'
-    try {
-        if (-not [string]::IsNullOrWhiteSpace($resolvedDisplayInformationJsonPath)) {
-            Copy-Item -Path $resolvedDisplayInformationJsonPath -Destination $displayInfoPath -Force
-        } else {
-            Set-Content -Path $displayInfoPath -Value $DisplayInformationJSON -Encoding utf8
-        }
-    } catch {
-        throw "Failed to write display information JSON to $displayInfoPath. $($_.Exception.Message)"
+$displayInfoPath = Join-Path -Path $logDirectory -ChildPath 'vipb-display-info.json'
+try {
+    if (-not [string]::IsNullOrWhiteSpace($resolvedDisplayInformationJsonPath)) {
+        Copy-Item -Path $resolvedDisplayInformationJsonPath -Destination $displayInfoPath -Force
+    } else {
+        Set-Content -Path $displayInfoPath -Value $DisplayInformationJSON -Encoding utf8
     }
+} catch {
+    throw "Failed to write display information JSON to $displayInfoPath. $($_.Exception.Message)"
+}
 
-    $pwshArgs = @(
-        '-NoProfile',
-        '-File', $buildVipScript,
-        '-SupportedBitness', $SupportedBitness,
-        '-RepoRoot', $resolvedRepoRoot,
-        '-VIPBPath', $VIPBPath,
-        '-LabVIEWVersion', $LabVIEWVersion.ToString(),
-        '-LabVIEWMinorRevision', $LabVIEWMinorRevision.ToString(),
-        '-Major', $Major.ToString(),
-        '-Minor', $Minor.ToString(),
-        '-Patch', $Patch.ToString(),
-        '-Build', $Build.ToString(),
-        '-Commit', $Commit,
-        '-ReleaseNotesFile', $ReleaseNotesFile,
-        '-DisplayInformationJsonPath', $displayInfoPath,
-        '-VipmTimeoutSeconds', $timeoutSecondsValue.ToString()
-    )
+$pwshArgs = @(
+    '-NoProfile',
+    '-File', $buildVipScript,
+    '-SupportedBitness', $SupportedBitness,
+    '-RepoRoot', $resolvedRepoRoot,
+    '-VIPBPath', $VIPBPath,
+    '-LabVIEWVersion', $LabVIEWVersion.ToString(),
+    '-LabVIEWMinorRevision', $LabVIEWMinorRevision.ToString(),
+    '-Major', $Major.ToString(),
+    '-Minor', $Minor.ToString(),
+    '-Patch', $Patch.ToString(),
+    '-Build', $Build.ToString(),
+    '-Commit', $Commit,
+    '-ReleaseNotesFile', $ReleaseNotesFile,
+    '-DisplayInformationJsonPath', $displayInfoPath,
+    '-VipmTimeoutSeconds', $timeoutSecondsValue.ToString()
+)
 
-    if (-not [string]::IsNullOrWhiteSpace($WorktreeRoot)) {
-        $pwshArgs += @('-WorktreeRoot', $WorktreeRoot)
+if (-not [string]::IsNullOrWhiteSpace($WorktreeRoot)) {
+    $pwshArgs += @('-WorktreeRoot', $WorktreeRoot)
+}
+if ($SkipWorktreeRootCheck.IsPresent) {
+    $pwshArgs += '-SkipWorktreeRootCheck'
+}
+
+try {
+    & pwsh @pwshArgs
+    $lastExitCode = if ($LASTEXITCODE -ne $null) { $LASTEXITCODE } else { 0 }
+    if ($lastExitCode -ne 0) {
+        $success = $false
     }
-    if ($SkipWorktreeRootCheck.IsPresent) {
-        $pwshArgs += '-SkipWorktreeRootCheck'
-    }
+} catch {
+    $lastError = $_
+    $lastExitCode = if ($LASTEXITCODE -ne $null) { $LASTEXITCODE } else { 1 }
+    $success = $false
+}
 
-    try {
-        & pwsh @pwshArgs
-        $lastExitCode = if ($LASTEXITCODE -ne $null) { $LASTEXITCODE } else { 0 }
-    } catch {
-        $lastError = $_
-        $lastExitCode = if ($LASTEXITCODE -ne $null) { $LASTEXITCODE } else { 1 }
-    }
-
-    if ($lastExitCode -eq 0) {
-        $success = $true
-        break
-    }
-
+if (-not $success) {
     $attemptDuration = [Math]::Round(((Get-Date) - $attemptStart).TotalSeconds, 2)
-    Write-Warning ("VIP build attempt {0} failed with exit code {1} after {2}s." -f $attempt, $lastExitCode, $attemptDuration)
-
-    if ($attempt -lt $maxAttemptsValue) {
-        $delay = $retryDelayValue * $attempt
-        Write-Host ("Retrying after {0}s..." -f $delay)
-        Start-Sleep -Seconds $delay
-    }
+    Write-Warning ("VIP build attempt 1 failed with exit code {0} after {1}s." -f $lastExitCode, $attemptDuration)
 }
 
 $finishedAt = Get-Date

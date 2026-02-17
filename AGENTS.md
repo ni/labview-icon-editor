@@ -151,8 +151,9 @@ Metadata quick-checks:
   - Profiles: `-ViValidateProfile strict|legacy|both` (optional `-ViValidateReportOnly`, `-ViValidateSkipVersionGate`)
 
 ## VI Analyzer gate
-- Canonical task registry: `Tooling\vi-analyzer\tasks.json` (exactly three tasks for API, plugins, and tooling scopes).
+- Canonical task registry: `Tooling\vi-analyzer\tasks.json` (exactly three tasks for API, plugins, and tooling scopes, mapped to repo-root `.viancfg` files).
 - Canonical executor: `Tooling\Run-ViAnalyzer.ps1`.
+- Runtime worker: `Tooling\container-parity\run-vi-analyzer-linux.sh` (dockerized LabVIEW Linux lane).
 - Local smoke run:
   - `pwsh -NoProfile -File .\Tooling\Run-ViAnalyzer.ps1 -RepoRoot . -SupportedBitness 64`
 - Run-CI controls:
@@ -160,7 +161,7 @@ Metadata quick-checks:
   - `pwsh -NoProfile -File .\Tooling\Run-CI.ps1 -SkipViAnalyzer`
 - Linux parity control:
   - `LVIE_RUN_VI_ANALYZER=auto|true|false ./Tooling/Run-CI.sh`
-  - `auto` runs the gate only when both `pwsh` and `LabVIEWCLI` are available; otherwise it prints an explicit skip reason.
+  - `auto` runs the gate only when both `pwsh` and `docker` are available; otherwise it prints an explicit skip reason.
 - CI evidence:
   - artifact `vi-analyzer-reports` from `builds/vi-analyzer`
   - artifact `vi-analyzer-status` from `builds/status/vi-analyzer-summary.json`
@@ -249,7 +250,7 @@ Notes:
 - If you pass `-LabVIEWVersion`, it must match `.lvversion` or the run will fail fast.
 - If LabVIEW or g-cli is already running, the script waits for them to exit before starting.
 - You can skip steps with switches like `-SkipBuildVip` or `-SkipUnitTests`.
-- VIP builds flow through `Tooling\Invoke-VipBuild.ps1`, which emits `builds\status\vip-build.json` and respects `LVIE_VIPM_TIMEOUT_SECONDS`, `LVIE_VIPM_MAX_ATTEMPTS`, and `LVIE_VIPM_RETRY_DELAY_SECONDS`.
+- VIP builds flow through `Tooling\Invoke-VipBuild.ps1`, which emits `builds\status\vip-build.json` and respects `LVIE_VIPM_TIMEOUT_SECONDS` (single-attempt execution; retry env vars are rejected).
 
 ## Adaptive timeouts and continuous troubleshooting
 Use fixed timeouts for deterministic CI runs. Use adaptive timeouts only for local/manual runs while tuning.
