@@ -5,7 +5,7 @@
 
 .DESCRIPTION
     Uses Tooling/Ensure-WorktreeRoot.ps1 to validate the worktree root
-    (defaults to C:\dev or LVIE_WORKTREE_ROOT). Creates a new worktree
+    (defaults to a repo-derived path or LVIE_WORKTREE_ROOT). Creates a new worktree
     using git and returns the path.
 
 .PARAMETER Ref

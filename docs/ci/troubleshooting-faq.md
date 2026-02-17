@@ -133,12 +133,14 @@ Below are 17 possible issues you might encounter, along with suggested steps to 
 - The workflow completes, but you see no new release in GitHub’s “Releases” section.
 
 **Possible Causes**:
-- The run did not include explicit publish intent (`workflow_dispatch` + publish inputs).
+- The run was not an eligible merged-PR merge commit push to `develop`.
 - The publish step failed or was skipped due to eligibility, profile-specific gate checks, freshness requirements, assets, or API errors.
 
 **Solution**:
 1. Identify the exact SHA you want to publish.
-2. Confirm the run is an eligible publish path: `workflow_dispatch` with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`.
+2. Confirm the run is an eligible publish path:
+   - Auto path: `push` to `develop` where `github.sha` is the merged PR merge commit.
+   - Manual backfill path: `workflow_dispatch` with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`.
 3. For `release-priority` (`workflow_dispatch` + `force_gcli_lunit=true`), confirm there is a successful `full` profile run on `develop` in the previous 24 hours.
 4. Inspect the `publish-gate` and `publish-prerelease` job logs for explicit failure/skip reason output.
 5. Inspect the `prerelease-publish-status` artifact for machine-readable failure details and required-asset validation results.
@@ -167,13 +169,14 @@ gh workflow run ci.yml --repo $repo `
 **Solution**:
 1. Have the required reviewers approve your Pull Request.
 2. Ensure the required branch-protection status context is green:
+   - `CI Pipeline / PowerShell Lint`
    - `CI Pipeline / Pipeline Contract`
-   - `CI Pipeline / Pipeline Contract` is companion-only and should remain non-required.
 3. Verify branch-protection configuration with:
    - `pwsh -NoProfile -File .\Tooling\Test-CiBranchProtection.ps1`
 4. If branch protection is configured with stale per-job contexts, ask a repository admin to update required contexts to:
+   - `CI Pipeline / PowerShell Lint`
    - `CI Pipeline / Pipeline Contract`
-   - Remove any required `CI Pipeline / Pipeline Contract` entry if present.
+   - Remove stale required contexts that are not part of this pair.
 5. Update your `CONTRIBUTING.md` to specify the merging rules so contributors know what’s needed.
 
 ---
@@ -371,7 +374,7 @@ By default, the workflow calculates the build number with `git rev-list --count 
 ### Q2: How Do I Create a Release?
 
 **Answer**:
-Repository policy uses manual publish intent. Dispatch `ci.yml` with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`, then review `prerelease-publish-status` when troubleshooting.
+Repository policy auto-publishes on eligible merged-PR merge commits to `develop`. Use manual backfill only when needed by dispatching `ci.yml` with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`, then review `prerelease-publish-status` when troubleshooting.
 
 ---
 

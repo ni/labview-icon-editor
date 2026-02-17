@@ -10,6 +10,14 @@ fi
 
 # shellcheck disable=SC1090
 source "$PATH_CONTRACT_SCRIPT"
+SYNC_MANIFEST_SCRIPT="$SCRIPT_DIR/source-sync-manifest.sh"
+if [[ ! -f "$SYNC_MANIFEST_SCRIPT" ]]; then
+  echo "ERROR: Source sync manifest helper was not found: $SYNC_MANIFEST_SCRIPT" >&2
+  exit 1
+fi
+
+# shellcheck disable=SC1090
+source "$SYNC_MANIFEST_SCRIPT"
 
 LV_YEAR="${CONTAINER_PARITY_LABVIEW_VERSION:-${LV_YEAR:-2026}}"
 LVIE_PROJECT_RELATIVE_PATH="${LVIE_PROJECT_RELATIVE_PATH:-${PROJECT_PATH_REL:-lv_icon_editor.lvproj}}"
@@ -34,8 +42,8 @@ BUILD_SPEC_NAME="${CONTAINER_PARITY_BUILD_SPEC_NAME:-Editor Packed Library}"
 TARGET_NAME="${CONTAINER_PARITY_TARGET_NAME:-My Computer}"
 BUILD_OUTPUT_RELATIVE_PATH="${CONTAINER_PARITY_BUILD_OUTPUT_RELATIVE_PATH:-resource/plugins/lv_icon.lvlibp}"
 BUILD_OUTPUT_PATH="$(join_lvie_repo_path "$LVIE_REPO_ROOT" "$BUILD_OUTPUT_RELATIVE_PATH")"
-BUILD_SPEC_ENABLED_RAW="${CONTAINER_PARITY_BUILD_SPEC:-false}"
 LOG_ROOT="$(join_lvie_repo_path "$LVIE_REPO_ROOT" "TestResults/container-parity/linux/logs")"
+SOURCE_SYNC_MANIFEST_PATH="${LVIE_SOURCE_SYNC_MANIFEST_PATH:-$(join_lvie_repo_path "$LVIE_REPO_ROOT" "builds/status/source-sync-manifest-parity-linux.json")}"
 LABVIEW_ROOT="$(dirname "$LABVIEW_PATH")"
 
 export LVIE_REPO_ROOT
@@ -48,6 +56,7 @@ export PROJECT_PATH="$LVIE_PROJECT_PATH"
 echo "Resolved repo root: $LVIE_REPO_ROOT (source: $LVIE_REPO_ROOT_SOURCE)"
 echo "Resolved project path: $LVIE_PROJECT_PATH (source: $LVIE_PROJECT_PATH_SOURCE)"
 echo "Resolved target directory: $TARGET_DIR (source: $TARGET_DIR_SOURCE)"
+echo "Resolved source sync manifest path: $SOURCE_SYNC_MANIFEST_PATH"
 
 is_enabled_value() {
   local value="${1:-}"
@@ -74,6 +83,21 @@ sync_icon_editor_sources_for_build_spec() {
     "$repo_plugins/lv_icon.vi"
     "$repo_icon_api"
   )
+  local plugin_root_files=(
+    "lv_IconEditor.lvlib"
+    "lv_icon.vi"
+    "lv_icon.vit"
+    "SAMPLE_lv_icon.vi"
+  )
+  local plugin_root_stage
+  plugin_root_stage="$(mktemp -d)"
+  local snapshot_plugins_dir
+  snapshot_plugins_dir="$(mktemp)"
+  local snapshot_plugins_root_files
+  snapshot_plugins_root_files="$(mktemp)"
+  local snapshot_icon_api
+  snapshot_icon_api="$(mktemp)"
+  trap 'rm -f "$snapshot_plugins_dir" "$snapshot_plugins_root_files" "$snapshot_icon_api"; rm -rf "$plugin_root_stage"' RETURN
 
   for path in "${required_paths[@]}"; do
     if [[ ! -e "$path" ]]; then
@@ -82,9 +106,20 @@ sync_icon_editor_sources_for_build_spec() {
     fi
   done
 
+  for file_name in "${plugin_root_files[@]}"; do
+    local source_path="$repo_plugins/$file_name"
+    if [[ -f "$source_path" ]]; then
+      cp -a "$source_path" "$plugin_root_stage/"
+    fi
+  done
+
+  sync_manifest_capture_before_state "$repo_plugins/NIIconEditor" "$install_plugins/NIIconEditor" "$snapshot_plugins_dir"
+  sync_manifest_capture_before_state "$plugin_root_stage" "$install_plugins" "$snapshot_plugins_root_files"
+  sync_manifest_capture_before_state "$repo_icon_api" "$install_icon_api" "$snapshot_icon_api"
+
   mkdir -p "$install_plugins"
   cp -a "$repo_plugins/NIIconEditor" "$install_plugins/"
-  for file_name in lv_IconEditor.lvlib lv_icon.vi lv_icon.vit SAMPLE_lv_icon.vi; do
+  for file_name in "${plugin_root_files[@]}"; do
     local source_path="$repo_plugins/$file_name"
     if [[ -e "$source_path" ]]; then
       cp -a "$source_path" "$install_plugins/"
@@ -100,9 +135,19 @@ sync_icon_editor_sources_for_build_spec() {
     return 1
   fi
 
+  sync_manifest_write \
+    "$SOURCE_SYNC_MANIFEST_PATH" \
+    "$LVIE_REPO_ROOT" \
+    "$LABVIEW_ROOT" \
+    "parity-linux-buildspec" \
+    "resource-plugins-niiconeditor" "$repo_plugins/NIIconEditor" "$install_plugins/NIIconEditor" "$snapshot_plugins_dir" \
+    "resource-plugins-root-files" "$plugin_root_stage" "$install_plugins" "$snapshot_plugins_root_files" \
+    "labview-icon-api" "$repo_icon_api" "$install_icon_api" "$snapshot_icon_api"
+
   echo "Synchronized Icon Editor sources into LabVIEW install:"
   echo "  resource/plugins -> $install_plugins"
   echo "  vi.lib/LabVIEW Icon API -> $install_icon_api"
+  echo "  source sync manifest -> $SOURCE_SYNC_MANIFEST_PATH"
 }
 
 list_labviewcli_temp_logs() {
@@ -162,6 +207,11 @@ if ! command -v LabVIEWCLI >/dev/null 2>&1; then
   exit 1
 fi
 
+if [[ -n "${CONTAINER_PARITY_BUILD_SPEC:-}" ]] && ! is_enabled_value "${CONTAINER_PARITY_BUILD_SPEC}"; then
+  echo "ERROR: CONTAINER_PARITY_BUILD_SPEC disable is unsupported. Build-spec execution is mandatory; unset CONTAINER_PARITY_BUILD_SPEC or set it to true." >&2
+  exit 1
+fi
+
 if [[ ! -d "$TARGET_DIR" ]]; then
   echo "ERROR: Target directory does not exist: $TARGET_DIR" >&2
   exit 1
@@ -204,11 +254,6 @@ if ! invoke_labviewcli "MassCompile" \
 fi
 
 echo "MassCompile completed successfully."
-
-if ! is_enabled_value "$BUILD_SPEC_ENABLED_RAW"; then
-  echo "Build specification step disabled (set CONTAINER_PARITY_BUILD_SPEC=true to enable)."
-  exit 0
-fi
 
 if [[ ! -f "$PROJECT_PATH" ]]; then
   echo "ERROR: Project file does not exist: $PROJECT_PATH" >&2

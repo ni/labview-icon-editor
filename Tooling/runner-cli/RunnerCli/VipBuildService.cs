@@ -15,8 +15,6 @@ public sealed record VipBuildOptions(
     string DisplayInformationJson,
     string? DisplayInformationJsonPath,
     string? VipmTimeoutSeconds,
-    string? MaxAttempts,
-    string? RetryDelaySeconds,
     string? StatusPath,
     string? WorktreeRoot,
     bool SkipWorktreeRootCheck,
@@ -88,8 +86,6 @@ public static class VipBuildService
         AddValueArg(args, "-Commit", options.Commit);
         AddValueArg(args, "-ReleaseNotesFile", options.ReleaseNotesFile);
         AddValueArg(args, "-VipmTimeoutSeconds", options.VipmTimeoutSeconds);
-        AddValueArg(args, "-MaxAttempts", options.MaxAttempts);
-        AddValueArg(args, "-RetryDelaySeconds", options.RetryDelaySeconds);
         AddValueArg(args, "-StatusPath", options.StatusPath);
         AddValueArg(args, "-WorktreeRoot", options.WorktreeRoot);
         if (options.SkipWorktreeRootCheck)

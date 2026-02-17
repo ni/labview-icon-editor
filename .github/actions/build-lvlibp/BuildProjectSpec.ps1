@@ -207,61 +207,6 @@ if (-not $labviewCliCommand) {
     throw "LabVIEWCLI is not available on PATH. Install/enable LabVIEWCLI before running BuildProjectSpec.ps1."
 }
 
-function ConvertTo-LabVIEWCliPortNumber {
-    param(
-        [AllowNull()]
-        [AllowEmptyString()]
-        [string]$RawValue,
-        [string]$Source
-    )
-
-    if ([string]::IsNullOrWhiteSpace($RawValue)) {
-        return $null
-    }
-
-    $parsed = 0
-    if ([int]::TryParse($RawValue.Trim(), [ref]$parsed) -and $parsed -ge 1 -and $parsed -le 65535) {
-        return [int]$parsed
-    }
-
-    Write-Warning ("Ignoring invalid LabVIEWCLI port '{0}' from {1}; expected 1-65535." -f $RawValue, $Source)
-    return $null
-}
-
-function Get-LabVIEWIniValue {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$IniPath,
-        [Parameter(Mandatory = $true)]
-        [string]$Key
-    )
-
-    foreach ($line in Get-Content -Path $IniPath -ErrorAction SilentlyContinue) {
-        if ([string]::IsNullOrWhiteSpace($line)) {
-            continue
-        }
-
-        $trimmed = $line.Trim()
-        if ($trimmed.StartsWith(';') -or $trimmed.StartsWith('#')) {
-            continue
-        }
-
-        $separator = $trimmed.IndexOf('=')
-        if ($separator -lt 0) {
-            continue
-        }
-
-        $lineKey = $trimmed.Substring(0, $separator).Trim()
-        if (-not $lineKey.Equals($Key, [System.StringComparison]::OrdinalIgnoreCase)) {
-            continue
-        }
-
-        return $trimmed.Substring($separator + 1).Trim()
-    }
-
-    return $null
-}
-
 function Resolve-LabVIEWCliPort {
     param(
         [Parameter(Mandatory = $true)]
@@ -271,47 +216,17 @@ function Resolve-LabVIEWCliPort {
         [string]$LabVIEWExecutablePath
     )
 
-    $envCandidates = @(
-        "LVIE_LABVIEWCLI_PORT_{0}" -f $Bitness,
-        'LVIE_LABVIEWCLI_PORT',
-        "LVIE_LUNIT_PORT_{0}" -f $Bitness,
-        'LVIE_LUNIT_PORT'
-    )
-
-    foreach ($name in $envCandidates) {
-        $value = [Environment]::GetEnvironmentVariable($name)
-        $port = ConvertTo-LabVIEWCliPortNumber -RawValue $value -Source ('$env:{0}' -f $name)
-        if ($null -ne $port) {
-            return [pscustomobject]@{
-                PortNumber = [int]$port
-                Source = '$env:{0}' -f $name
-            }
-        }
+    $portContractHelper = Join-Path $RepoRoot 'Tooling\support\LabVIEWCliPortContract.ps1'
+    if (-not (Test-Path -Path $portContractHelper -PathType Leaf)) {
+        throw "LabVIEW CLI port contract helper not found at $portContractHelper"
     }
+    . $portContractHelper
 
-    $iniPath = Join-Path -Path (Split-Path -Path $LabVIEWExecutablePath -Parent) -ChildPath 'LabVIEW.ini'
-    if (Test-Path -Path $iniPath -PathType Leaf) {
-        $enabledRaw = Get-LabVIEWIniValue -IniPath $iniPath -Key 'server.tcp.enabled'
-        if (-not [string]::IsNullOrWhiteSpace($enabledRaw)) {
-            $normalizedEnabled = $enabledRaw.Trim().ToLowerInvariant()
-            if (@('false', '0', 'off', 'no') -contains $normalizedEnabled) {
-                throw ("VI server TCP is disabled in {0}. Enable server.tcp.enabled or set LVIE_LABVIEWCLI_PORT_{1}/LVIE_LABVIEWCLI_PORT." -f $iniPath, $Bitness)
-            }
-        }
-
-        $iniPort = ConvertTo-LabVIEWCliPortNumber -RawValue (Get-LabVIEWIniValue -IniPath $iniPath -Key 'server.tcp.port') -Source ('{0} (server.tcp.port)' -f $iniPath)
-        if ($null -ne $iniPort) {
-            return [pscustomobject]@{
-                PortNumber = [int]$iniPort
-                Source = '{0} (server.tcp.port)' -f $iniPath
-            }
-        }
-    }
-
-    return [pscustomobject]@{
-        PortNumber = 3363
-        Source = 'default:3363'
-    }
+    return Resolve-LabVIEWCliPortFromContract `
+        -RepoRoot $RepoRoot `
+        -LabVIEWVersion $labviewYear `
+        -Bitness $Bitness `
+        -LabVIEWExecutablePath $LabVIEWExecutablePath
 }
 
 function Invoke-CloseLabVIEWSafely {

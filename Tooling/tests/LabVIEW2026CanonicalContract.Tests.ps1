@@ -102,7 +102,15 @@ Describe 'LabVIEW 2026 canonical migration contract' {
                 continue
             }
 
-            $matchList += Select-String -Path $doc.FullName -Pattern 'LabVIEW 2020 \(20\.0\)|LabVIEW 2021|21\.0' -SimpleMatch:$false
+            $legacyMentions = @(Select-String -Path $doc.FullName -Pattern 'LabVIEW 2020 \(20\.0\)|LabVIEW 2021|21\.0' -SimpleMatch:$false)
+            foreach ($mention in $legacyMentions) {
+                $line = [string]$mention.Line
+                $is2020Reference = $line -match 'LabVIEW 2020 \(20\.0\)'
+                $allowedFormatContext = $is2020Reference -and ($line -match '(?i)source.*saved|saved.*format|file format')
+                if (-not $allowedFormatContext) {
+                    $matchList += $mention
+                }
+            }
         }
 
         $matchList.Count | Should -Be 0

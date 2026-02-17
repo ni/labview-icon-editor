@@ -4,7 +4,7 @@ This document lists the PowerShell scripts used to build, test, and distribute t
 
 Local entrypoints enforce short-path worktree usage by default. If a script fails because the repo is not under the worktree root, use `Tooling\New-CIWorktree.ps1` or `Tooling\Invoke-InWorktree.ps1`. Set `LVIE_SKIP_WORKTREE_ROOT_CHECK=1` or pass `-SkipWorktreeRootCheck` only when you intentionally want to bypass the guard.
 
-CI workflows can use a hybrid worktree model where `lvie-job-setup` resolves `LVIE_WORKTREE_ROOT` from `RUNNER_TEMP` (`worktree_root_mode: runner_temp`) while keeping runner contract roots (`LVIE_ARTIFACT_ROOT`, `LVIE_LOCK_ROOT`, `LVIE_LOG_ROOT`) under the stable runner work root. Local runs remain unchanged by default and continue to use `LVIE_WORKTREE_ROOT` or the local fallback (`C:\dev`).
+CI workflows can use a hybrid worktree model where `lvie-job-setup` resolves `LVIE_WORKTREE_ROOT` from `RUNNER_TEMP` (`worktree_root_mode: runner_temp`) while keeping runner contract roots (`LVIE_ARTIFACT_ROOT`, `LVIE_LOCK_ROOT`, `LVIE_LOG_ROOT`) under the stable runner work root. Local runs remain unchanged by default and continue to use `LVIE_WORKTREE_ROOT` or a repo-derived deterministic fallback (`<repo-context>\worktrees`).
 
 Per-run artifacts are written under `$WORKTREE_ROOT\artifacts\<runid>` when guardrails are active. Use `-RunId` or `-ArtifactRoot` to override, and `-CleanRoom` to purge known output folders before and after a run. Artifact roots are disabled by default inside GitHub Actions unless `LVIE_ENABLE_ARTIFACT_ROOT=1` (or an explicit `-ArtifactRoot`/`-RunId` is provided).
 
@@ -25,7 +25,7 @@ Per-run artifacts are written under `$WORKTREE_ROOT\artifacts\<runid>` when guar
 - [Set_Development_Mode.ps1](#set_development_modeps1)
 - [RevertDevelopmentMode.ps1](#revertdevelopmentmodeps1)
 - [RunUnitTests.ps1](#rununittestsps1)
-- [Run-CICompositeLocal.ps1](#run-cicompositelocalps1)
+- [Run-CI.ps1](#run-cips1)
 - [Invoke-DevModeNoLabVIEWSmoke.ps1](#invoke-devmodenolabviewsmokeps1)
 - [Invoke-InWorktree.ps1](#invoke-inworktreeps1)
 - [WorktreeGuard.ps1](#worktreeguardps1)
@@ -51,10 +51,10 @@ Canonical project-spec builder. Runs LabVIEWCLI `MassCompile` + source sync + `E
 Compatibility wrapper that forwards to `BuildProjectSpec.ps1` with packed-library defaults (`Editor Packed Library` -> `resource/plugins/lv_icon.lvlibp`). Deprecated and retained temporarily for compatibility.
 
 ## build_vip.ps1
-Modifies a `.vipb` file and builds the final VI Package with g-cli, using version data and display information provided by `Build.ps1`.
+Builds the final VI Package with VIPM CLI using the repository `.vipb` metadata and deterministic timeout/log handling.
 
 ## Close_LabVIEW.ps1
-Gracefully shuts down a running LabVIEW instance using g-cli's `QuitLabVIEW` command. Called throughout the pipeline to ensure LabVIEW exits cleanly.
+Gracefully shuts down a running LabVIEW instance using LabVIEWCLI `CloseLabVIEW` with strict port-contract resolution. Called throughout the pipeline to ensure deterministic LabVIEW shutdown.
 
 ## Invoke-MissingIEFilesFromLVInstall.ps1
 Runs `VerifyIEPaths.vi` via g-cli to validate the LabVIEW Icon API installation. The VI writes a status file to the repo root (default: `missing_IE_paths.txt`). An empty file indicates success; a comma-separated list of paths indicates missing files and should be treated as a failure. The script deletes any prior status file before running, waits for a new one (with timeout), and then deletes or archives it after reading. Use `-StatusFileArchiveDirectory` to preserve a copy. Set `-ConnectTimeoutMs`, `-ProcessTimeoutMs`, and `-StatusFileTimeoutMs` to control g-cli and status-file timing behavior.
@@ -78,9 +78,9 @@ Policy-disabled for automation. The script now fails fast to enforce repository 
 Policy-disabled for automation. The script now fails fast to enforce repository policy that dev mode must not be invoked.
 
 ## RunUnitTests.ps1
-Parser-only utility that reads an existing `UnitTestReport.xml` and outputs a table/summary with deterministic pass/fail exit semantics. Callers must execute `g-cli lunit` first, then invoke the parser as a child process (for example, `pwsh -NoProfile -File .github/actions/run-unit-tests/RunUnitTests.ps1 -ReportPath <path>`). Legacy backend knobs (`LVIE_LUNIT_BACKEND`, `LVIE_FORCE_GCLI_LUNIT`) are hard-removed and now fail fast if set.
+Dual-mode unit-test utility. Default run mode executes LUnit and requires `-ProjectPath`. Parse mode (`-SkipGcli`) validates an existing `UnitTestReport.xml` without executing tests. For parse mode, callers can invoke `runner-cli lunit validate` (or call `RunUnitTests.ps1 -SkipGcli -ReportPath <path>` directly). Legacy backend knobs (`LVIE_LUNIT_BACKEND`, `LVIE_FORCE_GCLI_LUNIT`) are hard-removed and now fail fast if set.
 
-## Run-CICompositeLocal.ps1
+## Run-CI.ps1
 Runs a local CI parity sequence based on `ci.yml`. This script validates Verify IE Paths, applies VIPC dependencies, runs missing-in-project checks and unit tests for the LabVIEW version declared in `.lvversion` (canonical baseline `26.1`), 32- and 64-bit, builds packed libraries, and produces the VI package using the 64-bit install of that version. Local orchestration enters through runner-cli for migrated surfaces (`missing-in-project`, `ppl build`), while backend execution semantics remain unchanged. Unit tests execute directly through `g-cli lunit`; report parsing/summary uses `RunUnitTests.ps1`. The script always runs both 64-bit and 32-bit steps for the selected LabVIEW version, and most steps can be skipped via switches. Outputs are stored under `TestResults/ci-local`. Use `-ConnectTimeoutMs`, `-ProcessTimeoutMs`, and `-StatusFileTimeoutMs` to tune g-cli and status-file timing for your machine. Dev-mode request flags (`-EnsureCleanState`, `-SkipDevModeNoLabVIEWSmoke`, `-DevModeNoLabVIEWSmokeDepth`, `-UseLabVIEWDevMode`) are policy-disabled and throw when passed.
 
 ## Invoke-DevModeNoLabVIEWSmoke.ps1

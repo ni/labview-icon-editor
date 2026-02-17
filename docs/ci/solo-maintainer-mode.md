@@ -15,9 +15,9 @@ Date adopted: **2026-02-11**
 
 ## Publish Policy
 
-- Publish model: **manual publish intent**
-- `ci.yml` does not auto-publish prereleases from `push` events.
-- Prerelease dispatch requires:
+- Publish model: **auto publish on eligible develop merges + deterministic manual backfill**
+- `ci.yml` auto-publishes prereleases for `push` events on `develop` when `github.sha` is the merged PR merge commit targeting `develop`.
+- Prerelease dispatch backfill requires:
   - `workflow_dispatch`
   - `publish_prerelease=true`
   - `expected_sha=<sha>`
@@ -25,9 +25,9 @@ Date adopted: **2026-02-11**
 
 ## Required Merge Checks
 
-For protected integration branches in solo mode, require only:
+For protected integration branches in solo mode, require:
 
-- `CI Pipeline / Pipeline Contract`
+- `CI Pipeline / PowerShell Lint`
 - `CI Pipeline / Pipeline Contract`
 
 No reviewer count is required in branch protection for solo-maintainer operation.

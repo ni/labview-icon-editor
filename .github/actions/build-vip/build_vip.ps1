@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Resolves paths, merges version details into DisplayInformation JSON, and
-    calls g-cli to modify the VIPB file and create the final VI package.
+    invokes VIPM CLI to build the final VI package.
 
 .PARAMETER SupportedBitness
     LabVIEW bitness for the build ("32" or "64").
@@ -131,6 +131,219 @@ if (Test-Path -Path $versionHelper) {
     }
 }
 
+function Get-VipmTargetVersionLabel {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$LabVIEWNumericVersion,
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('32', '64')]
+        [string]$Bitness
+    )
+
+    if ($Bitness -eq '64') {
+        return "$LabVIEWNumericVersion (64-bit)"
+    }
+
+    return $LabVIEWNumericVersion
+}
+
+function Get-VipmSettingsPath {
+    if ([string]::IsNullOrWhiteSpace($env:ProgramData)) {
+        throw 'ProgramData is not defined; cannot resolve VIPM settings file.'
+    }
+
+    return Join-Path -Path $env:ProgramData -ChildPath 'JKI\VIPM\Settings.ini'
+}
+
+function Get-VipmTargetsSectionInfo {
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string[]]$Lines
+    )
+
+    $inTargets = $false
+    $versions = @{}
+    $portsLineIndex = -1
+    $portsSize = 0
+    $ports = @()
+    $connectionTimeoutLineIndex = -1
+    $connectionTimeoutValue = $null
+
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        $line = [string]$Lines[$index]
+        $sectionMatch = [regex]::Match($line, '^\s*\[(?<name>[^\]]+)\]\s*$')
+        if ($sectionMatch.Success) {
+            $sectionName = $sectionMatch.Groups['name'].Value.Trim()
+            if ($sectionName -eq 'Targets') {
+                $inTargets = $true
+                continue
+            }
+
+            if ($inTargets) {
+                break
+            }
+        }
+
+        if (-not $inTargets) {
+            continue
+        }
+
+        $versionMatch = [regex]::Match($line, '^\s*Versions\s+(?<idx>\d+)\s*=\s*"(?<value>.*)"\s*$')
+        if ($versionMatch.Success) {
+            $versions[[int]$versionMatch.Groups['idx'].Value] = $versionMatch.Groups['value'].Value
+            continue
+        }
+
+        $portsMatch = [regex]::Match($line, '^\s*Ports\s*=\s*"(?<value><size\(s\)=\d+>.*)"\s*$')
+        if ($portsMatch.Success) {
+            $portsLineIndex = $index
+            $portsRaw = $portsMatch.Groups['value'].Value
+            $sizeMatch = [regex]::Match($portsRaw, '<size\(s\)=(?<n>\d+)>')
+            if ($sizeMatch.Success) {
+                $portsSize = [int]$sizeMatch.Groups['n'].Value
+                $rest = $portsRaw.Substring($sizeMatch.Index + $sizeMatch.Length).Trim()
+                if (-not [string]::IsNullOrWhiteSpace($rest)) {
+                    $ports = @($rest -split '\s+')
+                }
+            }
+            continue
+        }
+
+        $timeoutMatch = [regex]::Match($line, '^\s*Connection Timeout\s*=\s*"(?<value>\d+)"\s*$')
+        if ($timeoutMatch.Success) {
+            $connectionTimeoutLineIndex = $index
+            $connectionTimeoutValue = [int]$timeoutMatch.Groups['value'].Value
+        }
+    }
+
+    return [pscustomobject]@{
+        Versions                   = $versions
+        PortsLineIndex             = $portsLineIndex
+        PortsSize                  = $portsSize
+        Ports                      = @($ports)
+        ConnectionTimeoutLineIndex = $connectionTimeoutLineIndex
+        ConnectionTimeoutValue     = $connectionTimeoutValue
+    }
+}
+
+function Set-VipmTargetSettingsFromContract {
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$VersionYear,
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(0, 99)]
+        [int]$MinorRevision,
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('32', '64')]
+        [string]$Bitness,
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(60, 3600)]
+        [int]$ConnectionTimeoutSeconds
+    )
+
+    $labviewExecutablePathHelper = Join-Path $RepoRoot 'Tooling\support\LabVIEWExecutablePath.ps1'
+    if (-not (Test-Path -Path $labviewExecutablePathHelper -PathType Leaf)) {
+        throw "LabVIEW executable resolver helper not found at $labviewExecutablePathHelper"
+    }
+
+    $portContractHelper = Join-Path $RepoRoot 'Tooling\support\LabVIEWCliPortContract.ps1'
+    if (-not (Test-Path -Path $portContractHelper -PathType Leaf)) {
+        throw "LabVIEW CLI port contract helper not found at $portContractHelper"
+    }
+
+    . $labviewExecutablePathHelper
+    . $portContractHelper
+
+    $numericVersion = "{0}.{1}" -f ([int]$VersionYear - 2000), $MinorRevision
+    $targetVersionLabel = Get-VipmTargetVersionLabel -LabVIEWNumericVersion $numericVersion -Bitness $Bitness
+    $settingsPath = Get-VipmSettingsPath
+    if (-not (Test-Path -Path $settingsPath -PathType Leaf)) {
+        throw "VIPM settings file not found at $settingsPath"
+    }
+
+    $settingsRaw = Get-Content -Path $settingsPath -Raw -ErrorAction Stop
+    if ([string]::IsNullOrWhiteSpace($settingsRaw)) {
+        throw ("VIPM settings file '{0}' is empty." -f $settingsPath)
+    }
+    $normalized = $settingsRaw -replace "`r`n", "`n" -replace "`r", "`n"
+    $lines = @($normalized -split "`n")
+    $sectionInfo = Get-VipmTargetsSectionInfo -Lines $lines
+    if ($sectionInfo.PortsLineIndex -lt 0) {
+        throw "VIPM settings file '$settingsPath' does not define Targets.Ports."
+    }
+    if ($sectionInfo.ConnectionTimeoutLineIndex -lt 0) {
+        throw "VIPM settings file '$settingsPath' does not define Targets.Connection Timeout."
+    }
+    if ($sectionInfo.Versions.Count -eq 0) {
+        throw "VIPM settings file '$settingsPath' does not define Targets.Versions entries."
+    }
+
+    $targetIndex = $null
+    foreach ($entry in $sectionInfo.Versions.GetEnumerator() | Sort-Object Key) {
+        if ([string]::Equals([string]$entry.Value, $targetVersionLabel, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $targetIndex = [int]$entry.Key
+            break
+        }
+    }
+    if ($null -eq $targetIndex) {
+        throw ("VIPM settings file '{0}' does not define target version '{1}' under [Targets]." -f $settingsPath, $targetVersionLabel)
+    }
+
+    $labviewExecutablePath = Resolve-LabVIEWExecutablePath -VersionYear $VersionYear -Bitness $Bitness
+    $portResolution = Resolve-LabVIEWCliPortFromContract `
+        -RepoRoot $RepoRoot `
+        -LabVIEWVersion $numericVersion `
+        -Bitness $Bitness `
+        -LabVIEWExecutablePath $labviewExecutablePath
+    $expectedPort = [int]$portResolution.PortNumber
+
+    $ports = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($entry in @($sectionInfo.Ports)) {
+        $ports.Add([string]$entry) | Out-Null
+    }
+    while ($ports.Count -lt [int]$sectionInfo.PortsSize) {
+        $ports.Add('0') | Out-Null
+    }
+    while ($ports.Count -le $targetIndex) {
+        $ports.Add('0') | Out-Null
+    }
+
+    $updated = $false
+    $currentPort = [string]$ports[$targetIndex]
+    if ($currentPort -ne $expectedPort.ToString()) {
+        Write-Output ("Updating VIPM target port for '{0}' (index {1}) from {2} to {3}." -f $targetVersionLabel, $targetIndex, $currentPort, $expectedPort)
+        $ports[$targetIndex] = $expectedPort.ToString()
+        $updated = $true
+    } else {
+        Write-Output ("VIPM target port already matches contract for '{0}': {1}" -f $targetVersionLabel, $expectedPort)
+    }
+
+    $currentTimeout = [int]$sectionInfo.ConnectionTimeoutValue
+    if ($currentTimeout -ne $ConnectionTimeoutSeconds) {
+        Write-Output ("Updating VIPM Connection Timeout from {0} to {1} seconds." -f $currentTimeout, $ConnectionTimeoutSeconds)
+        $lines[$sectionInfo.ConnectionTimeoutLineIndex] = ('Connection Timeout="{0}"' -f $ConnectionTimeoutSeconds)
+        $updated = $true
+    } else {
+        Write-Output ("VIPM Connection Timeout already set to {0} seconds." -f $currentTimeout)
+    }
+
+    if ($updated -and $PSCmdlet.ShouldProcess($settingsPath, 'Synchronize VIPM target port and connection timeout with LabVIEW contract')) {
+        $portsSize = $ports.Count
+        $portsValue = if ($portsSize -gt 0) {
+            "<size(s)=$portsSize> " + (($ports.ToArray()) -join ' ')
+        } else {
+            "<size(s)=0>"
+        }
+        $lines[$sectionInfo.PortsLineIndex] = ('Ports="{0}"' -f $portsValue)
+        Set-Content -Path $settingsPath -Value $lines -Encoding utf8
+        Write-Output ("VIPM settings synchronized to LabVIEW CLI contract: {0}" -f $settingsPath)
+    }
+}
+
 # 1b) Ensure VI Package output directory exists to avoid VIPM prompts
 $artifactRoot = $env:LVIE_ARTIFACT_ROOT
 $vipOutputDir = if ([string]::IsNullOrWhiteSpace($artifactRoot)) {
@@ -254,9 +467,6 @@ else {
     $jsonObj.'Package Version'.build = $Build
 }
 
-# Re-convert to a JSON string with a comfortable nesting depth
-$UpdatedDisplayInformationJSON = $jsonObj | ConvertTo-Json -Depth 5
-
 # 5a) Pre-clean existing VIP in the configured output folder to avoid VIPM error 10
 $vipBaseName = if (-not [string]::IsNullOrWhiteSpace($packageFileName)) {
     $packageFileName
@@ -275,50 +485,87 @@ if (Test-Path -Path $vipFullPath) {
     Remove-Item -Path $vipFullPath -Force -ErrorAction SilentlyContinue
 }
 
-# 6) Construct reusable g-cli arguments
-$gcliArgs = @(
-    "--lv-ver", $LabVIEWVersion.ToString(),
-    "--arch", $SupportedBitness,
-    "--connect-timeout", "120000",
-    "--kill",
-    "--kill-timeout", "20000",
-    "--verbose",
-    "vipb", "--",
-    "--buildspec", $ResolvedVIPBPath,
-    "-v", "$Major.$Minor.$Patch.$Build",
-    "--release-notes", $ResolvedReleaseNotesFile,
-    "--timeout", $VipmTimeoutSeconds.ToString()
+# 6) Construct reusable VIPM CLI arguments
+$vipmCommand = Get-Command vipm -ErrorAction SilentlyContinue
+if (-not $vipmCommand) {
+    $errorObject = [PSCustomObject]@{
+        error = "VIPM CLI is not available on PATH."
+    }
+    $errorObject | ConvertTo-Json -Depth 10
+    exit 1
+}
+
+$vipmArgs = @(
+    '--labview-version', $LabVIEWVersion.ToString(),
+    '--labview-bitness', $SupportedBitness,
+    'build',
+    $ResolvedVIPBPath
 )
 
-$prettyCommand = "g-cli " + ($gcliArgs -join ' ')
+$prettyCommand = "{0} {1}" -f $vipmCommand.Source, ($vipmArgs -join ' ')
 Write-Output "Base build command:"
 Write-Output $prettyCommand
+Write-Output ("Release notes source: {0}" -f $ResolvedReleaseNotesFile)
+Write-Output ("Build metadata: version={0}.{1}.{2}.{3} commit={4}" -f $Major, $Minor, $Patch, $Build, $Commit)
+
+# 6a) Keep VIPM target connection settings aligned with strict LabVIEWCLI contract.
+Set-VipmTargetSettingsFromContract `
+    -RepoRoot $ResolvedRepoRoot `
+    -VersionYear $LabVIEWVersion.ToString() `
+    -MinorRevision $LabVIEWMinorRevision `
+    -Bitness $SupportedBitness `
+    -ConnectionTimeoutSeconds $VipmTimeoutSeconds
 
 # 7) Execute the command once with log capture
-$logFile = Join-Path -Path $LogDirectory -ChildPath "gcli-build.log"
-Write-Host "Starting g-cli build. Logs: $logFile"
+$logFile = Join-Path -Path $LogDirectory -ChildPath "vipm-build.log"
+Write-Host "Starting VIPM CLI build. Logs: $logFile"
 
-try {
-    & g-cli @gcliArgs 2>&1 | Tee-Object -FilePath $logFile
-}
-catch {
-    $_ | Out-String | Tee-Object -FilePath $logFile -Append | Out-Null
-    $LASTEXITCODE = 1
+$runnerHelper = Join-Path -Path $ResolvedRepoRoot -ChildPath 'Tooling\support\GcliRunner.ps1'
+if (-not (Test-Path -Path $runnerHelper -PathType Leaf)) {
+    $errorObject = [PSCustomObject]@{
+        error = "Command runner helper not found at $runnerHelper."
+    }
+    $errorObject | ConvertTo-Json -Depth 10
+    exit 1
 }
 
-if ($LASTEXITCODE -ne 0) {
+. $runnerHelper
+
+$timeoutMs = [int]([Math]::Min([long]$VipmTimeoutSeconds * 1000, 2147483647))
+$commandResult = Invoke-GCliCommand -ExecutablePath $vipmCommand.Source -Arguments $vipmArgs -TimeoutMs $timeoutMs
+$combinedOutput = @()
+if ($commandResult.OutputLines) {
+    $combinedOutput += @($commandResult.OutputLines)
+}
+if ($commandResult.ErrorLines) {
+    $combinedOutput += @($commandResult.ErrorLines)
+}
+if ($combinedOutput.Count -gt 0) {
+    $combinedOutput | Set-Content -Path $logFile -Encoding utf8
+} else {
+    '' | Set-Content -Path $logFile -Encoding utf8
+}
+
+$effectiveExitCode = if ($commandResult.TimedOut) { 124 } else { [int]$commandResult.ExitCode }
+if ($commandResult.TimedOut) {
+    $timeoutLine = ("Timeout waiting on VIPM after {0} seconds." -f $VipmTimeoutSeconds)
+    Add-Content -Path $logFile -Value $timeoutLine
+    Write-Warning $timeoutLine
+}
+
+if ($effectiveExitCode -ne 0) {
     if (Test-Path $logFile) {
-        Write-Host ("---- g-cli build log ({0}) ----" -f $logFile)
+        Write-Host ("---- VIPM CLI build log ({0}) ----" -f $logFile)
         Get-Content -Path $logFile | ForEach-Object { Write-Host $_ }
-        Write-Host ("---- end g-cli build log ----")
+        Write-Host ("---- end VIPM CLI build log ----")
     }
     else {
-        Write-Host ("g-cli build log not found at {0}" -f $logFile)
+        Write-Host ("VIPM CLI build log not found at {0}" -f $logFile)
     }
 
     $errorObject = [PSCustomObject]@{
-        error    = "g-cli build failed."
-        exitCode = $LASTEXITCODE
+        error    = if ($commandResult.TimedOut) { "VIPM CLI build timed out." } else { "VIPM CLI build failed." }
+        exitCode = $effectiveExitCode
         log      = $logFile
     }
     $errorObject | ConvertTo-Json -Depth 10

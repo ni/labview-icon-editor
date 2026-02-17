@@ -8,7 +8,6 @@
 param(
     [switch]$EnsureCleanState,
     [switch]$CleanRoom,
-    [switch]$AutoLoop,
 
     [Parameter(Mandatory = $false)]
     [ValidateRange(1, 100)]
@@ -120,10 +119,7 @@ $invokeParams = @{
 
 if ($EnsureCleanState) { $invokeParams.EnsureCleanState = $true }
 if ($CleanRoom) { $invokeParams.CleanRoom = $true }
-if ($AutoLoop) {
-    $invokeParams.AutoLoop = $true
-    $invokeParams.MaxAttempts = $MaxAttempts
-}
+if ($PSBoundParameters.ContainsKey('MaxAttempts')) { $invokeParams.MaxAttempts = $MaxAttempts }
 
 $invokeParams.LabVIEWBitness = $LabVIEWBitness
 

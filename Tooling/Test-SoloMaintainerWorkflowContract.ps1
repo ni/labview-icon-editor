@@ -320,33 +320,53 @@ $ciWorkflowPath = Resolve-RepoFilePath -RepoRootPath $repoRootPath -RelativePath
 if (Test-Path -LiteralPath $ciWorkflowPath -PathType Leaf) {
     $ciWorkflowContent = Get-Content -LiteralPath $ciWorkflowPath -Raw -ErrorAction Stop
 
-    if ($ciWorkflowContent -match "publishMode\s*=\s*'auto'") {
+    if ($ciWorkflowContent -notmatch "publishMode\s*=\s*'auto'") {
         $violationList.Add([pscustomobject]@{
-                Type    = 'publish-not-explicit-intent'
+                Type    = 'publish-auto-mode-missing'
                 File    = '.github/workflows/ci.yml'
                 Line    = 0
                 Pattern = "publishMode = 'auto'"
-                Message = 'Publish mode must not auto-publish on push. Manual intent is required.'
+                Message = "Publish mode token 'auto' is required for develop merged-PR push publication."
             }) | Out-Null
     }
 
-    if ($ciWorkflowContent -match 'develop-push-merged-pr-merge-commit') {
+    if ($ciWorkflowContent -notmatch 'auto-eligible-develop-push-merged-pr-merge-commit') {
         $violationList.Add([pscustomobject]@{
-                Type    = 'publish-auto-reason-present'
+                Type    = 'publish-auto-reason-missing'
                 File    = '.github/workflows/ci.yml'
                 Line    = 0
-                Pattern = 'develop-push-merged-pr-merge-commit'
-                Message = 'Legacy auto-publish reason token is forbidden in solo mode.'
+                Pattern = 'auto-eligible-develop-push-merged-pr-merge-commit'
+                Message = 'Auto publish eligibility reason token is required for develop merged-PR push events.'
             }) | Out-Null
     }
 
-    if ($ciWorkflowContent -notmatch 'manual-intent-required-develop-push') {
+    if ($ciWorkflowContent -notmatch "publishStatus\s*=\s*'already-published'") {
         $violationList.Add([pscustomobject]@{
-                Type    = 'manual-intent-reason-missing'
+                Type    = 'immutable-publish-status-missing'
                 File    = '.github/workflows/ci.yml'
                 Line    = 0
-                Pattern = 'manual-intent-required-develop-push'
-                Message = 'Solo manual-intent publish reason token is required for develop push events.'
+                Pattern = "publishStatus = 'already-published'"
+                Message = "Immutable release publish status token 'already-published' is required."
+            }) | Out-Null
+    }
+
+    if ($ciWorkflowContent -match 'gh release upload .*--clobber') {
+        $violationList.Add([pscustomobject]@{
+                Type    = 'immutable-clobber-forbidden'
+                File    = '.github/workflows/ci.yml'
+                Line    = 0
+                Pattern = 'gh release upload ... --clobber'
+                Message = 'Immutable release upload must not use --clobber.'
+            }) | Out-Null
+    }
+
+    if ($ciWorkflowContent -match 'gh api --method PATCH .*?/releases/') {
+        $violationList.Add([pscustomobject]@{
+                Type    = 'immutable-release-patch-forbidden'
+                File    = '.github/workflows/ci.yml'
+                Line    = 0
+                Pattern = 'gh api --method PATCH ... /releases/'
+                Message = 'Immutable release flow must not PATCH an existing release.'
             }) | Out-Null
     }
 }

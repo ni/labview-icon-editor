@@ -30,8 +30,6 @@ on:
       - main
       - develop
       - release/*
-      - feature/*
-      - hotfix/*
   pull_request:
     branches:
       - main
@@ -301,16 +299,19 @@ jobs:
             }
 
             if (context.eventName === 'push' && context.ref === 'refs/heads/develop') {
-              publishMode = 'manual-intent';
-              shouldPublish = false;
+              publishMode = 'auto';
               if (!isMergeCommit) {
-                publishReason = 'manual-intent-required-develop-push-not-merge-commit';
+                shouldPublish = false;
+                publishReason = 'develop-push-not-merge-commit';
               } else if (mergedPr) {
-                publishReason = 'manual-intent-required-develop-push-merged-pr-detected';
+                shouldPublish = true;
+                publishReason = 'auto-eligible-develop-push-merged-pr-merge-commit';
               } else if (hasMergedDevelopPrAssociation) {
-                publishReason = 'manual-intent-required-develop-push-merged-pr-sha-mismatch';
+                shouldPublish = false;
+                publishReason = 'develop-push-merged-pr-sha-mismatch';
               } else {
-                publishReason = 'manual-intent-required-develop-push-no-merged-pr';
+                shouldPublish = false;
+                publishReason = 'develop-push-no-merged-pr-association';
               }
             } else if (context.eventName === 'workflow_dispatch') {
               publishMode = 'manual';
@@ -418,7 +419,7 @@ jobs:
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '8.0.418'
       - id: lv
         name: Assert .lvversion
         shell: pwsh
@@ -976,6 +977,57 @@ jobs:
         if: always()
         uses: ./.github/actions/lvie-job-teardown
 
+  vi-analyzer:
+    name: VI Analyzer (LabVIEWCLI)
+    needs: [run-metadata, prerelease-context, version-gate, apply-deps-x86]
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    env:
+      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
+      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
+      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
+      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Job setup
+        uses: ./.github/actions/lvie-job-setup
+        with:
+          checkout: 'false'
+          bitness: 64
+          create_worktree: 'true'
+          worktree_root_mode: runner_temp
+      - name: Run VI Analyzer tasks (LV 64-bit)
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          pwsh -NoProfile -File "$env:REPO_ROOT\Tooling\Run-ViAnalyzer.ps1" `
+            -RepoRoot "$env:REPO_ROOT" `
+            -LabVIEWVersion $env:LABVIEW_VERSION_RAW `
+            -SupportedBitness 64
+      - name: Upload VI Analyzer reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-analyzer-reports
+          path: ${{ env.REPO_ROOT }}/builds/vi-analyzer
+          if-no-files-found: warn
+      - name: Upload VI Analyzer status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-analyzer-status
+          path: ${{ env.REPO_ROOT }}/builds/status/vi-analyzer-summary.json
+          if-no-files-found: error
+      - name: Job teardown
+        if: always()
+        uses: ./.github/actions/lvie-job-teardown
+        with:
+          close_labview: 'true'
+          close_executor: labviewcli
+          close_bitness: 64
+
   version:
     name: Compute Version
     needs: [run-metadata, version-gate, prerelease-context]
@@ -1323,8 +1375,6 @@ jobs:
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
       LVIE_VIPM_TIMEOUT_SECONDS: 900
-      LVIE_VIPM_MAX_ATTEMPTS: 2
-      LVIE_VIPM_RETRY_DELAY_SECONDS: 30
       LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
       LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
       LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
@@ -1404,14 +1454,18 @@ jobs:
           }
 
           $json = $info | ConvertTo-Json -Depth 5 -Compress
-          "json=$json" >> $Env:GITHUB_OUTPUT
+          $displayInfoDirectory = Join-Path $env:RUNNER_TEMP 'lvie-vip-build'
+          New-Item -Path $displayInfoDirectory -ItemType Directory -Force | Out-Null
+          $displayInformationJsonPath = Join-Path $displayInfoDirectory 'display-information.json'
+          Set-Content -Path $displayInformationJsonPath -Value $json -Encoding utf8
+          "display_information_json_path=$displayInformationJsonPath" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
       - name: Modify VIPB display info (LV 64-bit)
         shell: pwsh
-        env:
-          DISPLAY_INFORMATION_JSON: |
-            ${{ steps.display-info.outputs.json }}
         run: |
-          $displayInformationJson = $Env:DISPLAY_INFORMATION_JSON
+          $displayInformationJsonPath = '${{ steps.display-info.outputs.display_information_json_path }}'
+          if ([string]::IsNullOrWhiteSpace($displayInformationJsonPath) -or -not (Test-Path -Path $displayInformationJsonPath -PathType Leaf)) {
+            throw "Display information JSON path output was missing or invalid: '$displayInformationJsonPath'"
+          }
           & "$env:REPO_ROOT\\.github\\actions\\modify-vipb-display-info\\ModifyVIPBDisplayInfo.ps1" `
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
@@ -1424,12 +1478,9 @@ jobs:
             -Build ${{ needs.version.outputs.BUILD }} `
             -Commit "${{ github.sha }}" `
             -ReleaseNotesFile "$env:REPO_ROOT\\Tooling\\deployment\\release_notes.md" `
-            -DisplayInformationJSON $displayInformationJson
+            -DisplayInformationJsonPath $displayInformationJsonPath
       - name: Build VI Package (LV 64-bit)
         shell: pwsh
-        env:
-          DISPLAY_INFORMATION_JSON: |
-            ${{ steps.display-info.outputs.json }}
         run: |
           $runnerCliPath = $env:LVIE_RUNNER_CLI_PATH
           $ensureRunnerCliScript = @(
@@ -1453,14 +1504,10 @@ jobs:
             throw "runner-cli unavailable: no usable LVIE_RUNNER_CLI_PATH and no runner-cli project found under REPO_ROOT/GITHUB_WORKSPACE."
           }
 
-          $displayInformationJson = $Env:DISPLAY_INFORMATION_JSON
-          if ([string]::IsNullOrWhiteSpace($displayInformationJson)) {
-            throw "DISPLAY_INFORMATION_JSON was empty; cannot run runner-cli vip build."
+          $displayInformationJsonPath = '${{ steps.display-info.outputs.display_information_json_path }}'
+          if ([string]::IsNullOrWhiteSpace($displayInformationJsonPath) -or -not (Test-Path -Path $displayInformationJsonPath -PathType Leaf)) {
+            throw "Display information JSON path output was missing or invalid: '$displayInformationJsonPath'"
           }
-          $displayInfoDirectory = Join-Path $env:RUNNER_TEMP 'lvie-vip-build'
-          New-Item -Path $displayInfoDirectory -ItemType Directory -Force | Out-Null
-          $displayInformationJsonPath = Join-Path $displayInfoDirectory 'display-information.json'
-          Set-Content -Path $displayInformationJsonPath -Value $displayInformationJson -Encoding utf8
 
           $runnerCliArgs = @(
             'vip', 'build',
@@ -1960,6 +2007,7 @@ jobs:
       - powershell-lint
       - vip-prerelease-requirements-lint
       - pylavi-validate
+      - vi-analyzer
       - changes
       - apply-deps-lv-x64
       - apply-deps-x86
@@ -2003,6 +2051,7 @@ jobs:
             'powershell-lint',
             'vip-prerelease-requirements-lint',
             'pylavi-validate',
+            'vi-analyzer',
             'build-ppl-linux-container',
             'build-ppl-windows-container',
             'codex-skill-layer-asset',
@@ -2242,11 +2291,23 @@ jobs:
 
               $null = gh --version
 
+              $lvversionPath = Join-Path $env:GITHUB_WORKSPACE '.lvversion'
+              if (-not (Test-Path -Path $lvversionPath -PathType Leaf)) {
+                throw "Cannot build release notes body: .lvversion not found at $lvversionPath"
+              }
+              $minimumSupportedLabVIEWVersion = (Get-Content -Raw -Path $lvversionPath).Trim()
+              if ([string]::IsNullOrWhiteSpace($minimumSupportedLabVIEWVersion)) {
+                throw "Cannot build release notes body: .lvversion is empty."
+              }
+              $minimumVersionLine = "Minimum supported LabVIEW version: $minimumSupportedLabVIEWVersion"
+
               if ($releasePriorityMode) {
                 $releaseBody = @(
                   "# Release Priority Prerelease"
                   ''
                   "This prerelease was published in release-priority mode."
+                  $minimumVersionLine
+                  ''
                   "Included assets:"
                   "- $($linuxPackedLibraryFile.Name)"
                   "- $($windowsPackedLibraryFile.Name)"
@@ -2254,6 +2315,9 @@ jobs:
                 ) -join [Environment]::NewLine
               } else {
                 $releaseBody = Get-Content -Raw -Path $notesFile.FullName
+                if ($releaseBody -notmatch [regex]::Escape($minimumVersionLine)) {
+                  $releaseBody = ($releaseBody.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + $minimumVersionLine + [Environment]::NewLine)
+                }
               }
               $payloadPath = Join-Path $assetRoot 'release-payload.json'
               $payload = [ordered]@{
@@ -2278,34 +2342,61 @@ jobs:
               }
 
               if ($existing) {
-                $releaseRaw = gh api --method PATCH -H "Accept: application/vnd.github+json" "/repos/$repo/releases/$($existing.id)" --input $payloadPath
+                $release = $existing
+                $releaseUrl = [string]$release.html_url
+                $releaseId = [string]$release.id
+
+                $expectedAssetNames = @($linuxPackedLibraryFile.Name, $windowsPackedLibraryFile.Name, $codexSkillLayerFile.Name)
+                if (-not $releasePriorityMode) {
+                  $expectedAssetNames = @($vipFile.Name, $notesFile.Name, (Split-Path -Path $labviewcliZip -Leaf), $vipStatusFile.Name) + $expectedAssetNames
+                }
+
+                $existingAssetNames = @()
+                foreach ($asset in @($release.assets)) {
+                  if ($null -ne $asset -and -not [string]::IsNullOrWhiteSpace([string]$asset.name)) {
+                    $existingAssetNames += [string]$asset.name
+                  }
+                }
+
+                $missingAssets = New-Object System.Collections.Generic.List[string]
+                foreach ($assetName in $expectedAssetNames) {
+                  if (-not ($existingAssetNames -contains $assetName)) {
+                    $missingAssets.Add($assetName) | Out-Null
+                  }
+                }
+
+                if ($missingAssets.Count -gt 0) {
+                  throw ("Immutable release '{0}' already exists but is missing required assets: {1}" -f $tag, ($missingAssets.ToArray() -join ', '))
+                }
+
+                $publishStatus = 'already-published'
+                $attachedAssets = @($existingAssetNames)
               } else {
                 $releaseRaw = gh api --method POST -H "Accept: application/vnd.github+json" "/repos/$repo/releases" --input $payloadPath
-              }
+                if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($releaseRaw)) {
+                  throw "Failed to create release metadata for tag '$tag'."
+                }
 
-              if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($releaseRaw)) {
-                throw "Failed to create or update release metadata for tag '$tag'."
-              }
+                $release = $releaseRaw | ConvertFrom-Json
+                $releaseUrl = [string]$release.html_url
+                $releaseId = [string]$release.id
 
-              $release = $releaseRaw | ConvertFrom-Json
-              $releaseUrl = [string]$release.html_url
-              $releaseId = [string]$release.id
+                $uploadAssets = @($linuxPackedLibraryFile.FullName, $windowsPackedLibraryFile.FullName, $codexSkillLayerFile.FullName)
+                if (-not $releasePriorityMode) {
+                  $uploadAssets = @($vipFile.FullName, $notesFile.FullName, $labviewcliZip, $vipStatusFile.FullName) + $uploadAssets
+                }
 
-              $uploadAssets = @($linuxPackedLibraryFile.FullName, $windowsPackedLibraryFile.FullName, $codexSkillLayerFile.FullName)
-              if (-not $releasePriorityMode) {
-                $uploadAssets = @($vipFile.FullName, $notesFile.FullName, $labviewcliZip, $vipStatusFile.FullName) + $uploadAssets
-              }
+                & gh release upload $tag @uploadAssets
+                if ($LASTEXITCODE -ne 0) {
+                  throw "Failed to upload release assets for tag '$tag'."
+                }
 
-              & gh release upload $tag @uploadAssets --clobber
-              if ($LASTEXITCODE -ne 0) {
-                throw "Failed to upload release assets for tag '$tag'."
-              }
-
-              $publishStatus = 'published'
-              if ($releasePriorityMode) {
-                $attachedAssets = @($linuxPackedLibraryFile.Name, $windowsPackedLibraryFile.Name, $codexSkillLayerFile.Name)
-              } else {
-                $attachedAssets = @($vipFile.Name, $notesFile.Name, (Split-Path -Path $labviewcliZip -Leaf), $vipStatusFile.Name, $linuxPackedLibraryFile.Name, $windowsPackedLibraryFile.Name, $codexSkillLayerFile.Name)
+                $publishStatus = 'published'
+                if ($releasePriorityMode) {
+                  $attachedAssets = @($linuxPackedLibraryFile.Name, $windowsPackedLibraryFile.Name, $codexSkillLayerFile.Name)
+                } else {
+                  $attachedAssets = @($vipFile.Name, $notesFile.Name, (Split-Path -Path $labviewcliZip -Leaf), $vipStatusFile.Name, $linuxPackedLibraryFile.Name, $windowsPackedLibraryFile.Name, $codexSkillLayerFile.Name)
+                }
               }
             } else {
               if ($releasePriorityMode) {
@@ -2379,6 +2470,7 @@ jobs:
       - powershell-lint
       - vip-prerelease-requirements-lint
       - pylavi-validate
+      - vi-analyzer
       - changes
       - apply-deps-lv-x64
       - apply-deps-x86
@@ -2411,6 +2503,7 @@ jobs:
             'powershell-lint',
             'vip-prerelease-requirements-lint',
             'pylavi-validate',
+            'vi-analyzer',
             'build-ppl-linux-container',
             'build-ppl-windows-container',
             'codex-skill-layer-asset',
@@ -2515,15 +2608,6 @@ jobs:
           } else {
             Write-Host 'Pipeline contract satisfied.'
           }
-
-
-
-
-
-
-
-
-
 
 
 

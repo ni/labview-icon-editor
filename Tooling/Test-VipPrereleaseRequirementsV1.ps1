@@ -194,6 +194,19 @@ function Test-PatternPresence {
     }
 }
 
+function Test-PatternAbsence {
+    param(
+        [string]$FilePath,
+        [string]$Content,
+        [string]$Pattern,
+        [string]$Message
+    )
+
+    if ([regex]::IsMatch($Content, $Pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)) {
+        Add-Finding -FilePath $FilePath -LineNumber 1 -Message $Message
+    }
+}
+
 $script:findings = @()
 $resolvedRepoRoot = Resolve-RepoRoot -PathOverride $RepoRoot
 
@@ -288,6 +301,8 @@ try {
         Test-PatternPresence -FilePath $workflowFile -Content $workflowContent -Pattern 'workflow_dispatch:[\s\S]*strict_sha:' -Message "Workflow dispatch input 'strict_sha' is missing."
         Test-PatternPresence -FilePath $workflowFile -Content $workflowContent -Pattern 'strict_sha=true is required when publish_prerelease=true\.' -Message "run-metadata strict_sha publish-intent enforcement is missing."
         Test-PatternPresence -FilePath $workflowFile -Content $workflowContent -Pattern 'github\.rest\.repos\.getCommit' -Message "prerelease-context merge-commit eligibility check hook is missing."
+        Test-PatternPresence -FilePath $workflowFile -Content $workflowContent -Pattern "publishMode\s*=\s*'auto'" -Message "prerelease-context auto publish mode token is missing."
+        Test-PatternPresence -FilePath $workflowFile -Content $workflowContent -Pattern 'auto-eligible-develop-push-merged-pr-merge-commit' -Message "prerelease-context merged PR auto eligibility reason token is missing."
         Test-PatternPresence -FilePath $workflowFile -Content $workflowContent -Pattern 'develop-push-not-merge-commit' -Message "prerelease-context merge-commit publish reason token is missing."
         Test-PatternPresence -FilePath $workflowFile -Content $workflowContent -Pattern 'develop-push-merged-pr-sha-mismatch' -Message "prerelease-context merged PR SHA mismatch reason token is missing."
         Test-PatternPresence -FilePath $workflowFile -Content $workflowContent -Pattern 'Manual prerelease publish requires expected_sha to reference a merged develop merge commit\.' -Message "manual prerelease merge-commit fail-fast enforcement is missing."
@@ -303,6 +318,9 @@ try {
         Test-PatternPresence -FilePath $workflowFile -Content $workflowContent -Pattern 'publish_status:\s*\$\{\{\s*steps\.publish\.outputs\.publish_status\s*\}\}' -Message "publish-prerelease output 'publish_status' is missing."
         Test-PatternPresence -FilePath $workflowFile -Content $workflowContent -Pattern 'builds/status/prerelease-publish\.json' -Message "Prerelease publish status path is missing."
         Test-PatternPresence -FilePath $workflowFile -Content $workflowContent -Pattern 'name:\s*prerelease-publish-status' -Message "Prerelease publish status artifact contract is missing."
+        Test-PatternPresence -FilePath $workflowFile -Content $workflowContent -Pattern "publishStatus\s*=\s*'already-published'" -Message "Immutable existing-tag publish status token is missing."
+        Test-PatternAbsence -FilePath $workflowFile -Content $workflowContent -Pattern 'gh\s+release\s+upload[^\r\n]*--clobber' -Message "Immutable publish contract violation: '--clobber' must not be used in prerelease upload."
+        Test-PatternAbsence -FilePath $workflowFile -Content $workflowContent -Pattern 'gh\s+api\s+--method\s+PATCH\s+.*?/releases/' -Message "Immutable publish contract violation: existing releases must not be updated via PATCH."
         Test-PatternPresence -FilePath $workflowFile -Content $workflowContent -Pattern 'codex-skill-layer-asset:' -Message "Codex skill-layer asset job is missing."
         Test-PatternPresence -FilePath $workflowFile -Content $workflowContent -Pattern "requiredAssets = @\('vip', 'release_notes', 'labviewcli-logs', 'vip-build-status', 'linux-packed-library', 'windows-packed-library', 'codex-skill-layer'\)" -Message "Full/pr-fast required prerelease assets are missing codex skill-layer."
         Test-PatternPresence -FilePath $workflowFile -Content $workflowContent -Pattern "requiredAssets = @\('linux-packed-library', 'windows-packed-library', 'codex-skill-layer'\)" -Message "Release-priority required prerelease assets are missing codex skill-layer."

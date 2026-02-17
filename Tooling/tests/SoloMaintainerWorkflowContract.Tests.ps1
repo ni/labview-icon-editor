@@ -29,8 +29,9 @@ Describe 'Test-SoloMaintainerWorkflowContract.ps1' {
                 '    runs-on: ubuntu-latest'
                 '    steps:'
                 '      - run: |'
-                '          publishMode = ''manual-intent'''
-                '          publishReason = ''manual-intent-required-develop-push-merged-pr-detected'''
+                '          publishMode = ''auto'''
+                '          publishReason = ''auto-eligible-develop-push-merged-pr-merge-commit'''
+                '          publishStatus = ''already-published'''
             ) -join [Environment]::NewLine
             'labview-parity.yml' = @(
                 'name: LabVIEW Parity'
@@ -178,9 +179,12 @@ Describe 'Test-SoloMaintainerWorkflowContract.ps1' {
         { & $Script:GuardScript -RepoRoot $Script:TempDir } | Should -Throw '*workflow-not-manual-only*'
     }
 
-    It 'fails when ci workflow includes auto publish mode' {
-        Add-Content -LiteralPath (Join-Path $Script:TempDir '.github\workflows\ci.yml') -Value "publishMode = 'auto'"
+    It 'fails when ci workflow omits auto publish mode token' {
+        $ciPath = Join-Path $Script:TempDir '.github\workflows\ci.yml'
+        $ciContent = Get-Content -LiteralPath $ciPath -Raw
+        $updated = $ciContent -replace "publishMode = 'auto'", "publishMode = 'manual-intent'"
+        Set-Content -LiteralPath $ciPath -Value $updated -Encoding utf8
 
-        { & $Script:GuardScript -RepoRoot $Script:TempDir } | Should -Throw '*publish-not-explicit-intent*'
+        { & $Script:GuardScript -RepoRoot $Script:TempDir } | Should -Throw '*publish-auto-mode-missing*'
     }
 }

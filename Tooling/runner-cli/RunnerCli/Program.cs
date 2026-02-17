@@ -834,7 +834,7 @@ missingCmd.SetHandler((InvocationContext context) =>
 // ── lunit run/validate ────────────────────────────────────────────
 var lunitCmd = new Command("lunit", "Run and validate LUnit workflows using existing script contracts.");
 var lunitRunCmd = new Command("run", "Run g-cli LUnit then parse/validate UnitTestReport.xml.");
-var lunitValidateCmd = new Command("validate", "Validate UnitTestReport.xml using RunUnitTests.ps1 parser mode.");
+var lunitValidateCmd = new Command("validate", "Validate UnitTestReport.xml using RunUnitTests.ps1 parse-only mode.");
 
 var lunitYearOption = new Option<string>(
     name: "--year",
@@ -1066,8 +1066,6 @@ var vipBuildDisplayInfoPathOption = new Option<string?>(
     name: "--display-information-json-path",
     description: "Path to display information JSON payload.");
 var vipBuildVipmTimeoutOption = new Option<string?>("--vipm-timeout-seconds", "VIPM timeout in seconds.");
-var vipBuildMaxAttemptsOption = new Option<string?>("--max-attempts", "Max retry attempts.");
-var vipBuildRetryDelayOption = new Option<string?>("--retry-delay-seconds", "Retry delay in seconds.");
 var vipBuildStatusPathOption = new Option<string?>("--status-path", "Optional explicit VIP status JSON output path.");
 var vipBuildWorktreeRootOption = new Option<string?>("--worktree-root", "Optional explicit worktree root.");
 var vipBuildSkipWorktreeCheckOption = new Option<bool>(
@@ -1093,8 +1091,6 @@ vipBuildCmd.AddOption(vipBuildReleaseNotesOption);
 vipBuildCmd.AddOption(vipBuildDisplayInfoOption);
 vipBuildCmd.AddOption(vipBuildDisplayInfoPathOption);
 vipBuildCmd.AddOption(vipBuildVipmTimeoutOption);
-vipBuildCmd.AddOption(vipBuildMaxAttemptsOption);
-vipBuildCmd.AddOption(vipBuildRetryDelayOption);
 vipBuildCmd.AddOption(vipBuildStatusPathOption);
 vipBuildCmd.AddOption(vipBuildWorktreeRootOption);
 vipBuildCmd.AddOption(vipBuildSkipWorktreeCheckOption);
@@ -1121,8 +1117,6 @@ vipBuildCmd.SetHandler((InvocationContext context) =>
             DisplayInformationJson: context.ParseResult.GetValueForOption(vipBuildDisplayInfoOption) ?? string.Empty,
             DisplayInformationJsonPath: context.ParseResult.GetValueForOption(vipBuildDisplayInfoPathOption),
             VipmTimeoutSeconds: context.ParseResult.GetValueForOption(vipBuildVipmTimeoutOption),
-            MaxAttempts: context.ParseResult.GetValueForOption(vipBuildMaxAttemptsOption),
-            RetryDelaySeconds: context.ParseResult.GetValueForOption(vipBuildRetryDelayOption),
             StatusPath: context.ParseResult.GetValueForOption(vipBuildStatusPathOption),
             WorktreeRoot: context.ParseResult.GetValueForOption(vipBuildWorktreeRootOption),
             SkipWorktreeRootCheck: context.ParseResult.GetValueForOption(vipBuildSkipWorktreeCheckOption),
@@ -1322,7 +1316,7 @@ var parityRunContextOption = new Option<string>(
 var parityBuildSpecOption = new Option<bool>(
     name: "--build-spec",
     getDefaultValue: () => true,
-    description: "Enable ExecuteBuildSpec parity execution.");
+    description: "Execute build specification parity path (mandatory; only true is supported).");
 var parityLabVIEWPathOption = new Option<string?>(
     name: "--labview-path",
     description: "Optional LabVIEW executable override (self-hosted-windows mode).");
@@ -1359,6 +1353,11 @@ parityRunCmd.SetHandler((InvocationContext context) =>
         if (string.IsNullOrWhiteSpace(labviewBitness))
         {
             labviewBitness = "64";
+        }
+        if (!buildSpec)
+        {
+            throw new InvalidOperationException(
+                "Build-spec disable is unsupported. Parity runs require build-spec execution; omit --build-spec or set --build-spec true.");
         }
 
         var parityContext = ParityService.LoadContext(contextPath);

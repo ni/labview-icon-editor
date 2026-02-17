@@ -31,8 +31,6 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path .).Path
 $env:REPO_ROOT = $repoRoot
 $env:LVIE_VIPM_TIMEOUT_SECONDS = '900'
-$env:LVIE_VIPM_MAX_ATTEMPTS = '2'
-$env:LVIE_VIPM_RETRY_DELAY_SECONDS = '30'
 $env:LVIE_REQUIRED_LABVIEW_VERSION = '26.1'
 $env:LVIE_REQUIRED_LABVIEW_VERSION_YEAR = '2026'
 $env:LVIE_REQUIRED_LABVIEW_MINOR_REVISION = '1'
@@ -49,6 +47,8 @@ $displayInformationJson = & "$repoRoot\.github\actions\generate-vipb-display-inf
 
 $displayInformationJson | Set-Content -Path $displayInfoPath -Encoding utf8
 ```
+
+VIP build retries are disabled by contract. The run is single-attempt and hard-fails on the first error.
 
 ## 4. Reproduce via runner-cli (authoritative path)
 
@@ -98,7 +98,7 @@ pwsh -NoProfile -File "$repoRoot\Tooling\Invoke-VipBuild.ps1" `
 ## 6. Collect evidence
 
 - `builds/status/vip-build.json`
-- `builds/logs/gcli-build.log`
+- `builds/logs/vipm-build.log`
 - `builds/logs/vip/vipb-display-info.json` (or equivalent under artifact/log root)
 - Console output from runner-cli and `Invoke-VipBuild.ps1`
 

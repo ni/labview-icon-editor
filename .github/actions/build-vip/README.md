@@ -1,6 +1,6 @@
 # Build VI Package 📦
 
-Runs **`build_vip.ps1`** to update a `.vipb` file's display info and build the VI Package via g-cli.
+Runs **`build_vip.ps1`** to update a `.vipb` file's display info and build the VI Package via VIPM CLI.
 
 ## Inputs
 | Name | Required | Example | Description |

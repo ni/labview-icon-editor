@@ -73,10 +73,10 @@ VR-VER-006: Manual workflow_dispatch runs with `publish_prerelease` not equal to
 
 ## 4. Publish Contract (Core)
 
-VR-PUB-001: Eligible publish runs shall create or update a GitHub release with `prerelease=true` and `draft=false`.
-VR-PUB-002: Release body content shall be sourced from generated `Tooling/deployment/release_notes.md`.
+VR-PUB-001: Eligible publish runs shall create a GitHub release with `prerelease=true` and `draft=false` when the target tag does not exist.
+VR-PUB-002: Release body content shall include `Minimum supported LabVIEW version: <raw .lvversion>`.
 VR-PUB-003: Publish failures on eligible runs shall fail the workflow.
-VR-PUB-004: Reruns for an existing release tag shall update the existing prerelease rather than create a second prerelease.
+VR-PUB-004: Reruns for an existing release tag shall verify required assets and report `publish_status=already-published` when complete.
 VR-PUB-005: Publish job outputs shall include `release_tag`, `release_url`, `release_id`, and `publish_status`.
 VR-PUB-006: Publish job status shall be written to `builds/status/prerelease-publish.json`.
 VR-PUB-007: The status file in VR-PUB-006 shall be uploaded as artifact `prerelease-publish-status`.
@@ -87,7 +87,7 @@ VR-PUB-009: The prepublish gate in VR-PUB-008 shall fail publish-intent runs whe
 
 VR-AST-001: Required prerelease assets for `full` and `pr-fast` profiles shall include the built `.vip`, versioned release-notes markdown file, `labviewcli-logs` evidence, `vip-build-status` evidence, Linux container packed library (`.lvlibp`) asset, Windows container packed library (`.lvlibp`) asset, and `codex-skill-layer` evidence.
 VR-AST-002: Missing required assets shall fail eligible publish runs.
-VR-AST-003: Reruns shall replace same-named assets on the existing prerelease.
+VR-AST-003: Reruns on existing immutable tags shall validate required assets without replacing assets.
 VR-AST-004: Build-vip job outputs shall expose at least VIP artifact name and release-notes artifact name for publish job consumption.
 VR-AST-005: Required prerelease assets for `release-priority` profile shall include Linux and Windows container packed library (`.lvlibp`) assets plus `codex-skill-layer` evidence.
 VR-AST-006: `release-priority` profile shall not require `.vip`, release-notes markdown, `labviewcli-logs`, or `vip-build-status` assets.
@@ -96,11 +96,11 @@ VR-AST-006: `release-priority` profile shall not require `.vip`, release-notes m
 
 VR-OPS-001: Manual backfill shall be available through `workflow_dispatch` with explicit publish intent input `publish_prerelease=true`.
 VR-OPS-002: Manual backfill shall pin and validate the target SHA using `expected_sha` contract checks.
-VR-OPS-003: Manual backfill publication shall reuse Core upsert and asset replacement rules.
+VR-OPS-003: Manual backfill publication shall reuse Core immutable create-or-verify publish rules.
 VR-OPS-004: Manual backfill shall emit publish status outputs even when publication is skipped.
 VR-OPS-005: Manual backfill with `publish_prerelease=true` shall require `strict_sha=true`.
 VR-OPS-006: Manual backfill with `publish_prerelease=true` shall require `expected_sha` to resolve to an eligible merged `develop` merge commit.
-VR-OPS-007: Develop branch required status-check policy shall require only `CI Pipeline / Pipeline Contract` as a mandatory context.
+VR-OPS-007: Develop branch required status-check policy shall require both `CI Pipeline / PowerShell Lint` and `CI Pipeline / Pipeline Contract` as mandatory contexts.
 VR-OPS-008: Operational runtime baseline reporting shall compute P50 and P90 duration metrics per `ci_profile` from successful CI runs.
 VR-OPS-009: Operational runtime baseline reports shall be written under `TestResults/agent-logs`.
 
@@ -117,7 +117,7 @@ VR-FAIL-002: Eligible publish API failures shall terminate publish job execution
 VR-FAIL-003: Required asset validation failures shall terminate publish job execution with a non-zero exit code.
 VR-FAIL-004: Label-conflict failures in bump derivation shall terminate version resolution with a non-zero exit code.
 VR-FAIL-005: Manual runs with `publish_prerelease=true` that fail strict SHA eligibility checks shall terminate workflow execution with a non-zero exit code.
-VR-FAIL-006: Prepublish gate failures on publish-intent runs shall prevent prerelease creation or update API calls.
+VR-FAIL-006: Prepublish gate failures on publish-intent runs shall prevent prerelease create API calls.
 
 ## 9. Governance and Traceability (Full)
 
@@ -134,5 +134,5 @@ VR-GOV-004: All changed or new VR IDs shall map to at least one acceptance scena
 - `build-vip` job outputs for VIP and release-notes artifact identifiers.
 - `codex-skill-layer-asset` job outputs `artifact_name` and `asset_file_name` for prerelease attachment.
 - `publish-gate` output `gate_reason` records prepublish gate disposition.
-- `publish-prerelease` job outputs: `release_tag`, `release_url`, `release_id`, `publish_status`.
+- `publish-prerelease` job outputs: `release_tag`, `release_url`, `release_id`, `publish_status` (`skipped`, `published`, or `already-published`).
 - Status artifact: `prerelease-publish-status` containing `builds/status/prerelease-publish.json` with `ci_profile`, `required_assets`, and `publish_gate_reason`.

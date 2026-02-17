@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "labview-icon-api",
+      "config_path": "brokenVIsOnLabVIEWIconAPI.viancfg"
+    },
+    {
+      "id": "plugins",
+      "config_path": "brokenVIsOnPlugins.viancfg"
+    },
+    {
+      "id": "tooling",
+      "config_path": "brokenVIsOnTooling.viancfg"
+    }
+  ]
+}

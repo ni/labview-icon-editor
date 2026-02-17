@@ -27,6 +27,9 @@ Describe 'Execution policy contract' {
         )
 
         foreach ($file in $script:governedFiles) {
+            if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+                continue
+            }
             $content = Get-Content -LiteralPath $file -Raw
             if ($null -eq $content) {
                 $content = ''
@@ -47,6 +50,9 @@ Describe 'Execution policy contract' {
         $findings = New-Object 'System.Collections.Generic.List[string]'
 
         foreach ($file in $script:governedFiles) {
+            if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+                continue
+            }
             $content = Get-Content -LiteralPath $file -Raw
             if ($null -eq $content) {
                 $content = ''

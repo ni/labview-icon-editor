@@ -29,6 +29,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 
 > **Prerequisites**:
 > - **LabVIEW 2026 (26.1), 32-bit and 64-bit** (minimum supported baseline).
+> - **LabVIEWCLI** available on PATH on self-hosted runners for Windows LabVIEW automation paths (build/test/teardown). The blocking `vi-analyzer` CI job runs on `ubuntu-latest` via Dockerized LabVIEW Linux.
 > - The relevant **VIPC** file is now at `.github/actions/apply-vipc/runner_dependencies.vipc`.
 > - [PowerShell 7+](https://github.com/PowerShell/PowerShell/releases/latest)
 > - [Git for Windows](https://github.com/git-for-windows/git/releases/latest)
@@ -59,14 +60,16 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
     - Run tests using **CI Pipeline**.
     - `pull_request` runs use the `pr-fast` profile (64-bit smoke/missing/unit).
     - `workflow_dispatch` with `force_gcli_lunit=true` uses `release-priority` and skips heavy self-hosted validation jobs.
-    - **CI Pipeline** (`.github/workflows/ci.yml`) runs on `pull_request` only as a companion signal and intentionally excludes publish-path jobs.
+    - All profiles require the `vi-analyzer` job to pass.
+    - **CI Pipeline** (`.github/workflows/ci.yml`) runs on `push` (`main`, `develop`, `release/*`), `pull_request`, and `workflow_dispatch`; feature/hotfix branch pushes are intentionally excluded so PR synchronization is the single CI path for those branches.
 
 6. **Build VI Package**
      - Invoke the **Build VI Package** job within the CI Pipeline workflow to produce a `.vip` using the version computed by the workflow's separate **version** job (see that job's output for the generated version).
     - Pre-release publication behavior is specified by [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md), including eligibility, assets, and failure policy.
     - Prerelease-driving changes should use merge commits (`--merge`), not squash/rebase.
-    - Prerelease publication is manual-intent only and requires `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`.
-    - `release-priority` publish intent (`force_gcli_lunit=true`) additionally requires a successful `full` profile run on `develop` within the previous 24 hours.
+    - Prerelease publication is automatic for eligible merged-PR merge commits pushed to `develop`.
+    - Deterministic manual backfill remains available through `workflow_dispatch` with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`.
+    - `release-priority` manual publish intent (`force_gcli_lunit=true`) additionally requires a successful `full` profile run on `develop` within the previous 24 hours.
     - **You can also** pass in **org/repository** info (e.g., `-CompanyName "MyOrg"` or `-AuthorName "myorg/myrepo"`) to brand the resulting package with your unique identifiers.
 
 7. **Disable Dev Mode** (Optional)  
@@ -99,6 +102,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 
 2. **CI Pipeline**
    - Includes `unit-tests`, `version`, and `build-vip` jobs, plus container packed-library and prerelease publication jobs.
+   - Includes a blocking `vi-analyzer` job on `ubuntu-latest` that executes `Tooling/Run-ViAnalyzer.ps1` (Dockerized Linux worker) against `Tooling/vi-analyzer/tasks.json`.
    - Execution profile is computed as `ci_profile`:
      - `release-priority` = `workflow_dispatch` + `force_gcli_lunit=true` (target <= 25 minutes).
      - `pr-fast` = `pull_request` (target <= 35 minutes).
@@ -114,10 +118,10 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
       - You can **pass** metadata parameters like `-CompanyName` and `-AuthorName` into the build script. These map to fields in the **VI Package** (e.g., “Company Name,” “Author Name (Person or Company)”).
       - This means each package can show the **organization** and **repository** that produced it, providing a **unique ID** if you have multiple forks or parallel versions.
 
-3. **CI Pipeline**
-   - PR-only companion workflow (`.github/workflows/ci.yml`) for additional validation signal.
-   - Uses `ci_profile=pr-fast` and never publishes prereleases.
-   - In solo mode, require both `CI Pipeline / Pipeline Contract` and `CI Pipeline / Pipeline Contract` in branch protection.
+3. **Runner CLI**
+   - [`runner-cli.yml`](../../../.github/workflows/runner-cli.yml) is the runner-cli-specific companion workflow.
+   - Trigger policy: `push` on `main`, `develop`, `release/*`; `pull_request` on `main` and `develop` when runner-cli paths change; plus `workflow_dispatch`.
+   - This workflow is separate from icon prerelease asset publication in `ci.yml`.
 
 
 <a name="setting-up-a-self-hosted-runner"></a>
@@ -202,9 +206,10 @@ With your runner online:
 3. **Build VI Package**
      - Produces `.vip` using the version computed in the **version** job for `full`/`pr-fast` profiles.
      - `release-priority` runs intentionally skip `build-vip`; publish artifacts come from Linux/Windows container packed-library jobs.
-    - Prerelease publication is manual-intent per [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md).
-    - `workflow_dispatch` publishing requires `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`.
-    - `release-priority` publish intent requires a successful `full` profile run on `develop` in the prior 24 hours.
+    - Prerelease publication policy is defined in [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md).
+    - Eligible merged-PR merge-commit pushes to `develop` publish automatically.
+    - `workflow_dispatch` publishing remains for deterministic backfill and requires `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`.
+    - `release-priority` manual publish intent requires a successful `full` profile run on `develop` in the prior 24 hours.
     - **Pass** your **org/repo** info (e.g. `-CompanyName "AcmeCorp"` / `-AuthorName "AcmeCorp/IconEditor"`) to embed in the final package.
    - Artifacts appear in the run summary under **Artifacts**.
 
@@ -238,14 +243,14 @@ The workflow exports:
 CI treats `.lvversion` in `REPO_ROOT` as the canonical LabVIEW version for the run.
 
 #### Run CI for a specific commit (workflow_dispatch)
-If you need deterministic runs for a specific commit, use the helper script:
+If you need deterministic runs for a specific commit, dispatch CI against a temporary branch that points to that SHA:
 ```
-pwsh -NoProfile -File .\Tooling\Run-CICompositeForCommit.ps1 -Sha <commit>
+git push origin <commit>:refs/heads/ci-run/<shortsha>
+gh workflow run "CI Pipeline" --ref ci-run/<shortsha> -f expected_sha=<commit> -f strict_sha=true
 ```
 
 Notes:
-- The script creates a temporary `ci-run/<shortsha>` branch and dispatches the workflow on it.
-- Use `-CleanupRemote` to delete the temporary branch after dispatch.
+- Delete the temporary branch after dispatch when no longer needed: `git push origin --delete ci-run/<shortsha>`.
 
 
 <a name="example-developer-workflow"></a>
@@ -276,7 +281,7 @@ Notes:
 
 - Use `develop` merges as the default pre-release publication event.
 - Use merge commits (`--merge`) for prerelease-driving merges into `develop`.
-- Use strict manual backfill inputs (`publish_prerelease=true`, `expected_sha`, `strict_sha=true`) when replaying publication.
+- Use strict manual backfill inputs (`publish_prerelease=true`, `expected_sha`, `strict_sha=true`) only when replaying publication for an already-merged `develop` SHA.
 - Keep `main` focused on stable/final release handling.
 - Treat alpha/beta/rc channel branches as optional legacy behavior unless your repository explicitly enables that model.
 

@@ -4,7 +4,7 @@
     Runs only the pylavi vi_validate gate.
 
 .DESCRIPTION
-    Convenience wrapper around Run-CICompositeLocal.ps1 -ViValidateOnly.
+    Convenience wrapper around Run-CI.ps1 -ViValidateOnly.
     Uses .lvversion as the canonical LabVIEW version.
 
 .PARAMETER RepoRoot
@@ -98,9 +98,9 @@ $repoRootResolved = if ($RepoRoot) {
         (Resolve-Path -Path (Join-Path $scriptRoot '..')).Path
     }
 }
-$runScript = Join-Path $repoRootResolved 'Tooling/Run-CICompositeLocal.ps1'
+$runScript = Join-Path $repoRootResolved 'Tooling/Run-CI.ps1'
 if (-not (Test-Path -Path $runScript)) {
-    throw "Run-CICompositeLocal.ps1 not found at $runScript"
+    throw "Run-CI.ps1 not found at $runScript"
 }
 
 & $runScript `

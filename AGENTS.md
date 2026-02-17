@@ -144,30 +144,48 @@ Metadata quick-checks:
 - If `vi_validate` is not found, ensure your Python Scripts folder is on PATH (typical: `%APPDATA%\Python\Python3x\Scripts`).
 - Skip the gate if needed:
   - `pwsh -NoProfile -File .\Tooling\Invoke-WorktreeOrchestrator.ps1 -Run -RunArgs -SkipViValidate`
-  - `pwsh -NoProfile -File .\Tooling\Run-CICompositeLocal-Auto.ps1 -SkipViValidate`
+  - `pwsh -NoProfile -File .\Tooling\Run-CI.ps1 -SkipViValidate`
 - Smoke run (pylavi only):
   - `pwsh -NoProfile -File .\Tooling\Invoke-WorktreeOrchestrator.ps1 -Run -RunArgs -ViValidateOnly`
   - `pwsh -NoProfile -File .\Tooling\Run-ViValidate.ps1`
   - Profiles: `-ViValidateProfile strict|legacy|both` (optional `-ViValidateReportOnly`, `-ViValidateSkipVersionGate`)
 
+## VI Analyzer gate
+- Canonical task registry: `Tooling\vi-analyzer\tasks.json` (exactly three tasks for API, plugins, and tooling scopes, mapped to repo-root `.viancfg` files).
+- Canonical executor: `Tooling\Run-ViAnalyzer.ps1`.
+- Runtime worker: `Tooling\container-parity\run-vi-analyzer-linux.sh` (dockerized LabVIEW Linux lane).
+- Local smoke run:
+  - `pwsh -NoProfile -File .\Tooling\Run-ViAnalyzer.ps1 -RepoRoot . -SupportedBitness 64`
+- Run-CI controls:
+  - `pwsh -NoProfile -File .\Tooling\Run-CI.ps1 -ViAnalyzerOnly`
+  - `pwsh -NoProfile -File .\Tooling\Run-CI.ps1 -SkipViAnalyzer`
+- Linux parity control:
+  - `LVIE_RUN_VI_ANALYZER=auto|true|false ./Tooling/Run-CI.sh`
+  - `auto` runs the gate only when both `pwsh` and `docker` are available; otherwise it prints an explicit skip reason.
+- CI evidence:
+  - artifact `vi-analyzer-reports` from `builds/vi-analyzer`
+  - artifact `vi-analyzer-status` from `builds/status/vi-analyzer-summary.json`
+  - step summary table emitted by `Run-ViAnalyzer.ps1`.
+
 ## Worktree root (short paths)
-Use a short path for worktrees to avoid Windows path-length issues. Default to `C:\dev` for local dev; for self-hosted runners, standardize under the runner directory (example: `C:\actions-runner\_work\lvie\w`).
+Use a short path for worktrees to avoid Windows path-length issues. Local default is repo-derived (`<repo-context>\worktrees`) when `LVIE_WORKTREE_ROOT` is unset; for self-hosted runners, standardize under the runner directory (example: `C:\actions-runner\_work\lvie\w`).
 
 Override:
 - Set `LVIE_WORKTREE_ROOT` to change the default worktree root.
   - Runner contract helper: `pwsh -NoProfile -File .\Tooling\Setup-Runner.ps1 -RunnerRoot C:\actions-runner -Scope Machine` (creates `<runner-root>\_work\lvie\w`, writes `<runner-root>\_work\lvie\runner-contract.json`, and sets env vars).
 
 Preflight requirement:
-- If the chosen worktree root does not exist, ask the user to create it before proceeding.
+- Explicit worktree roots (`-WorktreeRoot` or `LVIE_WORKTREE_ROOT`) must exist before proceeding.
+- Repo-derived default roots are created automatically when missing.
 - For CI/self-hosted runners, ensure the directory is pre-created; fail fast with a clear message if missing.
  - Local parity scripts hard-fail if `RepoRoot` is not under the worktree root; set `LVIE_WORKTREE_ROOT` or run from a worktree path.
 
 Example preflight (PowerShell):
 ```
 $worktreeRoot = $env:LVIE_WORKTREE_ROOT
-if ([string]::IsNullOrWhiteSpace($worktreeRoot)) { $worktreeRoot = 'C:\dev' }
+if ([string]::IsNullOrWhiteSpace($worktreeRoot)) { $worktreeRoot = Join-Path (Resolve-Path .).Path 'worktrees' }
 if (-not (Test-Path $worktreeRoot)) {
-  throw "Worktree root '$worktreeRoot' does not exist. Create it or set LVIE_WORKTREE_ROOT."
+  New-Item -Path $worktreeRoot -ItemType Directory -Force | Out-Null
 }
 ```
 
@@ -178,7 +196,7 @@ pwsh -NoProfile -File .\Tooling\New-CIWorktree.ps1 `
 ```
 
 Notes:
-- The helper enforces the worktree root and fails fast if it is missing.
+- The helper enforces explicit worktree roots and auto-creates repo-derived defaults when needed.
 - Use `-Name` to label the worktree directory.
 - Use `-WorktreeRoot` (or `LVIE_WORKTREE_ROOT`) to override the default.
 
@@ -189,7 +207,7 @@ CI jobs create short-path worktrees under `LVIE_WORKTREE_ROOT` with a determinis
 - `workflowhash` is the first 8 chars of the SHA1 of workflow identity (`GITHUB_WORKFLOW_REF`, fallback `GITHUB_WORKFLOW`).
 - `jobhash` is the first 8 chars of the SHA1 of `GITHUB_JOB` (prevents collisions across jobs).
 - `bitness` is `32` or `64`.
-Example: `C:\dev\ci-2A4C7D91-D170BDEE-64-21534416929-1`
+Example: `<worktree-root>\ci-2A4C7D91-D170BDEE-64-21534416929-1`
 
 Troubleshooting:
 - CI worktree setup automatically runs `git worktree prune` and clears stale registrations for the target path before creation to avoid `missing but already registered worktree` failures.
@@ -232,7 +250,7 @@ Notes:
 - If you pass `-LabVIEWVersion`, it must match `.lvversion` or the run will fail fast.
 - If LabVIEW or g-cli is already running, the script waits for them to exit before starting.
 - You can skip steps with switches like `-SkipBuildVip` or `-SkipUnitTests`.
-- VIP builds flow through `Tooling\Invoke-VipBuild.ps1`, which emits `builds\status\vip-build.json` and respects `LVIE_VIPM_TIMEOUT_SECONDS`, `LVIE_VIPM_MAX_ATTEMPTS`, and `LVIE_VIPM_RETRY_DELAY_SECONDS`.
+- VIP builds flow through `Tooling\Invoke-VipBuild.ps1`, which emits `builds\status\vip-build.json` and respects `LVIE_VIPM_TIMEOUT_SECONDS` (single-attempt execution; retry env vars are rejected).
 
 ## Adaptive timeouts and continuous troubleshooting
 Use fixed timeouts for deterministic CI runs. Use adaptive timeouts only for local/manual runs while tuning.
@@ -281,7 +299,7 @@ pwsh -NoProfile -File .\Tooling\Invoke-BeltAndSuspendersCI.ps1 `
 ```
 
 What it does:
-- Runs `Run-CICompositeLocal-Auto.ps1` in standardized local mode (`-SuccessTarget ppl -SkipVerifyIEPaths -SkipMissingInProject -SkipBuildVip`) unless `-SkipLocalParity` is set.
+- Runs `Run-CI.ps1` in standardized local mode (`-SkipVerifyIEPaths -SkipMissingInProject -SkipBuildVip`) unless `-SkipLocalParity` is set.
 - Dispatches `CI Pipeline` for the exact target SHA via a temp `ci-run/*` branch.
 - Waits for completion and runs `Tooling\Invoke-CiDebtAnalysis.ps1` automatically on non-success.
 
@@ -294,20 +312,18 @@ Useful switches:
 
 Local-only fallback:
 ```
-pwsh -NoProfile -File .\Tooling\Run-CICompositeLocal-Auto.ps1 `
-  -MaxAttempts 5
+pwsh -NoProfile -File .\Tooling\Run-CI.ps1 `
+  -SkipVerifyIEPaths `
+  -SkipMissingInProject `
+  -SkipBuildVip
 ```
 
 Notes:
 - Logs/status are written under `TestResults\agent-logs`.
-- The local loop waits for existing `g-cli`/`LabVIEW` processes and never terminates them.
-- By default, local parity auto-loop creates a *new* short-path worktree under the configured worktree root (`C:\dev` unless `LVIE_WORKTREE_ROOT` is set).
-  - Naming: `<repo>-ci-parity-auto-<yyyyMMdd-HHmmss>`
-  - Old worktrees accumulate over time; see **Worktree cleanup** below.
-- Set `-LocalUseWorktree:$false` (wrapper) or `-UseWorktree:$false` (local-only script) to run directly from the current repo path.
+- Local parity waits for existing `g-cli`/`LabVIEW` processes and never terminates them.
 
 ## Worktree cleanup
-To keep `C:\dev` tidy, remove old worktrees after you’re done with them.
+To keep your configured worktree root tidy, remove old worktrees after you’re done with them.
 
 List worktrees:
 ```
@@ -316,7 +332,7 @@ git worktree list
 
 Remove a specific worktree directory:
 ```
-git worktree remove C:\dev\<worktree-folder>
+git worktree remove <worktree-root>\<worktree-folder>
 ```
 
 Prune stale worktree metadata (after deleting folders manually):
@@ -325,14 +341,14 @@ git worktree prune
 ```
 
 ## Run CI for a specific commit (workflow_dispatch)
-Use the helper to target a specific commit without relying on PR pushes:
+Dispatch against a temporary branch that points to the target SHA:
 ```
-pwsh -NoProfile -File .\Tooling\Run-CICompositeForCommit.ps1 -Sha <commit>
+git push origin <commit>:refs/heads/ci-run/<shortsha>
+gh workflow run "CI Pipeline" --ref ci-run/<shortsha> -f expected_sha=<commit> -f strict_sha=true
 ```
 
 Notes:
-- The script creates a temporary branch under `ci-run/<shortsha>` and dispatches the workflow.
-- Use `-CleanupRemote` if you want the temporary branch deleted after dispatch.
+- Delete the temporary branch after dispatch when no longer needed: `git push origin --delete ci-run/<shortsha>`.
 
 ## Background automation safety
 Some automation may be running in the background and must not be killed. Do not terminate `g-cli` or `LabVIEW` processes unless you have explicit confirmation it is safe.

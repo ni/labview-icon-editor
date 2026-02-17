@@ -11,6 +11,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+if ($PSBoundParameters.ContainsKey('BuildProjectSpec') -and -not $BuildProjectSpec.IsPresent) {
+    throw "BuildProjectSpec disable is unsupported. Build-spec execution is mandatory."
+}
+
 if (-not [string]::IsNullOrWhiteSpace($LabVIEWVersion)) {
     Write-Host ("LabVIEW version hint: {0}" -f $LabVIEWVersion)
 }
@@ -47,103 +51,23 @@ function Test-EnabledValue {
         -or $Value.Equals('yes', [System.StringComparison]::OrdinalIgnoreCase)
 }
 
-function ConvertTo-LabVIEWCliPortNumber {
-    param(
-        [AllowNull()]
-        [string]$RawValue,
-        [string]$Source
-    )
-
-    if ([string]::IsNullOrWhiteSpace($RawValue)) {
-        return $null
-    }
-
-    $parsed = 0
-    if (-not [int]::TryParse($RawValue, [ref]$parsed)) {
-        if (-not [string]::IsNullOrWhiteSpace($Source)) {
-            Write-Warning ("Ignoring invalid LabVIEW CLI port '{0}' from {1}" -f $RawValue, $Source)
-        } else {
-            Write-Warning ("Ignoring invalid LabVIEW CLI port '{0}'" -f $RawValue)
-        }
-        return $null
-    }
-
-    if ($parsed -lt 1 -or $parsed -gt 65535) {
-        if (-not [string]::IsNullOrWhiteSpace($Source)) {
-            Write-Warning ("Ignoring out-of-range LabVIEW CLI port '{0}' from {1}" -f $RawValue, $Source)
-        } else {
-            Write-Warning ("Ignoring out-of-range LabVIEW CLI port '{0}'" -f $RawValue)
-        }
-        return $null
-    }
-
-    return $parsed
-}
-
-function Get-LabVIEWIniValue {
-    param(
-        [string]$IniPath,
-        [string]$Key
-    )
-
-    if ([string]::IsNullOrWhiteSpace($IniPath) -or -not (Test-Path -LiteralPath $IniPath -PathType Leaf)) {
-        return $null
-    }
-
-    $escapedKey = [regex]::Escape($Key)
-    foreach ($line in (Get-Content -LiteralPath $IniPath -ErrorAction Stop)) {
-        $match = [regex]::Match($line, "^\s*$escapedKey\s*=\s*(?<value>.+?)\s*$", [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
-        if ($match.Success) {
-            return $match.Groups['value'].Value.Trim()
-        }
-    }
-
-    return $null
-}
-
 function Resolve-LabVIEWCliPort {
     param(
         [string]$LabVIEWExecutablePath
     )
 
-    $envCandidates = @(
-        'LVIE_CONTAINER_PARITY_LABVIEWCLI_PORT',
-        'LVIE_PARITY_LABVIEWCLI_PORT',
-        'LVIE_LABVIEWCLI_PORT',
-        'LVIE_LUNIT_PORT'
-    )
-
-    foreach ($name in $envCandidates) {
-        $value = [Environment]::GetEnvironmentVariable($name)
-        $port = ConvertTo-LabVIEWCliPortNumber -RawValue $value -Source ('$env:{0}' -f $name)
-        if ($null -ne $port) {
-            return [pscustomobject]@{
-                PortNumber = [int]$port
-                Source     = '$env:' + $name
-            }
-        }
+    $repoRoot = if ([string]::IsNullOrWhiteSpace($WorkspaceRoot)) { 'C:\workspace' } else { $WorkspaceRoot }
+    $portContractHelper = Join-Path $repoRoot 'Tooling\support\LabVIEWCliPortContract.ps1'
+    if (-not (Test-Path -Path $portContractHelper -PathType Leaf)) {
+        throw "LabVIEW CLI port contract helper not found at $portContractHelper"
     }
+    . $portContractHelper
 
-    if (-not [string]::IsNullOrWhiteSpace($LabVIEWExecutablePath)) {
-        $iniPath = Join-Path -Path (Split-Path -Path $LabVIEWExecutablePath -Parent) -ChildPath 'LabVIEW.ini'
-        try {
-            $iniPortRaw = Get-LabVIEWIniValue -IniPath $iniPath -Key 'server.tcp.port'
-            $iniPort = ConvertTo-LabVIEWCliPortNumber -RawValue $iniPortRaw -Source ('{0} (server.tcp.port)' -f $iniPath)
-            if ($null -ne $iniPort) {
-                return [pscustomobject]@{
-                    PortNumber = [int]$iniPort
-                    Source     = '{0} (server.tcp.port)' -f $iniPath
-                }
-            }
-        } catch {
-            Write-Warning ("Unable to resolve LabVIEW CLI port from LabVIEW.ini: {0}" -f $_.Exception.Message)
-        }
-    }
-
-    return [pscustomobject]@{
-        PortNumber = 3363
-        Source     = 'default'
-    }
+    return Resolve-LabVIEWCliPortFromContract `
+        -RepoRoot $repoRoot `
+        -LabVIEWVersion $LabVIEWVersion `
+        -Bitness '64' `
+        -LabVIEWExecutablePath $LabVIEWExecutablePath
 }
 
 function Test-LabVIEWPortListening {
@@ -448,7 +372,10 @@ if ([string]::IsNullOrWhiteSpace($TargetName)) {
     }
 }
 
-$buildSpecEnabled = $BuildProjectSpec.IsPresent -or (Test-EnabledValue -Value $env:CONTAINER_PARITY_BUILD_SPEC)
+$containerBuildSpecRaw = $env:CONTAINER_PARITY_BUILD_SPEC
+if (-not [string]::IsNullOrWhiteSpace($containerBuildSpecRaw) -and -not (Test-EnabledValue -Value $containerBuildSpecRaw)) {
+    throw "CONTAINER_PARITY_BUILD_SPEC disable is unsupported. Build-spec execution is mandatory; unset CONTAINER_PARITY_BUILD_SPEC or set it to true."
+}
 $buildOutputRelativePath = if ([string]::IsNullOrWhiteSpace($env:CONTAINER_PARITY_BUILD_OUTPUT_RELATIVE_PATH)) {
     'resource\plugins\lv_icon.lvlibp'
 } else {
@@ -524,11 +451,6 @@ try {
     }
 
     Write-Output "MassCompile completed successfully."
-
-    if (-not $buildSpecEnabled) {
-        Write-Output "Build specification step disabled (set CONTAINER_PARITY_BUILD_SPEC=true to enable)."
-        return
-    }
 
     if (-not (Test-Path -LiteralPath $ProjectPath -PathType Leaf)) {
         throw "Project file does not exist: $ProjectPath"

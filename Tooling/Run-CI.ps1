@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 <#
 .SYNOPSIS
-    Runs a local, CI-composite parity sequence for LabVIEW Icon Editor.
+    Runs a local CI parity sequence for LabVIEW Icon Editor.
 
 .DESCRIPTION
     Executes the key LabVIEW steps from ci.yml locally:
@@ -92,6 +92,12 @@
 
 .PARAMETER ViValidateOnly
     Run only the pylavi vi_validate gate and exit.
+
+.PARAMETER SkipViAnalyzer
+    Skip LabVIEWCLI VI Analyzer checks.
+
+.PARAMETER ViAnalyzerOnly
+    Run only the LabVIEWCLI VI Analyzer gate and exit.
 
 .PARAMETER UseLabVIEWDevMode
     Policy-disabled. Passing this switch throws an error because dev-mode invocation is forbidden.
@@ -218,6 +224,10 @@ param(
 
     [switch]$ViValidateOnly,
 
+    [switch]$SkipViAnalyzer,
+
+    [switch]$ViAnalyzerOnly,
+
     [switch]$UseLabVIEWDevMode,
 
     [Parameter(Mandatory = $false)]
@@ -313,8 +323,6 @@ Assert-DevModePolicyParameterNotBound `
 if (-not $Orchestrated) {
     $orchestrator = Join-Path $PSScriptRoot 'Invoke-WorktreeOrchestrator.ps1'
     if (Test-Path -Path $orchestrator) {
-        Write-Warning "Direct execution of Run-CICompositeLocal.ps1 is deprecated. Use Invoke-WorktreeOrchestrator.ps1."
-
         $forward = @()
         foreach ($entry in $PSBoundParameters.GetEnumerator()) {
             if ($entry.Key -eq 'Orchestrated') {
@@ -357,6 +365,12 @@ if (-not $Orchestrated) {
 
 if ($ViValidateOnly -and $SkipViValidate) {
     throw "ViValidateOnly cannot be combined with -SkipViValidate."
+}
+if ($ViAnalyzerOnly -and $SkipViAnalyzer) {
+    throw "ViAnalyzerOnly cannot be combined with -SkipViAnalyzer."
+}
+if ($ViValidateOnly -and $ViAnalyzerOnly) {
+    throw "ViValidateOnly cannot be combined with -ViAnalyzerOnly."
 }
 
 $customViConfigSpecified = $PSBoundParameters.ContainsKey('ViValidateConfigPath')
@@ -1060,6 +1074,25 @@ function Invoke-ViValidate {
     }
 }
 
+function Invoke-ViAnalyzer {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot
+    )
+
+    $viAnalyzerScript = Join-Path $RepoRoot 'Tooling\Run-ViAnalyzer.ps1'
+    if (-not (Test-Path -Path $viAnalyzerScript -PathType Leaf)) {
+        throw "Run-ViAnalyzer.ps1 not found at $viAnalyzerScript"
+    }
+
+    Invoke-Checked -Label "Run VI Analyzer (LabVIEWCLI)" -Action {
+        & $viAnalyzerScript `
+            -RepoRoot $RepoRoot `
+            -LabVIEWVersion $LabVIEWVersion `
+            -SupportedBitness 64
+    }
+}
+
 function Assert-LabVIEWInstalled {
     param(
         [string]$Version,
@@ -1442,7 +1475,7 @@ function Copy-LatestVipToBuild {
     return $targetPath
 }
 
-function Write-GCliBuildLogTail {
+function Write-VipBuildLogTail {
     param(
         [string]$RepoRoot,
         [int]$TailLines = 120,
@@ -1450,19 +1483,28 @@ function Write-GCliBuildLogTail {
     )
 
     $artifactRootResolved = if ([string]::IsNullOrWhiteSpace($ArtifactRoot)) { $env:LVIE_ARTIFACT_ROOT } else { $ArtifactRoot }
-    $logFile = if ([string]::IsNullOrWhiteSpace($artifactRootResolved)) {
-        Join-Path $RepoRoot 'builds/logs/gcli-build.log'
+    $logRoot = if ([string]::IsNullOrWhiteSpace($artifactRootResolved)) {
+        Join-Path $RepoRoot 'builds/logs'
     } else {
-        Join-Path $artifactRootResolved 'builds/logs/gcli-build.log'
+        Join-Path $artifactRootResolved 'builds/logs'
     }
-    if (-not (Test-Path -Path $logFile)) {
-        Write-Host ("g-cli build log not found at {0}" -f $logFile)
+    $primaryLog = Join-Path $logRoot 'vipm-build.log'
+    $legacyLog = Join-Path $logRoot 'gcli-build.log'
+    $logFile = if (Test-Path -Path $primaryLog) {
+        $primaryLog
+    } elseif (Test-Path -Path $legacyLog) {
+        $legacyLog
+    } else {
+        $null
+    }
+    if ([string]::IsNullOrWhiteSpace($logFile)) {
+        Write-Host ("VIP build log not found under {0}." -f $logRoot)
         return
     }
 
-    Write-Host ("---- g-cli build log (last {0} lines) ----" -f $TailLines)
+    Write-Host ("---- VIP build log (last {0} lines) ----" -f $TailLines)
     Get-Content -Path $logFile -Tail $TailLines | ForEach-Object { Write-Host $_ }
-    Write-Host "---- end g-cli build log ----"
+    Write-Host "---- end VIP build log ----"
 }
 
 function Get-RunnerCliRuntime {
@@ -1708,8 +1750,8 @@ if (Test-Path -Path $preflightScript) {
         -RunId $RunId `
         -ArtifactRoot $ArtifactRoot `
         -CleanRoom:$CleanRoom `
-        -RequireGcli:$(-not $ViValidateOnly) `
-        -RequireViValidate:$($ViValidateOnly -or (-not $SkipViValidate)) `
+        -RequireGcli:$(-not ($ViValidateOnly -or $ViAnalyzerOnly)) `
+        -RequireViValidate:$($ViValidateOnly -or ((-not $SkipViValidate) -and (-not $ViAnalyzerOnly))) `
         -RunnerCliPath $RunnerCliPath `
         -RequireRunnerCli:$requireRunnerCliEnabled
     if ($preflight.Reinvoked) {
@@ -1754,7 +1796,7 @@ Initialize-CsvHeader -Path $script:RunHistoryPath -Header 'timestamp,status,dura
 Initialize-CsvHeader -Path $script:StepHistoryPath -Header 'timestamp,step,status,duration_seconds'
 $env:LABVIEW_CLOSE_METRICS_PATH = $script:CloseHistoryPath
 $runLog = Join-Path $logRoot "ci-local-$runTimestamp.log"
-$commandLine = "Run-CICompositeLocal.ps1 -LabVIEWVersion $LabVIEWVersion -LabVIEWBitness $LabVIEWBitness -AllowVersionMismatch:$AllowVersionMismatch -DryRun:$DryRun -SkipVerifyIEPaths:$SkipVerifyIEPaths -SkipVipc:$SkipVipc -VipcMode $VipcMode -SkipMissingInProject:$SkipMissingInProject -SkipUnitTests:$SkipUnitTests -SkipBuildPpl:$SkipBuildPpl -SkipBuildVip:$SkipBuildVip -EnableSingleBitnessRecoverySequence:$EnableSingleBitnessRecoverySequence -AllowSequenceFaultInjection:$AllowSequenceFaultInjection -SequenceFaultProfile $SequenceFaultProfile -SkipViValidate:$SkipViValidate -ViValidateConfigPath $ViValidateConfigPath -ViValidateProfile $ViValidateProfile -ViValidateReportOnly:$ViValidateReportOnly -ViValidateSkipVersionGate:$ViValidateSkipVersionGate -ViValidateOnly:$ViValidateOnly -BumpType $BumpType -ConnectTimeoutMs $ConnectTimeoutMs -ProcessTimeoutMs $ProcessTimeoutMs -StatusFileTimeoutMs $StatusFileTimeoutMs -VipmTimeoutSeconds $VipmTimeoutSeconds -CloseLabVIEWMode $CloseLabVIEWMode -WorktreeRoot $WorktreeRoot -SkipWorktreeRootCheck:$SkipWorktreeRootCheck -AutoWorktree:$AutoWorktree -RunId $RunId -ArtifactRoot $ArtifactRoot -CleanRoom:$CleanRoom -RunnerCliPath $RunnerCliPath -RequireRunnerCli:$requireRunnerCliEnabled"
+$commandLine = "Run-CI.ps1 -LabVIEWVersion $LabVIEWVersion -LabVIEWBitness $LabVIEWBitness -AllowVersionMismatch:$AllowVersionMismatch -DryRun:$DryRun -SkipVerifyIEPaths:$SkipVerifyIEPaths -SkipVipc:$SkipVipc -VipcMode $VipcMode -SkipMissingInProject:$SkipMissingInProject -SkipUnitTests:$SkipUnitTests -SkipBuildPpl:$SkipBuildPpl -SkipBuildVip:$SkipBuildVip -EnableSingleBitnessRecoverySequence:$EnableSingleBitnessRecoverySequence -AllowSequenceFaultInjection:$AllowSequenceFaultInjection -SequenceFaultProfile $SequenceFaultProfile -SkipViValidate:$SkipViValidate -ViValidateConfigPath $ViValidateConfigPath -ViValidateProfile $ViValidateProfile -ViValidateReportOnly:$ViValidateReportOnly -ViValidateSkipVersionGate:$ViValidateSkipVersionGate -ViValidateOnly:$ViValidateOnly -SkipViAnalyzer:$SkipViAnalyzer -ViAnalyzerOnly:$ViAnalyzerOnly -BumpType $BumpType -ConnectTimeoutMs $ConnectTimeoutMs -ProcessTimeoutMs $ProcessTimeoutMs -StatusFileTimeoutMs $StatusFileTimeoutMs -VipmTimeoutSeconds $VipmTimeoutSeconds -CloseLabVIEWMode $CloseLabVIEWMode -WorktreeRoot $WorktreeRoot -SkipWorktreeRootCheck:$SkipWorktreeRootCheck -AutoWorktree:$AutoWorktree -RunId $RunId -ArtifactRoot $ArtifactRoot -CleanRoom:$CleanRoom -RunnerCliPath $RunnerCliPath -RequireRunnerCli:$requireRunnerCliEnabled"
 $script:TranscriptStarted = $false
 try {
     Start-Transcript -Path $runLog -Append | Out-Null
@@ -1790,6 +1832,14 @@ try {
         return
     }
 
+    if ($ViAnalyzerOnly) {
+        Invoke-ViAnalyzer `
+            -RepoRoot $repoRoot
+        Write-Host ""
+        Write-Host "VI Analyzer completed; exiting due to -ViAnalyzerOnly."
+        return
+    }
+
     if ($DryRun) {
         $bitnessList = Resolve-LabVIEWBitnessList -BitnessMode $LabVIEWBitness -Version $LabVIEWVersion
         foreach ($bitness in $bitnessList) {
@@ -1799,7 +1849,7 @@ try {
         return
     }
 
-    if (-not (Get-Command g-cli -ErrorAction SilentlyContinue)) {
+    if (-not $ViAnalyzerOnly -and -not (Get-Command g-cli -ErrorAction SilentlyContinue)) {
         throw "g-cli.exe not found in PATH."
     }
 
@@ -1813,6 +1863,11 @@ try {
                 -ReportOnly:$ViValidateReportOnly `
                 -SkipVersionGate:$entry.SkipVersionGate
         }
+    }
+
+    if (-not $SkipViAnalyzer) {
+        Invoke-ViAnalyzer `
+            -RepoRoot $repoRoot
     }
 
     Wait-ForIdle -RunHistoryPath $script:RunHistoryPath
@@ -2491,13 +2546,13 @@ try {
             }
         }
         catch {
-            Write-GCliBuildLogTail -RepoRoot $repoRoot -ArtifactRoot $artifactRootResolved
+            Write-VipBuildLogTail -RepoRoot $repoRoot -ArtifactRoot $artifactRootResolved
             throw
         }
 
         $vipOutput = Copy-LatestVipToBuild -RepoRoot $repoRoot -Since $vipBuildStart -ArtifactRoot $artifactRootResolved
         if (-not $vipOutput) {
-            Write-GCliBuildLogTail -RepoRoot $repoRoot -ArtifactRoot $artifactRootResolved
+            Write-VipBuildLogTail -RepoRoot $repoRoot -ArtifactRoot $artifactRootResolved
             throw "VIP build did not produce a .vip after $($vipBuildStart.ToString('yyyy-MM-dd HH:mm:ss'))."
         }
 

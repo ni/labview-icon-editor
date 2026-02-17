@@ -146,7 +146,7 @@ runs:
             if (-not (Test-Path -Path $labviewExecutablePath -PathType Leaf)) {
               throw "LabVIEW executable not found at $labviewExecutablePath"
             }
-            $portResolution = Resolve-LabVIEWCliPort -Bitness $bitness -LabVIEWExecutablePath $labviewExecutablePath
+            $portResolution = Resolve-LabVIEWCliPort -LabVIEWVersion $labviewInstallVersion -Bitness $bitness -LabVIEWExecutablePath $labviewExecutablePath
             Write-Host ("LabVIEWCLI close port: {0} (source: {1})" -f $portResolution.PortNumber, $portResolution.Source)
             $closeResult = Invoke-LabVIEWCliWithConnectionRetry `
               -OperationName ("CloseLabVIEW-{0}-bit-teardown" -f $bitness) `
@@ -155,8 +155,7 @@ runs:
                 '-LabVIEWPath', $labviewExecutablePath,
                 '-PortNumber', $portResolution.PortNumber.ToString()
               ) `
-              -PrimaryPortNumber $portResolution.PortNumber `
-              -AllowImplicitPortFallback
+              -PrimaryPortNumber $portResolution.PortNumber
 
             if ($closeResult.ExitCode -ne 0) {
               $attemptSummary = if ($closeResult.Attempts -and $closeResult.Attempts.Count -gt 0) {
