@@ -158,6 +158,7 @@ function Get-VipmSettingsPath {
 function Get-VipmTargetsSectionInfo {
     param(
         [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
         [string[]]$Lines
     )
 
@@ -264,7 +265,12 @@ function Set-VipmTargetSettingsFromContract {
         throw "VIPM settings file not found at $settingsPath"
     }
 
-    $lines = @(Get-Content -Path $settingsPath -ErrorAction Stop)
+    $settingsRaw = Get-Content -Path $settingsPath -Raw -ErrorAction Stop
+    if ([string]::IsNullOrWhiteSpace($settingsRaw)) {
+        throw ("VIPM settings file '{0}' is empty." -f $settingsPath)
+    }
+    $normalized = $settingsRaw -replace "`r`n", "`n" -replace "`r", "`n"
+    $lines = @($normalized -split "`n")
     $sectionInfo = Get-VipmTargetsSectionInfo -Lines $lines
     if ($sectionInfo.PortsLineIndex -lt 0) {
         throw "VIPM settings file '$settingsPath' does not define Targets.Ports."
