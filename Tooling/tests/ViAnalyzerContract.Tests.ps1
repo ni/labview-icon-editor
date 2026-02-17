@@ -41,8 +41,10 @@ Describe 'VI Analyzer contract' {
 
         $content = Get-Content -Raw -Path $script:ciPath
         $content | Should -Match '(?ms)^\s*vi-analyzer:\s*$'
-        $content | Should -Match '(?ms)^\s*vi-analyzer:\s*.*?needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-x86\s*\]'
-        $content | Should -Match "(?ms)^\s*vi-analyzer:\s*.*?runs-on:\s*\$\{\{\s*vars\.LVIE_RUNNER_LABEL\s*\|\|\s*'self-hosted-windows-lv'\s*\}\}"
+        $content | Should -Match '(?ms)^\s*vi-analyzer:\s*.*?needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate\s*\]'
+        $content | Should -Match '(?ms)^\s*vi-analyzer:\s*.*?runs-on:\s*ubuntu-latest'
+        $content | Should -Match '(?ms)^\s*vi-analyzer:\s*.*?Run VI Analyzer tasks \(Linux container\)'
+        $content | Should -Match '(?ms)^\s*vi-analyzer:\s*.*?run-vi-analyzer-linux\.sh'
         $content | Should -Match '(?ms)publish-gate:\s*.*?needs:\s*.*?\n\s*-\s*vi-analyzer\s*$'
         $content | Should -Match '(?ms)pipeline-contract:\s*.*?needs:\s*.*?\n\s*-\s*vi-analyzer\s*$'
         $content | Should -Match '(?ms)\$requiredCommon\s*=\s*@\(\s*.*?''vi-analyzer'''
