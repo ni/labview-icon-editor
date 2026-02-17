@@ -163,7 +163,47 @@ runs:
               } else {
                 'none'
               }
-              throw ("LabVIEWCLI CloseLabVIEW failed with exit code {0}. Attempts: {1}" -f $closeResult.ExitCode, $attemptSummary)
+              Write-Warning ("LabVIEWCLI CloseLabVIEW returned exit code {0}. Attempts: {1}" -f $closeResult.ExitCode, $attemptSummary)
+              Write-Warning 'Falling back to close-labview script to ensure no matching LabVIEW instance remains.'
+              & "$repoRoot\\.github\\actions\\close-labview\\Close_LabVIEW.ps1" `
+                -LabVIEWVersion $labviewVersion `
+                -SupportedBitness $bitness
+
+              $fallbackExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+              if ($fallbackExitCode -ne 0) {
+                Write-Warning ("Fallback close-labview script exited with code {0}." -f $fallbackExitCode)
+              }
+
+              $targetProcesses = @()
+              try {
+                $targetProcesses = Get-CimInstance Win32_Process -Filter "Name='LabVIEW.exe'" -ErrorAction Stop |
+                  Where-Object {
+                    $_.ExecutablePath -and $_.ExecutablePath.StartsWith($installRoot, [System.StringComparison]::OrdinalIgnoreCase)
+                  }
+              } catch {
+                $targetProcesses = @()
+              }
+              if (-not $targetProcesses -or $targetProcesses.Count -eq 0) {
+                $targetProcesses = Get-Process -Name LabVIEW -ErrorAction SilentlyContinue |
+                  Where-Object {
+                    $processPath = $null
+                    try {
+                      $processPath = $_.Path
+                    } catch {
+                      $processPath = $null
+                    }
+                    $processPath -and $processPath.StartsWith($installRoot, [System.StringComparison]::OrdinalIgnoreCase)
+                  }
+              }
+
+              if ($targetProcesses -and $targetProcesses.Count -gt 0) {
+                $remainingPids = $targetProcesses | ForEach-Object {
+                  if ($_.PSObject.Properties.Match('ProcessId').Count -gt 0) { $_.ProcessId } else { $_.Id }
+                } | Sort-Object
+                throw ("LabVIEWCLI CloseLabVIEW failed and LabVIEW is still running (PIDs: {0}). Attempts: {1}" -f ($remainingPids -join ', '), $attemptSummary)
+              }
+
+              Write-Warning ("LabVIEWCLI CloseLabVIEW failed but no matching LabVIEW process remains. Continuing teardown. Attempts: {0}" -f $attemptSummary)
             }
             break
           }
