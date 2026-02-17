@@ -7,6 +7,7 @@ Describe 'VI Analyzer contract' {
     BeforeAll {
         $script:repoRoot = (Resolve-Path -Path (Join-Path $PSScriptRoot '..\..')).Path
         $script:tasksPath = Join-Path $script:repoRoot 'Tooling\vi-analyzer\tasks.json'
+        $script:linuxTasksPath = Join-Path $script:repoRoot 'Tooling\vi-analyzer\tasks.linux.json'
         $script:ciPath = Join-Path $script:repoRoot '.github\workflows\ci.yml'
         $script:runViAnalyzerPath = Join-Path $script:repoRoot 'Tooling\Run-ViAnalyzer.ps1'
     }
@@ -20,6 +21,17 @@ Describe 'VI Analyzer contract' {
         $tasks = @($tasksDoc.tasks)
         $tasks.Count | Should -Be 3
         @($tasks.id) | Should -Be @('labview-icon-api', 'plugins', 'tooling')
+    }
+
+    It 'defines a linux-specific VI Analyzer task subset' {
+        (Test-Path -LiteralPath $script:linuxTasksPath -PathType Leaf) | Should -BeTrue
+
+        $linuxTasksDoc = Get-Content -Raw -Path $script:linuxTasksPath | ConvertFrom-Json
+        ($linuxTasksDoc.PSObject.Properties.Name -contains 'tasks') | Should -BeTrue
+
+        $linuxTasks = @($linuxTasksDoc.tasks)
+        $linuxTasks.Count | Should -BeGreaterThan 0
+        @($linuxTasks.id) | Should -Be @('labview-icon-api')
     }
 
     It 'resolves all VI Analyzer task config files from the task registry' {
@@ -41,8 +53,11 @@ Describe 'VI Analyzer contract' {
 
         $content = Get-Content -Raw -Path $script:ciPath
         $content | Should -Match '(?ms)^\s*vi-analyzer:\s*$'
-        $content | Should -Match '(?ms)^\s*vi-analyzer:\s*.*?needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-x86\s*\]'
-        $content | Should -Match "(?ms)^\s*vi-analyzer:\s*.*?runs-on:\s*\$\{\{\s*vars\.LVIE_RUNNER_LABEL\s*\|\|\s*'self-hosted-windows-lv'\s*\}\}"
+        $content | Should -Match '(?ms)^\s*vi-analyzer:\s*.*?needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate\s*\]'
+        $content | Should -Match '(?ms)^\s*vi-analyzer:\s*.*?runs-on:\s*ubuntu-latest'
+        $content | Should -Match '(?ms)^\s*vi-analyzer:\s*.*?LVIE_VI_ANALYZER_TASKS_PATH:\s*Tooling/vi-analyzer/tasks\.linux\.json'
+        $content | Should -Match '(?ms)^\s*vi-analyzer:\s*.*?Run VI Analyzer tasks \(Linux container\)'
+        $content | Should -Match '(?ms)^\s*vi-analyzer:\s*.*?run-vi-analyzer-linux\.sh'
         $content | Should -Match '(?ms)publish-gate:\s*.*?needs:\s*.*?\n\s*-\s*vi-analyzer\s*$'
         $content | Should -Match '(?ms)pipeline-contract:\s*.*?needs:\s*.*?\n\s*-\s*vi-analyzer\s*$'
         $content | Should -Match '(?ms)\$requiredCommon\s*=\s*@\(\s*.*?''vi-analyzer'''

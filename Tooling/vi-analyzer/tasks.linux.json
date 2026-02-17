@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "labview-icon-api",
+      "config_path": "brokenVIsOnLabVIEWIconAPI.viancfg"
+    }
+  ]
+}
