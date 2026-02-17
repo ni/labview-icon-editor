@@ -8,6 +8,7 @@ Describe 'VI Analyzer contract' {
         $script:repoRoot = (Resolve-Path -Path (Join-Path $PSScriptRoot '..\..')).Path
         $script:tasksPath = Join-Path $script:repoRoot 'Tooling\vi-analyzer\tasks.json'
         $script:ciPath = Join-Path $script:repoRoot '.github\workflows\ci.yml'
+        $script:runViAnalyzerPath = Join-Path $script:repoRoot 'Tooling\Run-ViAnalyzer.ps1'
     }
 
     It 'defines exactly three deterministic VI Analyzer tasks' {
@@ -44,5 +45,13 @@ Describe 'VI Analyzer contract' {
         $content | Should -Match '(?ms)publish-gate:\s*.*?needs:\s*.*?\n\s*-\s*vi-analyzer\s*$'
         $content | Should -Match '(?ms)pipeline-contract:\s*.*?needs:\s*.*?\n\s*-\s*vi-analyzer\s*$'
         $content | Should -Match '(?ms)\$requiredCommon\s*=\s*@\(\s*.*?''vi-analyzer'''
+    }
+
+    It 'enforces non-zero analyzed tests for each task in Run-ViAnalyzer' {
+        (Test-Path -LiteralPath $script:runViAnalyzerPath -PathType Leaf) | Should -BeTrue
+
+        $content = Get-Content -Raw -Path $script:runViAnalyzerPath
+        $content | Should -Match 'analyzed_total'
+        $content | Should -Match 'No tests were analyzed'
     }
 }

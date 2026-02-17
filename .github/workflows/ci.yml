@@ -30,8 +30,6 @@ on:
       - main
       - develop
       - release/*
-      - feature/*
-      - hotfix/*
   pull_request:
     branches:
       - main
@@ -2615,7 +2613,6 @@ jobs:
           } else {
             Write-Host 'Pipeline contract satisfied.'
           }
-
 
 
 

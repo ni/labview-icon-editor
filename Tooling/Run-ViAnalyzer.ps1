@@ -150,6 +150,12 @@ function Join-ViAnalyzerCount {
         $merged[$key] = $value
     }
 
+    if ($null -ne $merged.passed -and $null -ne $merged.failed -and $null -ne $merged.skipped) {
+        $merged['analyzed_total'] = ([int]$merged.passed + [int]$merged.failed + [int]$merged.skipped)
+    } else {
+        $merged['analyzed_total'] = $null
+    }
+
     return $merged
 }
 
@@ -182,12 +188,13 @@ function Add-ViAnalyzerSummary {
     $lines += ('- Reports root: `{0}`' -f $ReportsRoot)
     $lines += ('- Status file: `{0}`' -f $StatusPath)
     $lines += ''
-    $lines += '| Task | Passed | Failed | Skipped | VI unloadable | Test unloadable | Test unrunnable | Test errors | Exit | Result |'
-    $lines += '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |'
+    $lines += '| Task | Analyzed | Passed | Failed | Skipped | VI unloadable | Test unloadable | Test unrunnable | Test errors | Exit | Result |'
+    $lines += '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |'
     foreach ($task in $TaskResults) {
         $counts = $task.counts
-        $lines += ("| {0} | {1} | {2} | {3} | {4} | {5} | {6} | {7} | {8} | {9} |" -f `
+        $lines += ("| {0} | {1} | {2} | {3} | {4} | {5} | {6} | {7} | {8} | {9} | {10} |" -f `
             $task.id, `
+            (Get-DisplayCount -Value $counts.analyzed_total), `
             (Get-DisplayCount -Value $counts.passed), `
             (Get-DisplayCount -Value $counts.failed), `
             (Get-DisplayCount -Value $counts.skipped), `
@@ -318,10 +325,13 @@ foreach ($task in $tasks) {
     if ($exitCode -ne 0) {
         $failureReasons.Add(("Non-zero exit code: {0}" -f $exitCode)) | Out-Null
     }
-    foreach ($requiredKey in @('passed', 'failed', 'skipped', 'vi_unloadable', 'test_unloadable', 'test_unrunnable', 'test_error')) {
+    foreach ($requiredKey in @('passed', 'failed', 'skipped', 'vi_unloadable', 'test_unloadable', 'test_unrunnable', 'test_error', 'analyzed_total')) {
         if ($null -eq $counts[$requiredKey]) {
             $failureReasons.Add(("Missing parsed count: {0}" -f $requiredKey)) | Out-Null
         }
+    }
+    if ($null -ne $counts.analyzed_total -and [int]$counts.analyzed_total -le 0) {
+        $failureReasons.Add('No tests were analyzed (analyzed_total = 0).') | Out-Null
     }
     if ($null -ne $counts.failed -and [int]$counts.failed -gt 0) {
         $failureReasons.Add(("Failed tests count is {0}" -f $counts.failed)) | Out-Null

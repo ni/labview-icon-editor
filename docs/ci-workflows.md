@@ -69,7 +69,7 @@ Automating your Icon Editor builds and tests:
      - Concurrency is isolated by repository, runner label, event name, and ref.
      - Pull request runs auto-cancel earlier runs for the same PR ref.
      - Push and `workflow_dispatch` runs are isolated by event/ref and are not canceled by pull request updates.
-   - `ci.yml` (`CI Pipeline`) is a PR-only companion workflow that increases validation signal without publication side effects.
+   - `ci.yml` (`CI Pipeline`) is publish-capable on eligible events; PR branch validation now flows through `pull_request` events (feature/hotfix branch pushes do not trigger this workflow).
 
 5. **Build VI Package**
    - Produces `.vip` artifacts automatically using the Windows/self-hosted `build-vip` job in `ci.yml` for `full` and `pr-fast` profiles.
@@ -100,8 +100,9 @@ This document is the canonical source for release/publication policy.
 - Release-priority guardrail: `workflow_dispatch` publish intent in `release-priority` requires a successful `full` profile run on `develop` completed within the previous 24 hours.
 - Asset contract: published prereleases in `full`/`pr-fast` attach `.vip`, release notes, `labviewcli-logs`, `vip-build-status`, Linux and Windows container packed libraries, and `codex-skill-layer`; `release-priority` publishes Linux and Windows container packed libraries plus `codex-skill-layer`.
 - Immutable publish contract: if the tag already exists, publish verifies required assets and reports `publish_status=already-published`; existing release metadata/assets are not patched or clobbered.
-- Branch trigger reality for `ci.yml`: `push` and `pull_request` run on `main`, `develop`, `release/*`, `feature/*`, and `hotfix/*`, plus `workflow_dispatch`.
-- Companion trigger reality for `ci.yml`: `pull_request` only; no `push` or `workflow_dispatch`.
+- Branch trigger reality for `ci.yml`: `push` runs on `main`, `develop`, and `release/*`; `pull_request` runs on `main`, `develop`, `release/*`, `feature/*`, and `hotfix/*`; `workflow_dispatch` is supported.
+- PR branch policy: `feature/*` and `hotfix/*` branch pushes no longer trigger `ci.yml`; PR synchronization is the single CI path for those branches.
+- Runner CLI trigger reality for `runner-cli.yml`: `push` runs on `main`, `develop`, and `release/*`; `pull_request` runs on `main` and `develop` when path filters match; `workflow_dispatch` is supported.
 
 #### Deterministic Manual Backfill Procedure
 
@@ -194,7 +195,7 @@ The [`ci.yml`](../.github/workflows/ci.yml) pipeline breaks the build into sever
 - **publish-prerelease** – creates prereleases for eligible new tags, verifies required assets for existing immutable tags (`already-published`), attaches required assets for new tags, and emits `prerelease-publish-status`.
 - **pipeline-contract** – validates required-job outcomes using profile-specific expectations so intentionally skipped jobs in `release-priority` do not fail the run.
 
-Companion workflow note: [`ci.yml`](../.github/workflows/ci.yml) provides PR-only validation signal and is intentionally non-publishing.
+Companion workflow note: [`runner-cli.yml`](../.github/workflows/runner-cli.yml) provides runner-cli-specific validation/publish signaling and is intentionally separate from prerelease asset publication.
 
 Dedicated headless parity note: [`headless-self-hosted-parity.yml`](../.github/workflows/headless-self-hosted-parity.yml) is intentionally separate from publish-capable workflows during initial rollout, so regressions are visible without blocking release lanes.
 

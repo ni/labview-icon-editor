@@ -61,7 +61,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
     - `pull_request` runs use the `pr-fast` profile (64-bit smoke/missing/unit).
     - `workflow_dispatch` with `force_gcli_lunit=true` uses `release-priority` and skips heavy self-hosted validation jobs.
     - All profiles require the `vi-analyzer` job to pass.
-    - **CI Pipeline** (`.github/workflows/ci.yml`) runs on `pull_request` only as a companion signal and intentionally excludes publish-path jobs.
+    - **CI Pipeline** (`.github/workflows/ci.yml`) runs on `push` (`main`, `develop`, `release/*`), `pull_request`, and `workflow_dispatch`; feature/hotfix branch pushes are intentionally excluded so PR synchronization is the single CI path for those branches.
 
 6. **Build VI Package**
      - Invoke the **Build VI Package** job within the CI Pipeline workflow to produce a `.vip` using the version computed by the workflow's separate **version** job (see that job's output for the generated version).
@@ -118,10 +118,10 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
       - You can **pass** metadata parameters like `-CompanyName` and `-AuthorName` into the build script. These map to fields in the **VI Package** (e.g., “Company Name,” “Author Name (Person or Company)”).
       - This means each package can show the **organization** and **repository** that produced it, providing a **unique ID** if you have multiple forks or parallel versions.
 
-3. **CI Pipeline**
-   - PR-only companion workflow (`.github/workflows/ci.yml`) for additional validation signal.
-   - Uses `ci_profile=pr-fast` and never publishes prereleases.
-   - In solo mode, require `CI Pipeline / PowerShell Lint` and `CI Pipeline / Pipeline Contract` in branch protection.
+3. **Runner CLI**
+   - [`runner-cli.yml`](../../../.github/workflows/runner-cli.yml) is the runner-cli-specific companion workflow.
+   - Trigger policy: `push` on `main`, `develop`, `release/*`; `pull_request` on `main` and `develop` when runner-cli paths change; plus `workflow_dispatch`.
+   - This workflow is separate from icon prerelease asset publication in `ci.yml`.
 
 
 <a name="setting-up-a-self-hosted-runner"></a>

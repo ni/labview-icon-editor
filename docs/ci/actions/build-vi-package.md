@@ -94,8 +94,8 @@ It eliminates confusion around versioning, keeps everything in one pipeline, and
 
 ### 3.1 How the Action Is Triggered
 The `build-vi-package` directory defines a **composite action**. It does not listen for events on its own; instead, the CI workflow in [`ci.yml`](../../../.github/workflows/ci.yml) invokes it.
-That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Early jobs like `run-metadata`, `prerelease-context`, `version-gate`, and `changes` run on GitHub-hosted `ubuntu-latest`. Windows self-hosted jobs handle LabVIEW validation and packaging (`dev-mode-gate`, `unit-tests`, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) when the active `ci_profile` requires them. Current branch filters for push/PR triggers are `main`, `develop`, `release/*`, `feature/*`, and `hotfix/*` in `ci.yml`.
-Companion workflow note: [`ci.yml`](../../../.github/workflows/ci.yml) is PR-only (`pull_request`) and intentionally omits publish-path jobs.
+That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Early jobs like `run-metadata`, `prerelease-context`, `version-gate`, and `changes` run on GitHub-hosted `ubuntu-latest`. Windows self-hosted jobs handle LabVIEW validation and packaging (`dev-mode-gate`, `unit-tests`, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) when the active `ci_profile` requires them. Branch filters in `ci.yml` are: `push` on `main`, `develop`, `release/*`; `pull_request` on `main`, `develop`, `release/*`, `feature/*`, `hotfix/*`.
+Companion workflow note: [`runner-cli.yml`](../../../.github/workflows/runner-cli.yml) handles runner-cli-specific validation and publishing concerns separately from prerelease asset publication.
 
 ### 3.2 Configurable Inputs / Parameters
 `ci.yml` calls this action and provides all required inputs automatically. When invoking

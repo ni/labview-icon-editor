@@ -6,9 +6,6 @@ on:
       - main
       - develop
       - release/*
-      - feature/*
-      - hotfix/*
-      - integrate/*
     paths:
       - 'Tooling/runner-cli/**'
       - 'Tooling/pylavi/**'
