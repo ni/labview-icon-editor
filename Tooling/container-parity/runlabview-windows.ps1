@@ -51,23 +51,159 @@ function Test-EnabledValue {
         -or $Value.Equals('yes', [System.StringComparison]::OrdinalIgnoreCase)
 }
 
+function Get-LabVIEWIniValueStrict {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$IniPath,
+        [Parameter(Mandatory = $true)]
+        [string]$Key
+    )
+
+    foreach ($line in Get-Content -LiteralPath $IniPath -ErrorAction Stop) {
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+
+        $trimmed = $line.Trim()
+        if ($trimmed.StartsWith(';') -or $trimmed.StartsWith('#')) {
+            continue
+        }
+
+        $separator = $trimmed.IndexOf('=')
+        if ($separator -lt 0) {
+            continue
+        }
+
+        $lineKey = $trimmed.Substring(0, $separator).Trim()
+        if ($lineKey.Equals($Key, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $trimmed.Substring($separator + 1).Trim()
+        }
+    }
+
+    return $null
+}
+
+function Resolve-LabVIEWContractYear {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [AllowNull()]
+        [string]$VersionHint
+    )
+
+    $rawVersion = $VersionHint
+    if ([string]::IsNullOrWhiteSpace($rawVersion)) {
+        $lvversionPath = Join-Path $RepoRoot '.lvversion'
+        if (-not (Test-Path -LiteralPath $lvversionPath -PathType Leaf)) {
+            throw ".lvversion not found at $lvversionPath"
+        }
+
+        $rawVersion = (Get-Content -LiteralPath $lvversionPath -Raw -ErrorAction Stop).Trim()
+    }
+
+    if ([string]::IsNullOrWhiteSpace($rawVersion)) {
+        throw "LabVIEW version is empty and year cannot be resolved."
+    }
+
+    $majorToken = ($rawVersion -split '\.')[0]
+    $parsed = 0
+    if (-not [int]::TryParse($majorToken, [ref]$parsed)) {
+        throw ("LabVIEW version '{0}' is invalid; expected numeric year or major.minor." -f $rawVersion)
+    }
+
+    if ($parsed -ge 2000) {
+        return [string]$parsed
+    }
+
+    if ($parsed -ge 0 -and $parsed -lt 100) {
+        return [string](2000 + $parsed)
+    }
+
+    throw ("LabVIEW version '{0}' cannot be mapped to a contract year." -f $rawVersion)
+}
+
 function Resolve-LabVIEWCliPort {
     param(
         [string]$LabVIEWExecutablePath
     )
 
     $repoRoot = if ([string]::IsNullOrWhiteSpace($WorkspaceRoot)) { 'C:\workspace' } else { $WorkspaceRoot }
-    $portContractHelper = Join-Path $repoRoot 'Tooling\support\LabVIEWCliPortContract.ps1'
-    if (-not (Test-Path -Path $portContractHelper -PathType Leaf)) {
-        throw "LabVIEW CLI port contract helper not found at $portContractHelper"
-    }
-    . $portContractHelper
 
-    return Resolve-LabVIEWCliPortFromContract `
-        -RepoRoot $repoRoot `
-        -LabVIEWVersion $LabVIEWVersion `
-        -Bitness '64' `
-        -LabVIEWExecutablePath $LabVIEWExecutablePath
+    $contractPath = Join-Path $repoRoot 'Tooling\labviewcli-port-contract.json'
+    if (-not (Test-Path -LiteralPath $contractPath -PathType Leaf)) {
+        throw "LabVIEW CLI port contract file not found at $contractPath"
+    }
+
+    $contractRaw = Get-Content -LiteralPath $contractPath -Raw -ErrorAction Stop
+    if ([string]::IsNullOrWhiteSpace($contractRaw)) {
+        throw "LabVIEW CLI port contract file is empty: $contractPath"
+    }
+
+    $contract = $contractRaw | ConvertFrom-Json -ErrorAction Stop
+    if (-not ($contract.PSObject.Properties.Name -contains 'labview_cli_ports')) {
+        throw "LabVIEW CLI port contract is missing 'labview_cli_ports': $contractPath"
+    }
+
+    $year = Resolve-LabVIEWContractYear -RepoRoot $repoRoot -VersionHint $LabVIEWVersion
+    if (-not ($contract.labview_cli_ports.PSObject.Properties.Name -contains $year)) {
+        throw ("LabVIEW CLI port contract does not define year '{0}' in {1}" -f $year, $contractPath)
+    }
+
+    $yearNode = $contract.labview_cli_ports.$year
+    if (-not ($yearNode.PSObject.Properties.Name -contains '64')) {
+        throw ("LabVIEW CLI port contract does not define bitness '64' for year '{0}' in {1}" -f $year, $contractPath)
+    }
+
+    $expectedPort = 0
+    if (-not [int]::TryParse([string]$yearNode.'64', [ref]$expectedPort) -or $expectedPort -lt 1 -or $expectedPort -gt 65535) {
+        throw ("LabVIEW CLI port contract value is invalid for year '{0}' bitness '64' in {1}" -f $year, $contractPath)
+    }
+
+    if (-not (Test-Path -LiteralPath $LabVIEWExecutablePath -PathType Leaf)) {
+        throw "LabVIEW executable was not found: $LabVIEWExecutablePath"
+    }
+
+    $iniPath = Join-Path (Split-Path -Path $LabVIEWExecutablePath -Parent) 'LabVIEW.ini'
+    if (-not (Test-Path -LiteralPath $iniPath -PathType Leaf)) {
+        throw "LabVIEW.ini is required for strict port validation but was not found: $iniPath"
+    }
+
+    $enabledRaw = Get-LabVIEWIniValueStrict -IniPath $iniPath -Key 'server.tcp.enabled'
+    if ([string]::IsNullOrWhiteSpace($enabledRaw)) {
+        throw "LabVIEW.ini is missing server.tcp.enabled in $iniPath"
+    }
+
+    $enabledNormalized = $enabledRaw.Trim().ToLowerInvariant()
+    if (@('true', 't', '1', 'yes', 'y') -contains $enabledNormalized) {
+        # Valid enabled state.
+    } elseif (@('false', 'f', '0', 'no', 'n') -contains $enabledNormalized) {
+        throw ("LabVIEW.ini has server.tcp.enabled={0} in {1}; strict contract requires enabled." -f $enabledRaw, $iniPath)
+    } else {
+        throw ("LabVIEW.ini has invalid server.tcp.enabled='{0}' in {1}" -f $enabledRaw, $iniPath)
+    }
+
+    $portRaw = Get-LabVIEWIniValueStrict -IniPath $iniPath -Key 'server.tcp.port'
+    if ([string]::IsNullOrWhiteSpace($portRaw)) {
+        throw "LabVIEW.ini is missing server.tcp.port in $iniPath"
+    }
+
+    $actualPort = 0
+    if (-not [int]::TryParse($portRaw.Trim(), [ref]$actualPort) -or $actualPort -lt 1 -or $actualPort -gt 65535) {
+        throw ("LabVIEW.ini has invalid server.tcp.port='{0}' in {1}" -f $portRaw, $iniPath)
+    }
+
+    if ($actualPort -ne $expectedPort) {
+        throw ("LabVIEWCLI port contract mismatch for year {0} bitness 64: expected {1} from {2}, found {3} in {4}" -f $year, $expectedPort, $contractPath, $actualPort, $iniPath)
+    }
+
+    return [pscustomobject]@{
+        PortNumber   = $expectedPort
+        Source       = ('contract:{0} year:{1} bitness:64' -f $contractPath, $year)
+        ContractPath = $contractPath
+        IniPath      = $iniPath
+        LabVIEWYear  = $year
+        Bitness      = '64'
+    }
 }
 
 function Test-LabVIEWPortListening {
