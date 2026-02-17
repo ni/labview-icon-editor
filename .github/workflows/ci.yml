@@ -979,44 +979,54 @@ jobs:
 
   vi-analyzer:
     name: VI Analyzer (LabVIEWCLI)
-    needs: [run-metadata, prerelease-context, version-gate]
-    runs-on: ubuntu-latest
+    needs: [run-metadata, prerelease-context, version-gate, apply-deps-x86]
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    env:
+      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
+      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
+      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
+      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Pull LabVIEW Linux image
-        shell: bash
-        env:
-          LV_RELEASE: ${{ format('{0}q1', needs.version-gate.outputs.year) }}
-        run: |
-          set -euo pipefail
-          image="nationalinstruments/labview:${LV_RELEASE}-linux"
-          echo "Using image: ${image}"
-          docker pull "${image}"
-          echo "LABVIEW_LINUX_IMAGE=${image}" >> "$GITHUB_ENV"
+      - name: Job setup
+        uses: ./.github/actions/lvie-job-setup
+        with:
+          checkout: 'false'
+          bitness: 64
+          create_worktree: 'true'
+          worktree_root_mode: runner_temp
       - name: Run VI Analyzer tasks (LV 64-bit)
         shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
         run: |
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Run-ViAnalyzer.ps1" `
-            -RepoRoot "$env:GITHUB_WORKSPACE" `
-            -LabVIEWVersion '${{ needs.version-gate.outputs.raw }}' `
+          pwsh -NoProfile -File "$env:REPO_ROOT\Tooling\Run-ViAnalyzer.ps1" `
+            -RepoRoot "$env:REPO_ROOT" `
+            -LabVIEWVersion $env:LABVIEW_VERSION_RAW `
             -SupportedBitness 64
       - name: Upload VI Analyzer reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: vi-analyzer-reports
-          path: ${{ github.workspace }}/builds/vi-analyzer
+          path: ${{ env.REPO_ROOT }}/builds/vi-analyzer
           if-no-files-found: warn
       - name: Upload VI Analyzer status
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: vi-analyzer-status
-          path: ${{ github.workspace }}/builds/status/vi-analyzer-summary.json
+          path: ${{ env.REPO_ROOT }}/builds/status/vi-analyzer-summary.json
           if-no-files-found: error
+      - name: Job teardown
+        if: always()
+        uses: ./.github/actions/lvie-job-teardown
+        with:
+          close_labview: 'true'
+          close_executor: labviewcli
+          close_bitness: 64
 
   version:
     name: Compute Version
@@ -2598,7 +2608,6 @@ jobs:
           } else {
             Write-Host 'Pipeline contract satisfied.'
           }
-
 
 
 

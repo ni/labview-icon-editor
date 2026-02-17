@@ -301,8 +301,8 @@ jobs:
 
   parity-windows:
     name: Parity (Windows Container)
-    needs: [resolve-parity-context, parity-self-hosted]
-    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || (github.event_name == 'push' && github.ref_name == 'develop')) && needs.parity-self-hosted.result == 'success' }}
+    needs: [resolve-parity-context]
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || (github.event_name == 'push' && github.ref_name == 'develop') }}
     runs-on: windows-latest
     timeout-minutes: 60
     steps:

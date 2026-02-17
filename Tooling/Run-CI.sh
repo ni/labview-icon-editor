@@ -131,16 +131,16 @@ run_vi_analyzer_gate() {
     exit 1
   fi
 
-  if ! command -v docker >/dev/null 2>&1; then
+  if ! command -v LabVIEWCLI >/dev/null 2>&1; then
     if [[ "$mode" == "auto" ]]; then
-      echo "Skipping VI Analyzer gate in auto mode: docker not found on PATH."
+      echo "Skipping VI Analyzer gate in auto mode: LabVIEWCLI not found on PATH."
       return 0
     fi
-    echo "ERROR: docker was not found on PATH; Linux VI Analyzer gate cannot run." >&2
+    echo "ERROR: LabVIEWCLI was not found on PATH; VI Analyzer gate cannot run." >&2
     exit 1
   fi
 
-  echo "Running LabVIEWCLI VI Analyzer gate via Linux container..."
+  echo "Running LabVIEWCLI VI Analyzer gate..."
   (
     cd "$repo_root"
     "$pwsh_bin" -NoProfile -File "./Tooling/Run-ViAnalyzer.ps1" -RepoRoot "$repo_root" -SupportedBitness 64
