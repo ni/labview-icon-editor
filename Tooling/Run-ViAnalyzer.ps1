@@ -114,22 +114,123 @@ function Get-LabVIEWCliSummaryCount {
 }
 
 function Get-ViAnalyzerReportCount {
+    param(
+        [AllowNull()]
+        [string]$ReportText
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ReportText)) {
+        return $null
+    }
+
+    return [ordered]@{
+        passed          = Get-CountFromText -Text $ReportText -Pattern '^\s*Passed Tests\s+(?<n>\d+)\s*$'
+        failed          = Get-CountFromText -Text $ReportText -Pattern '^\s*Failed Tests\s+(?<n>\d+)\s*$'
+        skipped         = Get-CountFromText -Text $ReportText -Pattern '^\s*Skipped Tests\s+(?<n>\d+)\s*$'
+        vi_unloadable   = Get-CountFromText -Text $ReportText -Pattern '^\s*VI not loadable\s+(?<n>\d+)\s*$'
+        test_unloadable = Get-CountFromText -Text $ReportText -Pattern '^\s*Test not loadable\s+(?<n>\d+)\s*$'
+        test_unrunnable = Get-CountFromText -Text $ReportText -Pattern '^\s*Test not runnable\s+(?<n>\d+)\s*$'
+        test_error      = Get-CountFromText -Text $ReportText -Pattern '^\s*Test error out\s+(?<n>\d+)\s*$'
+    }
+}
+
+function Get-ViAnalyzerReportText {
     param([string]$ReportPath)
 
     if (-not (Test-Path -Path $ReportPath -PathType Leaf)) {
         return $null
     }
 
-    $text = Get-Content -Path $ReportPath -Raw -ErrorAction Stop
-    return [ordered]@{
-        passed          = Get-CountFromText -Text $text -Pattern '^\s*Passed Tests\s+(?<n>\d+)\s*$'
-        failed          = Get-CountFromText -Text $text -Pattern '^\s*Failed Tests\s+(?<n>\d+)\s*$'
-        skipped         = Get-CountFromText -Text $text -Pattern '^\s*Skipped Tests\s+(?<n>\d+)\s*$'
-        vi_unloadable   = Get-CountFromText -Text $text -Pattern '^\s*VI not loadable\s+(?<n>\d+)\s*$'
-        test_unloadable = Get-CountFromText -Text $text -Pattern '^\s*Test not loadable\s+(?<n>\d+)\s*$'
-        test_unrunnable = Get-CountFromText -Text $text -Pattern '^\s*Test not runnable\s+(?<n>\d+)\s*$'
-        test_error      = Get-CountFromText -Text $text -Pattern '^\s*Test error out\s+(?<n>\d+)\s*$'
+    return Get-Content -Path $ReportPath -Raw -ErrorAction Stop
+}
+
+function Get-ViAnalyzerFailureItemList {
+    param(
+        [AllowNull()]
+        [string]$ReportText
+    )
+
+    $items = New-Object 'System.Collections.Generic.List[object]'
+    if ([string]::IsNullOrWhiteSpace($ReportText)) {
+        return $items.ToArray()
     }
+
+    $section = ''
+    $currentDisplayName = ''
+    $currentFilePath = ''
+    $lines = $ReportText -split "`r?`n"
+    foreach ($line in $lines) {
+        $trimmed = $line.Trim()
+        if ($trimmed -match '^\s*Failed Tests \(sorted by VI\)\s*$') {
+            $section = 'failed_tests'
+            $currentDisplayName = ''
+            $currentFilePath = ''
+            continue
+        }
+
+        if ($trimmed -match '^\s*Testing Errors\s*$') {
+            $section = 'testing_errors'
+            $currentDisplayName = ''
+            $currentFilePath = ''
+            continue
+        }
+
+        if ([string]::IsNullOrWhiteSpace($section)) {
+            continue
+        }
+
+        if ([string]::IsNullOrWhiteSpace($trimmed)) {
+            continue
+        }
+
+        if ($trimmed -eq '(none)') {
+            continue
+        }
+
+        $viHeaderMatch = [regex]::Match($trimmed, '^(?<display>.+?)\s+\((?<path>.+)\)\s*$')
+        if ($viHeaderMatch.Success -and $trimmed.IndexOf("`t") -lt 0) {
+            $currentDisplayName = $viHeaderMatch.Groups['display'].Value.Trim()
+            $currentFilePath = $viHeaderMatch.Groups['path'].Value.Trim()
+            continue
+        }
+
+        $parts = $line -split "`t", 2
+        if ($parts.Count -eq 2 -and -not [string]::IsNullOrWhiteSpace($parts[0]) -and -not [string]::IsNullOrWhiteSpace($parts[1])) {
+            $items.Add([pscustomobject]@{
+                    section         = $section
+                    vi_display_name = $currentDisplayName
+                    file_path       = $currentFilePath
+                    check_name      = $parts[0].Trim()
+                    message         = $parts[1].Trim()
+                    raw_line        = $line.Trim()
+                }) | Out-Null
+        }
+    }
+
+    return $items.ToArray()
+}
+
+function Get-OrderedUniqueFilePathList {
+    param([object[]]$Items)
+
+    $ordered = New-Object 'System.Collections.Generic.List[string]'
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]'
+    foreach ($item in @($Items)) {
+        $path = ''
+        if ($null -ne $item -and $item.PSObject.Properties.Name -contains 'file_path') {
+            $path = [string]$item.file_path
+        }
+
+        if ([string]::IsNullOrWhiteSpace($path)) {
+            continue
+        }
+
+        if ($seen.Add($path)) {
+            $ordered.Add($path) | Out-Null
+        }
+    }
+
+    return $ordered.ToArray()
 }
 
 function Join-ViAnalyzerCount {
@@ -204,6 +305,29 @@ function Add-ViAnalyzerSummary {
             (Get-DisplayCount -Value $counts.test_error), `
             $task.exit_code, `
             $(if ($task.succeeded) { 'pass' } else { 'fail' }))
+    }
+
+    $failedTasks = @($TaskResults | Where-Object { -not $_.succeeded })
+    if ($failedTasks.Count -gt 0) {
+        $lines += ''
+        $lines += '#### Failure Details'
+        foreach ($task in $failedTasks) {
+            $lines += ''
+            $lines += ('- Task `{0}`' -f $task.id)
+            $lines += ('- Report: `{0}`' -f $task.report_path)
+            $failureItems = @($task.failure_items)
+            if ($failureItems.Count -gt 0) {
+                foreach ($item in $failureItems) {
+                    $section = [string]$item.section
+                    $filePath = [string]$item.file_path
+                    $checkName = [string]$item.check_name
+                    $message = [string]$item.message
+                    $lines += ('- [{0}] `{1}` :: {2} - {3}' -f $section, $filePath, $checkName, $message)
+                }
+            } else {
+                $lines += '- No file-level entries were parsed from report; see raw report.'
+            }
+        }
     }
 
     Add-Content -Path $SummaryPath -Value ($lines -join [Environment]::NewLine)
@@ -315,8 +439,11 @@ foreach ($task in $tasks) {
     $durationMs = [int][Math]::Round(((Get-Date) - $start).TotalMilliseconds)
 
     $cliCounts = Get-LabVIEWCliSummaryCount -Lines $outputLines
-    $reportCounts = Get-ViAnalyzerReportCount -ReportPath $reportPath
+    $reportText = Get-ViAnalyzerReportText -ReportPath $reportPath
+    $reportCounts = Get-ViAnalyzerReportCount -ReportText $reportText
     $counts = Join-ViAnalyzerCount -CliCounts $cliCounts -ReportCounts $reportCounts
+    $failureItems = Get-ViAnalyzerFailureItemList -ReportText $reportText
+    $failureFilePaths = Get-OrderedUniqueFilePathList -Items $failureItems
 
     $failureReasons = New-Object 'System.Collections.Generic.List[string]'
     if (-not (Test-Path -Path $reportPath -PathType Leaf)) {
@@ -352,6 +479,17 @@ foreach ($task in $tasks) {
     $taskSucceeded = $failureReasons.Count -eq 0
     if (-not $taskSucceeded) {
         $overallSuccess = $false
+        if ($failureItems.Count -gt 0) {
+            Write-Host ("Failure details for task '{0}':" -f $taskId)
+            foreach ($filePath in $failureFilePaths) {
+                Write-Host ("- File: {0}" -f $filePath)
+                foreach ($item in @($failureItems | Where-Object { $_.file_path -eq $filePath })) {
+                    Write-Host ("  - [{0}] {1}: {2}" -f $item.section, $item.check_name, $item.message)
+                }
+            }
+        } else {
+            Write-Host "No file-level entries were parsed from report; see raw report."
+        }
     }
 
     $taskResults.Add([pscustomobject]@{
@@ -363,6 +501,8 @@ foreach ($task in $tasks) {
             succeeded       = $taskSucceeded
             counts          = [pscustomobject]$counts
             failure_reasons = @($failureReasons)
+            failure_items   = @($failureItems)
+            failure_file_paths = @($failureFilePaths)
         }) | Out-Null
 }
 

@@ -48,7 +48,7 @@ Describe 'VI Analyzer contract' {
         $content | Should -Match '(?ms)\$requiredCommon\s*=\s*@\(\s*.*?''vi-analyzer'''
     }
 
-    It 'enforces non-zero analyzed tests for each task in Run-ViAnalyzer' {
+    It 'enforces non-zero analyzed tests and file-level failure extraction in Run-ViAnalyzer' {
         (Test-Path -LiteralPath $script:runViAnalyzerPath -PathType Leaf) | Should -BeTrue
 
         $content = Get-Content -Raw -Path $script:runViAnalyzerPath
@@ -56,5 +56,9 @@ Describe 'VI Analyzer contract' {
         $content | Should -Match 'RunVIAnalyzer'
         $content | Should -Match 'analyzed_total'
         $content | Should -Match 'No tests were analyzed'
+        $content | Should -Match 'Failed Tests'
+        $content | Should -Match 'Testing Errors'
+        $content | Should -Match 'failure_items'
+        $content | Should -Match 'failure_file_paths'
     }
 }

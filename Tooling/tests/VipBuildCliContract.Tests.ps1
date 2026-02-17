@@ -23,6 +23,16 @@ Describe 'VIP build CLI contract' {
         $content | Should -Not -Match '&\s*g-cli'
     }
 
+    It 'build_vip.ps1 synchronizes VIPM target port and timeout to LabVIEW contract before build' {
+        (Test-Path -LiteralPath $script:buildVipScript -PathType Leaf) | Should -BeTrue
+        $content = Get-Content -Path $script:buildVipScript -Raw
+
+        $content | Should -Match 'function Set-VipmTargetSettingsFromContract'
+        $content | Should -Match 'Resolve-LabVIEWCliPortFromContract'
+        $content | Should -Match 'Connection Timeout'
+        $content | Should -Match 'Set-VipmTargetSettingsFromContract\s*`?\s*-RepoRoot'
+    }
+
     It 'build-vip action preflight validates VIPM CLI and publishes VIPM logs artifact' {
         (Test-Path -LiteralPath $script:buildVipAction -PathType Leaf) | Should -BeTrue
         $content = Get-Content -Path $script:buildVipAction -Raw
