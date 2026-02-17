@@ -981,6 +981,8 @@ jobs:
     name: VI Analyzer (Linux container)
     needs: [run-metadata, prerelease-context, version-gate]
     runs-on: ubuntu-latest
+    env:
+      LVIE_VI_ANALYZER_TASKS_PATH: Tooling/vi-analyzer/tasks.linux.json
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -1003,8 +1005,15 @@ jobs:
         run: |
           set -euo pipefail
           script_path="${GITHUB_WORKSPACE}/Tooling/container-parity/run-vi-analyzer-linux.sh"
+          tasks_path_rel="${LVIE_VI_ANALYZER_TASKS_PATH:-Tooling/vi-analyzer/tasks.linux.json}"
+          tasks_path_host="${GITHUB_WORKSPACE}/${tasks_path_rel}"
+          tasks_path_container="/workspace/${tasks_path_rel}"
           if [[ ! -f "$script_path" ]]; then
             echo "VI Analyzer Linux worker script not found: $script_path" >&2
+            exit 1
+          fi
+          if [[ ! -f "$tasks_path_host" ]]; then
+            echo "VI Analyzer Linux task registry not found: $tasks_path_host" >&2
             exit 1
           fi
 
@@ -1014,15 +1023,36 @@ jobs:
             -e WORKSPACE_ROOT=/workspace \
             -e REPO_ROOT=/workspace \
             -e LVIE_VI_ANALYZER_LABVIEW_YEAR="${LVIE_VI_ANALYZER_LABVIEW_YEAR}" \
+            -e LVIE_VI_ANALYZER_TASKS_PATH="${tasks_path_container}" \
             "${LABVIEW_LINUX_IMAGE}" \
             bash -lc "chmod +x /workspace/Tooling/container-parity/run-vi-analyzer-linux.sh && /workspace/Tooling/container-parity/run-vi-analyzer-linux.sh"
+
+      - name: Normalize Linux container output ownership
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          uid="$(id -u)"
+          gid="$(id -g)"
+          for path in \
+            "${GITHUB_WORKSPACE}/builds" \
+            "${GITHUB_WORKSPACE}/TestResults/container-parity/linux/vi-analyzer"; do
+            if [[ -e "$path" ]]; then
+              sudo chown -R "${uid}:${gid}" "$path"
+            fi
+          done
 
       - name: Write VI Analyzer status summary (Linux container)
         if: always()
         shell: pwsh
         run: |
           $repoRoot = $env:GITHUB_WORKSPACE
-          $tasksPath = Join-Path $repoRoot 'Tooling/vi-analyzer/tasks.json'
+          $tasksRelativePath = if ([string]::IsNullOrWhiteSpace($env:LVIE_VI_ANALYZER_TASKS_PATH)) {
+            'Tooling/vi-analyzer/tasks.linux.json'
+          } else {
+            $env:LVIE_VI_ANALYZER_TASKS_PATH
+          }
+          $tasksPath = Join-Path $repoRoot $tasksRelativePath
           $reportsRoot = Join-Path $repoRoot 'builds/vi-analyzer'
           $statusPath = Join-Path $repoRoot 'builds/status/vi-analyzer-summary.json'
           New-Item -ItemType Directory -Path (Split-Path -Path $statusPath -Parent) -Force | Out-Null
@@ -1052,6 +1082,7 @@ jobs:
             generated_utc   = (Get-Date).ToUniversalTime().ToString('o')
             repo_root       = $repoRoot
             tasks_path      = $tasksPath
+            tasks_path_relative = $tasksRelativePath
             reports_root    = $reportsRoot
             overall_success = ($taskResults.Count -gt 0 -and $failedTasks.Count -eq 0)
             task_count      = $taskResults.Count
@@ -2668,6 +2699,5 @@ jobs:
           } else {
             Write-Host 'Pipeline contract satisfied.'
           }
-
 
 
