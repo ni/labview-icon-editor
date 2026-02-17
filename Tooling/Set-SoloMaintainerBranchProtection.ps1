@@ -3,6 +3,8 @@
 param(
     [string]$Branch = '456-2026-migration',
     [string]$Repo = '',
+    [ValidateRange(1, 2147483647)]
+    [int]$RequiredCheckAppId = 15368,
     [switch]$DryRun
 )
 
@@ -50,10 +52,18 @@ $requiredContexts = @(
     'CI Pipeline / Pipeline Contract'
 )
 
+$requiredChecks = @()
+foreach ($context in $requiredContexts) {
+    $requiredChecks += [ordered]@{
+        context = $context
+        app_id  = $RequiredCheckAppId
+    }
+}
+
 $branchPayload = [ordered]@{
     required_status_checks           = [ordered]@{
         strict   = $true
-        contexts = $requiredContexts
+        checks   = $requiredChecks
     }
     enforce_admins                   = $false
     required_pull_request_reviews    = [ordered]@{
