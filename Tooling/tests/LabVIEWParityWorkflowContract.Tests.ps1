@@ -162,6 +162,11 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $policyGateBlock | Should -Match '(?m)^\s*needs:\s*\[\s*resolve-parity-context\s*\]'
         $policyGateBlock | Should -Match 'mode -ne ''full'''
         $policyGateBlock | Should -Match 'Full parity mode requires an available self-hosted runner'
+        $policyGateBlock | Should -Match 'Test-PermissionLimitedLookupUnknown'
+        $policyGateBlock | Should -Match '\$permissionLimitedLookupUnknown64 = Test-PermissionLimitedLookupUnknown -Availability \$available64 -Reason \$reason64'
+        $policyGateBlock | Should -Match '\$permissionLimitedLookupUnknown32 = Test-PermissionLimitedLookupUnknown -Availability \$available32 -Reason \$reason32'
+        $policyGateBlock | Should -Match 'if \(\$permissionLimitedLookupUnknown64\)\s*\{\s*Write-Warning \("Full parity mode: self-hosted 64-bit availability lookup is permission-limited'
+        $policyGateBlock | Should -Match 'if \(\$permissionLimitedLookupUnknown32\)\s*\{\s*Write-Warning \("Full parity mode: self-hosted 32-bit availability lookup is permission-limited'
         $policyGateBlock | Should -Match 'self_hosted_online_count'
         $policyGateBlock | Should -Match 'self_hosted_online_runners'
         $policyGateBlock | Should -Match 'self_hosted_64_available'
@@ -172,6 +177,11 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $policyGateBlock | Should -Match 'requested32 -eq ''true'' -and \$available32 -ne ''true'''
         $policyGateBlock | Should -Match 'parallel-capable'
         $policyGateBlock | Should -Match 'queue-expected'
+
+        $workflowContent | Should -Match '\$permissionLimitedLookupUnknown64 = Test-PermissionLimitedLookupUnknown -Availability \$selfHosted64Available -Reason \$selfHosted64AvailabilityReason'
+        $workflowContent | Should -Match '\$permissionLimitedLookupUnknown32 = Test-PermissionLimitedLookupUnknown -Availability \$selfHosted32Available -Reason \$selfHosted32AvailabilityReason'
+        $workflowContent | Should -Match '\$runSelfHosted64 -eq ''true'' -and \(\$isSelfHostedAvailable64 -or \$permissionLimitedLookupUnknown64\)'
+        $workflowContent | Should -Match '\$runSelfHosted32 -eq ''true'' -and \(\$isSelfHostedAvailable32 -or \$permissionLimitedLookupUnknown32\)'
 
         $runnerCliBuildWinMatch = [regex]::Match(
             $workflowContent,

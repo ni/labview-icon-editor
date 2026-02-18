@@ -614,8 +614,37 @@ jobs:
 
           $runSelfHosted = if ($runSelfHosted64 -eq 'true' -and $runSelfHosted32 -eq 'true') { 'true' } else { 'false' }
 
+          function Test-PermissionLimitedLookupUnknown {
+            param(
+              [Parameter(Mandatory = $true)]
+              [string]$Availability,
+              [Parameter(Mandatory = $true)]
+              [string]$Reason
+            )
+
+            if ($Availability -ne 'unknown') {
+              return $false
+            }
+
+            $normalizedReason = ''
+            if (-not [string]::IsNullOrWhiteSpace($Reason)) {
+              $normalizedReason = $Reason.Trim().ToLowerInvariant()
+            }
+
+            if ($normalizedReason -notlike 'runner-lookup-error:*') {
+              return $false
+            }
+
+            return (
+              $normalizedReason.Contains('resource not accessible by integration') -or
+              $normalizedReason.Contains('must have admin rights')
+            )
+          }
+
           $isSelfHostedAvailable64 = ($selfHosted64Available -eq 'true')
           $isSelfHostedAvailable32 = ($selfHosted32Available -eq 'true')
+          $permissionLimitedLookupUnknown64 = Test-PermissionLimitedLookupUnknown -Availability $selfHosted64Available -Reason $selfHosted64AvailabilityReason
+          $permissionLimitedLookupUnknown32 = Test-PermissionLimitedLookupUnknown -Availability $selfHosted32Available -Reason $selfHosted32AvailabilityReason
           $runSelfHosted64Effective = 'false'
           $runSelfHosted32Effective = 'false'
           switch ($parityModeEffective) {
@@ -630,8 +659,8 @@ jobs:
               break
             }
             'full' {
-              if ($runSelfHosted64 -eq 'true' -and $isSelfHostedAvailable64) { $runSelfHosted64Effective = 'true' }
-              if ($runSelfHosted32 -eq 'true' -and $isSelfHostedAvailable32) { $runSelfHosted32Effective = 'true' }
+              if ($runSelfHosted64 -eq 'true' -and ($isSelfHostedAvailable64 -or $permissionLimitedLookupUnknown64)) { $runSelfHosted64Effective = 'true' }
+              if ($runSelfHosted32 -eq 'true' -and ($isSelfHostedAvailable32 -or $permissionLimitedLookupUnknown32)) { $runSelfHosted32Effective = 'true' }
               break
             }
           }
@@ -716,6 +745,36 @@ jobs:
           [void][int]::TryParse($onlineCount32Raw, [ref]$onlineCount32)
           $sharedBitnessLabel = [string]::Equals($label64, $label32, [System.StringComparison]::OrdinalIgnoreCase)
 
+          function Test-PermissionLimitedLookupUnknown {
+            param(
+              [Parameter(Mandatory = $true)]
+              [string]$Availability,
+              [Parameter(Mandatory = $true)]
+              [string]$Reason
+            )
+
+            if ($Availability -ne 'unknown') {
+              return $false
+            }
+
+            $normalizedReason = ''
+            if (-not [string]::IsNullOrWhiteSpace($Reason)) {
+              $normalizedReason = $Reason.Trim().ToLowerInvariant()
+            }
+
+            if ($normalizedReason -notlike 'runner-lookup-error:*') {
+              return $false
+            }
+
+            return (
+              $normalizedReason.Contains('resource not accessible by integration') -or
+              $normalizedReason.Contains('must have admin rights')
+            )
+          }
+
+          $permissionLimitedLookupUnknown64 = Test-PermissionLimitedLookupUnknown -Availability $available64 -Reason $reason64
+          $permissionLimitedLookupUnknown32 = Test-PermissionLimitedLookupUnknown -Availability $available32 -Reason $reason32
+
           Write-Host ("Parity mode: {0}" -f $mode)
           Write-Host ("Self-hosted availability: {0}" -f $available)
           Write-Host ("Self-hosted availability reason: {0}" -f $reason)
@@ -759,11 +818,19 @@ jobs:
           }
 
           if ($requested64 -eq 'true' -and $available64 -ne 'true') {
-            throw ("Full parity mode requires an available self-hosted runner for 64-bit lane; availability='{0}' reason='{1}' label='{2}'." -f $available64, $reason64, $label64)
+            if ($permissionLimitedLookupUnknown64) {
+              Write-Warning ("Full parity mode: self-hosted 64-bit availability lookup is permission-limited (reason='{0}'); proceeding and relying on runner queue for label '{1}'." -f $reason64, $label64)
+            } else {
+              throw ("Full parity mode requires an available self-hosted runner for 64-bit lane; availability='{0}' reason='{1}' label='{2}'." -f $available64, $reason64, $label64)
+            }
           }
 
           if ($requested32 -eq 'true' -and $available32 -ne 'true') {
-            throw ("Full parity mode requires an available self-hosted runner for 32-bit lane; availability='{0}' reason='{1}' label='{2}'." -f $available32, $reason32, $label32)
+            if ($permissionLimitedLookupUnknown32) {
+              Write-Warning ("Full parity mode: self-hosted 32-bit availability lookup is permission-limited (reason='{0}'); proceeding and relying on runner queue for label '{1}'." -f $reason32, $label32)
+            } else {
+              throw ("Full parity mode requires an available self-hosted runner for 32-bit lane; availability='{0}' reason='{1}' label='{2}'." -f $available32, $reason32, $label32)
+            }
           }
 
           if ($available -ne 'true') {
