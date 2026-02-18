@@ -1259,7 +1259,7 @@ jobs:
       LVIE_SOURCE_TEST_LABVIEW_YEAR_OVERRIDE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.source_test_labview_year_override || '' }}
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 2
       matrix:
         bitness: ${{ fromJson('["64","32"]') }}
     steps:
@@ -1741,7 +1741,7 @@ jobs:
         if: always()
         shell: pwsh
         run: |
-          $summaryLine = "- Unit Tests (LV {0}-bit): LUnit executor = runner-cli (g-cli backend) (target={1}; source={2})" -f '${{ matrix.bitness }}', $env:LABVIEW_VERSION_YEAR, $env:LABVIEW_VERSION_YEAR
+          $summaryLine = "- Unit Tests (LV {0}-bit): runner={1}; mode={2}; LUnit executor=runner-cli (g-cli backend); target_year={3}; source_year={4}; lv2020_compat_mapping={5}" -f '${{ matrix.bitness }}', '${{ runner.name }}', '${{ steps.source_test.outputs.source_test_mode_effective }}', '${{ steps.source_test.outputs.source_test_year }}', '${{ steps.source_test.outputs.source_test_year_source_contract }}', '${{ steps.source_test.outputs.source_test_year_compat_mapping_applied }}'
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summaryLine
       - name: Upload unit test report (LV ${{ matrix.bitness }}-bit)
         if: ${{ failure() || steps.source_test.outputs.source_test_verdict == 'fail' }}

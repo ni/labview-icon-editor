@@ -19,8 +19,8 @@ Describe 'CI workflow unit-test bitness contract' {
         $script:unitTestsSection | Should -Match 'bitness:\s*\$\{\{\s*fromJson\(''\["64","32"\]''\)\s*\}\}'
     }
 
-    It 'keeps unit-tests matrix serialized' {
-        $script:unitTestsSection | Should -Match 'max-parallel:\s*1'
+    It 'allows unit-tests matrix to use two self-hosted runners in parallel' {
+        $script:unitTestsSection | Should -Match 'max-parallel:\s*2'
     }
 
     It 'uploads per-lane source-test evidence artifacts' {
@@ -47,6 +47,13 @@ Describe 'CI workflow unit-test bitness contract' {
         $script:workflowContent | Should -Match 'source_test_mode:'
         $script:workflowContent | Should -Match 'source_test_labview_year_override:'
         $script:unitTestsSection | Should -Match 'Source-test canary mode active; keeping lane green'
+    }
+
+    It 'adds unit-test summary metadata for runner, mode, and mapping' {
+        $script:unitTestsSection | Should -Match "runner=\{1\}; mode=\{2\}; LUnit executor=runner-cli \(g-cli backend\); target_year=\{3\}; source_year=\{4\}; lv2020_compat_mapping=\{5\}"
+        $script:unitTestsSection | Should -Match '\$\{\{\s*runner\.name\s*\}\}'
+        $script:unitTestsSection | Should -Match '\$\{\{\s*steps\.source_test\.outputs\.source_test_mode_effective\s*\}\}'
+        $script:unitTestsSection | Should -Match '\$\{\{\s*steps\.source_test\.outputs\.source_test_year_compat_mapping_applied\s*\}\}'
     }
 
     It 'implements dispatch-only source-test override guards and precedence' {

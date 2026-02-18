@@ -36,10 +36,16 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $workflowContent | Should -Match 'core\.info\(`Self-hosted availability lookup unavailable with workflow token; treating as unknown\.'
         $workflowContent | Should -Match '(?ms)^  self-hosted-capacity:\s*.*?outputs:\s*.*?\n\s*self_hosted_available:'
         $workflowContent | Should -Match '(?ms)^  self-hosted-capacity:\s*.*?outputs:\s*.*?\n\s*self_hosted_availability_reason:'
+        $workflowContent | Should -Match '(?ms)^  self-hosted-capacity:\s*.*?outputs:\s*.*?\n\s*self_hosted_online_count:'
+        $workflowContent | Should -Match '(?ms)^  self-hosted-capacity:\s*.*?outputs:\s*.*?\n\s*self_hosted_total_count:'
+        $workflowContent | Should -Match '(?ms)^  self-hosted-capacity:\s*.*?outputs:\s*.*?\n\s*self_hosted_online_runners:'
 
         $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?needs:\s*\[\s*self-hosted-capacity\s*\]'
         $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*parity_mode_effective:\s*\$\{\{\s*steps\.resolve\.outputs\.parity_mode_effective\s*\}\}'
         $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*self_hosted_available:\s*\$\{\{\s*steps\.resolve\.outputs\.self_hosted_available\s*\}\}'
+        $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*self_hosted_online_count:\s*\$\{\{\s*steps\.resolve\.outputs\.self_hosted_online_count\s*\}\}'
+        $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*self_hosted_total_count:\s*\$\{\{\s*steps\.resolve\.outputs\.self_hosted_total_count\s*\}\}'
+        $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*self_hosted_online_runners:\s*\$\{\{\s*steps\.resolve\.outputs\.self_hosted_online_runners\s*\}\}'
         $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*run_self_hosted_64_effective:\s*\$\{\{\s*steps\.resolve\.outputs\.run_self_hosted_64_effective\s*\}\}'
         $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*run_self_hosted_32_effective:\s*\$\{\{\s*steps\.resolve\.outputs\.run_self_hosted_32_effective\s*\}\}'
     }
@@ -58,6 +64,9 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $capacityBlock | Should -Not -Match 'core\.warning\(`Self-hosted availability lookup unavailable with workflow token; treating as unknown\.'
         $capacityBlock | Should -Match 'core\.setOutput\(''self_hosted_available'', ''unknown''\)'
         $capacityBlock | Should -Match 'core\.setOutput\(''self_hosted_availability_reason'', `runner-lookup-error:'
+        $capacityBlock | Should -Match 'core\.setOutput\(''self_hosted_online_count'''
+        $capacityBlock | Should -Match 'core\.setOutput\(''self_hosted_total_count'''
+        $capacityBlock | Should -Match 'core\.setOutput\(''self_hosted_online_runners'''
     }
 
     It 'derives Linux container parity job name from .lvcontainer contract' {
@@ -141,6 +150,10 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $policyGateBlock | Should -Match '(?m)^\s*needs:\s*\[\s*resolve-parity-context\s*\]'
         $policyGateBlock | Should -Match 'mode -ne ''full'''
         $policyGateBlock | Should -Match 'Full parity mode requires an available self-hosted runner'
+        $policyGateBlock | Should -Match 'self_hosted_online_count'
+        $policyGateBlock | Should -Match 'self_hosted_online_runners'
+        $policyGateBlock | Should -Match 'parallel-capable'
+        $policyGateBlock | Should -Match 'queue-expected'
 
         $runnerCliBuildWinMatch = [regex]::Match(
             $workflowContent,
@@ -204,6 +217,9 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $summaryBlock | Should -Match '(?m)^\s*if:\s*\$\{\{\s*always\(\)\s*\}\}'
         $summaryBlock | Should -Match '## LabVIEW Parity Summary'
         $summaryBlock | Should -Match 'needs\.resolve-parity-context\.outputs\.parity_mode_effective'
+        $summaryBlock | Should -Match 'needs\.resolve-parity-context\.outputs\.self_hosted_online_count'
+        $summaryBlock | Should -Match 'needs\.resolve-parity-context\.outputs\.self_hosted_online_runners'
+        $summaryBlock | Should -Match 'self_hosted_online_count:'
         $summaryBlock | Should -Match "self-hosted-policy-gate"
         $summaryBlock | Should -Match "vi-analyzer-linux"
     }

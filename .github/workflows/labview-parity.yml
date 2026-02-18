@@ -88,6 +88,9 @@ jobs:
     outputs:
       self_hosted_available: ${{ steps.capacity.outputs.self_hosted_available }}
       self_hosted_availability_reason: ${{ steps.capacity.outputs.self_hosted_availability_reason }}
+      self_hosted_online_count: ${{ steps.capacity.outputs.self_hosted_online_count }}
+      self_hosted_total_count: ${{ steps.capacity.outputs.self_hosted_total_count }}
+      self_hosted_online_runners: ${{ steps.capacity.outputs.self_hosted_online_runners }}
       runner_label: ${{ steps.capacity.outputs.runner_label }}
     steps:
       - id: capacity
@@ -114,6 +117,12 @@ jobs:
                 const labels = Array.isArray(runner.labels) ? runner.labels.map((item) => String(item.name || '').toLowerCase()) : [];
                 return labels.includes(label.toLowerCase());
               });
+              const onlineRunners = matching.filter((runner) => String(runner.status || '').toLowerCase() === 'online');
+              const onlineRunnerNames = onlineRunners.map((runner) => String(runner.name || '').trim()).filter((name) => name.length > 0);
+
+              core.setOutput('self_hosted_total_count', String(matching.length));
+              core.setOutput('self_hosted_online_count', String(onlineRunners.length));
+              core.setOutput('self_hosted_online_runners', onlineRunnerNames.join(','));
 
               if (matching.length === 0) {
                 core.setOutput('self_hosted_available', 'false');
@@ -121,8 +130,7 @@ jobs:
                 return;
               }
 
-              const online = matching.some((runner) => String(runner.status || '').toLowerCase() === 'online');
-              if (online) {
+              if (onlineRunners.length > 0) {
                 core.setOutput('self_hosted_available', 'true');
                 core.setOutput('self_hosted_availability_reason', `online-runner-found-for-label:${label}`);
                 return;
@@ -144,6 +152,9 @@ jobs:
               }
               core.setOutput('self_hosted_available', 'unknown');
               core.setOutput('self_hosted_availability_reason', `runner-lookup-error:${normalizedError}`);
+              core.setOutput('self_hosted_total_count', '-1');
+              core.setOutput('self_hosted_online_count', '-1');
+              core.setOutput('self_hosted_online_runners', '');
             }
 
   resolve-parity-context:
@@ -164,6 +175,9 @@ jobs:
       parity_mode_effective: ${{ steps.resolve.outputs.parity_mode_effective }}
       self_hosted_available: ${{ steps.resolve.outputs.self_hosted_available }}
       self_hosted_availability_reason: ${{ steps.resolve.outputs.self_hosted_availability_reason }}
+      self_hosted_online_count: ${{ steps.resolve.outputs.self_hosted_online_count }}
+      self_hosted_total_count: ${{ steps.resolve.outputs.self_hosted_total_count }}
+      self_hosted_online_runners: ${{ steps.resolve.outputs.self_hosted_online_runners }}
       run_self_hosted: ${{ steps.resolve.outputs.run_self_hosted }}
       run_self_hosted_64: ${{ steps.resolve.outputs.run_self_hosted_64 }}
       run_self_hosted_32: ${{ steps.resolve.outputs.run_self_hosted_32 }}
@@ -215,6 +229,27 @@ jobs:
           }
           if ($selfHostedAvailable -notin @('true', 'false', 'unknown')) {
             $selfHostedAvailable = 'unknown'
+          }
+
+          $selfHostedOnlineCount = '${{ needs.self-hosted-capacity.outputs.self_hosted_online_count }}'
+          if ([string]::IsNullOrWhiteSpace($selfHostedOnlineCount)) {
+            $selfHostedOnlineCount = '-1'
+          } else {
+            $selfHostedOnlineCount = $selfHostedOnlineCount.Trim()
+          }
+
+          $selfHostedTotalCount = '${{ needs.self-hosted-capacity.outputs.self_hosted_total_count }}'
+          if ([string]::IsNullOrWhiteSpace($selfHostedTotalCount)) {
+            $selfHostedTotalCount = '-1'
+          } else {
+            $selfHostedTotalCount = $selfHostedTotalCount.Trim()
+          }
+
+          $selfHostedOnlineRunners = '${{ needs.self-hosted-capacity.outputs.self_hosted_online_runners }}'
+          if ([string]::IsNullOrWhiteSpace($selfHostedOnlineRunners)) {
+            $selfHostedOnlineRunners = ''
+          } else {
+            $selfHostedOnlineRunners = $selfHostedOnlineRunners.Trim()
           }
 
           $selfHostedAvailabilityReason = '${{ needs.self-hosted-capacity.outputs.self_hosted_availability_reason }}'
@@ -481,6 +516,9 @@ jobs:
           "parity_mode_effective=$parityModeEffective" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "self_hosted_available=$selfHostedAvailable" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "self_hosted_availability_reason=$selfHostedAvailabilityReason" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_online_count=$selfHostedOnlineCount" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_total_count=$selfHostedTotalCount" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_online_runners=$selfHostedOnlineRunners" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "run_self_hosted=$runSelfHosted" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "run_self_hosted_64=$runSelfHosted64" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "run_self_hosted_32=$runSelfHosted32" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
@@ -508,13 +546,30 @@ jobs:
           $mode = '${{ needs.resolve-parity-context.outputs.parity_mode_effective }}'
           $available = '${{ needs.resolve-parity-context.outputs.self_hosted_available }}'
           $reason = '${{ needs.resolve-parity-context.outputs.self_hosted_availability_reason }}'
+          $onlineCountRaw = '${{ needs.resolve-parity-context.outputs.self_hosted_online_count }}'
+          $totalCountRaw = '${{ needs.resolve-parity-context.outputs.self_hosted_total_count }}'
+          $onlineRunners = '${{ needs.resolve-parity-context.outputs.self_hosted_online_runners }}'
           $requested64 = '${{ needs.resolve-parity-context.outputs.run_self_hosted_64 }}'
           $requested32 = '${{ needs.resolve-parity-context.outputs.run_self_hosted_32 }}'
+          $onlineCount = -1
+          [void][int]::TryParse($onlineCountRaw, [ref]$onlineCount)
+          $totalCount = -1
+          [void][int]::TryParse($totalCountRaw, [ref]$totalCount)
 
           Write-Host ("Parity mode: {0}" -f $mode)
           Write-Host ("Self-hosted availability: {0}" -f $available)
           Write-Host ("Self-hosted availability reason: {0}" -f $reason)
+          Write-Host ("Self-hosted online count: {0}" -f $onlineCountRaw)
+          Write-Host ("Self-hosted total count: {0}" -f $totalCountRaw)
+          Write-Host ("Self-hosted online runners: {0}" -f $onlineRunners)
           Write-Host ("Self-hosted requested lanes: 64={0}, 32={1}" -f $requested64, $requested32)
+
+          $bothRequested = ($requested64 -eq 'true' -and $requested32 -eq 'true')
+          if ($bothRequested -and $onlineCount -ge 2) {
+            Write-Host ("Self-hosted capacity classification: parallel-capable (online_count={0}; total_count={1})." -f $onlineCount, $totalCount)
+          } elseif ($bothRequested -and $onlineCount -eq 1) {
+            Write-Host ("Self-hosted capacity classification: queue-expected (online_count={0}; total_count={1})." -f $onlineCount, $totalCount)
+          }
 
           if ($mode -ne 'full') {
             Write-Host 'Full-mode gate not required for this run.'
@@ -1202,6 +1257,9 @@ jobs:
           $mode = '${{ needs.resolve-parity-context.outputs.parity_mode_effective }}'
           $available = '${{ needs.resolve-parity-context.outputs.self_hosted_available }}'
           $availabilityReason = '${{ needs.resolve-parity-context.outputs.self_hosted_availability_reason }}'
+          $onlineCount = '${{ needs.resolve-parity-context.outputs.self_hosted_online_count }}'
+          $totalCount = '${{ needs.resolve-parity-context.outputs.self_hosted_total_count }}'
+          $onlineRunners = '${{ needs.resolve-parity-context.outputs.self_hosted_online_runners }}'
           $requested64 = '${{ needs.resolve-parity-context.outputs.run_self_hosted_64 }}'
           $requested32 = '${{ needs.resolve-parity-context.outputs.run_self_hosted_32 }}'
           $effective64 = '${{ needs.resolve-parity-context.outputs.run_self_hosted_64_effective }}'
@@ -1212,6 +1270,9 @@ jobs:
           Write-Host ("Parity mode: {0}" -f $mode)
           Write-Host ("Self-hosted availability: {0}" -f $available)
           Write-Host ("Self-hosted availability reason: {0}" -f $availabilityReason)
+          Write-Host ("Self-hosted online count: {0}" -f $onlineCount)
+          Write-Host ("Self-hosted total count: {0}" -f $totalCount)
+          Write-Host ("Self-hosted online runners: {0}" -f $onlineRunners)
           Write-Host ("Self-hosted requested lanes: 64={0}, 32={1}" -f $requested64, $requested32)
           Write-Host ("Self-hosted effective lanes: 64={0}, 32={1}" -f $effective64, $effective32)
 
@@ -1222,6 +1283,9 @@ jobs:
               ('- mode: `{0}`' -f $mode)
               ('- self_hosted_available: `{0}`' -f $available)
               ('- self_hosted_availability_reason: `{0}`' -f $availabilityReason)
+              ('- self_hosted_online_count: `{0}`' -f $onlineCount)
+              ('- self_hosted_total_count: `{0}`' -f $totalCount)
+              ('- self_hosted_online_runners: `{0}`' -f $onlineRunners)
               ('- run_self_hosted_64 requested/effective: `{0}` / `{1}`' -f $requested64, $effective64)
               ('- run_self_hosted_32 requested/effective: `{0}` / `{1}`' -f $requested32, $effective32)
               ('- windows_release_exception_applied: `{0}`' -f $windowsExceptionApplied)
