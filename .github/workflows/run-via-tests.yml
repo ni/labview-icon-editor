@@ -1,0 +1,54 @@
+name: (Work In Progress) Run VIA tests (GitHub Hosted)
+
+on:
+  # TODO: Uncomment the original triggers below when ready for full deployment
+  pull_request:
+    branches:
+      - feature/github-actions-cicd  # Temporary: only run on this branch
+  #     - main
+  #     - develop
+  #     - release/*
+  #     - feature/*
+  #     - hotfix/*
+  #   types:
+  #     - opened
+  #     - synchronize
+  #     - reopened
+  #     - ready_for_review
+
+  push:
+    branches:
+      - feature/github-actions-cicd  # Temporary: only run on this branch
+      # - main
+      # - develop
+      # - release/*
+      # - hotfix/*
+      # - feature/*
+
+  workflow_dispatch:
+
+jobs:
+  run-via-tests:
+    name: Run VI Analyzer tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history
+
+      - name: Run VI Analyzer tests
+        uses: KSharma-NI/open-source/via-lv-docker@users/krishsha/via-lv-docker
+        with:
+          config_path: ${{ github.event_name == 'workflow_dispatch' && '.github/via-config.viancfg' || '' }}
+          base_branch: origin/${{ github.event.pull_request.base.ref || 'develop' }}
+          labview_version: '2026q1-linux'
+
+      - name: Upload VI Analyzer Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vi-analyzer-report
+          path: vi-analyzer-report.htm
+          retention-days: 7
