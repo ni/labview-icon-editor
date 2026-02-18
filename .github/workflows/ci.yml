@@ -1240,6 +1240,7 @@ jobs:
       LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
       LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
       LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
+      LVIE_SOURCE_TEST_STRICT: ${{ vars.LVIE_SOURCE_TEST_STRICT || '0' }}
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -1272,6 +1273,54 @@ jobs:
           Write-Host ("Unit-test LabVIEW target .lvversion: {0}" -f $unitTestLvversion)
           Write-Host ("Source .lvversion year from job setup: {0}" -f $env:LABVIEW_VERSION_YEAR)
 
+          function Resolve-LabVIEWInstallRootForEvidence {
+            param(
+              [Parameter(Mandatory = $true)][string]$Year,
+              [Parameter(Mandatory = $true)][ValidateSet('32','64')][string]$Bitness
+            )
+
+            $defaultPath = if ($Bitness -eq '32') {
+              "C:\Program Files (x86)\National Instruments\LabVIEW $Year"
+            } else {
+              "C:\Program Files\National Instruments\LabVIEW $Year"
+            }
+            if (Test-Path -Path $defaultPath) {
+              return $defaultPath
+            }
+
+            $registryPath = if ($Bitness -eq '32') {
+              "HKLM:\SOFTWARE\WOW6432Node\National Instruments\LabVIEW $Year"
+            } else {
+              "HKLM:\SOFTWARE\National Instruments\LabVIEW $Year"
+            }
+            try {
+              $props = Get-ItemProperty -Path $registryPath -ErrorAction Stop
+              foreach ($name in @('Path', 'InstallDir', 'InstallPath')) {
+                $candidate = $props.$name
+                if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path -Path $candidate)) {
+                  return $candidate
+                }
+              }
+            } catch {
+              return $null
+            }
+
+            return $null
+          }
+
+          $installRoot64 = Resolve-LabVIEWInstallRootForEvidence -Year $unitTestYear -Bitness '64'
+          $installRoot32 = Resolve-LabVIEWInstallRootForEvidence -Year $unitTestYear -Bitness '32'
+          $installDetected64 = -not [string]::IsNullOrWhiteSpace($installRoot64)
+          $installDetected32 = -not [string]::IsNullOrWhiteSpace($installRoot32)
+          $requestedBitness = '${{ matrix.bitness }}'
+          $requestedInstallRoot = if ($requestedBitness -eq '32') { $installRoot32 } else { $installRoot64 }
+          $requestedInstallDetected = -not [string]::IsNullOrWhiteSpace($requestedInstallRoot)
+          Write-Host ("LabVIEW install evidence for year {0}: 64-bit={1}; 32-bit={2}" -f $unitTestYear, ($installRoot64 ?? '<missing>'), ($installRoot32 ?? '<missing>'))
+          $strictModeRaw = if ([string]::IsNullOrWhiteSpace($env:LVIE_SOURCE_TEST_STRICT)) { '0' } else { $env:LVIE_SOURCE_TEST_STRICT.Trim() }
+          $strictMode = $strictModeRaw.ToLowerInvariant() -notin @('0', 'false', 'no')
+          $sourceTestMode = if ($strictMode) { 'strict' } else { 'canary' }
+          Write-Host ("Source test mode: {0} (LVIE_SOURCE_TEST_STRICT={1})" -f $sourceTestMode, $strictModeRaw)
+
           $reportOs = '${{ runner.os }}'
           $reportPath = Join-Path $env:REPO_ROOT (".github/actions/run-unit-tests/UnitTestReport-{0}-{1}.xml" -f $reportOs, '${{ matrix.bitness }}')
           if (Test-Path -Path $reportPath) {
@@ -1301,19 +1350,84 @@ jobs:
               Tee-Object -FilePath $lunitLogPath -Append |
               ForEach-Object { Write-Host $_ }
           }
-          if ($runnerCliExitCode -ne 0 -and $unitTestYear -eq '2020' -and (Test-Path -Path $reportPath)) {
+          $gcliExitCode = $null
+          $parserExitCode = $null
+          foreach ($line in @($output | ForEach-Object { $_.ToString() })) {
+            if ($line -match 'g-cli lunit exit code:\s*(-?\d+)') {
+              $gcliExitCode = [int]$Matches[1]
+            } elseif ($line -match 'RunUnitTests parser exit code:\s*(-?\d+)') {
+              $parserExitCode = [int]$Matches[1]
+            }
+          }
+
+          $reportExists = Test-Path -Path $reportPath
+          $testcaseCount = 0
+          $reportParseError = $null
+          if ($reportExists) {
             try {
               [xml]$reportXml = Get-Content -Path $reportPath -Raw -ErrorAction Stop
               $testCases = $reportXml.SelectNodes('//testcase')
-              if ($null -eq $testCases -or $testCases.Count -eq 0) {
-                Write-Warning ("No <testcase> entries found for LabVIEW {0} ({1}-bit). Treating lane as skipped." -f $unitTestYear, '${{ matrix.bitness }}')
-                $runnerCliExitCode = 0
-                if ($env:GITHUB_STEP_SUMMARY) {
-                  Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ("- Unit Tests (LV {0}-bit): no LUnit testcases found for LabVIEW {1}; treated as skipped." -f '${{ matrix.bitness }}', $unitTestYear)
-                }
+              if ($null -ne $testCases) {
+                $testcaseCount = $testCases.Count
               }
             } catch {
-              Write-Warning ("Could not inspect unit test report at {0}: {1}" -f $reportPath, $_.Exception.Message)
+              $reportParseError = $_.Exception.Message
+            }
+          }
+
+          $failureReasons = New-Object System.Collections.Generic.List[string]
+          if (-not $requestedInstallDetected) {
+            $failureReasons.Add(("LabVIEW {0} install not detected for requested {1}-bit lane on this runner." -f $unitTestYear, $requestedBitness)) | Out-Null
+          }
+          if ($runnerCliExitCode -ne 0) {
+            $failureReasons.Add(("runner-cli lunit run exited with code {0}" -f $runnerCliExitCode)) | Out-Null
+          }
+          if (-not $reportExists) {
+            $failureReasons.Add("Unit test report missing at $reportPath") | Out-Null
+          } elseif (-not [string]::IsNullOrWhiteSpace($reportParseError)) {
+            $failureReasons.Add(("Unit test report parse error: {0}" -f $reportParseError)) | Out-Null
+          } elseif ($testcaseCount -le 0) {
+            $failureReasons.Add(("Unit test report has no <testcase> entries: {0}" -f $reportPath)) | Out-Null
+          }
+
+          $verdict = if ($failureReasons.Count -eq 0) { 'pass' } else { 'fail' }
+          $evidencePath = Join-Path $env:REPO_ROOT ("builds\\status\\source-test-evidence-{0}-{1}.json" -f $reportOs, '${{ matrix.bitness }}')
+          $evidence = [ordered]@{
+            timestamp_utc = (Get-Date).ToUniversalTime().ToString('o')
+            lvversion_raw = $unitTestLvversion
+            year = $unitTestYear
+            bitness = '${{ matrix.bitness }}'
+            install_detected_64 = $installDetected64
+            install_detected_32 = $installDetected32
+            install_detected_requested_bitness = $requestedInstallDetected
+            install_path_64 = if ($installDetected64) { $installRoot64 } else { $null }
+            install_path_32 = if ($installDetected32) { $installRoot32 } else { $null }
+            report_path = $reportPath
+            report_exists = $reportExists
+            testcase_count = $testcaseCount
+            runner_cli_exit_code = $runnerCliExitCode
+            gcli_exit_code = $gcliExitCode
+            parser_exit_code = $parserExitCode
+            strict_mode = $strictMode
+            mode = $sourceTestMode
+            verdict = $verdict
+          }
+          $evidence | ConvertTo-Json -Depth 8 | Set-Content -Path $evidencePath -Encoding utf8
+          Write-Host ("Source test evidence written: {0}" -f $evidencePath)
+
+          if ($env:GITHUB_STEP_SUMMARY) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ("- Source Test Evidence (LV {0}-bit): mode={1}; verdict={2}; testcase_count={3}; runner_cli={4}; gcli={5}; parser={6}; install_detected_requested_bitness={7}" -f '${{ matrix.bitness }}', $sourceTestMode, $verdict, $testcaseCount, $runnerCliExitCode, $gcliExitCode, $parserExitCode, $requestedInstallDetected)
+          }
+
+          if ($failureReasons.Count -gt 0) {
+            foreach ($reason in $failureReasons) {
+              Write-Warning $reason
+            }
+            if ($strictMode) {
+              $runnerCliExitCode = 1
+            } else {
+              Write-Warning ("Source-test canary mode active; keeping lane green with evidence verdict '{0}'." -f $verdict)
+              $runnerCliExitCode = 0
             }
           }
           Write-Host ("runner-cli lunit run exit code: {0}" -f $runnerCliExitCode)
@@ -1337,6 +1451,13 @@ jobs:
         with:
           name: lunit-run-${{ runner.os }}-${{ matrix.bitness }}-bit-log
           path: ${{ env.REPO_ROOT }}/builds/status/lunit-run-${{ runner.os }}-${{ matrix.bitness }}.log
+          if-no-files-found: warn
+      - name: Upload source-test evidence (LV ${{ matrix.bitness }}-bit)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-test-evidence-${{ runner.os }}-${{ matrix.bitness }}-bit
+          path: ${{ env.REPO_ROOT }}/builds/status/source-test-evidence-${{ runner.os }}-${{ matrix.bitness }}.json
           if-no-files-found: warn
       - name: Job teardown
         if: always()

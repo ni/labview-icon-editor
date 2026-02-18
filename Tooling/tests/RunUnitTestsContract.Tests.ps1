@@ -53,4 +53,36 @@ Describe 'RunUnitTests execution contract' {
         $content | Should -Match ([regex]::Escape($projectPathLiteral))
         $content | Should -Not -Match 'run-unit-tests/RunUnitTests\.ps1'
     }
+
+    It 'captures and uploads source-test evidence per bitness lane' {
+        $content = Get-Content -Path $script:ciWorkflowPath -Raw
+        $unitTestsMatch = [regex]::Match(
+            $content,
+            '(?ms)^  unit-tests:\r?\n(?<body>.*?)(?=^  [a-zA-Z0-9_-]+:\r?\n|\z)'
+        )
+        $unitTestsMatch.Success | Should -BeTrue
+        $unitTestsSection = $unitTestsMatch.Groups['body'].Value
+
+        $unitTestsSection | Should -Match ([regex]::Escape("g-cli lunit exit code:\s*(-?\d+)"))
+        $unitTestsSection | Should -Match ([regex]::Escape("RunUnitTests parser exit code:\s*(-?\d+)"))
+        $unitTestsSection | Should -Match 'source-test-evidence-\$\{\{ runner\.os \}\}-\$\{\{ matrix\.bitness \}\}\.json'
+        $unitTestsSection | Should -Match 'Upload source-test evidence \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
+    }
+
+    It 'records strict report/testcase failure reasons with canary-mode pass-through support' {
+        $content = Get-Content -Path $script:ciWorkflowPath -Raw
+        $unitTestsMatch = [regex]::Match(
+            $content,
+            '(?ms)^  unit-tests:\r?\n(?<body>.*?)(?=^  [a-zA-Z0-9_-]+:\r?\n|\z)'
+        )
+        $unitTestsMatch.Success | Should -BeTrue
+        $unitTestsSection = $unitTestsMatch.Groups['body'].Value
+
+        $unitTestsSection | Should -Match 'Unit test report missing at'
+        $unitTestsSection | Should -Match 'Unit test report has no <testcase> entries'
+        $unitTestsSection | Should -Match 'LVIE_SOURCE_TEST_STRICT:\s*\$\{\{\s*vars\.LVIE_SOURCE_TEST_STRICT \|\| ''0''\s*\}\}'
+        $unitTestsSection | Should -Match 'Source-test canary mode active; keeping lane green'
+        $unitTestsSection | Should -Not -Match 'Treating lane as skipped'
+        $unitTestsSection | Should -Not -Match "\$unitTestYear -eq '2020'"
+    }
 }
