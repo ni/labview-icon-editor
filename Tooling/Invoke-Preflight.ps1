@@ -149,6 +149,7 @@ function Get-CleanRoomTargetList {
         (Join-Path $RepoRoot 'missing_files.txt'),
         (Join-Path $RepoRoot '.github\actions\missing-in-project\missing_files.txt'),
         (Join-Path $RepoRoot '.github\actions\run-unit-tests\UnitTestReport.xml'),
+        (Join-Path $RepoRoot '.github\actions\run-unit-tests\UnitTestReport-*.xml'),
         (Join-Path $RepoRoot 'Icon_Editor_Files_In_LV_Installation_Diagnostics.csv')
     )
 

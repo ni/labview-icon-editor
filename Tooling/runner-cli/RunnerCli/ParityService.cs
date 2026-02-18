@@ -9,7 +9,11 @@ public static class ParityService
     private static readonly Regex ReleaseYearRegex = new(@"^(?<year>\d{4})", RegexOptions.Compiled);
     private const string DefaultContainerFallbackRelease = "2026q1";
 
-    public static ParityContext BuildContext(string? repoRootOverride, string? lvReleaseInput, string? contractPathOverride)
+    public static ParityContext BuildContext(
+        string? repoRootOverride,
+        string? lvReleaseInput,
+        string? contractPathOverride,
+        string? parityModeHint)
     {
         var repoRoot = RepoLocator.Resolve(repoRootOverride, Environment.CurrentDirectory);
         var versionInfo = LabVIEWVersionService.GetVersionInfo(versionInput: null, repoRoot: repoRoot);
@@ -47,7 +51,8 @@ public static class ParityService
         var lvReleaseResolved = ResolveLvRelease(
             lvReleaseInput,
             versionInfo.Year,
-            contract.DefaultReleaseSuffix);
+            contract.DefaultReleaseSuffix,
+            parityModeHint);
 
         var projectPath = ResolveRepoPath(repoRoot, projectRelativePath);
         if (!File.Exists(projectPath))
@@ -227,6 +232,7 @@ public static class ParityService
 
         var selectedRelease = ResolveContainerRelease(context.LvReleaseResolved, "windows", context.RepoRoot);
         var containerYear = ResolveReleaseYear(selectedRelease, context.LabVIEWYear);
+        var containerYearHint = EscapePwshSingleQuoted(containerYear);
         var image = $"nationalinstruments/labview:{selectedRelease}-windows";
         Console.WriteLine($"Using image: {image}");
         Console.WriteLine($"Container parity LabVIEW year: {containerYear} (source .lvversion year: {context.LabVIEWYear})");
@@ -269,7 +275,7 @@ public static class ParityService
             "powershell",
             "-NoProfile",
             "-Command",
-            "$ErrorActionPreference='Stop'; Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force; & 'C:\\workspace\\Tooling\\container-parity\\runlabview-windows.ps1'"
+            $"$ErrorActionPreference='Stop'; Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force; & 'C:\\workspace\\Tooling\\container-parity\\runlabview-windows.ps1' -LabVIEWVersion '{containerYearHint}'"
         };
 
         RunProcess("docker", runArgs, context.RepoRoot);
@@ -407,7 +413,11 @@ public static class ParityService
         return Path.GetFullPath(resolvedPath.Trim());
     }
 
-    private static string ResolveLvRelease(string? lvReleaseInput, string labviewYear, string defaultSuffix)
+    private static string ResolveLvRelease(
+        string? lvReleaseInput,
+        string labviewYear,
+        string defaultSuffix,
+        string? parityModeHint)
     {
         var resolved = string.IsNullOrWhiteSpace(lvReleaseInput)
             ? $"{labviewYear}{(string.IsNullOrWhiteSpace(defaultSuffix) ? "q1" : defaultSuffix.Trim())}"
@@ -420,11 +430,23 @@ public static class ParityService
         }
 
         var releaseYear = match.Groups["year"].Value;
-        if (!string.Equals(releaseYear, labviewYear, StringComparison.Ordinal))
+        var normalizedMode = string.IsNullOrWhiteSpace(parityModeHint)
+            ? "self-hosted-windows"
+            : NormalizeMode(parityModeHint);
+        var enforceYearMatch = !string.Equals(normalizedMode, "linux-container", StringComparison.Ordinal) &&
+                               !string.Equals(normalizedMode, "windows-container", StringComparison.Ordinal);
+        if (enforceYearMatch && !string.Equals(releaseYear, labviewYear, StringComparison.Ordinal))
         {
             throw new InvalidOperationException(
                 $".lvversion resolves to LabVIEW {labviewYear}, but lv_release is '{resolved}'. " +
-                "Container and self-hosted parity lanes must use matching year contracts.");
+                "Self-hosted parity lane requires matching year contracts.");
+        }
+
+        if (!enforceYearMatch && !string.Equals(releaseYear, labviewYear, StringComparison.Ordinal))
+        {
+            Console.WriteLine(
+                $"Container parity context uses lv_release '{resolved}' (mode={normalizedMode}) " +
+                $"with source .lvversion year {labviewYear}.");
         }
 
         return resolved;

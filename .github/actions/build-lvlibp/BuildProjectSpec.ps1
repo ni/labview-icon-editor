@@ -408,12 +408,47 @@ function Get-ExcludedTemplateList {
     )
 }
 
+function Get-IconEditorSyncExcludeList {
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$LabVIEWYear
+    )
+
+    $excludeRaw = $env:LVIE_ICON_EDITOR_SYNC_EXCLUDE_FILES
+    if ([string]::IsNullOrWhiteSpace($excludeRaw)) {
+        $parsedYear = 0
+        if ([int]::TryParse($LabVIEWYear, [ref]$parsedYear) -and $parsedYear -le 2020) {
+            # LV2020 cannot compile these source variants reliably in headless App Builder;
+            # preserve install-baseline copies when present.
+            $excludeRaw = @(
+                'NIIconEditor\Class\FakedArray\Misc\Process Template Graphics.vi',
+                'NIIconEditor\Class\Tools\Fill.vi'
+            ) -join ';'
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($excludeRaw)) {
+        return @()
+    }
+
+    return @(
+        $excludeRaw.Split(';', [System.StringSplitOptions]::RemoveEmptyEntries) |
+            ForEach-Object { ($_.Trim() -replace '/', '\').TrimStart('\') } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Select-Object -Unique
+    )
+}
+
 function Sync-IconEditorSourcesForBuildSpec {
     param(
         [Parameter(Mandatory = $true)]
         [string]$RepoRootPath,
         [Parameter(Mandatory = $true)]
-        [string]$LabVIEWExecutablePath
+        [string]$LabVIEWExecutablePath,
+        [AllowNull()]
+        [string[]]$ExcludeRelativePaths = @()
     )
 
     if (-not (Test-Path -LiteralPath $RepoRootPath -PathType Container)) {
@@ -445,7 +480,62 @@ function Sync-IconEditorSourcesForBuildSpec {
     New-Item -Path $installPlugins -ItemType Directory -Force | Out-Null
     New-Item -Path $installIconApi -ItemType Directory -Force | Out-Null
 
-    Copy-Item -LiteralPath (Join-Path -Path $repoPlugins -ChildPath 'NIIconEditor') -Destination $installPlugins -Recurse -Force
+    $excludedSyncPaths = @(
+        $ExcludeRelativePaths |
+            ForEach-Object { ($_ -replace '/', '\').TrimStart('\').Trim() } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Select-Object -Unique
+    )
+    if ($excludedSyncPaths.Count -gt 0) {
+        Write-Output ("Icon Editor sync excludes: {0}" -f ($excludedSyncPaths -join '; '))
+    }
+
+    $excludeBackupRoot = $null
+    if ($excludedSyncPaths.Count -gt 0) {
+        $excludeBackupRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("lvie-sync-excludes-{0}" -f [Guid]::NewGuid().ToString('N'))
+        New-Item -Path $excludeBackupRoot -ItemType Directory -Force | Out-Null
+
+        foreach ($relativePath in $excludedSyncPaths) {
+            $installPath = Join-Path -Path $installPlugins -ChildPath $relativePath
+            if (Test-Path -LiteralPath $installPath -PathType Leaf) {
+                $backupPath = Join-Path -Path $excludeBackupRoot -ChildPath $relativePath
+                $backupParent = Split-Path -Path $backupPath -Parent
+                if (-not (Test-Path -LiteralPath $backupParent -PathType Container)) {
+                    New-Item -Path $backupParent -ItemType Directory -Force | Out-Null
+                }
+                Copy-Item -LiteralPath $installPath -Destination $backupPath -Force
+            }
+        }
+    }
+
+    try {
+        Copy-Item -LiteralPath (Join-Path -Path $repoPlugins -ChildPath 'NIIconEditor') -Destination $installPlugins -Recurse -Force
+
+        if ($excludedSyncPaths.Count -gt 0) {
+            foreach ($relativePath in $excludedSyncPaths) {
+                $installPath = Join-Path -Path $installPlugins -ChildPath $relativePath
+                $backupPath = if ([string]::IsNullOrWhiteSpace($excludeBackupRoot)) { $null } else { Join-Path -Path $excludeBackupRoot -ChildPath $relativePath }
+                if (-not [string]::IsNullOrWhiteSpace($backupPath) -and (Test-Path -LiteralPath $backupPath -PathType Leaf)) {
+                    $installParent = Split-Path -Path $installPath -Parent
+                    if (-not (Test-Path -LiteralPath $installParent -PathType Container)) {
+                        New-Item -Path $installParent -ItemType Directory -Force | Out-Null
+                    }
+                    Copy-Item -LiteralPath $backupPath -Destination $installPath -Force
+                    Write-Output ("Preserved install-baseline excluded path: {0}" -f $relativePath)
+                } elseif (Test-Path -LiteralPath $installPath) {
+                    Remove-Item -LiteralPath $installPath -Recurse -Force
+                    Write-Warning ("Excluded sync path has no install baseline and was removed after sync: {0}" -f $relativePath)
+                } else {
+                    Write-Warning ("Excluded sync path has no install baseline and is absent after sync: {0}" -f $relativePath)
+                }
+            }
+        }
+    }
+    finally {
+        if (-not [string]::IsNullOrWhiteSpace($excludeBackupRoot) -and (Test-Path -LiteralPath $excludeBackupRoot -PathType Container)) {
+            Remove-Item -LiteralPath $excludeBackupRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 
     foreach ($fileName in @('lv_IconEditor.lvlib', 'lv_icon.vi', 'lv_icon.vit', 'SAMPLE_lv_icon.vi')) {
         $sourcePath = Join-Path -Path $repoPlugins -ChildPath $fileName
@@ -555,15 +645,19 @@ try {
     }
     Write-Output "MassCompile completed successfully."
 
+    $iconEditorSyncExcludes = @(Get-IconEditorSyncExcludeList -LabVIEWYear $labviewYear)
     Write-Output "Synchronizing workspace Icon Editor sources into LabVIEW install before build-spec execution."
-    Sync-IconEditorSourcesForBuildSpec -RepoRootPath $RepoRoot -LabVIEWExecutablePath $labviewExecutablePath
+    Sync-IconEditorSourcesForBuildSpec `
+        -RepoRootPath $RepoRoot `
+        -LabVIEWExecutablePath $labviewExecutablePath `
+        -ExcludeRelativePaths $iconEditorSyncExcludes
 
     if (Test-Path -Path $outputPath -PathType Leaf) {
         Remove-Item -Path $outputPath -Force
     }
 
     $buildStartUtc = (Get-Date).ToUniversalTime()
-    Write-Output ("Running LabVIEWCLI ExecuteBuildSpec in headless mode for {0}." -f $projectSpec.ProjectSpecType)
+    Write-Output ("Running LabVIEWCLI ExecuteBuildSpec for {0}." -f $projectSpec.ProjectSpecType)
     $labviewCliArgs = @(
         '-LogToConsole', 'TRUE',
         '-OperationName', 'ExecuteBuildSpec',
@@ -571,9 +665,15 @@ try {
         '-BuildSpecName', $projectSpec.BuildSpecName,
         '-TargetName', $projectSpec.TargetName,
         '-LabVIEWPath', $labviewExecutablePath,
-        '-PortNumber', $portResolution.PortNumber.ToString(),
-        '-Headless'
+        '-PortNumber', $portResolution.PortNumber.ToString()
     )
+    $parsedLabVIEWYear = 0
+    $supportsHeadlessBuildSpec = [int]::TryParse([string]$labviewYear, [ref]$parsedLabVIEWYear) -and $parsedLabVIEWYear -gt 2020
+    if ($supportsHeadlessBuildSpec) {
+        $labviewCliArgs += '-Headless'
+    } else {
+        Write-Output ("LV{0} detected; running ExecuteBuildSpec without -Headless for compatibility." -f $labviewYear)
+    }
 
     $buildSpecResult = Invoke-LabVIEWCliOperation -OperationName 'executebuildspec' -Arguments $labviewCliArgs -LogRoot $logsDir
     if ($buildSpecResult.ExitCode -ne 0) {

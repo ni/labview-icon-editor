@@ -37,7 +37,7 @@ public static class LunitService
 
         var repoRoot = Path.GetFullPath(options.RepoRoot);
         var projectPath = ResolvePath(repoRoot, options.ProjectPath);
-        var reportPath = ResolveReportPath(repoRoot, options.ReportPath);
+        var reportPath = ResolveReportPath(repoRoot, options.ReportPath, options.Bitness);
 
         if (!options.DryRun && !File.Exists(projectPath))
         {
@@ -84,7 +84,7 @@ public static class LunitService
         ValidateCommonInputs(options.RepoRoot, options.Bitness, options.LabviewVersion);
 
         var repoRoot = Path.GetFullPath(options.RepoRoot);
-        var reportPath = ResolveReportPath(repoRoot, options.ReportPath);
+        var reportPath = ResolveReportPath(repoRoot, options.ReportPath, options.Bitness);
 
         var parserArgs = new List<string>
         {
@@ -169,10 +169,11 @@ public static class LunitService
         }
     }
 
-    private static string ResolveReportPath(string repoRoot, string? reportPath)
+    private static string ResolveReportPath(string repoRoot, string? reportPath, string bitness)
     {
+        var os = ResolveOsSegment();
         var value = string.IsNullOrWhiteSpace(reportPath)
-            ? ".github/actions/run-unit-tests/UnitTestReport.xml"
+            ? $".github/actions/run-unit-tests/UnitTestReport-{os}-{bitness}.xml"
             : reportPath!;
         return ResolvePath(repoRoot, value);
     }
@@ -197,5 +198,25 @@ public static class LunitService
         return value.Contains(' ', StringComparison.Ordinal)
             ? $"\"{value}\""
             : value;
+    }
+
+    private static string ResolveOsSegment()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return "Windows";
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            return "Linux";
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return "macOS";
+        }
+
+        return "Unknown";
     }
 }

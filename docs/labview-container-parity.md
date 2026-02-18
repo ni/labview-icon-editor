@@ -7,25 +7,60 @@ This repository includes a hosted parity workflow at `.github/workflows/labview-
 - Shift baseline LabVIEWCLI parity checks to hosted runners (`ubuntu-latest`, `windows-latest`).
 - Reduce pressure on the Windows self-hosted runner pool for early CI signal.
 - Keep parity checks aligned with NI LabVIEW container guidance (`-Headless` with LabVIEWCLI).
+- Keep fork ergonomics high by always providing container parity signal even when no self-hosted runner is available.
 
 ## Current Scope
 
 - Linux container image: `nationalinstruments/labview:<release>-linux`
 - Windows container image: `nationalinstruments/labview:<release>-windows`
+- VI Analyzer Linux container lane, resolved from `.lvcontainer` through parity context.
 - Always-on operation: `LabVIEWCLI MassCompile` on `Test/Templates`
 - Default exclusion: `Polymorphic Template.vi` is excluded from parity MassCompile via `CONTAINER_PARITY_EXCLUDE_FILES` because it is a known headless bad VI in container runs.
 
-The workflow defaults to release tag `2026q1`, and supports override via `workflow_dispatch` input `lv_release`.
+Release and tag sources:
+- `.lvcontainer` is canonical for container lanes.
+- `lv_release` can override container release token (`YYYYqN`) for dispatch/call scenarios.
+- `lv_release_self_hosted` can override shared self-hosted release token (`YYYYqN`) for both self-hosted bitness lanes.
 
 ## Default Build-Spec Behavior
 
 Build-spec parity is mandatory and is a blocking check.
 
-- Gate behavior:
-  - `pull_request`: Linux parity runs by default; Windows parity is intentionally skipped to keep PR feedback fast for collaborators.
-  - `push` to `develop`: both Linux and Windows parity run, including `ExecuteBuildSpec`.
-  - `workflow_dispatch`: both Linux and Windows parity run with `ExecuteBuildSpec`.
+- Container lanes:
+  - `Parity (Linux Container <.lvcontainer>)`
+  - `Parity (Windows Container <resolved windows tag>)`
+  - `VI Analyzer Linux container <.lvcontainer>`
+  These lanes always run in every parity mode.
+
+- Self-hosted lanes:
+  - `Parity (Self-Hosted Windows LabVIEW 64-bit)`
+  - `Parity (Self-Hosted Windows LabVIEW 32-bit)`
+  These lanes are controlled by parity mode, compatibility toggles, and capacity detection.
+
+- Mode defaults:
+  - `pull_request` -> `auto`
+  - `push` to `develop` -> `full`
+  - `workflow_dispatch` / `workflow_call` -> `auto`
+
+- Supported `parity_mode` values:
+  - `auto`: run self-hosted only when an online runner exists.
+  - `containers-only`: force container-only execution.
+  - `full`: require self-hosted availability; fail policy gate when unavailable.
+
+- Compatibility toggles kept:
+  - `run_self_hosted` (legacy, applies to both lanes)
+  - `run_self_hosted_64`
+  - `run_self_hosted_32`
+
 - Hard-fail policy: Linux and Windows lanes always execute build-spec parity and must pass.
+
+Self-hosted capacity and full-mode enforcement:
+- `Resolve self-hosted capacity` checks whether `${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}` has an online runner.
+- `Self-hosted policy gate` fails only when `parity_mode=full` and requested self-hosted lanes are unavailable.
+- Effective self-hosted lane toggles are exported as:
+  - `run_self_hosted_64_effective`
+  - `run_self_hosted_32_effective`
+  This avoids dead-queueing when no runner is online.
 
 Build-spec environment contract used by container scripts:
 
@@ -59,16 +94,30 @@ LabVIEWCLI operation logs are captured and uploaded per OS as diagnostics:
 - `labview-container-logs-windows`
 - `labview-container-logs-linux`
 
+VI Analyzer artifacts from parity:
+- `vi-analyzer-linux-logs-parity`
+- `vi-analyzer-reports-parity`
+- `vi-analyzer-status-parity`
+
+Workflow summary:
+- `Parity Summary` writes mode, self-hosted capacity, effective lane toggles, and lane results to the job summary.
+
 ## How To Run
 
 Manual run:
 
 1. Open Actions and run **LabVIEW Parity**.
-2. Optionally set `lv_release` (for example `2026q1`).
-3. Build-spec parity is always executed (no skip toggle).
+2. Optionally set `parity_mode` (`auto`, `containers-only`, `full`).
+3. Optionally set `lv_release` (for example `2026q1`).
+4. Optional self-hosted controls:
+   - `run_self_hosted_64` (`true` by default)
+   - `run_self_hosted_32` (`true` by default)
+   - `lv_release_self_hosted` (optional shared self-hosted release override)
+5. Build-spec parity is always executed (no skip toggle).
 
 PR run:
 
 - Triggered automatically when parity workflow/script files, `.lvversion`, `lv_icon_editor.lvproj`, or `Test/Templates` change.
-- PR runs execute the Linux container parity lane by default.
-- Windows container parity runs on `push` to `develop` and on manual `workflow_dispatch`.
+- PR runs default to `parity_mode=auto`:
+  - container lanes (including VI Analyzer) always run
+  - self-hosted lanes run only if a matching runner is online

@@ -91,14 +91,22 @@ function Resolve-LabVIEWContractYear {
         [string]$VersionHint
     )
 
-    $rawVersion = $VersionHint
-    if ([string]::IsNullOrWhiteSpace($rawVersion)) {
+    $rawVersion = ''
+    $rawSource = ''
+    if (-not [string]::IsNullOrWhiteSpace($VersionHint)) {
+        $rawVersion = $VersionHint.Trim()
+        $rawSource = 'parameter:LabVIEWVersion'
+    } elseif (-not [string]::IsNullOrWhiteSpace($env:CONTAINER_PARITY_LABVIEW_VERSION)) {
+        $rawVersion = $env:CONTAINER_PARITY_LABVIEW_VERSION.Trim()
+        $rawSource = '$env:CONTAINER_PARITY_LABVIEW_VERSION'
+    } else {
         $lvversionPath = Join-Path $RepoRoot '.lvversion'
         if (-not (Test-Path -LiteralPath $lvversionPath -PathType Leaf)) {
             throw ".lvversion not found at $lvversionPath"
         }
 
         $rawVersion = (Get-Content -LiteralPath $lvversionPath -Raw -ErrorAction Stop).Trim()
+        $rawSource = '.lvversion'
     }
 
     if ([string]::IsNullOrWhiteSpace($rawVersion)) {
@@ -111,15 +119,20 @@ function Resolve-LabVIEWContractYear {
         throw ("LabVIEW version '{0}' is invalid; expected numeric year or major.minor." -f $rawVersion)
     }
 
+    $resolvedYear = ''
     if ($parsed -ge 2000) {
-        return [string]$parsed
+        $resolvedYear = [string]$parsed
+    } elseif ($parsed -ge 0 -and $parsed -lt 100) {
+        $resolvedYear = [string](2000 + $parsed)
+    } else {
+        throw ("LabVIEW version '{0}' cannot be mapped to a contract year." -f $rawVersion)
     }
 
-    if ($parsed -ge 0 -and $parsed -lt 100) {
-        return [string](2000 + $parsed)
+    return [pscustomobject]@{
+        Year       = $resolvedYear
+        RawVersion = $rawVersion
+        Source     = $rawSource
     }
-
-    throw ("LabVIEW version '{0}' cannot be mapped to a contract year." -f $rawVersion)
 }
 
 function Resolve-LabVIEWCliPort {
@@ -144,7 +157,9 @@ function Resolve-LabVIEWCliPort {
         throw "LabVIEW CLI port contract is missing 'labview_cli_ports': $contractPath"
     }
 
-    $year = Resolve-LabVIEWContractYear -RepoRoot $repoRoot -VersionHint $LabVIEWVersion
+    $yearResolution = Resolve-LabVIEWContractYear -RepoRoot $repoRoot -VersionHint $LabVIEWVersion
+    $year = [string]$yearResolution.Year
+    Write-Output ("Resolved LabVIEW contract year: {0} (source: {1}, raw: {2})" -f $year, [string]$yearResolution.Source, [string]$yearResolution.RawVersion)
     if (-not ($contract.labview_cli_ports.PSObject.Properties.Name -contains $year)) {
         throw ("LabVIEW CLI port contract does not define year '{0}' in {1}" -f $year, $contractPath)
     }

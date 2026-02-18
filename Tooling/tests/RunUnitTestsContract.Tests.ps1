@@ -37,7 +37,7 @@ Describe 'RunUnitTests execution contract' {
         $program = Get-Content -Path $script:programPath -Raw
 
         $lunitService | Should -Match '"-SkipGcli"'
-        $program | Should -Match 'new Command\("validate", "Validate UnitTestReport\.xml using RunUnitTests\.ps1 parse-only mode\."\)'
+        $program | Should -Match 'new Command\("validate", "Validate UnitTestReport-<os>-<bitness>\.xml using RunUnitTests\.ps1 parse-only mode\."\)'
     }
 
     It 'keeps runner-cli dry-run coverage for lunit run and lunit validate' {

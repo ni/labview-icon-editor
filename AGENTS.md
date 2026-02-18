@@ -152,6 +152,7 @@ Metadata quick-checks:
 
 ## VI Analyzer gate
 - Canonical task registry: `Tooling\vi-analyzer\tasks.json` (exactly three tasks for API, plugins, and tooling scopes, mapped to repo-root `.viancfg` files).
+- Canonical container contract: `.lvcontainer` (literal NI container tag, e.g. `2026q1-linux` or `latest-linux`; CI resolves image/OS/runtime metadata from live Docker Hub tag discovery with snapshot fallback).
 - Canonical executor: `Tooling\Run-ViAnalyzer.ps1`.
 - Runtime worker: `Tooling\container-parity\run-vi-analyzer-linux.sh` (dockerized LabVIEW Linux lane).
 - Local smoke run:

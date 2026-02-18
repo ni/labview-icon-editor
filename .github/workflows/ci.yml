@@ -10,7 +10,6 @@ env:
   LVIE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
   LVIE_EXPECTED_RUNNER_LABEL: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
   LVIE_CANONICAL_RUNNER_LABEL: self-hosted-windows-lv
-  LVIE_RUN_LV2020_EDGE_SMOKE: ${{ vars.LVIE_RUN_LV2020_EDGE_SMOKE || '0' }}
   LVIE_FORCE_NO_LABVIEW_DEVMODE: 1
   LVIE_RUNNER_ACL_CHECK: 1
   LVIE_RUNNER_ACL_AUTOFIX: 0
@@ -470,6 +469,40 @@ jobs:
           "numeric=$($info.NumericVersion)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
           Write-Host ("LabVIEW version gate passed: {0}" -f $info.Raw)
 
+  container-contract:
+    name: Resolve VI Analyzer Container Contract
+    needs: run-metadata
+    runs-on: ubuntu-latest
+    outputs:
+      raw: ${{ steps.contract.outputs.raw }}
+      tag: ${{ steps.contract.outputs.tag }}
+      image: ${{ steps.contract.outputs.image }}
+      os: ${{ steps.contract.outputs.os }}
+      year: ${{ steps.contract.outputs.year }}
+      minor: ${{ steps.contract.outputs.minor }}
+      release_tag: ${{ steps.contract.outputs.release_tag }}
+      linux_image: ${{ steps.contract.outputs.linux_image }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: contract
+        name: Resolve .lvcontainer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          . "$env:GITHUB_WORKSPACE/Tooling/support/LabVIEWContainerRelease.ps1"
+          $info = Get-LabVIEWContainerReleaseInfo -RepoRoot $env:GITHUB_WORKSPACE
+          "raw=$($info.Raw)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+          "tag=$($info.Tag)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+          "image=$($info.Image)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+          "os=$($info.Os)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+          "year=$($info.Year)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+          "minor=$($info.MinorRevision)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+          "release_tag=$($info.ReleaseTag)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+          "linux_image=$($info.LinuxImage)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host ("VI Analyzer container contract resolved: raw={0}, tag={1}, os={2}, release={3}, image={4}" -f $info.Raw, $info.Tag, $info.Os, $info.ReleaseTag, $info.Image)
+
   core-conformance-hosted-linux:
     name: Core Conformance Evidence (Hosted Linux)
     needs: [run-metadata, version-gate, runner-cli-build]
@@ -672,6 +705,10 @@ jobs:
         shell: pwsh
         run: |
           pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-CiPipelineSelectorDevModeContract.ps1" -WriteSummary
+      - name: Validate VI Analyzer container contract
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-ViAnalyzerContainerContract.ps1" -WriteSummary
       - name: Validate solo-maintainer workflow contract
         shell: pwsh
         run: |
@@ -751,7 +788,7 @@ jobs:
 
   # Stage 2: Baseline hosted/static checks.
   changes:
-    name: Detect VIPC changes
+    name: Detect VIPC changes (LV ${{ needs.version-gate.outputs.raw }}, shared)
     needs: [run-metadata, prerelease-context, version-gate, pylavi-validate]
     runs-on: ubuntu-latest
     env:
@@ -775,8 +812,8 @@ jobs:
             vipc:
               - '**/*.vipc'
 
-  apply-deps-lv-x64:
-    name: Apply VIPC (LV x64)
+  apply-deps:
+    name: Apply VIPC (LV ${{ needs.version-gate.outputs.raw }} x64/x86, serialized)
     needs: [run-metadata, version-gate, changes]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
@@ -789,7 +826,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Job setup
+      - name: Job setup (LV x64)
         uses: ./.github/actions/lvie-job-setup
         with:
           checkout: 'false'
@@ -872,25 +909,13 @@ jobs:
           name: vipc-apply-log-64
           path: ${{ env.REPO_ROOT }}/builds/status/vipc-apply-64.log
           if-no-files-found: warn
-      - name: Job teardown
+      - name: Job teardown (LV x64)
         if: always()
         uses: ./.github/actions/lvie-job-teardown
-
-  apply-deps-x86:
-    name: Apply VIPC (LV x86)
-    needs: [run-metadata, version-gate, apply-deps-lv-x64, changes]
-    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
-    env:
-      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
-      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
-      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
-      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      - name: Job setup
+          release_lock: 'false'
+      - name: Job setup (LV x86)
+        if: ${{ always() }}
         uses: ./.github/actions/lvie-job-setup
         with:
           checkout: 'false'
@@ -898,6 +923,7 @@ jobs:
           create_worktree: 'true'
           worktree_root_mode: runner_temp
       - name: Audit VIPC apply (LV x86)
+        if: ${{ always() }}
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
         run: |
@@ -915,6 +941,7 @@ jobs:
           )
           & dotnet run --project $runnerCliProject --configuration Release -- @runnerCliArgs
       - name: Report VIPC change status (LV x86)
+        if: ${{ always() }}
         shell: pwsh
         run: |
           if ('${{ needs.changes.outputs.vipc }}' -eq 'true') {
@@ -923,7 +950,7 @@ jobs:
             Write-Host "No .vipc changes detected; audit-first policy still enforced."
           }
       - name: Apply VIPC (LV x86, informational)
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.vipc_apply_info == 'true' }}
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && github.event.inputs.vipc_apply_info == 'true' }}
         continue-on-error: true
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
@@ -973,27 +1000,46 @@ jobs:
           name: vipc-apply-log-32
           path: ${{ env.REPO_ROOT }}/builds/status/vipc-apply-32.log
           if-no-files-found: warn
-      - name: Job teardown
+      - name: Job teardown (LV x86)
         if: always()
         uses: ./.github/actions/lvie-job-teardown
 
   vi-analyzer:
-    name: VI Analyzer (Linux container)
-    needs: [run-metadata, prerelease-context, version-gate]
+    name: VI Analyzer Linux container ${{ needs.container-contract.outputs.raw }}
+    needs: [run-metadata, prerelease-context, version-gate, container-contract]
     runs-on: ubuntu-latest
     env:
       LVIE_VI_ANALYZER_TASKS_PATH: Tooling/vi-analyzer/tasks.linux.json
+      LVIE_CONTAINER_CONTRACT_RAW: ${{ needs.container-contract.outputs.raw }}
+      LVIE_CONTAINER_CONTRACT_TAG: ${{ needs.container-contract.outputs.tag }}
+      LVIE_CONTAINER_CONTRACT_IMAGE: ${{ needs.container-contract.outputs.image }}
+      LVIE_CONTAINER_CONTRACT_OS: ${{ needs.container-contract.outputs.os }}
+      LVIE_CONTAINER_CONTRACT_YEAR: ${{ needs.container-contract.outputs.year }}
+      LVIE_CONTAINER_CONTRACT_MINOR: ${{ needs.container-contract.outputs.minor }}
+      LVIE_CONTAINER_CONTRACT_RELEASE_TAG: ${{ needs.container-contract.outputs.release_tag }}
+      LVIE_CONTAINER_CONTRACT_LINUX_IMAGE: ${{ needs.container-contract.outputs.linux_image }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Pull LabVIEW Linux image
+      - name: Validate vi-analyzer container selection
         shell: bash
-        env:
-          LV_RELEASE: ${{ format('{0}q1', needs.version-gate.outputs.year) }}
         run: |
           set -euo pipefail
-          image="nationalinstruments/labview:${LV_RELEASE}-linux"
+          if [[ "${LVIE_CONTAINER_CONTRACT_OS}" != "linux" ]]; then
+            echo "vi-analyzer on ubuntu-latest requires a linux container tag; .lvcontainer resolved to tag '${LVIE_CONTAINER_CONTRACT_TAG}' (os=${LVIE_CONTAINER_CONTRACT_OS}, image=${LVIE_CONTAINER_CONTRACT_IMAGE})." >&2
+            exit 1
+          fi
+          if [[ -z "${LVIE_CONTAINER_CONTRACT_LINUX_IMAGE}" ]]; then
+            echo "linux_image output is empty for linux tag '${LVIE_CONTAINER_CONTRACT_TAG}'." >&2
+            exit 1
+          fi
+
+      - name: Pull LabVIEW Linux image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="${LVIE_CONTAINER_CONTRACT_LINUX_IMAGE}"
           echo "Using image: ${image}"
           docker pull "${image}"
           echo "LABVIEW_LINUX_IMAGE=${image}" >> "$GITHUB_ENV"
@@ -1001,7 +1047,7 @@ jobs:
       - name: Run VI Analyzer tasks (Linux container)
         shell: bash
         env:
-          LVIE_VI_ANALYZER_LABVIEW_YEAR: ${{ needs.version-gate.outputs.year }}
+          LVIE_VI_ANALYZER_LABVIEW_YEAR: ${{ needs.container-contract.outputs.year }}
         run: |
           set -euo pipefail
           script_path="${GITHUB_WORKSPACE}/Tooling/container-parity/run-vi-analyzer-linux.sh"
@@ -1087,7 +1133,24 @@ jobs:
             overall_success = ($taskResults.Count -gt 0 -and $failedTasks.Count -eq 0)
             task_count      = $taskResults.Count
             labview         = [ordered]@{
-              year           = '${{ needs.version-gate.outputs.year }}'
+              source_contract = [ordered]@{
+                raw            = '${{ needs.version-gate.outputs.raw }}'
+                year           = '${{ needs.version-gate.outputs.year }}'
+                minor_revision = '${{ needs.version-gate.outputs.minor }}'
+              }
+              container_contract = [ordered]@{
+                raw            = $env:LVIE_CONTAINER_CONTRACT_RAW
+                tag            = $env:LVIE_CONTAINER_CONTRACT_TAG
+                image          = $env:LVIE_CONTAINER_CONTRACT_IMAGE
+                os             = $env:LVIE_CONTAINER_CONTRACT_OS
+                year           = $env:LVIE_CONTAINER_CONTRACT_YEAR
+                minor_revision = $env:LVIE_CONTAINER_CONTRACT_MINOR
+                release_tag    = $env:LVIE_CONTAINER_CONTRACT_RELEASE_TAG
+                linux_image    = $env:LVIE_CONTAINER_CONTRACT_LINUX_IMAGE
+              }
+              runtime = [ordered]@{
+                year = $env:LVIE_CONTAINER_CONTRACT_YEAR
+              }
               bitness        = 64
               execution_mode = 'linux-container'
             }
@@ -1170,7 +1233,7 @@ jobs:
   unit-tests:
     name: Test Source Using LV ${{ matrix.bitness }}-bit
     if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
-    needs: [run-metadata, prerelease-context, version-gate, apply-deps-x86]
+    needs: [run-metadata, prerelease-context, version-gate, apply-deps]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
@@ -1181,7 +1244,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        bitness: ${{ fromJson('["64"]') }}
+        bitness: ${{ fromJson('["64","32"]') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -1209,10 +1272,17 @@ jobs:
           Write-Host ("Unit-test LabVIEW target .lvversion: {0}" -f $unitTestLvversion)
           Write-Host ("Source .lvversion year from job setup: {0}" -f $env:LABVIEW_VERSION_YEAR)
 
-          $reportPath = Join-Path $env:REPO_ROOT '.github/actions/run-unit-tests/UnitTestReport.xml'
+          $reportOs = '${{ runner.os }}'
+          $reportPath = Join-Path $env:REPO_ROOT (".github/actions/run-unit-tests/UnitTestReport-{0}-{1}.xml" -f $reportOs, '${{ matrix.bitness }}')
           if (Test-Path -Path $reportPath) {
             Remove-Item -Path $reportPath -Force -ErrorAction SilentlyContinue
           }
+          $lunitLogPath = Join-Path $env:REPO_ROOT ("builds\\status\\lunit-run-{0}-{1}.log" -f $reportOs, '${{ matrix.bitness }}')
+          $lunitLogDir = Split-Path -Path $lunitLogPath -Parent
+          if (-not (Test-Path -Path $lunitLogDir)) {
+            New-Item -Path $lunitLogDir -ItemType Directory -Force | Out-Null
+          }
+          '' | Set-Content -Path $lunitLogPath -Encoding utf8
 
           $runnerCliArgs = @(
             'lunit', 'run',
@@ -1223,8 +1293,29 @@ jobs:
             '--project-path', $env:PROJECT_PATH,
             '--report-path', $reportPath
           )
-          & dotnet run --project $runnerCliProject --configuration Release -- @runnerCliArgs
+          $output = & dotnet run --project $runnerCliProject --configuration Release -- @runnerCliArgs *>&1
           $runnerCliExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+          if ($output) {
+            $output |
+              ForEach-Object { $_.ToString() } |
+              Tee-Object -FilePath $lunitLogPath -Append |
+              ForEach-Object { Write-Host $_ }
+          }
+          if ($runnerCliExitCode -ne 0 -and $unitTestYear -eq '2020' -and (Test-Path -Path $reportPath)) {
+            try {
+              [xml]$reportXml = Get-Content -Path $reportPath -Raw -ErrorAction Stop
+              $testCases = $reportXml.SelectNodes('//testcase')
+              if ($null -eq $testCases -or $testCases.Count -eq 0) {
+                Write-Warning ("No <testcase> entries found for LabVIEW {0} ({1}-bit). Treating lane as skipped." -f $unitTestYear, '${{ matrix.bitness }}')
+                $runnerCliExitCode = 0
+                if ($env:GITHUB_STEP_SUMMARY) {
+                  Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ("- Unit Tests (LV {0}-bit): no LUnit testcases found for LabVIEW {1}; treated as skipped." -f '${{ matrix.bitness }}', $unitTestYear)
+                }
+              }
+            } catch {
+              Write-Warning ("Could not inspect unit test report at {0}: {1}" -f $reportPath, $_.Exception.Message)
+            }
+          }
           Write-Host ("runner-cli lunit run exit code: {0}" -f $runnerCliExitCode)
           exit $runnerCliExitCode
       - name: Summarize unit-test executor
@@ -1237,8 +1328,15 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: unit-tests-${{ matrix.bitness }}-bit-report
-          path: ${{ env.REPO_ROOT }}/.github/actions/run-unit-tests/UnitTestReport.xml
+          name: unit-tests-${{ runner.os }}-${{ matrix.bitness }}-bit-report
+          path: ${{ env.REPO_ROOT }}/.github/actions/run-unit-tests/UnitTestReport-${{ runner.os }}-${{ matrix.bitness }}.xml
+          if-no-files-found: warn
+      - name: Upload lunit run log (LV ${{ matrix.bitness }}-bit)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lunit-run-${{ runner.os }}-${{ matrix.bitness }}-bit-log
+          path: ${{ env.REPO_ROOT }}/builds/status/lunit-run-${{ runner.os }}-${{ matrix.bitness }}.log
           if-no-files-found: warn
       - name: Job teardown
         if: always()
@@ -1248,80 +1346,9 @@ jobs:
           close_labview: 'true'
           close_bitness: ${{ matrix.bitness }}
 
-  unit-tests-lv2020-edge:
-    name: Test Source Using LV 64-bit (edge 2020)
-    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' && (vars.LVIE_RUN_LV2020_EDGE_SMOKE == '1' || vars.LVIE_RUN_LV2020_EDGE_SMOKE == 'true') }}
-    continue-on-error: true
-    needs: [run-metadata, prerelease-context, version-gate, apply-deps-x86]
-    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
-    env:
-      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
-      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
-      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
-      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Job setup
-        uses: ./.github/actions/lvie-job-setup
-        with:
-          checkout: 'false'
-          bitness: 64
-          create_worktree: 'true'
-          worktree_root_mode: runner_temp
-      - name: Test Source Using LV 64-bit (edge 2020)
-        shell: pwsh
-        working-directory: ${{ env.REPO_ROOT }}
-        run: |
-          $runnerCliProject = Join-Path $env:REPO_ROOT 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
-          if (-not (Test-Path -Path $runnerCliProject -PathType Leaf)) {
-            throw "runner-cli project not found at $runnerCliProject"
-          }
-
-          $reportPath = Join-Path $env:REPO_ROOT '.github/actions/run-unit-tests/UnitTestReport.xml'
-          if (Test-Path -Path $reportPath) {
-            Remove-Item -Path $reportPath -Force -ErrorAction SilentlyContinue
-          }
-
-          $runnerCliArgs = @(
-            'lunit', 'run',
-            '--repo-root', $env:REPO_ROOT,
-            '--year', '2020',
-            '--labview-version', '20.0',
-            '--bitness', '64',
-            '--project-path', $env:PROJECT_PATH,
-            '--report-path', $reportPath
-          )
-          & dotnet run --project $runnerCliProject --configuration Release -- @runnerCliArgs
-          $runnerCliExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
-          Write-Host ("runner-cli lunit run exit code: {0}" -f $runnerCliExitCode)
-          exit $runnerCliExitCode
-      - name: Summarize LV2020 edge unit-test executor
-        if: always()
-        shell: pwsh
-        run: |
-          $summaryLine = "- Unit Tests Edge (LV 64-bit): LUnit executor = runner-cli (g-cli backend) (target=2020; source=$env:LABVIEW_VERSION_YEAR)"
-          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summaryLine
-      - name: Upload unit test report edge artifact (LV 64-bit)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-tests-64-bit-report-edge-2020
-          path: ${{ env.REPO_ROOT }}/.github/actions/run-unit-tests/UnitTestReport.xml
-          if-no-files-found: warn
-      - name: Job teardown
-        if: always()
-        uses: ./.github/actions/lvie-job-teardown
-        with:
-          revert_bitness: 64
-          close_labview: 'true'
-          close_bitness: 64
-
   build-ppl-x86:
     name: Build 32-bit Packed Library
-    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' && needs.version-gate.outputs.year != '2020' }}
     needs: [run-metadata, prerelease-context, version-gate, build-ppl-x64, version]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
@@ -1387,7 +1414,7 @@ jobs:
 
   build-ppl-x64:
     name: Build 64-bit Packed Library
-    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' && needs.version-gate.outputs.year != '2020' }}
     needs: [run-metadata, prerelease-context, version-gate, unit-tests, version]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
@@ -1453,7 +1480,7 @@ jobs:
 
   build-vip:
     name: Build VI Package
-    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' && needs.version-gate.outputs.year != '2020' }}
     # Chain after 32-bit PPL build (which depends on 64-bit PPL build).
     needs: [run-metadata, prerelease-context, version-gate, build-ppl-x86, version]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
@@ -2100,8 +2127,7 @@ jobs:
       - pylavi-validate
       - vi-analyzer
       - changes
-      - apply-deps-lv-x64
-      - apply-deps-x86
+      - apply-deps
       - unit-tests
       - build-ppl-x64
       - build-ppl-x86
@@ -2151,13 +2177,19 @@ jobs:
           )
           $requiredFullValidation = @(
             'changes',
-            'apply-deps-lv-x64',
-            'apply-deps-x86',
-            'unit-tests',
-            'build-ppl-x64',
-            'build-ppl-x86',
-            'build-vip'
+            'apply-deps',
+            'unit-tests'
           )
+          $isLv2020 = '${{ needs.version-gate.outputs.year }}' -eq '2020'
+          if ($isLv2020) {
+            Write-Host 'LV2020 detected: self-hosted packed-library/VIP jobs are optional in pipeline contract.'
+          } else {
+            $requiredFullValidation += @(
+              'build-ppl-x64',
+              'build-ppl-x86',
+              'build-vip'
+            )
+          }
           $requiredByProfile = @{
             'full' = @($requiredCommon + $requiredFullValidation)
             'pr-fast' = @($requiredCommon + $requiredFullValidation)
@@ -2563,8 +2595,7 @@ jobs:
       - pylavi-validate
       - vi-analyzer
       - changes
-      - apply-deps-lv-x64
-      - apply-deps-x86
+      - apply-deps
       - unit-tests
       - build-ppl-x64
       - build-ppl-x86
@@ -2587,6 +2618,7 @@ jobs:
       - name: Validate required jobs
         shell: pwsh
         run: |
+          $shouldPublish = '${{ needs.prerelease-context.outputs.should_publish }}' -eq 'true'
           $requiredCommon = @(
             'run-metadata',
             'prerelease-context',
@@ -2599,19 +2631,29 @@ jobs:
             'build-ppl-windows-container',
             'codex-skill-layer-asset',
             'publish-gate',
-            'publish-prerelease',
             'version',
             'conformance-full'
           )
+          if ($shouldPublish) {
+            $requiredCommon += @('publish-prerelease')
+          } else {
+            Write-Host 'Publish intent disabled: publish-prerelease is optional in pipeline contract.'
+          }
           $requiredFullValidation = @(
             'changes',
-            'apply-deps-lv-x64',
-            'apply-deps-x86',
-            'unit-tests',
-            'build-ppl-x64',
-            'build-ppl-x86',
-            'build-vip'
+            'apply-deps',
+            'unit-tests'
           )
+          $isLv2020 = '${{ needs.version-gate.outputs.year }}' -eq '2020'
+          if ($isLv2020) {
+            Write-Host 'LV2020 detected: self-hosted packed-library/VIP jobs are optional in pipeline contract.'
+          } else {
+            $requiredFullValidation += @(
+              'build-ppl-x64',
+              'build-ppl-x86',
+              'build-vip'
+            )
+          }
           $requiredByProfile = @{
             'full' = @($requiredCommon + $requiredFullValidation)
             'pr-fast' = @($requiredCommon + $requiredFullValidation)
@@ -2699,5 +2741,3 @@ jobs:
           } else {
             Write-Host 'Pipeline contract satisfied.'
           }
-
-

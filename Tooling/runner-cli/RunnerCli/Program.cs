@@ -833,8 +833,8 @@ missingCmd.SetHandler((InvocationContext context) =>
 
 // ── lunit run/validate ────────────────────────────────────────────
 var lunitCmd = new Command("lunit", "Run and validate LUnit workflows using existing script contracts.");
-var lunitRunCmd = new Command("run", "Run g-cli LUnit then parse/validate UnitTestReport.xml.");
-var lunitValidateCmd = new Command("validate", "Validate UnitTestReport.xml using RunUnitTests.ps1 parse-only mode.");
+var lunitRunCmd = new Command("run", "Run g-cli LUnit then parse/validate UnitTestReport-<os>-<bitness>.xml.");
+var lunitValidateCmd = new Command("validate", "Validate UnitTestReport-<os>-<bitness>.xml using RunUnitTests.ps1 parse-only mode.");
 
 var lunitYearOption = new Option<string>(
     name: "--year",
@@ -858,7 +858,7 @@ var lunitProjectPathOption = new Option<string>(
 
 var lunitReportPathOption = new Option<string?>(
     name: "--report-path",
-    description: "Optional UnitTestReport.xml path. Defaults to .github/actions/run-unit-tests/UnitTestReport.xml");
+    description: "Optional UnitTestReport path. Defaults to .github/actions/run-unit-tests/UnitTestReport-<os>-<bitness>.xml");
 
 var lunitDryRunOption = new Option<bool>(
     name: "--dry-run",
@@ -1249,6 +1249,9 @@ var parityContextCmd = new Command("context", "Resolve parity context from .lvve
 var lvReleaseOption = new Option<string?>(
     name: "--lv-release",
     description: "LabVIEW release tag (for example 2020q1). When omitted, derived from .lvversion.");
+var parityContextModeOption = new Option<string?>(
+    name: "--mode",
+    description: "Optional parity mode hint for lv_release validation: linux-container|windows-container|self-hosted-windows.");
 var parityContractPathOption = new Option<string?>(
     name: "--contract-path",
     description: "Optional parity contract JSON path.");
@@ -1258,6 +1261,7 @@ var parityContextOutputOption = new Option<string?>(
 
 parityContextCmd.AddOption(repoRootOption);
 parityContextCmd.AddOption(lvReleaseOption);
+parityContextCmd.AddOption(parityContextModeOption);
 parityContextCmd.AddOption(parityContractPathOption);
 parityContextCmd.AddOption(parityContextOutputOption);
 parityContextCmd.AddOption(jsonOption);
@@ -1267,11 +1271,12 @@ parityContextCmd.SetHandler((InvocationContext context) =>
     {
         var repoRoot = context.ParseResult.GetValueForOption(repoRootOption);
         var lvRelease = context.ParseResult.GetValueForOption(lvReleaseOption);
+        var parityMode = context.ParseResult.GetValueForOption(parityContextModeOption);
         var contractPath = context.ParseResult.GetValueForOption(parityContractPathOption);
         var outputPath = context.ParseResult.GetValueForOption(parityContextOutputOption);
         var emitJson = context.ParseResult.GetValueForOption(jsonOption);
 
-        var parityContext = ParityService.BuildContext(repoRoot, lvRelease, contractPath);
+        var parityContext = ParityService.BuildContext(repoRoot, lvRelease, contractPath, parityMode);
         if (!string.IsNullOrWhiteSpace(outputPath))
         {
             ParityService.WriteContext(parityContext, outputPath);
@@ -1386,8 +1391,82 @@ parityRunCmd.SetHandler((InvocationContext context) =>
     }
 });
 
+var paritySelfHostedCmd = new Command("self-hosted", "Resolve parity context and run self-hosted Windows parity in one command.");
+var paritySelfHostedLabVIEWPathOption = new Option<string?>(
+    name: "--labview-path",
+    description: "Optional LabVIEW executable override (self-hosted-windows mode).");
+var paritySelfHostedLabVIEWBitnessOption = new Option<string>(
+    name: "--labview-bitness",
+    getDefaultValue: () => "64",
+    description: "LabVIEW bitness for self-hosted-windows mode (32 or 64).");
+var paritySelfHostedBuildSpecOption = new Option<bool>(
+    name: "--build-spec",
+    getDefaultValue: () => true,
+    description: "Execute build specification parity path (mandatory; only true is supported).");
+
+paritySelfHostedCmd.AddOption(repoRootOption);
+paritySelfHostedCmd.AddOption(lvReleaseOption);
+paritySelfHostedCmd.AddOption(parityContractPathOption);
+paritySelfHostedCmd.AddOption(paritySelfHostedLabVIEWPathOption);
+paritySelfHostedCmd.AddOption(paritySelfHostedLabVIEWBitnessOption);
+paritySelfHostedCmd.AddOption(paritySelfHostedBuildSpecOption);
+paritySelfHostedCmd.AddOption(jsonOption);
+paritySelfHostedCmd.SetHandler((InvocationContext context) =>
+{
+    try
+    {
+        var repoRoot = context.ParseResult.GetValueForOption(repoRootOption);
+        var lvRelease = context.ParseResult.GetValueForOption(lvReleaseOption);
+        var contractPath = context.ParseResult.GetValueForOption(parityContractPathOption);
+        var labviewPath = context.ParseResult.GetValueForOption(paritySelfHostedLabVIEWPathOption);
+        var labviewBitness = context.ParseResult.GetValueForOption(paritySelfHostedLabVIEWBitnessOption);
+        var buildSpec = context.ParseResult.GetValueForOption(paritySelfHostedBuildSpecOption);
+        var emitJson = context.ParseResult.GetValueForOption(jsonOption);
+
+        if (string.IsNullOrWhiteSpace(labviewBitness))
+        {
+            labviewBitness = "64";
+        }
+        if (!buildSpec)
+        {
+            throw new InvalidOperationException(
+                "Build-spec disable is unsupported. Parity runs require build-spec execution; omit --build-spec or set --build-spec true.");
+        }
+
+        var parityContext = ParityService.BuildContext(repoRoot, lvRelease, contractPath, "self-hosted-windows");
+        var result = ParityService.Run(
+            parityContext,
+            modeInput: "self-hosted-windows",
+            buildSpecEnabled: buildSpec,
+            labviewPathOverride: labviewPath,
+            labviewBitness: labviewBitness);
+
+        if (emitJson)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(result, RunnerCliJsonContext.Default.ParityRunResult));
+            return;
+        }
+
+        Console.WriteLine($"mode={result.Mode}");
+        Console.WriteLine($"repo_root={result.RepoRoot}");
+        Console.WriteLine($"project_path={result.ProjectPath}");
+        Console.WriteLine($"build_output_path={result.BuildOutputPath}");
+        Console.WriteLine($"labview_year={result.LabVIEWYear}");
+        Console.WriteLine($"lv_release_resolved={result.LvReleaseResolved}");
+        Console.WriteLine($"build_spec_enabled={result.BuildSpecEnabled}");
+        Console.WriteLine($"exit_code={result.ExitCode}");
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"ERROR: {ex.Message}");
+        Environment.ExitCode = 1;
+        context.ExitCode = 1;
+    }
+});
+
 parityCmd.AddCommand(parityContextCmd);
 parityCmd.AddCommand(parityRunCmd);
+parityCmd.AddCommand(paritySelfHostedCmd);
 
 // ── dev-mode prepare-source/restore-source ───────────────────────
 var devModeCmd = new Command("dev-mode", "Development mode source orchestration helpers.");
