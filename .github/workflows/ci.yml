@@ -1679,11 +1679,58 @@ jobs:
           & "$env:REPO_ROOT\\.github\\actions\\rename-file\\Rename-file.ps1" `
             -CurrentFilename "$env:REPO_ROOT\\resource\\plugins\\lv_icon.lvlibp" `
             -NewFilename "$env:REPO_ROOT\\resource\\plugins\\lv_icon_x86.lvlibp"
+      - name: Write packed library report (32-bit)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $reportDir = Join-Path $env:REPO_ROOT 'builds\status'
+          New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
+
+          $artifactPath = Join-Path $env:REPO_ROOT 'resource\plugins\lv_icon_x86.lvlibp'
+          if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
+            throw "Expected packed library output was not found: $artifactPath"
+          }
+          $artifact = Get-Item -LiteralPath $artifactPath
+
+          $reportPath = Join-Path $reportDir ("lv_icon.lvlibp-{0}-32.xml" -f $env:RUNNER_OS)
+          $xml = New-Object System.Xml.XmlDocument
+          $declaration = $xml.CreateXmlDeclaration('1.0', 'utf-8', $null)
+          $null = $xml.AppendChild($declaration)
+
+          $root = $xml.CreateElement('ppl_build_report')
+          $root.SetAttribute('schema_version', '1.0')
+          $null = $xml.AppendChild($root)
+
+          function Add-ReportField {
+            param(
+              [Parameter(Mandatory = $true)][string]$Name,
+              [Parameter(Mandatory = $true)][string]$Value
+            )
+            $node = $xml.CreateElement($Name)
+            $node.InnerText = $Value
+            $null = $root.AppendChild($node)
+          }
+
+          Add-ReportField -Name 'artifact_name' -Value $artifact.Name
+          Add-ReportField -Name 'artifact_path' -Value $artifact.FullName
+          Add-ReportField -Name 'artifact_bytes' -Value ([string]$artifact.Length)
+          Add-ReportField -Name 'os' -Value $env:RUNNER_OS
+          Add-ReportField -Name 'bitness' -Value '32'
+          Add-ReportField -Name 'timestamp_utc' -Value ((Get-Date).ToUniversalTime().ToString('o'))
+
+          $xml.Save($reportPath)
+          Write-Host ("Packed library report written: {0}" -f $reportPath)
       - name: Upload packed library artifact (32-bit)
         uses: actions/upload-artifact@v4
         with:
           name: lv_icon_x86.lvlibp
           path: ${{ env.REPO_ROOT }}/resource/plugins/lv_icon_x86.lvlibp
+      - name: Upload packed library report artifact (32-bit)
+        uses: actions/upload-artifact@v4
+        with:
+          name: lv_icon.lvlibp-${{ runner.os }}-32-report
+          path: ${{ env.REPO_ROOT }}/builds/status/lv_icon.lvlibp-${{ runner.os }}-32.xml
+          if-no-files-found: error
       - name: Job teardown
         if: always()
         uses: ./.github/actions/lvie-job-teardown
@@ -1745,11 +1792,58 @@ jobs:
           & "$env:REPO_ROOT\\.github\\actions\\rename-file\\Rename-file.ps1" `
             -CurrentFilename "$env:REPO_ROOT\\resource\\plugins\\lv_icon.lvlibp" `
             -NewFilename "$env:REPO_ROOT\\resource\\plugins\\lv_icon_x64.lvlibp"
+      - name: Write packed library report (64-bit)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $reportDir = Join-Path $env:REPO_ROOT 'builds\status'
+          New-Item -ItemType Directory -Path $reportDir -Force | Out-Null
+
+          $artifactPath = Join-Path $env:REPO_ROOT 'resource\plugins\lv_icon_x64.lvlibp'
+          if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
+            throw "Expected packed library output was not found: $artifactPath"
+          }
+          $artifact = Get-Item -LiteralPath $artifactPath
+
+          $reportPath = Join-Path $reportDir ("lv_icon.lvlibp-{0}-64.xml" -f $env:RUNNER_OS)
+          $xml = New-Object System.Xml.XmlDocument
+          $declaration = $xml.CreateXmlDeclaration('1.0', 'utf-8', $null)
+          $null = $xml.AppendChild($declaration)
+
+          $root = $xml.CreateElement('ppl_build_report')
+          $root.SetAttribute('schema_version', '1.0')
+          $null = $xml.AppendChild($root)
+
+          function Add-ReportField {
+            param(
+              [Parameter(Mandatory = $true)][string]$Name,
+              [Parameter(Mandatory = $true)][string]$Value
+            )
+            $node = $xml.CreateElement($Name)
+            $node.InnerText = $Value
+            $null = $root.AppendChild($node)
+          }
+
+          Add-ReportField -Name 'artifact_name' -Value $artifact.Name
+          Add-ReportField -Name 'artifact_path' -Value $artifact.FullName
+          Add-ReportField -Name 'artifact_bytes' -Value ([string]$artifact.Length)
+          Add-ReportField -Name 'os' -Value $env:RUNNER_OS
+          Add-ReportField -Name 'bitness' -Value '64'
+          Add-ReportField -Name 'timestamp_utc' -Value ((Get-Date).ToUniversalTime().ToString('o'))
+
+          $xml.Save($reportPath)
+          Write-Host ("Packed library report written: {0}" -f $reportPath)
       - name: Upload packed library artifact (64-bit)
         uses: actions/upload-artifact@v4
         with:
           name: lv_icon_x64.lvlibp
           path: ${{ env.REPO_ROOT }}/resource/plugins/lv_icon_x64.lvlibp
+      - name: Upload packed library report artifact (64-bit)
+        uses: actions/upload-artifact@v4
+        with:
+          name: lv_icon.lvlibp-${{ runner.os }}-64-report
+          path: ${{ env.REPO_ROOT }}/builds/status/lv_icon.lvlibp-${{ runner.os }}-64.xml
+          if-no-files-found: error
       - name: Job teardown
         if: always()
         uses: ./.github/actions/lvie-job-teardown
@@ -1789,6 +1883,27 @@ jobs:
           bitness: 64
           create_worktree: 'true'
           worktree_root_mode: runner_temp
+      - name: Assert VI Package LabVIEW version contract
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:LVIE_REQUIRED_LABVIEW_VERSION)) {
+            throw "LVIE_REQUIRED_LABVIEW_VERSION is empty. .lvversion-derived version-gate output is required for Build VI Package."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:LVIE_REQUIRED_LABVIEW_MINOR_REVISION)) {
+            throw "LVIE_REQUIRED_LABVIEW_MINOR_REVISION is empty. .lvversion-derived version-gate output is required for Build VI Package."
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($env:LABVIEW_VERSION_RAW) -and $env:LABVIEW_VERSION_RAW -ne $env:LVIE_REQUIRED_LABVIEW_VERSION) {
+            throw ("LabVIEW version drift detected. LABVIEW_VERSION_RAW='{0}' does not match version-gate raw '{1}' from .lvversion." -f $env:LABVIEW_VERSION_RAW, $env:LVIE_REQUIRED_LABVIEW_VERSION)
+          }
+          if (-not [string]::IsNullOrWhiteSpace($env:LABVIEW_MINOR_REVISION) -and $env:LABVIEW_MINOR_REVISION -ne $env:LVIE_REQUIRED_LABVIEW_MINOR_REVISION) {
+            throw ("LabVIEW minor revision drift detected. LABVIEW_MINOR_REVISION='{0}' does not match version-gate minor '{1}' from .lvversion." -f $env:LABVIEW_MINOR_REVISION, $env:LVIE_REQUIRED_LABVIEW_MINOR_REVISION)
+          }
+
+          Write-Host (".lvversion release contract enforced for Build VI Package: raw={0}, year={1}, minor={2}" -f `
+            $env:LVIE_REQUIRED_LABVIEW_VERSION, `
+            $env:LVIE_REQUIRED_LABVIEW_VERSION_YEAR, `
+            $env:LVIE_REQUIRED_LABVIEW_MINOR_REVISION)
       - name: Generate release notes
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
@@ -1869,8 +1984,8 @@ jobs:
             -SupportedBitness 64 `
             -RepoRoot "$env:REPO_ROOT" `
             -VIPBPath "Tooling/deployment/NI Icon editor.vipb" `
-            -LabVIEWVersion $env:LABVIEW_VERSION_RAW `
-            -LabVIEWMinorRevision $env:LABVIEW_MINOR_REVISION `
+            -LabVIEWVersion $env:LVIE_REQUIRED_LABVIEW_VERSION `
+            -LabVIEWMinorRevision $env:LVIE_REQUIRED_LABVIEW_MINOR_REVISION `
             -Major ${{ needs.version.outputs.MAJOR }} `
             -Minor ${{ needs.version.outputs.MINOR }} `
             -Patch ${{ needs.version.outputs.PATCH }} `
@@ -1913,8 +2028,8 @@ jobs:
             '--repo-root', $env:REPO_ROOT,
             '--supported-bitness', '64',
             '--vipb-path', 'Tooling/deployment/NI Icon editor.vipb',
-            '--labview-version', $env:LABVIEW_VERSION_RAW,
-            '--labview-minor-revision', $env:LABVIEW_MINOR_REVISION,
+            '--labview-version', $env:LVIE_REQUIRED_LABVIEW_VERSION,
+            '--labview-minor-revision', $env:LVIE_REQUIRED_LABVIEW_MINOR_REVISION,
             '--major', '${{ needs.version.outputs.MAJOR }}',
             '--minor', '${{ needs.version.outputs.MINOR }}',
             '--patch', '${{ needs.version.outputs.PATCH }}',

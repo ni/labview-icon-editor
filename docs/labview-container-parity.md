@@ -121,3 +121,27 @@ PR run:
 - PR runs default to `parity_mode=auto`:
   - container lanes (including VI Analyzer) always run
   - self-hosted lanes run only if a matching runner is online
+
+## Local Deterministic Preflight
+
+Use the local helper before marking parity diagnostics PRs ready:
+
+```powershell
+pwsh -NoProfile -File .\Tooling\Invoke-LinuxContainerPreflight.ps1 -RepoRoot .
+```
+
+Dry-run command plan only:
+
+```powershell
+pwsh -NoProfile -File .\Tooling\Invoke-LinuxContainerPreflight.ps1 -RepoRoot . -DryRun
+```
+
+Behavior contract:
+- Resolves `.lvcontainer` via `Get-LabVIEWContainerReleaseInfo`.
+- Uses resolved `ReleaseTag` for `runner-cli parity context --lv-release <releaseTag>`.
+- Uses resolved `LinuxImage` for Docker image inspect/pull and VI Analyzer worker.
+- Fails fast when `.lvcontainer` resolves to a non-linux tag.
+
+Outputs:
+- Parity context: `builds/status/local-preflight-parity-context-<sha>.json`
+- Summary: `builds/status/local-linux-preflight-summary-<sha>.json`

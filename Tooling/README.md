@@ -29,6 +29,14 @@ Common entrypoints:
   Build-spec execution is mandatory for parity; `LVIE_PARITY_BUILD_SPEC=false` is unsupported and fails fast.
   `LVIE_RUN_VI_ANALYZER=auto|true|false` defaults to `auto` (run only when `pwsh` and `docker` are available).
   Linux build-spec sync evidence: `builds/status/source-sync-manifest-parity-linux.json` (override with `LVIE_SOURCE_SYNC_MANIFEST_PATH`).
+- `Invoke-LinuxContainerPreflight.ps1`
+  Deterministic local Docker Desktop preflight for Linux parity + optional VI Analyzer, resolved from `.lvcontainer`.
+  Example: `pwsh -NoProfile -File .\\Tooling\\Invoke-LinuxContainerPreflight.ps1 -RepoRoot .`
+  Dry-run plan: `pwsh -NoProfile -File .\\Tooling\\Invoke-LinuxContainerPreflight.ps1 -RepoRoot . -DryRun`
+  Optional: `-SkipViAnalyzer`, `-ContextOutputPath <path>`, `-SummaryOutputPath <path>`.
+  The helper derives `--lv-release` from `.lvcontainer` `ReleaseTag` (not from `.lvversion`) and writes:
+  - parity context JSON: `builds/status/local-preflight-parity-context-<sha>.json`
+  - summary JSON: `builds/status/local-linux-preflight-summary-<sha>.json`
 - `Invoke-BeltAndSuspendersCI.ps1` (recommended proactive loop)
   Canonical "belt and suspenders" flow for exact-SHA confidence:
   1) local parity auto-loop until PPL success target is met,

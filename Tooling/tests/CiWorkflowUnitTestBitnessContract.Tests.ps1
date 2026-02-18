@@ -24,6 +24,8 @@ Describe 'CI workflow unit-test bitness contract' {
     }
 
     It 'uploads per-lane source-test evidence artifacts' {
+        $script:unitTestsSection | Should -Match 'Upload unit test report \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
+        $script:unitTestsSection | Should -Match 'UnitTestReport-\$\{\{ runner\.os \}\}-\$\{\{ matrix\.bitness \}\}\.xml'
         $script:unitTestsSection | Should -Match 'Upload source-test evidence \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
         $script:unitTestsSection | Should -Match 'source-test-evidence-\$\{\{ runner\.os \}\}-\$\{\{ matrix\.bitness \}\}-bit'
         $script:unitTestsSection | Should -Match 'source-test-evidence-\$\{\{ runner\.os \}\}-\$\{\{ matrix\.bitness \}\}\.json'

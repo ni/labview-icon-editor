@@ -37,6 +37,7 @@ Describe 'RunUnitTests execution contract' {
         $program = Get-Content -Path $script:programPath -Raw
 
         $lunitService | Should -Match '"-SkipGcli"'
+        $lunitService | Should -Match 'lunit validate fallback report path'
         $program | Should -Match 'new Command\("validate", "Validate UnitTestReport-<os>-<bitness>\.xml using RunUnitTests\.ps1 parse-only mode\."\)'
     }
 
@@ -71,6 +72,7 @@ Describe 'RunUnitTests execution contract' {
         $unitTestsSection | Should -Match 'legacy_report_path\s*='
         $unitTestsSection | Should -Match 'legacy_report_written\s*='
         $unitTestsSection | Should -Match 'Legacy UnitTestReport compatibility copy written'
+        $unitTestsSection | Should -Match 'UnitTestReport-\$\{\{ runner\.os \}\}-\$\{\{ matrix\.bitness \}\}\.xml'
         $unitTestsSection | Should -Match 'source-test-evidence-\$\{\{ runner\.os \}\}-\$\{\{ matrix\.bitness \}\}\.json'
         $unitTestsSection | Should -Match 'Upload source-test evidence \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
         $unitTestsSection | Should -Match 'Upload LabVIEW temp logs \(LV \$\{\{ matrix\.bitness \}\}-bit\)'

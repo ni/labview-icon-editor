@@ -44,6 +44,22 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*run_self_hosted_32_effective:\s*\$\{\{\s*steps\.resolve\.outputs\.run_self_hosted_32_effective\s*\}\}'
     }
 
+    It 'keeps permission-limited runner lookup as informational unknown and preserves warning path for other errors' {
+        $capacityMatch = [regex]::Match(
+            $workflowContent,
+            '(?ms)^  self-hosted-capacity:\s*$.*?(?=^  [A-Za-z0-9_-]+:\s*$|\z)'
+        )
+        $capacityMatch.Success | Should -BeTrue
+        $capacityBlock = $capacityMatch.Value
+
+        $capacityBlock | Should -Match 'permissionDenied = lowerError\.includes\(''resource not accessible by integration''\)'
+        $capacityBlock | Should -Match 'core\.info\(`Self-hosted availability lookup unavailable with workflow token; treating as unknown\.'
+        $capacityBlock | Should -Match 'core\.warning\(`Self-hosted availability lookup failed; treating as unknown\.'
+        $capacityBlock | Should -Not -Match 'core\.warning\(`Self-hosted availability lookup unavailable with workflow token; treating as unknown\.'
+        $capacityBlock | Should -Match 'core\.setOutput\(''self_hosted_available'', ''unknown''\)'
+        $capacityBlock | Should -Match 'core\.setOutput\(''self_hosted_availability_reason'', `runner-lookup-error:'
+    }
+
     It 'derives Linux container parity job name from .lvcontainer contract' {
         $workflowContent | Should -Match '(?ms)^\s*resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*lvcontainer_raw:\s*\$\{\{\s*steps\.resolve\.outputs\.lvcontainer_raw\s*\}\}'
         $workflowContent | Should -Match '(?ms)^\s*resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*lv_release_linux:\s*\$\{\{\s*steps\.resolve\.outputs\.lv_release_linux\s*\}\}'
