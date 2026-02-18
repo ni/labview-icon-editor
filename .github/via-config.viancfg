@@ -6,7 +6,7 @@
 <TargetIndex>0</TargetIndex>
 <ItemsToAnalyze>
 	<Item>
-		<Path>".."</Path>
+		<Path>"../resource/plugins/lv_icon.vi"</Path>
 		<Removed>FALSE</Removed>
 	</Item>
 </ItemsToAnalyze>
