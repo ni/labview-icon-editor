@@ -29,7 +29,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 
 > **Prerequisites**:
 > - **LabVIEW 2026 (26.1), 32-bit and 64-bit** (minimum supported baseline).
-> - **LabVIEWCLI** available on PATH on self-hosted runners for Windows LabVIEW automation paths (build/test/teardown). The blocking `vi-analyzer` CI job runs on `ubuntu-latest` via Dockerized LabVIEW Linux.
+> - **LabVIEWCLI** available on PATH on self-hosted runners for Windows LabVIEW automation paths (build/test/teardown). The blocking VI Analyzer lane runs in [`labview-parity.yml`](../../../.github/workflows/labview-parity.yml) on `ubuntu-latest` via Dockerized LabVIEW Linux.
 > - The relevant **VIPC** file is now at `.github/actions/apply-vipc/runner_dependencies.vipc`.
 > - [PowerShell 7+](https://github.com/PowerShell/PowerShell/releases/latest)
 > - [Git for Windows](https://github.com/git-for-windows/git/releases/latest)
@@ -60,7 +60,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
     - Run tests using **CI Pipeline**.
     - `pull_request` runs use the `pr-fast` profile (64-bit smoke/missing/unit).
     - `workflow_dispatch` with `force_gcli_lunit=true` uses `release-priority` and skips heavy self-hosted validation jobs.
-    - All profiles require the `vi-analyzer` job to pass.
+    - VI Analyzer ownership is in `labview-parity.yml`; `ci.yml` no longer hosts a duplicate VI Analyzer lane.
     - **CI Pipeline** (`.github/workflows/ci.yml`) runs on `push` (`main`, `develop`, `release/*`), `pull_request`, and `workflow_dispatch`; feature/hotfix branch pushes are intentionally excluded so PR synchronization is the single CI path for those branches.
 
 6. **Build VI Package**
@@ -102,7 +102,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 
 2. **CI Pipeline**
    - Includes `unit-tests`, `version`, and `build-vip` jobs, plus container packed-library and prerelease publication jobs.
-   - Includes a blocking `vi-analyzer` job on `ubuntu-latest` that executes `Tooling/Run-ViAnalyzer.ps1` (Dockerized Linux worker) against `Tooling/vi-analyzer/tasks.json`.
+   - VI Analyzer execution is owned by `labview-parity.yml` (`vi-analyzer-linux` on `ubuntu-latest`) and runs `Tooling/Run-ViAnalyzer.ps1` (Dockerized Linux worker) against `Tooling/vi-analyzer/tasks.linux.json`.
    - Execution profile is computed as `ci_profile`:
      - `release-priority` = `workflow_dispatch` + `force_gcli_lunit=true` (target <= 25 minutes).
      - `pr-fast` = `pull_request` (target <= 35 minutes).

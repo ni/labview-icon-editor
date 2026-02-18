@@ -482,40 +482,6 @@ jobs:
           "numeric=$($info.NumericVersion)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
           Write-Host ("LabVIEW version gate passed: {0}" -f $info.Raw)
 
-  container-contract:
-    name: Resolve VI Analyzer Container Contract
-    needs: run-metadata
-    runs-on: ubuntu-latest
-    outputs:
-      raw: ${{ steps.contract.outputs.raw }}
-      tag: ${{ steps.contract.outputs.tag }}
-      image: ${{ steps.contract.outputs.image }}
-      os: ${{ steps.contract.outputs.os }}
-      year: ${{ steps.contract.outputs.year }}
-      minor: ${{ steps.contract.outputs.minor }}
-      release_tag: ${{ steps.contract.outputs.release_tag }}
-      linux_image: ${{ steps.contract.outputs.linux_image }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - id: contract
-        name: Resolve .lvcontainer
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          . "$env:GITHUB_WORKSPACE/Tooling/support/LabVIEWContainerRelease.ps1"
-          $info = Get-LabVIEWContainerReleaseInfo -RepoRoot $env:GITHUB_WORKSPACE
-          "raw=$($info.Raw)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
-          "tag=$($info.Tag)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
-          "image=$($info.Image)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
-          "os=$($info.Os)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
-          "year=$($info.Year)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
-          "minor=$($info.MinorRevision)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
-          "release_tag=$($info.ReleaseTag)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
-          "linux_image=$($info.LinuxImage)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append -Encoding utf8
-          Write-Host ("VI Analyzer container contract resolved: raw={0}, tag={1}, os={2}, release={3}, image={4}" -f $info.Raw, $info.Tag, $info.Os, $info.ReleaseTag, $info.Image)
-
   core-conformance-hosted-linux:
     name: Core Conformance Evidence (Hosted Linux)
     needs: [run-metadata, version-gate, runner-cli-build]
@@ -1016,184 +982,6 @@ jobs:
       - name: Job teardown (LV x86)
         if: always()
         uses: ./.github/actions/lvie-job-teardown
-
-  vi-analyzer:
-    name: VI Analyzer Linux container ${{ needs.container-contract.outputs.raw }}
-    needs: [run-metadata, prerelease-context, version-gate, container-contract]
-    runs-on: ubuntu-latest
-    env:
-      LVIE_VI_ANALYZER_TASKS_PATH: Tooling/vi-analyzer/tasks.linux.json
-      LVIE_CONTAINER_CONTRACT_RAW: ${{ needs.container-contract.outputs.raw }}
-      LVIE_CONTAINER_CONTRACT_TAG: ${{ needs.container-contract.outputs.tag }}
-      LVIE_CONTAINER_CONTRACT_IMAGE: ${{ needs.container-contract.outputs.image }}
-      LVIE_CONTAINER_CONTRACT_OS: ${{ needs.container-contract.outputs.os }}
-      LVIE_CONTAINER_CONTRACT_YEAR: ${{ needs.container-contract.outputs.year }}
-      LVIE_CONTAINER_CONTRACT_MINOR: ${{ needs.container-contract.outputs.minor }}
-      LVIE_CONTAINER_CONTRACT_RELEASE_TAG: ${{ needs.container-contract.outputs.release_tag }}
-      LVIE_CONTAINER_CONTRACT_LINUX_IMAGE: ${{ needs.container-contract.outputs.linux_image }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Validate vi-analyzer container selection
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ "${LVIE_CONTAINER_CONTRACT_OS}" != "linux" ]]; then
-            echo "vi-analyzer on ubuntu-latest requires a linux container tag; .lvcontainer resolved to tag '${LVIE_CONTAINER_CONTRACT_TAG}' (os=${LVIE_CONTAINER_CONTRACT_OS}, image=${LVIE_CONTAINER_CONTRACT_IMAGE})." >&2
-            exit 1
-          fi
-          if [[ -z "${LVIE_CONTAINER_CONTRACT_LINUX_IMAGE}" ]]; then
-            echo "linux_image output is empty for linux tag '${LVIE_CONTAINER_CONTRACT_TAG}'." >&2
-            exit 1
-          fi
-
-      - name: Pull LabVIEW Linux image
-        shell: bash
-        run: |
-          set -euo pipefail
-          image="${LVIE_CONTAINER_CONTRACT_LINUX_IMAGE}"
-          echo "Using image: ${image}"
-          docker pull "${image}"
-          echo "LABVIEW_LINUX_IMAGE=${image}" >> "$GITHUB_ENV"
-
-      - name: Run VI Analyzer tasks (Linux container)
-        shell: bash
-        env:
-          LVIE_VI_ANALYZER_LABVIEW_YEAR: ${{ needs.container-contract.outputs.year }}
-        run: |
-          set -euo pipefail
-          script_path="${GITHUB_WORKSPACE}/Tooling/container-parity/run-vi-analyzer-linux.sh"
-          tasks_path_rel="${LVIE_VI_ANALYZER_TASKS_PATH:-Tooling/vi-analyzer/tasks.linux.json}"
-          tasks_path_host="${GITHUB_WORKSPACE}/${tasks_path_rel}"
-          tasks_path_container="/workspace/${tasks_path_rel}"
-          if [[ ! -f "$script_path" ]]; then
-            echo "VI Analyzer Linux worker script not found: $script_path" >&2
-            exit 1
-          fi
-          if [[ ! -f "$tasks_path_host" ]]; then
-            echo "VI Analyzer Linux task registry not found: $tasks_path_host" >&2
-            exit 1
-          fi
-
-          docker run --rm \
-            -v "${GITHUB_WORKSPACE}:/workspace" \
-            -e LVIE_REPO_ROOT=/workspace \
-            -e WORKSPACE_ROOT=/workspace \
-            -e REPO_ROOT=/workspace \
-            -e LVIE_VI_ANALYZER_LABVIEW_YEAR="${LVIE_VI_ANALYZER_LABVIEW_YEAR}" \
-            -e LVIE_VI_ANALYZER_TASKS_PATH="${tasks_path_container}" \
-            "${LABVIEW_LINUX_IMAGE}" \
-            bash -lc "chmod +x /workspace/Tooling/container-parity/run-vi-analyzer-linux.sh && /workspace/Tooling/container-parity/run-vi-analyzer-linux.sh"
-
-      - name: Normalize Linux container output ownership
-        if: always()
-        shell: bash
-        run: |
-          set -euo pipefail
-          uid="$(id -u)"
-          gid="$(id -g)"
-          for path in \
-            "${GITHUB_WORKSPACE}/builds" \
-            "${GITHUB_WORKSPACE}/TestResults/container-parity/linux/vi-analyzer"; do
-            if [[ -e "$path" ]]; then
-              sudo chown -R "${uid}:${gid}" "$path"
-            fi
-          done
-
-      - name: Write VI Analyzer status summary (Linux container)
-        if: always()
-        shell: pwsh
-        run: |
-          $repoRoot = $env:GITHUB_WORKSPACE
-          $tasksRelativePath = if ([string]::IsNullOrWhiteSpace($env:LVIE_VI_ANALYZER_TASKS_PATH)) {
-            'Tooling/vi-analyzer/tasks.linux.json'
-          } else {
-            $env:LVIE_VI_ANALYZER_TASKS_PATH
-          }
-          $tasksPath = Join-Path $repoRoot $tasksRelativePath
-          $reportsRoot = Join-Path $repoRoot 'builds/vi-analyzer'
-          $statusPath = Join-Path $repoRoot 'builds/status/vi-analyzer-summary.json'
-          New-Item -ItemType Directory -Path (Split-Path -Path $statusPath -Parent) -Force | Out-Null
-
-          $taskResults = @()
-          if (Test-Path -Path $tasksPath -PathType Leaf) {
-            $tasksDoc = Get-Content -Raw -Path $tasksPath | ConvertFrom-Json
-            foreach ($task in @($tasksDoc.tasks)) {
-              $taskId = [string]$task.id
-              if ([string]::IsNullOrWhiteSpace($taskId)) {
-                continue
-              }
-
-              $safeTaskId = $taskId -replace '[^A-Za-z0-9_.-]', '-'
-              $reportPath = Join-Path $reportsRoot ("vi-analyzer-{0}.txt" -f $safeTaskId)
-              $taskResults += [pscustomobject]@{
-                id          = $taskId
-                config_path = [string]$task.config_path
-                report_path = $reportPath
-                succeeded   = (Test-Path -Path $reportPath -PathType Leaf)
-              }
-            }
-          }
-
-          $failedTasks = @($taskResults | Where-Object { -not $_.succeeded })
-          $status = [ordered]@{
-            generated_utc   = (Get-Date).ToUniversalTime().ToString('o')
-            repo_root       = $repoRoot
-            tasks_path      = $tasksPath
-            tasks_path_relative = $tasksRelativePath
-            reports_root    = $reportsRoot
-            overall_success = ($taskResults.Count -gt 0 -and $failedTasks.Count -eq 0)
-            task_count      = $taskResults.Count
-            labview         = [ordered]@{
-              source_contract = [ordered]@{
-                raw            = '${{ needs.version-gate.outputs.raw }}'
-                year           = '${{ needs.version-gate.outputs.year }}'
-                minor_revision = '${{ needs.version-gate.outputs.minor }}'
-              }
-              container_contract = [ordered]@{
-                raw            = $env:LVIE_CONTAINER_CONTRACT_RAW
-                tag            = $env:LVIE_CONTAINER_CONTRACT_TAG
-                image          = $env:LVIE_CONTAINER_CONTRACT_IMAGE
-                os             = $env:LVIE_CONTAINER_CONTRACT_OS
-                year           = $env:LVIE_CONTAINER_CONTRACT_YEAR
-                minor_revision = $env:LVIE_CONTAINER_CONTRACT_MINOR
-                release_tag    = $env:LVIE_CONTAINER_CONTRACT_RELEASE_TAG
-                linux_image    = $env:LVIE_CONTAINER_CONTRACT_LINUX_IMAGE
-              }
-              runtime = [ordered]@{
-                year = $env:LVIE_CONTAINER_CONTRACT_YEAR
-              }
-              bitness        = 64
-              execution_mode = 'linux-container'
-            }
-            task_results    = $taskResults
-          }
-
-          $status | ConvertTo-Json -Depth 8 | Out-File -FilePath $statusPath -Encoding utf8
-
-      - name: Upload VI Analyzer logs (Linux container)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: vi-analyzer-linux-logs
-          path: ${{ github.workspace }}/TestResults/container-parity/linux/vi-analyzer/logs
-          if-no-files-found: warn
-
-      - name: Upload VI Analyzer reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: vi-analyzer-reports
-          path: ${{ github.workspace }}/builds/vi-analyzer
-          if-no-files-found: warn
-      - name: Upload VI Analyzer status
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: vi-analyzer-status
-          path: ${{ github.workspace }}/builds/status/vi-analyzer-summary.json
-          if-no-files-found: error
 
   version:
     name: Compute Version
@@ -2680,7 +2468,6 @@ jobs:
       - powershell-lint
       - vip-prerelease-requirements-lint
       - pylavi-validate
-      - vi-analyzer
       - changes
       - apply-deps
       - unit-tests
@@ -2723,7 +2510,6 @@ jobs:
             'powershell-lint',
             'vip-prerelease-requirements-lint',
             'pylavi-validate',
-            'vi-analyzer',
             'build-ppl-linux-container',
             'build-ppl-windows-container',
             'codex-skill-layer-asset',
@@ -3148,7 +2934,6 @@ jobs:
       - powershell-lint
       - vip-prerelease-requirements-lint
       - pylavi-validate
-      - vi-analyzer
       - changes
       - apply-deps
       - unit-tests
@@ -3181,7 +2966,6 @@ jobs:
             'powershell-lint',
             'vip-prerelease-requirements-lint',
             'pylavi-validate',
-            'vi-analyzer',
             'build-ppl-linux-container',
             'build-ppl-windows-container',
             'codex-skill-layer-asset',

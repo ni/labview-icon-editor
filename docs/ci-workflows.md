@@ -93,7 +93,7 @@ This document is the canonical source for release/publication policy.
 - Merge strategy contract: pull requests intended to drive prerelease publication to `develop` must use merge commits (`--merge`), not squash or rebase.
 - Publish contract: prerelease publication is automatic on `push` to `develop` when `github.sha` is a merged-PR merge commit targeting `develop`; `workflow_dispatch` remains available for deterministic backfill.
 - Execution profiles (`prerelease-context` output `ci_profile`):
-  - `release-priority`: `workflow_dispatch` with `force_gcli_lunit=true`; skips most self-hosted heavy jobs (`Verify IE Paths`, smoke, unit-tests, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) but still requires `vi-analyzer`, and targets <= 25 minutes.
+  - `release-priority`: `workflow_dispatch` with `force_gcli_lunit=true`; skips most self-hosted heavy jobs (`Verify IE Paths`, smoke, unit-tests, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) and targets <= 25 minutes.
   - `pr-fast`: `pull_request`; keeps validation coverage but uses 64-bit-only matrices for smoke/unit-tests, targeting <= 35 minutes.
   - `full`: default for `push` and `workflow_dispatch` without `force_gcli_lunit=true`; preserves full publish-eligible flow.
 - Profile routing note: `force_gcli_lunit=true` is now used only to select the `release-priority` profile; unit-test execution is standardized on direct `g-cli lunit` in workflows that run tests.
@@ -177,7 +177,7 @@ Below are the **key GitHub Actions** provided in this repository:
 The [`ci.yml`](../.github/workflows/ci.yml) pipeline breaks the build into several jobs:
 
 - **pylavi-validate** – report-only LabVIEW file validation using `vi_validate` (strict + legacy profiles) with `.lvversion`-synced version gating and optional baseline/delta reporting.
-- **vi-analyzer** – blocking LabVIEWCLI `RunVIAnalyzer` gate on `ubuntu-latest` via `Tooling/Run-ViAnalyzer.ps1` + Linux worker `Tooling/container-parity/run-vi-analyzer-linux.sh`, using deterministic task registry `Tooling/vi-analyzer/tasks.json` and container contract `.lvcontainer` (literal NI tag like `2026q1-linux`/`latest-linux`; CI validates with live Docker Hub discovery and snapshot fallback, then derives image/OS/runtime metadata); uploads artifacts `vi-analyzer-reports` and `vi-analyzer-status` (`builds/status/vi-analyzer-summary.json`).
+- **VI Analyzer ownership note** – the blocking Linux container VI Analyzer lane now lives in [`labview-parity.yml`](../.github/workflows/labview-parity.yml) (`vi-analyzer-linux`) and uploads `vi-analyzer-reports-parity` plus `vi-analyzer-status-parity` (`builds/status/vi-analyzer-summary.parity.json`).
 - **prerelease-context** – computes prerelease publish eligibility, reason, merged-PR bump override context, and the execution profile (`ci_profile`: `release-priority`, `pr-fast`, `full`).
 - **changes** – checks out the repository and detects `.vipc` file changes for diagnostics/reporting in downstream jobs.
 - **apply-deps** – runs VIPC audit (`Assert-VipcApplied`) for both bitnesses on every run (hard-stop on mismatch), then optionally runs informational VIPC apply diagnostics when manually dispatched with `vipc_apply_info=true`.
@@ -190,7 +190,6 @@ The [`ci.yml`](../.github/workflows/ci.yml) pipeline breaks the build into sever
 - **codex-skill-layer-asset** – downloads the pinned Codex skill-layer installer asset (`lvie-codex-skill-layer-installer.exe`), validates SHA256, performs silent install into a temp directory, verifies required files + `0BSD` manifest license, and publishes artifact `codex-skill-layer` for prerelease attachment.
 - **build-vip** – Windows/self-hosted VI Package packaging path. This job requires both PPL artifacts (`lv_icon_x86.lvlibp`, `lv_icon_x64.lvlibp`) and runs for `full`/`pr-fast`; it is intentionally skipped in `release-priority`.
 - **publish-gate** – evaluates profile-required prepublish job outcomes and blocks prerelease publication when required checks are missing or non-success.
-- **publish-gate** – requires `vi-analyzer` in all profiles (`full`, `pr-fast`, `release-priority`) in addition to profile-specific job requirements.
 - **publish-prerelease** – creates prereleases for eligible new tags, verifies required assets for existing immutable tags (`already-published`), attaches required assets for new tags, and emits `prerelease-publish-status`.
 - **pipeline-contract** – validates required-job outcomes using profile-specific expectations so intentionally skipped jobs in `release-priority` do not fail the run.
 

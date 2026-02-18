@@ -8,7 +8,8 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $repoRootPath = (Resolve-Path -Path $RepoRoot -ErrorAction Stop).Path
-$workflowPath = Join-Path $repoRootPath '.github\workflows\ci.yml'
+$ciWorkflowPath = Join-Path $repoRootPath '.github\workflows\ci.yml'
+$parityWorkflowPath = Join-Path $repoRootPath '.github\workflows\labview-parity.yml'
 $lvcontainerPath = Join-Path $repoRootPath '.lvcontainer'
 
 $violations = New-Object System.Collections.Generic.List[object]
@@ -25,87 +26,104 @@ function Add-ContractViolation {
         }) | Out-Null
 }
 
-if (-not (Test-Path -LiteralPath $workflowPath -PathType Leaf)) {
+if (-not (Test-Path -LiteralPath $ciWorkflowPath -PathType Leaf)) {
     Add-ContractViolation -Type 'missing-workflow' -Message "Required workflow file not found: .github/workflows/ci.yml"
+}
+
+if (-not (Test-Path -LiteralPath $parityWorkflowPath -PathType Leaf)) {
+    Add-ContractViolation -Type 'missing-parity-workflow' -Message "Required workflow file not found: .github/workflows/labview-parity.yml"
 }
 
 if (-not (Test-Path -LiteralPath $lvcontainerPath -PathType Leaf)) {
     Add-ContractViolation -Type 'missing-lvcontainer' -Message 'Required container contract file not found: .lvcontainer'
 }
 
-$content = if (Test-Path -LiteralPath $workflowPath -PathType Leaf) {
-    Get-Content -LiteralPath $workflowPath -Raw
+$ciContent = if (Test-Path -LiteralPath $ciWorkflowPath -PathType Leaf) {
+    Get-Content -LiteralPath $ciWorkflowPath -Raw
 } else {
     ''
 }
 
-if ($content) {
-    if ($content -notmatch '(?ms)^\s*container-contract:\s*$') {
-        Add-ContractViolation -Type 'missing-container-contract-job' -Message 'ci.yml must define a container-contract job.'
-    }
+$parityContent = if (Test-Path -LiteralPath $parityWorkflowPath -PathType Leaf) {
+    Get-Content -LiteralPath $parityWorkflowPath -Raw
+} else {
+    ''
+}
 
-    foreach ($requiredOutput in @('raw', 'tag', 'image', 'os', 'year', 'minor', 'release_tag', 'linux_image')) {
-        $pattern = "(?ms)^\s*container-contract:\s*.*?steps\.contract\.outputs\.{0}" -f [regex]::Escape($requiredOutput)
-        if ($content -notmatch $pattern) {
-            Add-ContractViolation -Type 'missing-container-contract-output' -Message ("container-contract job must expose output '{0}'." -f $requiredOutput)
-        }
+if ($ciContent) {
+    if ($ciContent -match '(?ms)^\s*container-contract:\s*$') {
+        Add-ContractViolation -Type 'duplicate-container-contract-job' -Message 'ci.yml must not define a container-contract job after parity ownership cutover.'
     }
+    if ($ciContent -match '(?ms)^\s*vi-analyzer:\s*$') {
+        Add-ContractViolation -Type 'duplicate-vi-analyzer-job' -Message 'ci.yml must not define a vi-analyzer job after parity ownership cutover.'
+    }
+    if ($ciContent -match '(?ms)publish-gate:\s*.*?needs:\s*.*?\n\s*-\s*vi-analyzer\s*$') {
+        Add-ContractViolation -Type 'duplicate-vi-analyzer-publish-gate' -Message 'publish-gate needs list must not include vi-analyzer.'
+    }
+    if ($ciContent -match '(?ms)pipeline-contract:\s*.*?needs:\s*.*?\n\s*-\s*vi-analyzer\s*$') {
+        Add-ContractViolation -Type 'duplicate-vi-analyzer-pipeline-contract' -Message 'pipeline-contract needs list must not include vi-analyzer.'
+    }
+    if ($ciContent -match "(?ms)\$requiredCommon\s*=\s*@\(\s*.*?'vi-analyzer'") {
+        Add-ContractViolation -Type 'duplicate-vi-analyzer-required-common' -Message 'profile requiredCommon list in ci.yml must not include vi-analyzer.'
+    }
+}
 
+if ($parityContent) {
     $viAnalyzerMatch = [regex]::Match(
-        $content,
-        '(?ms)^\s*vi-analyzer:\s*$.*?(?=^\s{2}[A-Za-z0-9_-]+:\s*$|\z)'
+        $parityContent,
+        '(?ms)^\s*vi-analyzer-linux:\s*$.*?(?=^\s{2}[A-Za-z0-9_-]+:\s*$|\z)'
     )
 
     if (-not $viAnalyzerMatch.Success) {
-        Add-ContractViolation -Type 'missing-vi-analyzer-job' -Message 'ci.yml must define vi-analyzer job block.'
+        Add-ContractViolation -Type 'missing-parity-vi-analyzer-job' -Message 'labview-parity.yml must define vi-analyzer-linux job block.'
     } else {
         $viAnalyzerBlock = $viAnalyzerMatch.Value
 
         $requiredPatterns = @(
             @{
-                Type    = 'vi-analyzer-dynamic-name'
-                Pattern = 'name:\s*VI Analyzer Linux container \${{\s*needs\.container-contract\.outputs\.raw\s*}}'
-                Message = 'vi-analyzer job name must derive from needs.container-contract.outputs.raw.'
+                Type    = 'parity-vi-analyzer-dynamic-name'
+                Pattern = 'name:\s*VI Analyzer Linux container \${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_raw\s*}}'
+                Message = 'vi-analyzer-linux job name must derive from resolve-parity-context.outputs.lvcontainer_raw.'
             },
             @{
-                Type    = 'vi-analyzer-needs-container-contract'
-                Pattern = 'needs:\s*\[[^\]]*container-contract[^\]]*\]'
-                Message = 'vi-analyzer needs list must include container-contract.'
+                Type    = 'parity-vi-analyzer-needs-resolve'
+                Pattern = 'needs:\s*\[\s*resolve-parity-context\s*\]'
+                Message = 'vi-analyzer-linux needs list must include resolve-parity-context.'
             },
             @{
-                Type    = 'vi-analyzer-image-env'
-                Pattern = 'LVIE_CONTAINER_CONTRACT_LINUX_IMAGE:\s*\${{\s*needs\.container-contract\.outputs\.linux_image\s*}}'
-                Message = 'vi-analyzer job env must map LVIE_CONTAINER_CONTRACT_LINUX_IMAGE from container-contract outputs.'
+                Type    = 'parity-vi-analyzer-image-env'
+                Pattern = 'LVIE_CONTAINER_CONTRACT_LINUX_IMAGE:\s*nationalinstruments/labview:\${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_tag\s*}}'
+                Message = 'vi-analyzer-linux job env must map LVIE_CONTAINER_CONTRACT_LINUX_IMAGE from resolve-parity-context linux tag output.'
             },
             @{
-                Type    = 'vi-analyzer-tag-env'
-                Pattern = 'LVIE_CONTAINER_CONTRACT_TAG:\s*\${{\s*needs\.container-contract\.outputs\.tag\s*}}'
-                Message = 'vi-analyzer job env must map LVIE_CONTAINER_CONTRACT_TAG from container-contract outputs.'
+                Type    = 'parity-vi-analyzer-tag-env'
+                Pattern = 'LVIE_CONTAINER_CONTRACT_TAG:\s*\${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_tag\s*}}'
+                Message = 'vi-analyzer-linux job env must map LVIE_CONTAINER_CONTRACT_TAG from resolve-parity-context outputs.'
             },
             @{
-                Type    = 'vi-analyzer-image-tag-env'
-                Pattern = 'LVIE_CONTAINER_CONTRACT_IMAGE:\s*\${{\s*needs\.container-contract\.outputs\.image\s*}}'
-                Message = 'vi-analyzer job env must map LVIE_CONTAINER_CONTRACT_IMAGE from container-contract outputs.'
+                Type    = 'parity-vi-analyzer-image-tag-env'
+                Pattern = 'LVIE_CONTAINER_CONTRACT_IMAGE:\s*nationalinstruments/labview:\${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_tag\s*}}'
+                Message = 'vi-analyzer-linux job env must map LVIE_CONTAINER_CONTRACT_IMAGE from resolve-parity-context outputs.'
             },
             @{
-                Type    = 'vi-analyzer-os-env'
-                Pattern = 'LVIE_CONTAINER_CONTRACT_OS:\s*\${{\s*needs\.container-contract\.outputs\.os\s*}}'
-                Message = 'vi-analyzer job env must map LVIE_CONTAINER_CONTRACT_OS from container-contract outputs.'
+                Type    = 'parity-vi-analyzer-os-env'
+                Pattern = 'LVIE_CONTAINER_CONTRACT_OS:\s*linux'
+                Message = 'vi-analyzer-linux job env must map LVIE_CONTAINER_CONTRACT_OS to linux.'
             },
             @{
-                Type    = 'vi-analyzer-os-guard'
+                Type    = 'parity-vi-analyzer-os-guard'
                 Pattern = '(?s)Validate vi-analyzer container selection.*?LVIE_CONTAINER_CONTRACT_OS.*?requires a linux container tag'
-                Message = 'vi-analyzer must fail fast when a non-linux container tag is selected.'
+                Message = 'vi-analyzer-linux must fail fast when a non-linux container tag is selected.'
             },
             @{
-                Type    = 'vi-analyzer-pull-image'
+                Type    = 'parity-vi-analyzer-pull-image'
                 Pattern = 'image="\$\{LVIE_CONTAINER_CONTRACT_LINUX_IMAGE\}"'
-                Message = 'vi-analyzer pull step must use LVIE_CONTAINER_CONTRACT_LINUX_IMAGE.'
+                Message = 'vi-analyzer-linux pull step must use LVIE_CONTAINER_CONTRACT_LINUX_IMAGE.'
             },
             @{
-                Type    = 'vi-analyzer-runtime-year'
-                Pattern = 'LVIE_VI_ANALYZER_LABVIEW_YEAR:\s*\${{\s*needs\.container-contract\.outputs\.year\s*}}'
-                Message = 'vi-analyzer runtime year must come from container-contract outputs.'
+                Type    = 'parity-vi-analyzer-runtime-year'
+                Pattern = 'LVIE_VI_ANALYZER_LABVIEW_YEAR:\s*\${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_year\s*}}'
+                Message = 'vi-analyzer-linux runtime year must come from resolve-parity-context linux year output.'
             }
         )
 
@@ -119,12 +137,12 @@ if ($content) {
             @{
                 Type    = 'legacy-lv-release-format'
                 Pattern = 'LV_RELEASE:\s*\${{\s*format\(''\{0\}q1'',\s*needs\.version-gate\.outputs\.year\)\s*}}'
-                Message = 'vi-analyzer pull step must not derive LV_RELEASE from needs.version-gate.outputs.year.'
+                Message = 'vi-analyzer-linux pull step must not derive LV_RELEASE from needs.version-gate.outputs.year.'
             },
             @{
                 Type    = 'legacy-linux-image-template'
                 Pattern = 'image="nationalinstruments/labview:\$\{LV_RELEASE\}-linux"'
-                Message = 'vi-analyzer pull step must not build image from LV_RELEASE template.'
+                Message = 'vi-analyzer-linux pull step must not build image from LV_RELEASE template.'
             }
         )
 
@@ -141,7 +159,7 @@ if ($WriteSummary -and -not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMAR
         @(
             '### VI Analyzer Container Contract Guard'
             '- Status: pass'
-            '- Result: vi-analyzer container contract wiring is valid.'
+            '- Result: CI duplicate lane removed and parity vi-analyzer wiring is valid.'
         ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
     } else {
         @(
