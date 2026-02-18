@@ -43,6 +43,7 @@ Describe 'RunUnitTests execution contract' {
     It 'keeps runner-cli dry-run coverage for lunit run and lunit validate' {
         $content = Get-Content -Path $script:runnerCliTestsPath -Raw
         $content | Should -Match 'Lunit_run_dry_run_emits_gcli_and_parser_commands'
+        $content | Should -Match 'Lunit_run_dry_run_includes_verbose_flag_when_requested'
         $content | Should -Match 'Lunit_validate_dry_run_emits_parser_command'
     }
 
@@ -65,8 +66,16 @@ Describe 'RunUnitTests execution contract' {
 
         $unitTestsSection | Should -Match ([regex]::Escape("g-cli lunit exit code:\s*(-?\d+)"))
         $unitTestsSection | Should -Match ([regex]::Escape("RunUnitTests parser exit code:\s*(-?\d+)"))
+        $unitTestsSection | Should -Match 'failure_classifications\s*='
+        $unitTestsSection | Should -Match 'gcli_nonzero_empty_report'
+        $unitTestsSection | Should -Match 'legacy_report_path\s*='
+        $unitTestsSection | Should -Match 'legacy_report_written\s*='
+        $unitTestsSection | Should -Match 'Legacy UnitTestReport compatibility copy written'
         $unitTestsSection | Should -Match 'source-test-evidence-\$\{\{ runner\.os \}\}-\$\{\{ matrix\.bitness \}\}\.json'
         $unitTestsSection | Should -Match 'Upload source-test evidence \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
+        $unitTestsSection | Should -Match 'Upload LabVIEW temp logs \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
+        $unitTestsSection | Should -Match 'Upload unit test report legacy alias \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
+        $unitTestsSection | Should -Match 'UnitTestReport\.xml'
     }
 
     It 'records strict report/testcase failure reasons with canary-mode pass-through support' {
@@ -81,6 +90,11 @@ Describe 'RunUnitTests execution contract' {
         $unitTestsSection | Should -Match 'Unit test report missing at'
         $unitTestsSection | Should -Match 'Unit test report has no <testcase> entries'
         $unitTestsSection | Should -Match 'LVIE_SOURCE_TEST_STRICT:\s*\$\{\{\s*vars\.LVIE_SOURCE_TEST_STRICT \|\| ''0''\s*\}\}'
+        $unitTestsSection | Should -Match 'LVIE_LUNIT_VERBOSE_GCLI:\s*\$\{\{\s*vars\.LVIE_LUNIT_VERBOSE_GCLI \|\| ''1''\s*\}\}'
+        $unitTestsSection | Should -Match 'Invoke-DotnetBuildServerShutdown -Phase ''pre-lunit'''
+        $unitTestsSection | Should -Match 'Invoke-DotnetBuildServerShutdown -Phase ''post-lunit'''
+        $unitTestsSection | Should -Match 'Close_LabVIEW\.ps1'
+        $unitTestsSection | Should -Match '--verbose-gcli'
         $unitTestsSection | Should -Match 'Source-test canary mode active; keeping lane green'
         $unitTestsSection | Should -Not -Match 'Treating lane as skipped'
         $unitTestsSection | Should -Not -Match "\$unitTestYear -eq '2020'"

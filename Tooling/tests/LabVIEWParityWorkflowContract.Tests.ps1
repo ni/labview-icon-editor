@@ -32,6 +32,8 @@ Describe 'LabVIEW parity workflow build-spec contract' {
 
         $workflowContent | Should -Match '(?ms)^  self-hosted-capacity:\s*$'
         $workflowContent | Should -Match 'listSelfHostedRunnersForRepo'
+        $workflowContent | Should -Match 'Self-hosted availability lookup unavailable with workflow token; treating as unknown'
+        $workflowContent | Should -Match 'core\.info\(`Self-hosted availability lookup unavailable with workflow token; treating as unknown\.'
         $workflowContent | Should -Match '(?ms)^  self-hosted-capacity:\s*.*?outputs:\s*.*?\n\s*self_hosted_available:'
         $workflowContent | Should -Match '(?ms)^  self-hosted-capacity:\s*.*?outputs:\s*.*?\n\s*self_hosted_availability_reason:'
 

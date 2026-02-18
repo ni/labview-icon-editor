@@ -9,6 +9,7 @@ public sealed record LunitRunOptions(
     string Bitness,
     string ProjectPath,
     string? ReportPath,
+    bool VerboseGcli,
     bool DryRun
 );
 
@@ -38,6 +39,7 @@ public static class LunitService
         var repoRoot = Path.GetFullPath(options.RepoRoot);
         var projectPath = ResolvePath(repoRoot, options.ProjectPath);
         var reportPath = ResolveReportPath(repoRoot, options.ReportPath, options.Bitness);
+        var legacyReportPath = ResolveLegacyReportPath(repoRoot);
 
         if (!options.DryRun && !File.Exists(projectPath))
         {
@@ -57,6 +59,19 @@ public static class LunitService
                 return 1;
             }
         }
+        if (!options.DryRun &&
+            !PathEquals(reportPath, legacyReportPath) &&
+            File.Exists(legacyReportPath))
+        {
+            try
+            {
+                File.Delete(legacyReportPath);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"WARNING: Failed to clear legacy LUnit report '{legacyReportPath}': {ex.Message}");
+            }
+        }
 
         var gcliExitCode = RunGcliLunit(
             repoRoot: repoRoot,
@@ -64,6 +79,7 @@ public static class LunitService
             bitness: options.Bitness,
             projectPath: projectPath,
             reportPath: reportPath,
+            verboseGcli: options.VerboseGcli,
             dryRun: options.DryRun);
 
         Console.WriteLine($"g-cli lunit exit code: {gcliExitCode}");
@@ -75,6 +91,11 @@ public static class LunitService
             ReportPath: reportPath,
             DryRun: options.DryRun));
 
+        if (!options.DryRun && File.Exists(reportPath))
+        {
+            TryWriteLegacyReportAlias(reportPath, legacyReportPath);
+        }
+
         Console.WriteLine($"RunUnitTests parser exit code: {parserExitCode}");
         return gcliExitCode != 0 ? gcliExitCode : parserExitCode;
     }
@@ -85,6 +106,15 @@ public static class LunitService
 
         var repoRoot = Path.GetFullPath(options.RepoRoot);
         var reportPath = ResolveReportPath(repoRoot, options.ReportPath, options.Bitness);
+        if (string.IsNullOrWhiteSpace(options.ReportPath) && !options.DryRun && !File.Exists(reportPath))
+        {
+            var legacyReportPath = ResolveLegacyReportPath(repoRoot);
+            if (File.Exists(legacyReportPath))
+            {
+                Console.Error.WriteLine($"lunit validate fallback report path: {legacyReportPath}");
+                reportPath = legacyReportPath;
+            }
+        }
 
         var parserArgs = new List<string>
         {
@@ -111,16 +141,23 @@ public static class LunitService
         string bitness,
         string projectPath,
         string reportPath,
+        bool verboseGcli,
         bool dryRun)
     {
-        var args = new[]
+        var args = new List<string>();
+        if (verboseGcli)
+        {
+            args.Add("--verbose");
+        }
+
+        args.AddRange(new[]
         {
             "--lv-ver", year,
             "--arch", bitness,
             "lunit", "--",
             "-r", reportPath,
             projectPath
-        };
+        });
 
         var commandLine = $"g-cli {string.Join(' ', args.Select(QuoteIfNeeded))}";
         Console.Error.WriteLine($"lunit run g-cli command: {commandLine}");
@@ -178,6 +215,11 @@ public static class LunitService
         return ResolvePath(repoRoot, value);
     }
 
+    private static string ResolveLegacyReportPath(string repoRoot)
+    {
+        return ResolvePath(repoRoot, ".github/actions/run-unit-tests/UnitTestReport.xml");
+    }
+
     private static string ResolvePath(string repoRoot, string path)
     {
         if (Path.IsPathRooted(path))
@@ -218,5 +260,37 @@ public static class LunitService
         }
 
         return "Unknown";
+    }
+
+    private static void TryWriteLegacyReportAlias(string reportPath, string legacyReportPath)
+    {
+        if (PathEquals(reportPath, legacyReportPath))
+        {
+            return;
+        }
+
+        try
+        {
+            var legacyDir = Path.GetDirectoryName(legacyReportPath);
+            if (!string.IsNullOrWhiteSpace(legacyDir))
+            {
+                Directory.CreateDirectory(legacyDir);
+            }
+
+            File.Copy(reportPath, legacyReportPath, overwrite: true);
+            Console.Error.WriteLine($"lunit run legacy report alias: {legacyReportPath}");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"WARNING: Failed to write legacy LUnit report alias '{legacyReportPath}': {ex.Message}");
+        }
+    }
+
+    private static bool PathEquals(string left, string right)
+    {
+        return string.Equals(
+            Path.GetFullPath(left),
+            Path.GetFullPath(right),
+            OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
     }
 }

@@ -1241,6 +1241,7 @@ jobs:
       LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
       LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
       LVIE_SOURCE_TEST_STRICT: ${{ vars.LVIE_SOURCE_TEST_STRICT || '0' }}
+      LVIE_LUNIT_VERBOSE_GCLI: ${{ vars.LVIE_LUNIT_VERBOSE_GCLI || '1' }}
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -1269,8 +1270,10 @@ jobs:
 
           $unitTestYear = $env:LABVIEW_VERSION_YEAR
           $unitTestLvversion = if ([string]::IsNullOrWhiteSpace($env:LABVIEW_VERSION)) { $env:LVIE_REQUIRED_LABVIEW_VERSION } else { $env:LABVIEW_VERSION }
+          $requestedBitness = '${{ matrix.bitness }}'
           Write-Host ("Unit-test LabVIEW target year: {0}" -f $unitTestYear)
           Write-Host ("Unit-test LabVIEW target .lvversion: {0}" -f $unitTestLvversion)
+          Write-Host ("Unit-test LabVIEW target bitness: {0}" -f $requestedBitness)
           Write-Host ("Source .lvversion year from job setup: {0}" -f $env:LABVIEW_VERSION_YEAR)
 
           function Resolve-LabVIEWInstallRootForEvidence {
@@ -1308,11 +1311,67 @@ jobs:
             return $null
           }
 
+          function Invoke-DotnetBuildServerShutdown {
+            param([Parameter(Mandatory = $true)][string]$Phase)
+
+            try {
+              $shutdownOutput = & dotnet build-server shutdown 2>&1
+              $shutdownExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+              foreach ($line in @($shutdownOutput | ForEach-Object { $_.ToString() })) {
+                Write-Host ("dotnet build-server shutdown ({0}): {1}" -f $Phase, $line)
+              }
+              Write-Host ("dotnet build-server shutdown ({0}) exit code: {1}" -f $Phase, $shutdownExitCode)
+              return $shutdownExitCode
+            } catch {
+              Write-Warning ("dotnet build-server shutdown ({0}) failed: {1}" -f $Phase, $_.Exception.Message)
+              return 1
+            }
+          }
+
+          function Save-LabVIEWTempLogs {
+            param(
+              [Parameter(Mandatory = $true)][DateTime]$SinceUtc,
+              [Parameter(Mandatory = $true)][string]$DestinationDir
+            )
+
+            $copiedFiles = [System.Collections.Generic.List[string]]::new()
+            $tempRoot = [System.IO.Path]::GetTempPath()
+            if ([string]::IsNullOrWhiteSpace($tempRoot) -or -not (Test-Path -Path $tempRoot)) {
+              Write-Warning ("Temp root unavailable for LabVIEW diagnostics: {0}" -f $tempRoot)
+              return $copiedFiles.ToArray()
+            }
+
+            $candidates = @(Get-ChildItem -Path $tempRoot -Filter 'lvtemporary_*.log' -File -ErrorAction SilentlyContinue |
+              Where-Object { $_.LastWriteTimeUtc -ge $SinceUtc.AddMinutes(-2) } |
+              Sort-Object LastWriteTimeUtc -Descending |
+              Select-Object -First 20)
+
+            if ($candidates.Count -eq 0) {
+              Write-Host ("No run-correlated lvtemporary logs found under {0} after {1:o}" -f $tempRoot, $SinceUtc)
+              return $copiedFiles.ToArray()
+            }
+
+            if (-not (Test-Path -Path $DestinationDir)) {
+              New-Item -Path $DestinationDir -ItemType Directory -Force | Out-Null
+            }
+
+            $index = 0
+            foreach ($candidate in $candidates) {
+              $destinationName = "{0:D2}-{1}" -f $index, $candidate.Name
+              $destinationPath = Join-Path $DestinationDir $destinationName
+              Copy-Item -Path $candidate.FullName -Destination $destinationPath -Force
+              $copiedFiles.Add($destinationPath) | Out-Null
+              $index++
+            }
+
+            Write-Host ("Saved {0} LabVIEW temp logs to {1}" -f $copiedFiles.Count, $DestinationDir)
+            return $copiedFiles.ToArray()
+          }
+
           $installRoot64 = Resolve-LabVIEWInstallRootForEvidence -Year $unitTestYear -Bitness '64'
           $installRoot32 = Resolve-LabVIEWInstallRootForEvidence -Year $unitTestYear -Bitness '32'
           $installDetected64 = -not [string]::IsNullOrWhiteSpace($installRoot64)
           $installDetected32 = -not [string]::IsNullOrWhiteSpace($installRoot32)
-          $requestedBitness = '${{ matrix.bitness }}'
           $requestedInstallRoot = if ($requestedBitness -eq '32') { $installRoot32 } else { $installRoot64 }
           $requestedInstallDetected = -not [string]::IsNullOrWhiteSpace($requestedInstallRoot)
           Write-Host ("LabVIEW install evidence for year {0}: 64-bit={1}; 32-bit={2}" -f $unitTestYear, ($installRoot64 ?? '<missing>'), ($installRoot32 ?? '<missing>'))
@@ -1320,11 +1379,18 @@ jobs:
           $strictMode = $strictModeRaw.ToLowerInvariant() -notin @('0', 'false', 'no')
           $sourceTestMode = if ($strictMode) { 'strict' } else { 'canary' }
           Write-Host ("Source test mode: {0} (LVIE_SOURCE_TEST_STRICT={1})" -f $sourceTestMode, $strictModeRaw)
+          $verboseGcliRaw = if ([string]::IsNullOrWhiteSpace($env:LVIE_LUNIT_VERBOSE_GCLI)) { '1' } else { $env:LVIE_LUNIT_VERBOSE_GCLI.Trim() }
+          $verboseGcli = $verboseGcliRaw.ToLowerInvariant() -notin @('0', 'false', 'no')
+          Write-Host ("LUnit verbose g-cli mode: {0} (LVIE_LUNIT_VERBOSE_GCLI={1})" -f $verboseGcli, $verboseGcliRaw)
 
           $reportOs = '${{ runner.os }}'
           $reportPath = Join-Path $env:REPO_ROOT (".github/actions/run-unit-tests/UnitTestReport-{0}-{1}.xml" -f $reportOs, '${{ matrix.bitness }}')
+          $legacyReportPath = Join-Path $env:REPO_ROOT '.github/actions/run-unit-tests/UnitTestReport.xml'
           if (Test-Path -Path $reportPath) {
             Remove-Item -Path $reportPath -Force -ErrorAction SilentlyContinue
+          }
+          if (Test-Path -Path $legacyReportPath) {
+            Remove-Item -Path $legacyReportPath -Force -ErrorAction SilentlyContinue
           }
           $lunitLogPath = Join-Path $env:REPO_ROOT ("builds\\status\\lunit-run-{0}-{1}.log" -f $reportOs, '${{ matrix.bitness }}')
           $lunitLogDir = Split-Path -Path $lunitLogPath -Parent
@@ -1332,6 +1398,32 @@ jobs:
             New-Item -Path $lunitLogDir -ItemType Directory -Force | Out-Null
           }
           '' | Set-Content -Path $lunitLogPath -Encoding utf8
+          $labviewTempLogDir = Join-Path $env:REPO_ROOT ("builds\\status\\labview-temp-logs-{0}-{1}" -f $reportOs, '${{ matrix.bitness }}')
+          if (Test-Path -Path $labviewTempLogDir) {
+            Remove-Item -Path $labviewTempLogDir -Recurse -Force -ErrorAction SilentlyContinue
+          }
+
+          $closeScriptPath = Join-Path $env:REPO_ROOT '.github/actions/close-labview/Close_LabVIEW.ps1'
+          $preCloseExitCode = $null
+          if (Test-Path -Path $closeScriptPath -PathType Leaf) {
+            try {
+              $closeOutput = & pwsh -NoProfile -File $closeScriptPath -LabVIEWVersion $unitTestYear -SupportedBitness $requestedBitness -TimeoutSeconds 120 2>&1
+              $preCloseExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+              foreach ($line in @($closeOutput | ForEach-Object { $_.ToString() })) {
+                Write-Host $line
+              }
+              if ($preCloseExitCode -ne 0) {
+                Write-Warning ("Pre-run LabVIEW close returned nonzero exit code: {0}" -f $preCloseExitCode)
+              }
+            } catch {
+              $preCloseExitCode = 1
+              Write-Warning ("Pre-run LabVIEW close failed: {0}" -f $_.Exception.Message)
+            }
+          } else {
+            Write-Warning ("Close_LabVIEW script not found at {0}" -f $closeScriptPath)
+          }
+
+          $buildServerShutdownBeforeExitCode = Invoke-DotnetBuildServerShutdown -Phase 'pre-lunit'
 
           $runnerCliArgs = @(
             'lunit', 'run',
@@ -1342,8 +1434,13 @@ jobs:
             '--project-path', $env:PROJECT_PATH,
             '--report-path', $reportPath
           )
+          if ($verboseGcli) {
+            $runnerCliArgs += '--verbose-gcli'
+          }
+          $lunitStartUtc = (Get-Date).ToUniversalTime()
           $output = & dotnet run --project $runnerCliProject --configuration Release -- @runnerCliArgs *>&1
           $runnerCliExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+          $buildServerShutdownAfterExitCode = Invoke-DotnetBuildServerShutdown -Phase 'post-lunit'
           if ($output) {
             $output |
               ForEach-Object { $_.ToString() } |
@@ -1359,8 +1456,22 @@ jobs:
               $parserExitCode = [int]$Matches[1]
             }
           }
+          $labviewTempLogs = @()
+          if ($null -ne $gcliExitCode -and $gcliExitCode -ne 0) {
+            $labviewTempLogs = Save-LabVIEWTempLogs -SinceUtc $lunitStartUtc -DestinationDir $labviewTempLogDir
+          }
 
           $reportExists = Test-Path -Path $reportPath
+          $legacyReportWritten = $false
+          if ($reportExists) {
+            try {
+              Copy-Item -Path $reportPath -Destination $legacyReportPath -Force
+              $legacyReportWritten = $true
+              Write-Host ("Legacy UnitTestReport compatibility copy written: {0}" -f $legacyReportPath)
+            } catch {
+              Write-Warning ("Failed to write legacy UnitTestReport compatibility copy at {0}: {1}" -f $legacyReportPath, $_.Exception.Message)
+            }
+          }
           $testcaseCount = 0
           $reportParseError = $null
           if ($reportExists) {
@@ -1376,18 +1487,42 @@ jobs:
           }
 
           $failureReasons = New-Object System.Collections.Generic.List[string]
+          $failureClassifications = New-Object System.Collections.Generic.List[string]
           if (-not $requestedInstallDetected) {
             $failureReasons.Add(("LabVIEW {0} install not detected for requested {1}-bit lane on this runner." -f $unitTestYear, $requestedBitness)) | Out-Null
+            $failureClassifications.Add('install_missing_requested_bitness') | Out-Null
           }
           if ($runnerCliExitCode -ne 0) {
             $failureReasons.Add(("runner-cli lunit run exited with code {0}" -f $runnerCliExitCode)) | Out-Null
+            $failureClassifications.Add('runner_cli_nonzero') | Out-Null
+          }
+          if ($null -ne $gcliExitCode -and $gcliExitCode -ne 0) {
+            $failureClassifications.Add('gcli_nonzero') | Out-Null
+          }
+          if ($null -ne $parserExitCode -and $parserExitCode -ne 0) {
+            $failureClassifications.Add('parser_nonzero') | Out-Null
           }
           if (-not $reportExists) {
             $failureReasons.Add("Unit test report missing at $reportPath") | Out-Null
+            $failureClassifications.Add('report_missing') | Out-Null
           } elseif (-not [string]::IsNullOrWhiteSpace($reportParseError)) {
             $failureReasons.Add(("Unit test report parse error: {0}" -f $reportParseError)) | Out-Null
+            $failureClassifications.Add('report_parse_error') | Out-Null
           } elseif ($testcaseCount -le 0) {
             $failureReasons.Add(("Unit test report has no <testcase> entries: {0}" -f $reportPath)) | Out-Null
+            $failureClassifications.Add('empty_testcase_report') | Out-Null
+          }
+          if (($null -ne $gcliExitCode -and $gcliExitCode -ne 0) -and $reportExists -and $testcaseCount -le 0) {
+            $failureClassifications.Add('gcli_nonzero_empty_report') | Out-Null
+          }
+          if ($null -ne $preCloseExitCode -and $preCloseExitCode -ne 0) {
+            $failureClassifications.Add('pre_close_nonzero') | Out-Null
+          }
+          if ($buildServerShutdownBeforeExitCode -ne 0) {
+            $failureClassifications.Add('dotnet_build_server_shutdown_pre_nonzero') | Out-Null
+          }
+          if ($buildServerShutdownAfterExitCode -ne 0) {
+            $failureClassifications.Add('dotnet_build_server_shutdown_post_nonzero') | Out-Null
           }
 
           $verdict = if ($failureReasons.Count -eq 0) { 'pass' } else { 'fail' }
@@ -1403,11 +1538,22 @@ jobs:
             install_path_64 = if ($installDetected64) { $installRoot64 } else { $null }
             install_path_32 = if ($installDetected32) { $installRoot32 } else { $null }
             report_path = $reportPath
+            legacy_report_path = $legacyReportPath
+            legacy_report_written = $legacyReportWritten
             report_exists = $reportExists
             testcase_count = $testcaseCount
             runner_cli_exit_code = $runnerCliExitCode
             gcli_exit_code = $gcliExitCode
             parser_exit_code = $parserExitCode
+            verbose_gcli_enabled = $verboseGcli
+            lunit_log_path = $lunitLogPath
+            pre_close_exit_code = $preCloseExitCode
+            dotnet_build_server_shutdown_pre_exit_code = $buildServerShutdownBeforeExitCode
+            dotnet_build_server_shutdown_post_exit_code = $buildServerShutdownAfterExitCode
+            labview_temp_log_dir = $labviewTempLogDir
+            labview_temp_logs_collected_count = @($labviewTempLogs).Count
+            labview_temp_logs = @($labviewTempLogs)
+            failure_classifications = @($failureClassifications)
             strict_mode = $strictMode
             mode = $sourceTestMode
             verdict = $verdict
@@ -1445,12 +1591,26 @@ jobs:
           name: unit-tests-${{ runner.os }}-${{ matrix.bitness }}-bit-report
           path: ${{ env.REPO_ROOT }}/.github/actions/run-unit-tests/UnitTestReport-${{ runner.os }}-${{ matrix.bitness }}.xml
           if-no-files-found: warn
+      - name: Upload unit test report legacy alias (LV ${{ matrix.bitness }}-bit)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-tests-${{ runner.os }}-${{ matrix.bitness }}-bit-report-legacy
+          path: ${{ env.REPO_ROOT }}/.github/actions/run-unit-tests/UnitTestReport.xml
+          if-no-files-found: warn
       - name: Upload lunit run log (LV ${{ matrix.bitness }}-bit)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: lunit-run-${{ runner.os }}-${{ matrix.bitness }}-bit-log
           path: ${{ env.REPO_ROOT }}/builds/status/lunit-run-${{ runner.os }}-${{ matrix.bitness }}.log
+          if-no-files-found: warn
+      - name: Upload LabVIEW temp logs (LV ${{ matrix.bitness }}-bit)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-temp-logs-${{ runner.os }}-${{ matrix.bitness }}-bit
+          path: ${{ env.REPO_ROOT }}/builds/status/labview-temp-logs-${{ runner.os }}-${{ matrix.bitness }}
           if-no-files-found: warn
       - name: Upload source-test evidence (LV ${{ matrix.bitness }}-bit)
         if: always()

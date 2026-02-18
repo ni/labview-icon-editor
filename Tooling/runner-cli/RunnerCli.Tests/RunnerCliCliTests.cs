@@ -670,6 +670,20 @@ public class RunnerCliCliTests
     }
 
     [Fact]
+    public void Lunit_run_dry_run_includes_verbose_flag_when_requested()
+    {
+        var repoRoot = FindRepoRoot();
+        var projectPath = Path.Combine(repoRoot, "lv_icon_editor.lvproj");
+        var reportPath = Path.Combine(repoRoot, ".github", "actions", "run-unit-tests", "UnitTestReport.xml");
+
+        var args = $"lunit run --repo-root \"{repoRoot}\" --year 2026 --labview-version 26.1 --bitness 64 --project-path \"{projectPath}\" --report-path \"{reportPath}\" --verbose-gcli --dry-run";
+        var (exitCode, _, stderr) = RunCli(repoRoot, args);
+
+        Assert.Equal(0, exitCode);
+        Assert.Contains("g-cli --verbose --lv-ver", stderr, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Lunit_validate_dry_run_emits_parser_command()
     {
         var repoRoot = FindRepoRoot();

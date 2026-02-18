@@ -27,10 +27,15 @@ Describe 'CI workflow unit-test bitness contract' {
         $script:unitTestsSection | Should -Match 'Upload source-test evidence \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
         $script:unitTestsSection | Should -Match 'source-test-evidence-\$\{\{ runner\.os \}\}-\$\{\{ matrix\.bitness \}\}-bit'
         $script:unitTestsSection | Should -Match 'source-test-evidence-\$\{\{ runner\.os \}\}-\$\{\{ matrix\.bitness \}\}\.json'
+        $script:unitTestsSection | Should -Match 'Upload LabVIEW temp logs \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
+        $script:unitTestsSection | Should -Match 'labview-temp-logs-\$\{\{ runner\.os \}\}-\$\{\{ matrix\.bitness \}\}-bit'
+        $script:unitTestsSection | Should -Match 'Upload unit test report legacy alias \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
+        $script:unitTestsSection | Should -Match 'UnitTestReport\.xml'
     }
 
     It 'defaults source-test mode to canary via LVIE_SOURCE_TEST_STRICT' {
         $script:unitTestsSection | Should -Match 'LVIE_SOURCE_TEST_STRICT:\s*\$\{\{\s*vars\.LVIE_SOURCE_TEST_STRICT \|\| ''0''\s*\}\}'
+        $script:unitTestsSection | Should -Match 'LVIE_LUNIT_VERBOSE_GCLI:\s*\$\{\{\s*vars\.LVIE_LUNIT_VERBOSE_GCLI \|\| ''1''\s*\}\}'
         $script:unitTestsSection | Should -Match 'Source-test canary mode active; keeping lane green'
     }
 

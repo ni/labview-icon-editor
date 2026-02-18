@@ -131,9 +131,19 @@ jobs:
               core.setOutput('self_hosted_available', 'false');
               core.setOutput('self_hosted_availability_reason', `no-online-runner-for-label:${label}`);
             } catch (error) {
-              core.warning(`Self-hosted availability lookup failed; treating as unknown. ${error.message}`);
+              const rawError = (error && typeof error.message === 'string') ? error.message : String(error);
+              const normalizedError = rawError.replace(/\s+/g, ' ').trim();
+              const lowerError = normalizedError.toLowerCase();
+              const permissionDenied = lowerError.includes('resource not accessible by integration') ||
+                lowerError.includes('must have admin rights');
+
+              if (permissionDenied) {
+                core.info(`Self-hosted availability lookup unavailable with workflow token; treating as unknown. ${normalizedError}`);
+              } else {
+                core.warning(`Self-hosted availability lookup failed; treating as unknown. ${normalizedError}`);
+              }
               core.setOutput('self_hosted_available', 'unknown');
-              core.setOutput('self_hosted_availability_reason', `runner-lookup-error:${error.message}`);
+              core.setOutput('self_hosted_availability_reason', `runner-lookup-error:${normalizedError}`);
             }
 
   resolve-parity-context:

@@ -860,6 +860,11 @@ var lunitReportPathOption = new Option<string?>(
     name: "--report-path",
     description: "Optional UnitTestReport path. Defaults to .github/actions/run-unit-tests/UnitTestReport-<os>-<bitness>.xml");
 
+var lunitVerboseGcliOption = new Option<bool>(
+    name: "--verbose-gcli",
+    getDefaultValue: () => false,
+    description: "Enable g-cli --verbose logging for LUnit diagnostics.");
+
 var lunitDryRunOption = new Option<bool>(
     name: "--dry-run",
     getDefaultValue: () => false,
@@ -871,6 +876,7 @@ lunitRunCmd.AddOption(lunitLabviewVersionOption);
 lunitRunCmd.AddOption(lunitBitnessOption);
 lunitRunCmd.AddOption(lunitProjectPathOption);
 lunitRunCmd.AddOption(lunitReportPathOption);
+lunitRunCmd.AddOption(lunitVerboseGcliOption);
 lunitRunCmd.AddOption(lunitDryRunOption);
 lunitRunCmd.SetHandler((InvocationContext context) =>
 {
@@ -886,6 +892,7 @@ lunitRunCmd.SetHandler((InvocationContext context) =>
             Bitness: context.ParseResult.GetValueForOption(lunitBitnessOption) ?? string.Empty,
             ProjectPath: context.ParseResult.GetValueForOption(lunitProjectPathOption) ?? string.Empty,
             ReportPath: context.ParseResult.GetValueForOption(lunitReportPathOption),
+            VerboseGcli: context.ParseResult.GetValueForOption(lunitVerboseGcliOption),
             DryRun: context.ParseResult.GetValueForOption(lunitDryRunOption));
         var exitCode = LunitService.Run(options);
         Environment.ExitCode = exitCode;
