@@ -832,9 +832,9 @@ missingCmd.SetHandler((InvocationContext context) =>
 });
 
 // ── lunit run/validate ────────────────────────────────────────────
-var lunitCmd = new Command("lunit", "Run and validate LUnit workflows using existing script contracts.");
-var lunitRunCmd = new Command("run", "Run g-cli LUnit then parse/validate UnitTestReport-<os>-<bitness>.xml.");
-var lunitValidateCmd = new Command("validate", "Validate UnitTestReport-<os>-<bitness>.xml using RunUnitTests.ps1 parse-only mode.");
+var lunitCmd = new Command("lunit", "Run canonical g-cli LUnit workflows and parse-only report validation.");
+var lunitRunCmd = new Command("run", "Run canonical g-cli LUnit, then parse/validate UnitTestReport-<os>-<bitness>.xml.");
+var lunitValidateCmd = new Command("validate", "Parse-only validation of UnitTestReport-<os>-<bitness>.xml via RunUnitTests.ps1 -SkipGcli.");
 
 var lunitYearOption = new Option<string>(
     name: "--year",
@@ -865,6 +865,16 @@ var lunitVerboseGcliOption = new Option<bool>(
     getDefaultValue: () => false,
     description: "Enable g-cli --verbose logging for LUnit diagnostics.");
 
+var lunitSkipValidateOption = new Option<bool>(
+    name: "--skip-validate",
+    getDefaultValue: () => false,
+    description: "Skip parse/validate step and return the g-cli exit code directly (local diagnostics).");
+
+var lunitSkipValidateOnGcliFailOption = new Option<bool>(
+    name: "--skip-validate-on-gcli-fail",
+    getDefaultValue: () => false,
+    description: "Skip parse/validate when g-cli exits nonzero (useful for tight local repro loops).");
+
 var lunitDryRunOption = new Option<bool>(
     name: "--dry-run",
     getDefaultValue: () => false,
@@ -877,6 +887,8 @@ lunitRunCmd.AddOption(lunitBitnessOption);
 lunitRunCmd.AddOption(lunitProjectPathOption);
 lunitRunCmd.AddOption(lunitReportPathOption);
 lunitRunCmd.AddOption(lunitVerboseGcliOption);
+lunitRunCmd.AddOption(lunitSkipValidateOption);
+lunitRunCmd.AddOption(lunitSkipValidateOnGcliFailOption);
 lunitRunCmd.AddOption(lunitDryRunOption);
 lunitRunCmd.SetHandler((InvocationContext context) =>
 {
@@ -893,6 +905,8 @@ lunitRunCmd.SetHandler((InvocationContext context) =>
             ProjectPath: context.ParseResult.GetValueForOption(lunitProjectPathOption) ?? string.Empty,
             ReportPath: context.ParseResult.GetValueForOption(lunitReportPathOption),
             VerboseGcli: context.ParseResult.GetValueForOption(lunitVerboseGcliOption),
+            SkipValidate: context.ParseResult.GetValueForOption(lunitSkipValidateOption),
+            SkipValidateOnGcliFail: context.ParseResult.GetValueForOption(lunitSkipValidateOnGcliFailOption),
             DryRun: context.ParseResult.GetValueForOption(lunitDryRunOption));
         var exitCode = LunitService.Run(options);
         Environment.ExitCode = exitCode;

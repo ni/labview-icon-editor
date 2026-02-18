@@ -1,68 +1,30 @@
 name: "Run Unit Tests"
-description: "Runs RunUnitTests.ps1 to execute LabVIEW unit tests via LabVIEWCLI with optional g-cli fallback."
+description: "Deprecated. Use runner-cli lunit run for canonical g-cli LUnit execution."
 runs:
   using: "composite"
   steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Run RunUnitTests.ps1
+    - name: Deprecated action guard
       shell: pwsh
       run: |
-        $repoRoot = $env:GITHUB_WORKSPACE
-        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
-          throw "GITHUB_WORKSPACE is required to resolve .lvversion."
-        }
-        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
-
-        $lvVersionInput = "${{ inputs.labview_version }}"
-        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
-        if (-not (Test-Path -Path $assertScript)) {
-          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
-        }
-        $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $lvVersionInput -Context 'run-unit-tests'
-        if ([string]::IsNullOrWhiteSpace($lvVersionInput)) {
-          Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
-        }
-        $lvVersion = $lvInfo.Year
-
-        $enableFallbackRaw = "${{ inputs.enable_gcli_fallback }}"
-        $enableFallback = @('1','true','yes','y','on') -contains $enableFallbackRaw.Trim().ToLowerInvariant()
-        $backendRaw = "${{ inputs.lunit_backend }}"
-        if (-not [string]::IsNullOrWhiteSpace($backendRaw)) {
-          $env:LVIE_LUNIT_BACKEND = $backendRaw.Trim()
-        }
-
-        $scriptArgs = @(
-          '-LabVIEWVersion', $lvVersion,
-          '-SupportedBitness', "${{ inputs.supported_bitness }}",
-          '-ProjectPath', "${{ inputs.project_path }}"
-        )
-        if ($enableFallback) {
-          $scriptArgs += '-EnableGcliFallback'
-        }
-
-        & "${{ github.action_path }}/RunUnitTests.ps1" @scriptArgs
+        throw "Deprecated action '.github/actions/run-unit-tests'. Use 'runner-cli lunit run --repo-root <repo> --year <yyyy> --labview-version <raw> --bitness <32|64> --project-path <lvproj> --report-path <report>'."
 inputs:
   labview_version:
-    description: 'LabVIEW version to run (year or numeric).'
+    description: 'Deprecated input (unused).'
     required: false
   supported_bitness:
-    description: '32 or 64'
+    description: 'Deprecated input (unused).'
     required: true
   project_path:
-    description: 'Path to the LabVIEW project (.lvproj)'
+    description: 'Deprecated input (unused).'
     required: true
   enable_gcli_fallback:
-    description: 'Set true/1/yes to allow g-cli fallback when LabVIEWCLI LUnit cannot run.'
+    description: 'Deprecated input (unused).'
     required: false
     default: 'false'
   lunit_backend:
-    description: 'LUnit backend selection: labviewcli (default) or gcli.'
+    description: 'Deprecated input (unused).'
     required: false
-    default: 'labviewcli'
+    default: 'gcli'
 
 
 

@@ -74,6 +74,19 @@ on:
         required: false
         default: false
         type: boolean
+      source_test_mode:
+        description: "Source-test failure mode for workflow_dispatch only (inherit|strict|canary)"
+        required: false
+        default: inherit
+        type: choice
+        options:
+          - inherit
+          - strict
+          - canary
+      source_test_labview_year_override:
+        description: "Diagnostics-only LabVIEW year override for source tests (workflow_dispatch only, e.g. 2026)"
+        required: false
+        type: string
 
 jobs:
   # Stage 1: Run identity and publish-eligibility context.
@@ -1242,6 +1255,8 @@ jobs:
       LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
       LVIE_SOURCE_TEST_STRICT: ${{ vars.LVIE_SOURCE_TEST_STRICT || '0' }}
       LVIE_LUNIT_VERBOSE_GCLI: ${{ vars.LVIE_LUNIT_VERBOSE_GCLI || '1' }}
+      LVIE_SOURCE_TEST_MODE_INPUT: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.source_test_mode || 'inherit' }}
+      LVIE_SOURCE_TEST_LABVIEW_YEAR_OVERRIDE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.source_test_labview_year_override || '' }}
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -1262,6 +1277,8 @@ jobs:
       - name: Test Source Using LV ${{ matrix.bitness }}-bit
         id: source_test
         shell: pwsh
+        env:
+          LVIE_MATRIX_BITNESS: ${{ matrix.bitness }}
         working-directory: ${{ env.REPO_ROOT }}
         run: |
           $runnerCliProject = Join-Path $env:REPO_ROOT 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
@@ -1269,13 +1286,80 @@ jobs:
             throw "runner-cli project not found at $runnerCliProject"
           }
 
-          $unitTestYear = $env:LABVIEW_VERSION_YEAR
-          $unitTestLvversion = if ([string]::IsNullOrWhiteSpace($env:LABVIEW_VERSION)) { $env:LVIE_REQUIRED_LABVIEW_VERSION } else { $env:LABVIEW_VERSION }
-          $requestedBitness = '${{ matrix.bitness }}'
+          $isWorkflowDispatch = $env:GITHUB_EVENT_NAME -eq 'workflow_dispatch'
+          $unitTestYearFromLvversion = $env:LABVIEW_VERSION_YEAR
+          $unitTestYearSourceContract = $unitTestYearFromLvversion
+          $unitTestYear = $unitTestYearFromLvversion
+          $unitTestLvversionRaw = if ([string]::IsNullOrWhiteSpace($env:LABVIEW_VERSION)) { $env:LVIE_REQUIRED_LABVIEW_VERSION } else { $env:LABVIEW_VERSION }
+          $unitTestLvversion = $unitTestLvversionRaw
+          $unitTestYearOverrideRaw = if ([string]::IsNullOrWhiteSpace($env:LVIE_SOURCE_TEST_LABVIEW_YEAR_OVERRIDE)) { '' } else { $env:LVIE_SOURCE_TEST_LABVIEW_YEAR_OVERRIDE.Trim() }
+          $unitTestYearSource = '.lvversion'
+          $yearCompatMappingApplied = $false
+          if ([string]::Equals($unitTestYearFromLvversion, '2020', [System.StringComparison]::OrdinalIgnoreCase)) {
+            $unitTestYear = '2026'
+            $unitTestYearSource = 'lv2020_compat_mapping'
+            $yearCompatMappingApplied = $true
+          }
+          if (-not [string]::IsNullOrWhiteSpace($unitTestYearOverrideRaw)) {
+            if (-not $isWorkflowDispatch) {
+              throw "source_test_labview_year_override is workflow_dispatch only."
+            }
+            if ($unitTestYearOverrideRaw -notmatch '^\d{4}$') {
+              throw ("Invalid source_test_labview_year_override '{0}'. Expected a four-digit year (for example 2026)." -f $unitTestYearOverrideRaw)
+            }
+            $unitTestYear = $unitTestYearOverrideRaw
+            $unitTestYearSource = 'workflow_dispatch input source_test_labview_year_override'
+            $yearCompatMappingApplied = $false
+          }
+          $sourceTestModeInputRaw = if ([string]::IsNullOrWhiteSpace($env:LVIE_SOURCE_TEST_MODE_INPUT)) { 'inherit' } else { $env:LVIE_SOURCE_TEST_MODE_INPUT.Trim().ToLowerInvariant() }
+          if ($sourceTestModeInputRaw -notin @('inherit', 'strict', 'canary')) {
+            throw ("Invalid source_test_mode '{0}'. Expected inherit, strict, or canary." -f $sourceTestModeInputRaw)
+          }
+          if (-not $isWorkflowDispatch -and $sourceTestModeInputRaw -ne 'inherit') {
+            throw "source_test_mode override is workflow_dispatch only."
+          }
+          $strictModeRawFromVariable = if ([string]::IsNullOrWhiteSpace($env:LVIE_SOURCE_TEST_STRICT)) { '0' } else { $env:LVIE_SOURCE_TEST_STRICT.Trim() }
+          $strictModeSource = '$env:LVIE_SOURCE_TEST_STRICT'
+          $strictModeRaw = $strictModeRawFromVariable
+          switch ($sourceTestModeInputRaw) {
+            'strict' {
+              $strictModeRaw = '1'
+              $strictModeSource = 'workflow_dispatch input source_test_mode=strict'
+            }
+            'canary' {
+              $strictModeRaw = '0'
+              $strictModeSource = 'workflow_dispatch input source_test_mode=canary'
+            }
+            default {
+              $strictModeRaw = $strictModeRawFromVariable
+              $strictModeSource = '$env:LVIE_SOURCE_TEST_STRICT'
+            }
+          }
+          $strictMode = $strictModeRaw.ToLowerInvariant() -notin @('0', 'false', 'no')
+          $sourceTestMode = if ($strictMode) { 'strict' } else { 'canary' }
+          $yearOverrideApplied = -not [string]::IsNullOrWhiteSpace($unitTestYearOverrideRaw)
+          $requestedBitness = if ([string]::IsNullOrWhiteSpace($env:LVIE_MATRIX_BITNESS)) {
+            throw "LVIE_MATRIX_BITNESS is required for source-test execution."
+          } else {
+            $env:LVIE_MATRIX_BITNESS
+          }
           Write-Host ("Unit-test LabVIEW target year: {0}" -f $unitTestYear)
           Write-Host ("Unit-test LabVIEW target .lvversion: {0}" -f $unitTestLvversion)
+          Write-Host ("Unit-test LabVIEW .lvversion source contract: {0}" -f $unitTestLvversionRaw)
+          Write-Host ("Unit-test LabVIEW source-contract year: {0}" -f $unitTestYearSourceContract)
+          Write-Host ("Unit-test LabVIEW execution year: {0}" -f $unitTestYear)
+          Write-Host ("Unit-test LabVIEW year source: {0}" -f $unitTestYearSource)
+          Write-Host ("Unit-test LabVIEW year compat mapping applied: {0}" -f $yearCompatMappingApplied)
+          Write-Host ("Unit-test LabVIEW year override applied: {0}" -f $yearOverrideApplied)
+          if ($yearCompatMappingApplied) {
+            Write-Host "Unit-test LabVIEW year compatibility mapping: source year 2020 -> execution year 2026"
+          }
           Write-Host ("Unit-test LabVIEW target bitness: {0}" -f $requestedBitness)
           Write-Host ("Source .lvversion year from job setup: {0}" -f $env:LABVIEW_VERSION_YEAR)
+          Write-Host ("Source test mode input: {0}" -f $sourceTestModeInputRaw)
+          Write-Host ("Source test mode effective: {0}" -f $sourceTestMode)
+          Write-Host ("Source test strict source: {0}" -f $strictModeSource)
+          Write-Host ("Source test strict raw value: {0}" -f $strictModeRaw)
 
           function Resolve-LabVIEWInstallRootForEvidence {
             param(
@@ -1376,16 +1460,13 @@ jobs:
           $requestedInstallRoot = if ($requestedBitness -eq '32') { $installRoot32 } else { $installRoot64 }
           $requestedInstallDetected = -not [string]::IsNullOrWhiteSpace($requestedInstallRoot)
           Write-Host ("LabVIEW install evidence for year {0}: 64-bit={1}; 32-bit={2}" -f $unitTestYear, ($installRoot64 ?? '<missing>'), ($installRoot32 ?? '<missing>'))
-          $strictModeRaw = if ([string]::IsNullOrWhiteSpace($env:LVIE_SOURCE_TEST_STRICT)) { '0' } else { $env:LVIE_SOURCE_TEST_STRICT.Trim() }
-          $strictMode = $strictModeRaw.ToLowerInvariant() -notin @('0', 'false', 'no')
-          $sourceTestMode = if ($strictMode) { 'strict' } else { 'canary' }
-          Write-Host ("Source test mode: {0} (LVIE_SOURCE_TEST_STRICT={1})" -f $sourceTestMode, $strictModeRaw)
+          Write-Host ("Source test mode: {0} (effective strict raw={1}; source={2})" -f $sourceTestMode, $strictModeRaw, $strictModeSource)
           $verboseGcliRaw = if ([string]::IsNullOrWhiteSpace($env:LVIE_LUNIT_VERBOSE_GCLI)) { '1' } else { $env:LVIE_LUNIT_VERBOSE_GCLI.Trim() }
           $verboseGcli = $verboseGcliRaw.ToLowerInvariant() -notin @('0', 'false', 'no')
           Write-Host ("LUnit verbose g-cli mode: {0} (LVIE_LUNIT_VERBOSE_GCLI={1})" -f $verboseGcli, $verboseGcliRaw)
 
-          $reportOs = '${{ runner.os }}'
-          $reportPath = Join-Path $env:REPO_ROOT (".github/actions/run-unit-tests/UnitTestReport-{0}-{1}.xml" -f $reportOs, '${{ matrix.bitness }}')
+          $reportOs = if ([string]::IsNullOrWhiteSpace($env:RUNNER_OS)) { 'Unknown' } else { $env:RUNNER_OS }
+          $reportPath = Join-Path $env:REPO_ROOT (".github/actions/run-unit-tests/UnitTestReport-{0}-{1}.xml" -f $reportOs, $requestedBitness)
           $legacyReportPath = Join-Path $env:REPO_ROOT '.github/actions/run-unit-tests/UnitTestReport.xml'
           if (Test-Path -Path $reportPath) {
             Remove-Item -Path $reportPath -Force -ErrorAction SilentlyContinue
@@ -1393,13 +1474,13 @@ jobs:
           if (Test-Path -Path $legacyReportPath) {
             Remove-Item -Path $legacyReportPath -Force -ErrorAction SilentlyContinue
           }
-          $lunitLogPath = Join-Path $env:REPO_ROOT ("builds\\status\\lunit-run-{0}-{1}.log" -f $reportOs, '${{ matrix.bitness }}')
+          $lunitLogPath = Join-Path $env:REPO_ROOT ("builds\\status\\lunit-run-{0}-{1}.log" -f $reportOs, $requestedBitness)
           $lunitLogDir = Split-Path -Path $lunitLogPath -Parent
           if (-not (Test-Path -Path $lunitLogDir)) {
             New-Item -Path $lunitLogDir -ItemType Directory -Force | Out-Null
           }
           '' | Set-Content -Path $lunitLogPath -Encoding utf8
-          $labviewTempLogDir = Join-Path $env:REPO_ROOT ("builds\\status\\labview-temp-logs-{0}-{1}" -f $reportOs, '${{ matrix.bitness }}')
+          $labviewTempLogDir = Join-Path $env:REPO_ROOT ("builds\\status\\labview-temp-logs-{0}-{1}" -f $reportOs, $requestedBitness)
           if (Test-Path -Path $labviewTempLogDir) {
             Remove-Item -Path $labviewTempLogDir -Recurse -Force -ErrorAction SilentlyContinue
           }
@@ -1431,7 +1512,7 @@ jobs:
             '--repo-root', $env:REPO_ROOT,
             '--year', $unitTestYear,
             '--labview-version', $unitTestLvversion,
-            '--bitness', '${{ matrix.bitness }}',
+            '--bitness', $requestedBitness,
             '--project-path', $env:PROJECT_PATH,
             '--report-path', $reportPath
           )
@@ -1453,6 +1534,7 @@ jobs:
           $reportPathUsed = $reportPath
           $reportParseSource = 'canonical'
           $reportFallbackUsed = $false
+          $classFallbackRecovered = $false
           foreach ($line in @($output | ForEach-Object { $_.ToString() })) {
             if ($line -match 'g-cli lunit exit code:\s*(-?\d+)') {
               $gcliExitCode = [int]$Matches[1]
@@ -1463,6 +1545,8 @@ jobs:
               $reportFallbackUsed = $reportParseSource -eq 'legacy'
             } elseif ($line -match 'Unit test report parse path:\s*(.+)$') {
               $reportPathUsed = $Matches[1].Trim()
+            } elseif ($line -match '^LUnit class fallback succeeded with \d+ testcase\(s\) merged into:\s*.+$') {
+              $classFallbackRecovered = $true
             }
           }
           if ([string]::IsNullOrWhiteSpace($reportPathUsed)) {
@@ -1478,6 +1562,24 @@ jobs:
           $reportPathCanonical = $reportPath
           $reportExistsCanonical = Test-Path -Path $reportPathCanonical
           $reportExists = Test-Path -Path $reportPathUsed
+          if (-not $reportExists -and (Test-Path -Path $legacyReportPath)) {
+            Write-Warning ("Canonical unit test report missing at {0}; using legacy alias for workflow parsing: {1}" -f $reportPathUsed, $legacyReportPath)
+            $reportPathUsed = $legacyReportPath
+            $reportParseSource = 'legacy'
+            $reportFallbackUsed = $true
+            $reportExists = $true
+            if (-not $reportExistsCanonical) {
+              try {
+                Copy-Item -Path $legacyReportPath -Destination $reportPathCanonical -Force
+                $reportExistsCanonical = Test-Path -Path $reportPathCanonical
+                if ($reportExistsCanonical) {
+                  Write-Host ("Canonical report rehydrated from legacy alias: {0}" -f $reportPathCanonical)
+                }
+              } catch {
+                Write-Warning ("Failed to rehydrate canonical report from legacy alias at {0}: {1}" -f $reportPathCanonical, $_.Exception.Message)
+              }
+            }
+          }
           $legacyReportWritten = $false
           if ($reportExists) {
             $reportUsedIsLegacy = [string]::Equals(
@@ -1524,6 +1626,12 @@ jobs:
           }
           if ($null -ne $gcliExitCode -and $gcliExitCode -ne 0) {
             $failureClassifications.Add('gcli_nonzero') | Out-Null
+            if ($classFallbackRecovered) {
+              $failureClassifications.Add('gcli_nonzero_recovered_by_class_fallback') | Out-Null
+              Write-Host ("g-cli primary run was nonzero ({0}) but class fallback recovered testcase evidence." -f $gcliExitCode)
+            } else {
+              $failureReasons.Add(("g-cli lunit run exited with code {0}" -f $gcliExitCode)) | Out-Null
+            }
           }
           if ($null -ne $parserExitCode -and $parserExitCode -ne 0) {
             $failureClassifications.Add('parser_nonzero') | Out-Null
@@ -1552,12 +1660,18 @@ jobs:
           }
 
           $verdict = if ($failureReasons.Count -eq 0) { 'pass' } else { 'fail' }
-          $evidencePath = Join-Path $env:REPO_ROOT ("builds\\status\\source-test-evidence-{0}-{1}.json" -f $reportOs, '${{ matrix.bitness }}')
+          $evidencePath = Join-Path $env:REPO_ROOT ("builds\\status\\source-test-evidence-{0}-{1}.json" -f $reportOs, $requestedBitness)
           $evidence = [ordered]@{
             timestamp_utc = (Get-Date).ToUniversalTime().ToString('o')
             lvversion_raw = $unitTestLvversion
+            lvversion_source_contract = $unitTestLvversionRaw
             year = $unitTestYear
-            bitness = '${{ matrix.bitness }}'
+            year_source_contract = $unitTestYearSourceContract
+            year_source = $unitTestYearSource
+            year_override_requested = $unitTestYearOverrideRaw
+            year_override_applied = $yearOverrideApplied
+            year_compat_mapping_applied = $yearCompatMappingApplied
+            bitness = $requestedBitness
             install_detected_64 = $installDetected64
             install_detected_32 = $installDetected32
             install_detected_requested_bitness = $requestedInstallDetected
@@ -1576,6 +1690,7 @@ jobs:
             runner_cli_exit_code = $runnerCliExitCode
             gcli_exit_code = $gcliExitCode
             parser_exit_code = $parserExitCode
+            class_fallback_recovered = $classFallbackRecovered
             verbose_gcli_enabled = $verboseGcli
             lunit_log_path = $lunitLogPath
             pre_close_exit_code = $preCloseExitCode
@@ -1586,6 +1701,9 @@ jobs:
             labview_temp_logs = @($labviewTempLogs)
             failure_classifications = @($failureClassifications)
             strict_mode = $strictMode
+            strict_mode_raw = $strictModeRaw
+            strict_mode_source = $strictModeSource
+            source_test_mode_input = $sourceTestModeInputRaw
             mode = $sourceTestMode
             verdict = $verdict
           }
@@ -1593,11 +1711,17 @@ jobs:
           Write-Host ("Source test evidence written: {0}" -f $evidencePath)
 
           if ($env:GITHUB_STEP_SUMMARY) {
-            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ("- Source Test Evidence (LV {0}-bit): mode={1}; verdict={2}; testcase_count={3}; runner_cli={4}; gcli={5}; parser={6}; install_detected_requested_bitness={7}" -f '${{ matrix.bitness }}', $sourceTestMode, $verdict, $testcaseCount, $runnerCliExitCode, $gcliExitCode, $parserExitCode, $requestedInstallDetected)
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ("- Source Test Evidence (LV {0}-bit): mode={1}; verdict={2}; testcase_count={3}; runner_cli={4}; gcli={5}; parser={6}; install_detected_requested_bitness={7}; target_year={8}; source_year={9}; lv2020_compat_mapping={10}" -f $requestedBitness, $sourceTestMode, $verdict, $testcaseCount, $runnerCliExitCode, $gcliExitCode, $parserExitCode, $requestedInstallDetected, $unitTestYear, $unitTestYearSourceContract, $yearCompatMappingApplied)
           }
           if ($env:GITHUB_OUTPUT) {
             "source_test_verdict=$verdict" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
             "report_fallback_used=$([string]$reportFallbackUsed).ToLowerInvariant()" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "source_test_mode_effective=$sourceTestMode" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "source_test_mode_input=$sourceTestModeInputRaw" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "source_test_year=$unitTestYear" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "source_test_year_source_contract=$unitTestYearSourceContract" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "source_test_year_override_applied=$([string]$yearOverrideApplied).ToLowerInvariant()" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "source_test_year_compat_mapping_applied=$([string]$yearCompatMappingApplied).ToLowerInvariant()" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           }
 
           if ($failureReasons.Count -gt 0) {

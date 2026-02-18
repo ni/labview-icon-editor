@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Xml.Linq;
 
 namespace RunnerCli;
 
@@ -10,6 +11,8 @@ public sealed record LunitRunOptions(
     string ProjectPath,
     string? ReportPath,
     bool VerboseGcli,
+    bool SkipValidate,
+    bool SkipValidateOnGcliFail,
     bool DryRun
 );
 
@@ -23,6 +26,9 @@ public sealed record LunitValidateOptions(
 
 public static class LunitService
 {
+    private const string CanonicalBackendMarker = "lunit execution backend: g-cli (canonical)";
+    private const string ParseOnlyValidateMarker = "lunit validate mode: parse-only (RunUnitTests.ps1 -SkipGcli)";
+
     public static int Run(LunitRunOptions options)
     {
         ValidateCommonInputs(options.RepoRoot, options.Bitness, options.LabviewVersion);
@@ -40,6 +46,7 @@ public static class LunitService
         var projectPath = ResolvePath(repoRoot, options.ProjectPath);
         var reportPath = ResolveReportPath(repoRoot, options.ReportPath, options.Bitness);
         var legacyReportPath = ResolveLegacyReportPath(repoRoot);
+        Console.WriteLine(CanonicalBackendMarker);
 
         if (!options.DryRun && !File.Exists(projectPath))
         {
@@ -83,6 +90,43 @@ public static class LunitService
             dryRun: options.DryRun);
 
         Console.WriteLine($"g-cli lunit exit code: {gcliExitCode}");
+        if (!options.DryRun && File.Exists(reportPath))
+        {
+            // Ensure parse-only validation can deterministically inspect the legacy alias path.
+            TryWriteLegacyReportAlias(reportPath, legacyReportPath, overwriteExisting: false);
+        }
+        if (!options.DryRun && ShouldRunClassFallback(primaryExitCode: gcliExitCode, projectPath: projectPath, reportPath: reportPath))
+        {
+            Console.Error.WriteLine("Primary g-cli lunit run returned nonzero with no testcase output for .lvproj; attempting class fallback under Test/Unit Tests.");
+            var fallbackResult = RunClassFallback(
+                repoRoot: repoRoot,
+                year: options.Year,
+                bitness: options.Bitness,
+                reportPath: reportPath,
+                verboseGcli: options.VerboseGcli);
+
+            if (fallbackResult.Succeeded)
+            {
+                gcliExitCode = 0;
+                Console.Error.WriteLine($"LUnit class fallback succeeded with {fallbackResult.TestcaseCount} testcase(s) merged into: {reportPath}");
+                TryWriteLegacyReportAlias(reportPath, legacyReportPath, overwriteExisting: true);
+            }
+            else
+            {
+                Console.Error.WriteLine($"LUnit class fallback did not recover the run: {fallbackResult.Message}");
+            }
+        }
+
+        if (options.SkipValidate)
+        {
+            Console.Error.WriteLine("Skipping parser validation because --skip-validate is set.");
+            return gcliExitCode;
+        }
+        if (gcliExitCode != 0 && options.SkipValidateOnGcliFail)
+        {
+            Console.Error.WriteLine("Skipping parser validation because g-cli returned nonzero and --skip-validate-on-gcli-fail is set.");
+            return gcliExitCode;
+        }
 
         var parserExitCode = Validate(new LunitValidateOptions(
             RepoRoot: repoRoot,
@@ -93,7 +137,7 @@ public static class LunitService
 
         if (!options.DryRun && File.Exists(reportPath))
         {
-            TryWriteLegacyReportAlias(reportPath, legacyReportPath);
+            TryWriteLegacyReportAlias(reportPath, legacyReportPath, overwriteExisting: false);
         }
 
         Console.WriteLine($"RunUnitTests parser exit code: {parserExitCode}");
@@ -103,6 +147,7 @@ public static class LunitService
     public static int Validate(LunitValidateOptions options)
     {
         ValidateCommonInputs(options.RepoRoot, options.Bitness, options.LabviewVersion);
+        Console.WriteLine(ParseOnlyValidateMarker);
 
         var repoRoot = Path.GetFullPath(options.RepoRoot);
         var reportPath = ResolveReportPath(repoRoot, options.ReportPath, options.Bitness);
@@ -189,6 +234,187 @@ public static class LunitService
         return process.ExitCode;
     }
 
+    private static bool ShouldRunClassFallback(int primaryExitCode, string projectPath, string reportPath)
+    {
+        if (primaryExitCode == 0)
+        {
+            return false;
+        }
+        if (!string.Equals(Path.GetExtension(projectPath), ".lvproj", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return GetTestcaseCount(reportPath) == 0;
+    }
+
+    private static LunitClassFallbackResult RunClassFallback(
+        string repoRoot,
+        string year,
+        string bitness,
+        string reportPath,
+        bool verboseGcli)
+    {
+        var classPaths = DiscoverUnitTestClassPaths(repoRoot);
+        if (classPaths.Count == 0)
+        {
+            return new LunitClassFallbackResult(
+                Succeeded: false,
+                TestcaseCount: 0,
+                Message: $"No .lvclass files were found under '{Path.Combine(repoRoot, "Test", "Unit Tests")}'.");
+        }
+
+        var reportDir = Path.GetDirectoryName(reportPath) ?? repoRoot;
+        Directory.CreateDirectory(reportDir);
+        var fallbackDir = Path.Combine(
+            reportDir,
+            $"lunit-fallback-{ResolveOsSegment()}-{bitness}-{DateTime.UtcNow:yyyyMMdd-HHmmss}");
+        Directory.CreateDirectory(fallbackDir);
+
+        var fallbackReports = new List<string>();
+        for (var index = 0; index < classPaths.Count; index++)
+        {
+            var classPath = classPaths[index];
+            var classReportPath = Path.Combine(fallbackDir, $"class-{index + 1:D2}.xml");
+
+            var classExitCode = RunGcliLunit(
+                repoRoot: repoRoot,
+                year: year,
+                bitness: bitness,
+                projectPath: classPath,
+                reportPath: classReportPath,
+                verboseGcli: verboseGcli,
+                dryRun: false);
+
+            Console.Error.WriteLine($"lunit class fallback exit code ({Path.GetFileName(classPath)}): {classExitCode}");
+            if (classExitCode != 0)
+            {
+                return new LunitClassFallbackResult(
+                    Succeeded: false,
+                    TestcaseCount: 0,
+                    Message: $"g-cli returned {classExitCode} for class path '{classPath}'.");
+            }
+
+            var classTestcaseCount = GetTestcaseCount(classReportPath);
+            if (classTestcaseCount == 0)
+            {
+                return new LunitClassFallbackResult(
+                    Succeeded: false,
+                    TestcaseCount: 0,
+                    Message: $"Class report has no <testcase> entries: {classReportPath}");
+            }
+
+            fallbackReports.Add(classReportPath);
+        }
+
+        var mergeResult = MergeReports(reportPaths: fallbackReports, outputPath: reportPath);
+        if (!mergeResult.Succeeded)
+        {
+            return mergeResult;
+        }
+
+        return new LunitClassFallbackResult(
+            Succeeded: true,
+            TestcaseCount: mergeResult.TestcaseCount,
+            Message: $"Fallback reports merged from '{fallbackDir}'.");
+    }
+
+    private static List<string> DiscoverUnitTestClassPaths(string repoRoot)
+    {
+        var unitTestRoot = Path.Combine(repoRoot, "Test", "Unit Tests");
+        if (!Directory.Exists(unitTestRoot))
+        {
+            return new List<string>();
+        }
+
+        return Directory.EnumerateFiles(unitTestRoot, "*.lvclass", SearchOption.AllDirectories)
+            .OrderBy(path => path, OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static int GetTestcaseCount(string reportPath)
+    {
+        if (!File.Exists(reportPath))
+        {
+            return 0;
+        }
+
+        try
+        {
+            var doc = XDocument.Load(reportPath, LoadOptions.None);
+            return doc.Descendants("testcase").Count();
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private static LunitClassFallbackResult MergeReports(IReadOnlyList<string> reportPaths, string outputPath)
+    {
+        try
+        {
+            var testsuites = new XElement("testsuites");
+            foreach (var reportPath in reportPaths)
+            {
+                if (!File.Exists(reportPath))
+                {
+                    return new LunitClassFallbackResult(
+                        Succeeded: false,
+                        TestcaseCount: 0,
+                        Message: $"Fallback report missing: {reportPath}");
+                }
+
+                var doc = XDocument.Load(reportPath, LoadOptions.None);
+                var root = doc.Root;
+                if (root is null)
+                {
+                    continue;
+                }
+
+                if (string.Equals(root.Name.LocalName, "testsuite", StringComparison.Ordinal))
+                {
+                    testsuites.Add(new XElement(root));
+                    continue;
+                }
+
+                foreach (var suite in root.Elements("testsuite"))
+                {
+                    testsuites.Add(new XElement(suite));
+                }
+            }
+
+            var mergedDoc = new XDocument(new XDeclaration("1.0", "UTF-8", "no"), testsuites);
+            var outputDir = Path.GetDirectoryName(outputPath);
+            if (!string.IsNullOrWhiteSpace(outputDir))
+            {
+                Directory.CreateDirectory(outputDir);
+            }
+            mergedDoc.Save(outputPath);
+
+            var testcaseCount = GetTestcaseCount(outputPath);
+            if (testcaseCount == 0)
+            {
+                return new LunitClassFallbackResult(
+                    Succeeded: false,
+                    TestcaseCount: 0,
+                    Message: $"Merged fallback report has no <testcase> entries: {outputPath}");
+            }
+
+            return new LunitClassFallbackResult(
+                Succeeded: true,
+                TestcaseCount: testcaseCount,
+                Message: "Merged fallback reports.");
+        }
+        catch (Exception ex)
+        {
+            return new LunitClassFallbackResult(
+                Succeeded: false,
+                TestcaseCount: 0,
+                Message: $"Failed to merge fallback reports: {ex.Message}");
+        }
+    }
+
     private static void ValidateCommonInputs(string repoRoot, string bitness, string labviewVersion)
     {
         if (string.IsNullOrWhiteSpace(repoRoot))
@@ -262,9 +488,13 @@ public static class LunitService
         return "Unknown";
     }
 
-    private static void TryWriteLegacyReportAlias(string reportPath, string legacyReportPath)
+    private static void TryWriteLegacyReportAlias(string reportPath, string legacyReportPath, bool overwriteExisting)
     {
         if (PathEquals(reportPath, legacyReportPath))
+        {
+            return;
+        }
+        if (!File.Exists(reportPath))
         {
             return;
         }
@@ -277,8 +507,14 @@ public static class LunitService
                 Directory.CreateDirectory(legacyDir);
             }
 
-            File.Copy(reportPath, legacyReportPath, overwrite: true);
-            Console.Error.WriteLine($"lunit run legacy report alias: {legacyReportPath}");
+            if (File.Exists(legacyReportPath) && !overwriteExisting)
+            {
+                Console.Error.WriteLine($"lunit run legacy report alias already exists: {legacyReportPath}");
+                return;
+            }
+
+            File.Copy(reportPath, legacyReportPath, overwrite: overwriteExisting);
+            Console.Error.WriteLine($"lunit run legacy report alias written: {legacyReportPath}");
         }
         catch (Exception ex)
         {
@@ -293,4 +529,6 @@ public static class LunitService
             Path.GetFullPath(right),
             OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
     }
+
+    private sealed record LunitClassFallbackResult(bool Succeeded, int TestcaseCount, string Message);
 }

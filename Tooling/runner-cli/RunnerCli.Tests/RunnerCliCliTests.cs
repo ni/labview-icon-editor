@@ -663,6 +663,7 @@ public class RunnerCliCliTests
         var (exitCode, stdout, stderr) = RunCli(repoRoot, args);
 
         Assert.Equal(0, exitCode);
+        Assert.Contains("lunit execution backend: g-cli (canonical)", stdout, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("g-cli lunit exit code: 0", stdout, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("RunUnitTests parser exit code: 0", stdout, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("lunit run g-cli command:", stderr, StringComparison.OrdinalIgnoreCase);
@@ -693,7 +694,7 @@ public class RunnerCliCliTests
         var (exitCode, stdout, stderr) = RunCli(repoRoot, args);
 
         Assert.Equal(0, exitCode);
-        Assert.True(string.IsNullOrWhiteSpace(stdout), $"stdout: {stdout}");
+        Assert.Contains("lunit validate mode: parse-only", stdout, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("lunit validate command:", stderr, StringComparison.OrdinalIgnoreCase);
     }
 

@@ -42,12 +42,33 @@ Describe 'CI workflow unit-test bitness contract' {
     It 'defaults source-test mode to canary via LVIE_SOURCE_TEST_STRICT' {
         $script:unitTestsSection | Should -Match 'LVIE_SOURCE_TEST_STRICT:\s*\$\{\{\s*vars\.LVIE_SOURCE_TEST_STRICT \|\| ''0''\s*\}\}'
         $script:unitTestsSection | Should -Match 'LVIE_LUNIT_VERBOSE_GCLI:\s*\$\{\{\s*vars\.LVIE_LUNIT_VERBOSE_GCLI \|\| ''1''\s*\}\}'
+        $script:unitTestsSection | Should -Match 'LVIE_SOURCE_TEST_MODE_INPUT:\s*\$\{\{\s*github\.event_name == ''workflow_dispatch'' && github\.event\.inputs\.source_test_mode \|\| ''inherit''\s*\}\}'
+        $script:unitTestsSection | Should -Match 'LVIE_SOURCE_TEST_LABVIEW_YEAR_OVERRIDE:\s*\$\{\{\s*github\.event_name == ''workflow_dispatch'' && github\.event\.inputs\.source_test_labview_year_override \|\| ''''\s*\}\}'
+        $script:workflowContent | Should -Match 'source_test_mode:'
+        $script:workflowContent | Should -Match 'source_test_labview_year_override:'
         $script:unitTestsSection | Should -Match 'Source-test canary mode active; keeping lane green'
+    }
+
+    It 'implements dispatch-only source-test override guards and precedence' {
+        $script:unitTestsSection | Should -Match '\$sourceTestModeInputRaw = if \(\[string\]::IsNullOrWhiteSpace\(\$env:LVIE_SOURCE_TEST_MODE_INPUT\)\) \{ ''inherit'' \}'
+        $script:unitTestsSection | Should -Match '\$strictModeRawFromVariable = if \(\[string\]::IsNullOrWhiteSpace\(\$env:LVIE_SOURCE_TEST_STRICT\)\) \{ ''0'' \}'
+        $script:unitTestsSection | Should -Match '\[string\]::Equals\(\$unitTestYearFromLvversion, ''2020'''
+        $script:unitTestsSection | Should -Match '\$unitTestYear = ''2026'''
+        $script:unitTestsSection | Should -Match '\$unitTestYearSource = ''lv2020_compat_mapping'''
+        $script:unitTestsSection | Should -Match 'workflow_dispatch input source_test_mode=strict'
+        $script:unitTestsSection | Should -Match 'workflow_dispatch input source_test_mode=canary'
+        $script:unitTestsSection | Should -Match 'source_test_mode override is workflow_dispatch only'
+        $script:unitTestsSection | Should -Match 'source_test_labview_year_override is workflow_dispatch only'
+        $script:unitTestsSection | Should -Match 'source_test_mode_effective='
+        $script:unitTestsSection | Should -Match 'source_test_year_source_contract='
+        $script:unitTestsSection | Should -Match 'source_test_year_override_applied='
+        $script:unitTestsSection | Should -Match 'source_test_year_compat_mapping_applied='
+        $script:unitTestsSection | Should -Match 'year_compat_mapping_applied\s*='
     }
 
     It 'does not include LV2020 empty-report bypass in unit-tests lane' {
         $script:unitTestsSection | Should -Not -Match 'Treating lane as skipped'
-        $script:unitTestsSection | Should -Not -Match "\$unitTestYear -eq '2020'"
+        $script:unitTestsSection | Should -Not -Match 'empty report override'
     }
 
     It 'removes LV2020 edge test lane and dead toggle env var' {

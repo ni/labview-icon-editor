@@ -1,65 +1,28 @@
-# Run Unit Tests ✅
+# Run Unit Tests (Deprecated)
 
-Invoke **`RunUnitTests.ps1`** to execute LabVIEW unit tests via **LabVIEWCLI** (primary) with optional **g-cli** fallback and output a result table.
+This composite action is deprecated and intentionally fails fast.
+Use `runner-cli lunit run` for canonical g-cli execution and `runner-cli lunit validate` for parse-only report validation.
 
-## Inputs
-| Name | Required | Example | Description |
-|------|----------|---------|-------------|
-| `labview_version` | No | `2021` | LabVIEW 2021 (21.0). Defaults to `.lvversion` and fails if it conflicts. |
-| `supported_bitness` | **Yes** | `32` or `64` | Target LabVIEW bitness. |
-| `project_path` | **Yes** | `${{ env.REPO_ROOT }}/lv_icon_editor.lvproj` | Absolute path to the LabVIEW project. |
-| `enable_gcli_fallback` | No | `false` | Set `true`/`1`/`yes` to allow g-cli fallback when LabVIEWCLI fails. Default is disabled. |
-| `lunit_backend` | No | `labviewcli` or `gcli` | Selects primary LUnit backend. Default is `labviewcli`. |
+Canonical LUnit execution is now:
 
-## Quick-start
-```yaml
-- uses: ./.github/actions/run-unit-tests
-  with:
-    supported_bitness: 64
-    project_path: ${{ env.REPO_ROOT }}/lv_icon_editor.lvproj
+```pwsh
+dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj -- `
+  lunit run `
+  --repo-root . `
+  --year 2020 `
+  --labview-version 20.0 `
+  --bitness 64 `
+  --project-path .\lv_icon_editor.lvproj `
+  --report-path .\.github\actions\run-unit-tests\UnitTestReport-Windows-64.xml
 ```
 
-## Execution vs Parse Modes
-- **Execution mode (default):** runs unit tests and requires `-ProjectPath`.
-- **Parse-only mode:** pass `-SkipGcli` to validate an existing `UnitTestReport.xml` without executing tests.
-- Recommended parse-only entrypoint: `runner-cli lunit validate`.
+Parse-only validation remains available via:
 
-## Prerequisites
-- `LabVIEWCLI` is available on `PATH`.
-- `g-cli` is available on `PATH` only if fallback mode is enabled.
-- `astemes_lib_lunit` is installed for the selected LabVIEW bitness.
-- `astemes_lib_lunit_cli` is installed for LabVIEWCLI mode.
-- `sas_workshops_lib_lunit_for_g_cli` is installed for fallback mode.
-- Apply `.github/actions/apply-vipc/runner_dependencies.vipc` to install required dependencies.
-
-## Fallback Behavior
-- By default, `RunUnitTests.ps1` does **not** fall back to g-cli.
-- Enable fallback by passing `-EnableGcliFallback` (or action input `enable_gcli_fallback: true`).
-- `ConnectTimeoutMs` applies only when g-cli execution is selected.
-
-## Backend Selection Escape Hatch
-`RunUnitTests.ps1` resolves backend mode in this order:
-1. `LVIE_LUNIT_BACKEND` (`labviewcli` or `gcli`)
-2. `LVIE_FORCE_GCLI_LUNIT` truthy (`1`/`true`/`yes`/`on`) => `gcli`
-3. default `labviewcli`
-
-When backend mode is `gcli`, the script skips all LabVIEWCLI path/port/operation resolution and executes `g-cli lunit` directly.
-
-## LabVIEWCLI Port Resolution
-`RunUnitTests.ps1` resolves `-PortNumber` from `Tooling/labviewcli-port-contract.json` using LabVIEW year+bitness, then validates `server.tcp.enabled` and `server.tcp.port` in `LabVIEW.ini` next to the resolved `LabVIEW.exe`.
-
-If the contract is missing/invalid, VI Server TCP is disabled, or `LabVIEW.ini` port does not match the contract, the LabVIEWCLI path fails fast.
-
-## LabVIEWCLI LUnit Operation Resolution
-`RunUnitTests.ps1` resolves the `LUnit` operation root in this order:
-1. `LVIE_LUNIT_OPERATION_DIR_<BITNESS>` (`LVIE_LUNIT_OPERATION_DIR_64` or `LVIE_LUNIT_OPERATION_DIR_32`)
-2. `LVIE_LUNIT_OPERATION_DIR`
-3. default LabVIEW CLI operations directory next to `LabVIEWCLI.exe`
-4. candidates derived from VIPM `astemes_lib_lunit_cli/files-installed`
-
-If the resolved root is not the default LabVIEW CLI operations directory, the script passes `-AdditionalOperationDirectory`.
-If no usable `LUnit` operation directory is found, the script fails unless g-cli fallback is enabled.
-
-## License
-This directory inherits the root repository’s license (MIT, unless otherwise noted).
-
+```pwsh
+dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj -- `
+  lunit validate `
+  --repo-root . `
+  --labview-version 20.0 `
+  --bitness 64 `
+  --report-path .\.github\actions\run-unit-tests\UnitTestReport-Windows-64.xml
+```

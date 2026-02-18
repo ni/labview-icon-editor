@@ -1,13 +1,14 @@
 <#
 .SYNOPSIS
-    Run LabVIEW unit tests using LabVIEWCLI (primary) with optional g-cli fallback.
+    Parse-only validator for existing LUnit reports.
 
 .DESCRIPTION
-    Demonstrates a Setup/MainSequence/Cleanup flow with:
-      - Table-based test results
-      - Color-coded pass/fail
-      - Non-zero exit if the active backend fails or if any test fails
-      - Requires an explicit LabVIEW project path (-ProjectPath).
+    Parse-only execution contract:
+      - Validates an existing UnitTestReport XML file
+      - Emits table-based and summary pass/fail output
+      - Returns non-zero on missing/invalid/empty testcase reports
+      - Is intended to be called via `runner-cli lunit validate`
+      - Test execution is canonicalized on `runner-cli lunit run` (g-cli backend)
 
 .PARAMETER LabVIEWVersion
     LabVIEW version year (e.g., 2021) or numeric version (e.g., 21.0).
@@ -23,20 +24,19 @@
     In parse mode (-SkipGcli), this points to an existing report to validate.
 
 .PARAMETER SkipGcli
-    Parse mode switch. Skips external test execution and validates an existing report.
+    Required parse mode switch. Validates an existing report and never executes tests.
 
 .PARAMETER ConnectTimeoutMs
-    Compatibility parameter kept for callers that still pass this value.
-    This parameter is used only when g-cli fallback execution is enabled.
+    Deprecated compatibility parameter. Parse-only mode ignores this value.
 
 .PARAMETER EnableGcliFallback
-    Enables optional fallback from LabVIEWCLI LUnit to g-cli LUnit.
-    Fallback is disabled by default.
+    Deprecated. Test execution is no longer supported by this script.
+    Use `runner-cli lunit run` for canonical g-cli execution.
 
 .NOTES
     PowerShell 7.5+ assumed for cross-platform support.
-    This script prefers LabVIEWCLI LUnit. g-cli fallback is opt-in.
-    Set LVIE_LUNIT_BACKEND=gcli (or LVIE_FORCE_GCLI_LUNIT=1) to force g-cli.
+    This script is parse-only.
+    Legacy backend knobs (LVIE_LUNIT_BACKEND, LVIE_FORCE_GCLI_LUNIT) are fail-fast.
 #>
 
 [CmdletBinding(DefaultParameterSetName = 'Run')]
@@ -141,6 +141,28 @@ function Resolve-SourceTestStrictMode {
 }
 
 $Script:SourceTestStrictMode = Resolve-SourceTestStrictMode
+
+function Assert-LegacyLunitBackendKnobsNotSet {
+    $backendValue = [Environment]::GetEnvironmentVariable('LVIE_LUNIT_BACKEND')
+    if (-not [string]::IsNullOrWhiteSpace($backendValue)) {
+        throw ("LVIE_LUNIT_BACKEND is no longer supported. Use 'runner-cli lunit run' for canonical g-cli execution and 'runner-cli lunit validate' for parse-only validation.")
+    }
+
+    $forceGcliValue = [Environment]::GetEnvironmentVariable('LVIE_FORCE_GCLI_LUNIT')
+    if (-not [string]::IsNullOrWhiteSpace($forceGcliValue)) {
+        throw ("LVIE_FORCE_GCLI_LUNIT is no longer supported. Use 'runner-cli lunit run' for canonical g-cli execution.")
+    }
+}
+
+Assert-LegacyLunitBackendKnobsNotSet
+
+if ($EnableGcliFallback.IsPresent) {
+    throw ("-EnableGcliFallback is no longer supported. Use 'runner-cli lunit run' for canonical g-cli execution.")
+}
+
+if ($PSCmdlet.ParameterSetName -ne 'Parse') {
+    throw ("RunUnitTests.ps1 execution mode is deprecated. Use 'runner-cli lunit run' for test execution, or pass -SkipGcli for parse-only validation.")
+}
 
 if ([string]::IsNullOrWhiteSpace($ReportPath)) {
     $reportRoot = if ([string]::IsNullOrWhiteSpace($env:LVIE_ARTIFACT_ROOT)) { $PSScriptRoot } else { Join-Path $env:LVIE_ARTIFACT_ROOT 'unit-tests' }
@@ -287,68 +309,114 @@ function Parse-Report {
     $Script:ReportFallbackUsed = $false
     $Script:ReportParseSource = 'canonical'
 
-    $parsePath = $Script:ReportPathCanonical
-    $parseSource = 'canonical'
-
-    if (-not (Test-Path -Path $parsePath -PathType Leaf)) {
-        if (-not [string]::IsNullOrWhiteSpace($Script:ReportPathLegacyCandidate) -and (Test-Path -Path $Script:ReportPathLegacyCandidate -PathType Leaf)) {
-            Write-Warning ("Canonical unit test report missing at {0}; falling back to legacy alias {1}." -f $Script:ReportPathCanonical, $Script:ReportPathLegacyCandidate)
-            $parsePath = $Script:ReportPathLegacyCandidate
-            $parseSource = 'legacy'
-            $Script:ReportFallbackUsed = $true
+    $candidates = @(
+        [pscustomobject]@{
+            Source = 'canonical'
+            Path   = $Script:ReportPathCanonical
+        }
+    )
+    if (-not [string]::IsNullOrWhiteSpace($Script:ReportPathLegacyCandidate)) {
+        $candidates += [pscustomobject]@{
+            Source = 'legacy'
+            Path   = $Script:ReportPathLegacyCandidate
         }
     }
 
-    if (-not (Test-Path -Path $parsePath -PathType Leaf)) {
-        $Script:ReportPathUsed = $parsePath
-        $Script:ReportParseSource = $parseSource
-        Write-Host ("Unit test report parse source: {0}" -f $Script:ReportParseSource)
-        Write-Host ("Unit test report parse path: {0}" -f $Script:ReportPathUsed)
-        $Script:ReportMissing = $true
-        $Script:TestsHadFailures = $true
-        return
+    $xmlDoc = $null
+    $testCases = $null
+    $parsePath = $Script:ReportPathCanonical
+    $parseSource = 'canonical'
+    $lastError = $null
+    $lastPathMissing = $false
+    $canonicalNoTestcasePath = $null
+    $canonicalNoTestcaseError = $null
+
+    for ($index = 0; $index -lt $candidates.Count; $index++) {
+        $candidate = $candidates[$index]
+        $isLastCandidate = $index -eq ($candidates.Count - 1)
+        $candidatePath = $candidate.Path
+        $candidateSource = $candidate.Source
+
+        if (-not (Test-Path -Path $candidatePath -PathType Leaf)) {
+            $lastPathMissing = $true
+            if ($candidateSource -eq 'canonical' -and -not $isLastCandidate) {
+                Write-Warning ("Canonical unit test report missing at {0}; falling back to legacy alias {1}." -f $Script:ReportPathCanonical, $Script:ReportPathLegacyCandidate)
+                continue
+            }
+            if ($isLastCandidate) {
+                $parsePath = $candidatePath
+                $parseSource = $candidateSource
+            }
+            continue
+        }
+
+        try {
+            [xml]$candidateDoc = Get-Content -Path $candidatePath -Raw -ErrorAction Stop
+        }
+        catch {
+            $lastError = $_.Exception.Message
+            if ($candidateSource -eq 'canonical' -and -not $isLastCandidate) {
+                Write-Warning ("Canonical unit test report unreadable at {0}; falling back to legacy alias {1}. Error: {2}" -f $Script:ReportPathCanonical, $Script:ReportPathLegacyCandidate, $lastError)
+                continue
+            }
+            $parsePath = $candidatePath
+            $parseSource = $candidateSource
+            break
+        }
+
+        $candidateTestCases = $candidateDoc.SelectNodes("//testcase")
+        if (-not $candidateTestCases -or $candidateTestCases.Count -eq 0) {
+            $lastError = ("No <testcase> entries found in report '{0}'." -f $candidatePath)
+            if ($candidateSource -eq 'canonical' -and -not $isLastCandidate) {
+                $canonicalNoTestcasePath = $candidatePath
+                $canonicalNoTestcaseError = $lastError
+                Write-Warning ("Canonical unit test report has no <testcase> entries at {0}; falling back to legacy alias {1}." -f $Script:ReportPathCanonical, $Script:ReportPathLegacyCandidate)
+                continue
+            }
+            $xmlDoc = $candidateDoc
+            $testCases = $candidateTestCases
+            $parsePath = $candidatePath
+            $parseSource = $candidateSource
+            break
+        }
+
+        $xmlDoc = $candidateDoc
+        $testCases = $candidateTestCases
+        $parsePath = $candidatePath
+        $parseSource = $candidateSource
+        break
     }
 
-    try {
-        [xml]$xmlDoc = Get-Content -Path $parsePath -Raw -ErrorAction Stop
-    }
-    catch {
-        if ($parseSource -eq 'canonical' -and -not [string]::IsNullOrWhiteSpace($Script:ReportPathLegacyCandidate) -and (Test-Path -Path $Script:ReportPathLegacyCandidate -PathType Leaf)) {
-            Write-Warning ("Canonical unit test report unreadable at {0}; falling back to legacy alias {1}. Error: {2}" -f $Script:ReportPathCanonical, $Script:ReportPathLegacyCandidate, $_.Exception.Message)
-            $parsePath = $Script:ReportPathLegacyCandidate
-            $parseSource = 'legacy'
-            $Script:ReportFallbackUsed = $true
-            try {
-                [xml]$xmlDoc = Get-Content -Path $parsePath -Raw -ErrorAction Stop
-            }
-            catch {
-                $Script:ParseError = $_.Exception.Message
-                $Script:TestsHadFailures = $true
-                $Script:ReportPathUsed = $parsePath
-                $Script:ReportParseSource = $parseSource
-                Write-Host ("Unit test report parse source: {0}" -f $Script:ReportParseSource)
-                Write-Host ("Unit test report parse path: {0}" -f $Script:ReportPathUsed)
-                return
-            }
-        } else {
-            $Script:ParseError = $_.Exception.Message
-            $Script:TestsHadFailures = $true
-            $Script:ReportPathUsed = $parsePath
-            $Script:ReportParseSource = $parseSource
-            Write-Host ("Unit test report parse source: {0}" -f $Script:ReportParseSource)
-            Write-Host ("Unit test report parse path: {0}" -f $Script:ReportPathUsed)
-            return
+    if ($null -eq $xmlDoc -and -not [string]::IsNullOrWhiteSpace($canonicalNoTestcasePath)) {
+        $parsePath = $canonicalNoTestcasePath
+        $parseSource = 'canonical'
+        $lastPathMissing = $false
+        if ([string]::IsNullOrWhiteSpace($lastError)) {
+            $lastError = $canonicalNoTestcaseError
         }
     }
 
     $Script:ReportPathUsed = $parsePath
     $Script:ReportParseSource = $parseSource
+    $Script:ReportFallbackUsed = $parseSource -eq 'legacy'
     Write-Host ("Unit test report parse source: {0}" -f $Script:ReportParseSource)
     Write-Host ("Unit test report parse path: {0}" -f $Script:ReportPathUsed)
 
-    $testCases = $xmlDoc.SelectNodes("//testcase")
-    if (!$testCases -or $testCases.Count -eq 0) {
-        $Script:ParseError = ("No <testcase> entries found in report '{0}'." -f $Script:ReportPathUsed)
+    if ($null -eq $xmlDoc) {
+        if ($lastPathMissing) {
+            $Script:ReportMissing = $true
+        } else {
+            $Script:ParseError = $lastError
+        }
+        $Script:TestsHadFailures = $true
+        return
+    }
+
+    if (-not $testCases -or $testCases.Count -eq 0) {
+        if ([string]::IsNullOrWhiteSpace($lastError)) {
+            $lastError = ("No <testcase> entries found in report '{0}'." -f $Script:ReportPathUsed)
+        }
+        $Script:ParseError = $lastError
         $Script:TestsHadFailures = $true
         return
     }

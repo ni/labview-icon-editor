@@ -8,6 +8,8 @@ Describe 'RunUnitTests execution contract' {
         $script:toolingRoot = Split-Path -Parent $PSScriptRoot
         $script:repoRoot = Split-Path -Parent $script:toolingRoot
         $script:runUnitTestsPath = Join-Path $script:repoRoot '.github\actions\run-unit-tests\RunUnitTests.ps1'
+        $script:runUnitTestsActionPath = Join-Path $script:repoRoot '.github\actions\run-unit-tests\action.yml'
+        $script:runUnitTestsReadmePath = Join-Path $script:repoRoot '.github\actions\run-unit-tests\README.md'
         $script:ciWorkflowPath = Join-Path $script:repoRoot '.github\workflows\ci.yml'
         $script:programPath = Join-Path $script:repoRoot 'Tooling\runner-cli\RunnerCli\Program.cs'
         $script:lunitServicePath = Join-Path $script:repoRoot 'Tooling\runner-cli\RunnerCli\LunitService.cs'
@@ -20,10 +22,12 @@ Describe 'RunUnitTests execution contract' {
         $content | Should -Not -Match "ParameterSetName = 'ReportOnly'"
     }
 
-    It 'hard-fails run mode when ProjectPath is missing or invalid' {
+    It 'enforces parse-only mode and blocks legacy backend knobs in RunUnitTests.ps1' {
         $content = Get-Content -Path $script:runUnitTestsPath -Raw
-        $content | Should -Match 'ProjectPath is required in run mode\.'
-        $content | Should -Match 'Provided ProjectPath does not exist:'
+        $content | Should -Match 'RunUnitTests\.ps1 execution mode is deprecated'
+        $content | Should -Match 'LVIE_LUNIT_BACKEND is no longer supported'
+        $content | Should -Match 'LVIE_FORCE_GCLI_LUNIT is no longer supported'
+        $content | Should -Match '-EnableGcliFallback is no longer supported'
     }
 
     It 'restricts SkipRun behavior to parse mode only' {
@@ -37,8 +41,10 @@ Describe 'RunUnitTests execution contract' {
         $program = Get-Content -Path $script:programPath -Raw
 
         $lunitService | Should -Match '"-SkipGcli"'
+        $lunitService | Should -Match 'lunit execution backend: g-cli \(canonical\)'
+        $lunitService | Should -Match 'lunit validate mode: parse-only \(RunUnitTests\.ps1 -SkipGcli\)'
         $lunitService | Should -Match 'lunit validate fallback report path'
-        $program | Should -Match 'new Command\("validate", "Validate UnitTestReport-<os>-<bitness>\.xml using RunUnitTests\.ps1 parse-only mode\."\)'
+        $program | Should -Match 'new Command\("validate", "Parse-only validation of UnitTestReport-<os>-<bitness>\.xml via RunUnitTests\.ps1 -SkipGcli\."\)'
     }
 
     It 'keeps runner-cli dry-run coverage for lunit run and lunit validate' {
@@ -54,6 +60,19 @@ Describe 'RunUnitTests execution contract' {
         $content | Should -Match "'lunit', 'run'"
         $content | Should -Match ([regex]::Escape($projectPathLiteral))
         $content | Should -Not -Match 'run-unit-tests/RunUnitTests\.ps1'
+    }
+
+    It 'keeps deprecated run-unit-tests composite action in fail-fast mode with migration guidance' {
+        $actionContent = Get-Content -Path $script:runUnitTestsActionPath -Raw
+        $readmeContent = Get-Content -Path $script:runUnitTestsReadmePath -Raw
+
+        $actionContent | Should -Match 'Deprecated\. Use runner-cli lunit run for canonical g-cli LUnit execution\.'
+        $actionContent | Should -Match 'Deprecated action guard'
+        $actionContent | Should -Match "throw ""Deprecated action '\.github/actions/run-unit-tests'"
+        $actionContent | Should -Not -Match 'Run RunUnitTests\.ps1'
+        $readmeContent | Should -Match '^# Run Unit Tests \(Deprecated\)'
+        $readmeContent | Should -Match 'runner-cli lunit run'
+        $readmeContent | Should -Match 'runner-cli lunit validate'
     }
 
     It 'captures and uploads source-test evidence per bitness lane' {
@@ -75,6 +94,12 @@ Describe 'RunUnitTests execution contract' {
         $unitTestsSection | Should -Match 'report_path_used\s*='
         $unitTestsSection | Should -Match 'report_fallback_used\s*='
         $unitTestsSection | Should -Match 'report_parse_source\s*='
+        $unitTestsSection | Should -Match 'lvversion_source_contract\s*='
+        $unitTestsSection | Should -Match 'year_source_contract\s*='
+        $unitTestsSection | Should -Match 'year_source\s*='
+        $unitTestsSection | Should -Match 'year_override_requested\s*='
+        $unitTestsSection | Should -Match 'year_override_applied\s*='
+        $unitTestsSection | Should -Match 'year_compat_mapping_applied\s*='
         $unitTestsSection | Should -Match 'Legacy UnitTestReport compatibility copy written'
         $unitTestsSection | Should -Match 'Legacy UnitTestReport compatibility copy already present'
         $unitTestsSection | Should -Match 'UnitTestReport-\$\{\{ runner\.os \}\}-\$\{\{ matrix\.bitness \}\}\.xml'
@@ -108,17 +133,51 @@ Describe 'RunUnitTests execution contract' {
         $unitTestsSection | Should -Match 'id:\s*source_test'
         $unitTestsSection | Should -Match 'source_test_verdict='
         $unitTestsSection | Should -Match 'report_fallback_used='
+        $unitTestsSection | Should -Match 'source_test_mode_effective='
+        $unitTestsSection | Should -Match 'source_test_mode_input='
+        $unitTestsSection | Should -Match 'source_test_year='
+        $unitTestsSection | Should -Match 'source_test_year_source_contract='
+        $unitTestsSection | Should -Match 'source_test_year_override_applied='
+        $unitTestsSection | Should -Match 'source_test_year_compat_mapping_applied='
         $unitTestsSection | Should -Match 'Source-test canary mode active; keeping lane green'
         $unitTestsSection | Should -Not -Match 'Treating lane as skipped'
-        $unitTestsSection | Should -Not -Match "\$unitTestYear -eq '2020'"
+        $unitTestsSection | Should -Not -Match 'empty report override'
     }
 
-    It 'keeps canonical-first parse policy with legacy fallback and strict-only error annotations' {
+    It 'supports dispatch-only strict-mode and year override precedence in unit-tests workflow logic' {
+        $content = Get-Content -Path $script:ciWorkflowPath -Raw
+        $unitTestsMatch = [regex]::Match(
+            $content,
+            '(?ms)^  unit-tests:\r?\n(?<body>.*?)(?=^  [a-zA-Z0-9_-]+:\r?\n|\z)'
+        )
+        $unitTestsMatch.Success | Should -BeTrue
+        $unitTestsSection = $unitTestsMatch.Groups['body'].Value
+
+        $unitTestsSection | Should -Match 'LVIE_SOURCE_TEST_MODE_INPUT:\s*\$\{\{\s*github\.event_name == ''workflow_dispatch'' && github\.event\.inputs\.source_test_mode \|\| ''inherit''\s*\}\}'
+        $unitTestsSection | Should -Match 'LVIE_SOURCE_TEST_LABVIEW_YEAR_OVERRIDE:\s*\$\{\{\s*github\.event_name == ''workflow_dispatch'' && github\.event\.inputs\.source_test_labview_year_override \|\| ''''\s*\}\}'
+        $unitTestsSection | Should -Match '\$sourceTestModeInputRaw = if \(\[string\]::IsNullOrWhiteSpace\(\$env:LVIE_SOURCE_TEST_MODE_INPUT\)\) \{ ''inherit'' \}'
+        $unitTestsSection | Should -Match 'Invalid source_test_mode'
+        $unitTestsSection | Should -Match 'source_test_mode override is workflow_dispatch only'
+        $unitTestsSection | Should -Match '\$strictModeRawFromVariable = if \(\[string\]::IsNullOrWhiteSpace\(\$env:LVIE_SOURCE_TEST_STRICT\)\) \{ ''0'' \}'
+        $unitTestsSection | Should -Match 'workflow_dispatch input source_test_mode=strict'
+        $unitTestsSection | Should -Match 'workflow_dispatch input source_test_mode=canary'
+        $unitTestsSection | Should -Match '\$unitTestYearOverrideRaw = if \(\[string\]::IsNullOrWhiteSpace\(\$env:LVIE_SOURCE_TEST_LABVIEW_YEAR_OVERRIDE\)\) \{ '''' \}'
+        $unitTestsSection | Should -Match '\$unitTestYearSourceContract = \$unitTestYearFromLvversion'
+        $unitTestsSection | Should -Match '\[string\]::Equals\(\$unitTestYearFromLvversion, ''2020'''
+        $unitTestsSection | Should -Match '\$unitTestYearSource = ''lv2020_compat_mapping'''
+        $unitTestsSection | Should -Match '\$yearCompatMappingApplied = \$false'
+        $unitTestsSection | Should -Match 'Invalid source_test_labview_year_override'
+        $unitTestsSection | Should -Match 'source_test_labview_year_override is workflow_dispatch only'
+        $unitTestsSection | Should -Match 'workflow_dispatch input source_test_labview_year_override'
+    }
+
+    It 'keeps canonical-first parse policy with deterministic legacy fallback and strict-only error annotations' {
         $content = Get-Content -Path $script:runUnitTestsPath -Raw
         $content | Should -Match 'Resolve-ReportOsSegment'
         $content | Should -Match 'UnitTestReport-\{0\}-\{1\}\.xml'
         $content | Should -Match 'Canonical unit test report missing at'
         $content | Should -Match 'Canonical unit test report unreadable at'
+        $content | Should -Match 'Canonical unit test report has no <testcase> entries at'
         $content | Should -Match 'Unit test report parse source:'
         $content | Should -Match 'Unit test report parse path:'
         $content | Should -Match 'No <testcase> entries found in report'

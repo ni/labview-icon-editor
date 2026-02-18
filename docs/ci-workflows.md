@@ -182,7 +182,7 @@ The [`ci.yml`](../.github/workflows/ci.yml) pipeline breaks the build into sever
 - **changes** – checks out the repository and detects `.vipc` file changes for diagnostics/reporting in downstream jobs.
 - **apply-deps** – runs VIPC audit (`Assert-VipcApplied`) for both bitnesses on every run (hard-stop on mismatch), then optionally runs informational VIPC apply diagnostics when manually dispatched with `vipc_apply_info=true`.
 - **version** – computes the semantic version and build number using commit count and PR labels.
-- **unit-tests** – runs LabVIEW unit tests on Windows for the `.lvversion` target (canonical baseline `26.1`) after dependency application. Runs 64-bit in `full` and `pr-fast`, and is skipped in `release-priority`.
+- **unit-tests** – runs LabVIEW unit tests on Windows for the `.lvversion` target (canonical baseline `26.1`) after dependency application. Canonical execution is `runner-cli lunit run` (g-cli backend); parse/summary validation is parse-only via `runner-cli lunit validate` (`RunUnitTests.ps1 -SkipGcli`). Runs 64-bit in `full` and `pr-fast`, and is skipped in `release-priority`.
   - Each matrix job appends a short `GITHUB_STEP_SUMMARY` line stating the fixed executor (`g-cli`).
 - **build-ppl** – uses a matrix to build 32-bit and 64-bit packed libraries through `runner-cli ppl build`, then uses the `rename-file` action to append the bitness to each library’s filename.
 - **build-ppl-linux-container** – builds the Linux container packed library (`lv_icon.lvlibp`) via `runner-cli parity context/run` for publish-eligible runs and emits a versioned artifact for prerelease attachment.

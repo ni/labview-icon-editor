@@ -465,45 +465,8 @@ function New-SequenceStageState {
     }
 }
 
-function Test-RunUnitTestsRequiresProjectPath {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$ScriptPath
-    )
-
-    if (-not (Test-Path -Path $ScriptPath -PathType Leaf)) {
-        throw "RunUnitTests parser script not found at $ScriptPath"
-    }
-
-    $tokens = $null
-    $errors = $null
-    $ast = [System.Management.Automation.Language.Parser]::ParseFile($ScriptPath, [ref]$tokens, [ref]$errors)
-    if ($errors -and $errors.Count -gt 0) {
-        $raw = Get-Content -Path $ScriptPath -Raw -ErrorAction Stop
-        return ($raw -match '\$ProjectPath')
-    }
-
-    if (-not $ast.ParamBlock -or -not $ast.ParamBlock.Parameters) {
-        return $false
-    }
-
-    foreach ($paramAst in $ast.ParamBlock.Parameters) {
-        if (-not $paramAst.Name -or [string]::IsNullOrWhiteSpace($paramAst.Name.VariablePath.UserPath)) {
-            continue
-        }
-
-        if ($paramAst.Name.VariablePath.UserPath -ieq 'ProjectPath') {
-            return $true
-        }
-    }
-
-    return $false
-}
-
 function Get-SequenceHeuristicEvaluation {
     param(
-        [Parameter(Mandatory = $true)]
-        [bool]$ContractDrift,
         [Parameter(Mandatory = $true)]
         [bool]$Pass1Missed,
         [Parameter(Mandatory = $true)]
@@ -515,13 +478,6 @@ function Get-SequenceHeuristicEvaluation {
         [Parameter(Mandatory = $true)]
         [bool]$PplFailed
     )
-
-    if ($ContractDrift) {
-        return [pscustomobject]@{
-            Code   = 'SEQ_CONTRACT_DRIFT'
-            Reason = 'RunUnitTests parser contract drift detected (ProjectPath requirement present).'
-        }
-    }
 
     if ($Pass1Missed) {
         return [pscustomobject]@{
@@ -2082,23 +2038,6 @@ try {
         if ($forcePass2Fail) { $sequenceDiagnostics.forced_faults_applied += 'build_pass2' }
 
         $unitTestParserScript = Join-Path $repoRoot '.github/actions/run-unit-tests/RunUnitTests.ps1'
-        $requiresProjectPath = Test-RunUnitTestsRequiresProjectPath -ScriptPath $unitTestParserScript
-        if ($requiresProjectPath) {
-            $heuristic = Get-SequenceHeuristicEvaluation `
-                -ContractDrift $true `
-                -Pass1Missed $false `
-                -UnitFailed $false `
-                -Pass2Failed $false `
-                -RenameFailed $false `
-                -PplFailed $false
-            $sequenceDiagnostics.heuristic_code = $heuristic.Code
-            $sequenceDiagnostics.heuristic_reason = $heuristic.Reason
-            $sequenceDiagnostics.timestamps.end_utc = (Get-Date).ToUniversalTime().ToString('o')
-            Write-SequenceDiagnostic -Diagnostics $sequenceDiagnostics -Path $sequenceDiagnosticsPath
-            $env:LVIE_SEQUENCE_HEURISTIC_CODE = $heuristic.Code
-            $env:LVIE_SEQUENCE_DIAGNOSTICS_PATH = $sequenceDiagnosticsPath
-            throw ("{0} Fix RunUnitTests.ps1 in the run repo before executing sequence mode." -f $heuristic.Reason)
-        }
 
         $unitTestsDir = Join-Path $artifactsRoot 'unit-tests'
         New-Item -Path $unitTestsDir -ItemType Directory -Force | Out-Null
@@ -2172,7 +2111,6 @@ try {
         $pass1Missed = $sequenceDiagnostics.build_pass1.succeeded
         if ($pass1Missed) {
             $heuristic = Get-SequenceHeuristicEvaluation `
-                -ContractDrift $false `
                 -Pass1Missed $true `
                 -UnitFailed $false `
                 -Pass2Failed $false `
@@ -2211,6 +2149,7 @@ try {
                     & $pwshPath -NoProfile -File $unitTestParserScript `
                         -LabVIEWVersion $LabVIEWVersion `
                         -SupportedBitness $sequenceBitness `
+                        -SkipGcli `
                         -ReportPath $reportPath
                     $parserExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
                     Write-Host ("RunUnitTests parser exit code ({0}-bit): {1}" -f $sequenceBitness, $parserExitCode)
@@ -2337,7 +2276,6 @@ try {
         $pplFailed = $pass2Failed -or $renameFailed
 
         $heuristic = Get-SequenceHeuristicEvaluation `
-            -ContractDrift $false `
             -Pass1Missed $false `
             -UnitFailed $unitFailed `
             -Pass2Failed $pass2Failed `
@@ -2472,6 +2410,7 @@ try {
                         & $pwshPath -NoProfile -File $unitTestParserScript `
                             -LabVIEWVersion $LabVIEWVersion `
                             -SupportedBitness $bitness `
+                            -SkipGcli `
                             -ReportPath $reportPath
                         $parserExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
                         Write-Host ("RunUnitTests parser exit code ({0}-bit): {1}" -f $bitness, $parserExitCode)
