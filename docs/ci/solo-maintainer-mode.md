@@ -27,8 +27,7 @@ Date adopted: **2026-02-11**
 
 For protected integration branches in solo mode, require:
 
-- `CI Pipeline / PowerShell Lint`
-- `CI Pipeline / Pipeline Contract`
+- `CI Pipeline / CI Required / Lint+Contract`
 
 No reviewer count is required in branch protection for solo-maintainer operation.
 

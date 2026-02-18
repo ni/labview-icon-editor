@@ -26,7 +26,7 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 - **Prerequisites**:
   1. **LabVIEW 2026 (26.1), both 32-bit and 64-bit**.
   2. **PowerShell 7+** and **Git**.  
-  3. **Apply** `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2026 (26.1), 32-bit & 64-bit**—matching the `apply-deps` matrix in [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+  3. **Apply** `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2026 (26.1), 32-bit & 64-bit**—matching the split `apply-deps-64` / `apply-deps-32` lanes in [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
 - **Source format note**:
   - Project sources are saved in **LabVIEW 2020 (20.0)** file format.

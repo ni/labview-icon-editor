@@ -48,8 +48,7 @@ if ([string]::IsNullOrWhiteSpace($resolvedRepo)) {
 }
 
 $requiredContexts = @(
-    'CI Pipeline / PowerShell Lint'
-    'CI Pipeline / Pipeline Contract'
+    'CI Pipeline / CI Required / Lint+Contract'
 )
 
 $requiredChecks = @()

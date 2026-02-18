@@ -14,8 +14,7 @@ Describe 'Branch protection policy contract' {
         (Test-Path -LiteralPath $script:setPolicyPath -PathType Leaf) | Should -BeTrue
         $content = Get-Content -Path $script:setPolicyPath -Raw
         $content | Should -Match 'RequiredCheckAppId'
-        $content | Should -Match 'CI Pipeline / PowerShell Lint'
-        $content | Should -Match 'CI Pipeline / Pipeline Contract'
+        $content | Should -Match 'CI Pipeline / CI Required / Lint\+Contract'
         $content | Should -Match 'app_id'
     }
 
@@ -24,8 +23,7 @@ Describe 'Branch protection policy contract' {
         $content = Get-Content -Path $script:verifyPolicyPath -Raw
         $content | Should -Match 'RequiredContexts'
         $content | Should -Match 'RequiredCheckAppId'
-        $content | Should -Match 'CI Pipeline / PowerShell Lint'
-        $content | Should -Match 'CI Pipeline / Pipeline Contract'
+        $content | Should -Match 'CI Pipeline / CI Required / Lint\+Contract'
         $content | Should -Match 'app_id_mismatches'
     }
 }

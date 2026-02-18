@@ -20,8 +20,7 @@ param(
     [Parameter(Mandatory = $false)]
     [Alias('RequiredContext')]
     [string[]]$RequiredContexts = @(
-        'CI Pipeline / PowerShell Lint',
-        'CI Pipeline / Pipeline Contract'
+        'CI Pipeline / CI Required / Lint+Contract'
     ),
 
     [Parameter(Mandatory = $false)]

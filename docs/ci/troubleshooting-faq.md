@@ -169,14 +169,12 @@ gh workflow run ci.yml --repo $repo `
 **Solution**:
 1. Have the required reviewers approve your Pull Request.
 2. Ensure the required branch-protection status context is green:
-   - `CI Pipeline / PowerShell Lint`
-   - `CI Pipeline / Pipeline Contract`
+   - `CI Pipeline / CI Required / Lint+Contract`
 3. Verify branch-protection configuration with:
    - `pwsh -NoProfile -File .\Tooling\Test-CiBranchProtection.ps1`
 4. If branch protection is configured with stale per-job contexts, ask a repository admin to update required contexts to:
-   - `CI Pipeline / PowerShell Lint`
-   - `CI Pipeline / Pipeline Contract`
-   - Remove stale required contexts that are not part of this pair.
+   - `CI Pipeline / CI Required / Lint+Contract`
+   - Remove stale required contexts that are not this canonical context.
 5. Update your `CONTRIBUTING.md` to specify the merging rules so contributors know what’s needed.
 
 ---

@@ -180,9 +180,9 @@ The [`ci.yml`](../.github/workflows/ci.yml) pipeline breaks the build into sever
 - **VI Analyzer ownership note** – the blocking Linux container VI Analyzer lane now lives in [`labview-parity.yml`](../.github/workflows/labview-parity.yml) (`vi-analyzer-linux`) and uploads `vi-analyzer-reports-parity` plus `vi-analyzer-status-parity` (`builds/status/vi-analyzer-summary.parity.json`).
 - **prerelease-context** – computes prerelease publish eligibility, reason, merged-PR bump override context, and the execution profile (`ci_profile`: `release-priority`, `pr-fast`, `full`).
 - **changes** – checks out the repository and detects `.vipc` file changes for diagnostics/reporting in downstream jobs.
-- **apply-deps** – runs VIPC audit (`Assert-VipcApplied`) for both bitnesses on every run (hard-stop on mismatch), then optionally runs informational VIPC apply diagnostics when manually dispatched with `vipc_apply_info=true`.
+- **apply-deps-64 / apply-deps-32** – run VIPC audit (`Assert-VipcApplied`) per bitness lane on bitness-addressable runner labels (`LVIE_RUNNER_LABEL_64` / `LVIE_RUNNER_LABEL_32`, with fallback to `LVIE_RUNNER_LABEL`), then optionally run informational VIPC apply diagnostics when manually dispatched with `vipc_apply_info=true`.
 - **version** – computes the semantic version and build number using commit count and PR labels.
-- **unit-tests** – runs LabVIEW unit tests on Windows for the `.lvversion` target (canonical baseline `26.1`) after dependency application. Canonical execution is `runner-cli lunit run` (g-cli backend); parse/summary validation is parse-only via `runner-cli lunit validate` (`RunUnitTests.ps1 -SkipGcli`). Runs 64-bit in `full` and `pr-fast`, and is skipped in `release-priority`.
+- **unit-tests** – runs LabVIEW unit tests on Windows for the `.lvversion` target (canonical baseline `26.1`) after dependency application. Canonical execution is `runner-cli lunit run` (g-cli backend); parse/summary validation is parse-only via `runner-cli lunit validate` (`RunUnitTests.ps1 -SkipGcli`). Runs both 64-bit and 32-bit in `full` and `pr-fast`, and is skipped in `release-priority`.
   - Each matrix job appends a short `GITHUB_STEP_SUMMARY` line stating the fixed executor (`g-cli`).
 - **build-ppl** – uses a matrix to build 32-bit and 64-bit packed libraries through `runner-cli ppl build`, then uses the `rename-file` action to append the bitness to each library’s filename.
 - **build-ppl-linux-container** – builds the Linux container packed library (`lv_icon.lvlibp`) via `runner-cli parity context/run` for publish-eligible runs and emits a versioned artifact for prerelease attachment.
@@ -213,7 +213,7 @@ The `build-ppl` job uses a matrix to produce both bitnesses rather than distinct
 | `workflow_dispatch` (`full`, `force_gcli_lunit=false`) | Runs (required) |
 | `workflow_dispatch` (`release-priority`, `force_gcli_lunit=true`) | Skipped intentionally |
 
-Branch protection recommendation for solo mode: require `CI Pipeline / PowerShell Lint` and `CI Pipeline / Pipeline Contract` for pull requests.
+Branch protection recommendation for solo mode: require the canonical synthetic context `CI Pipeline / CI Required / Lint+Contract` for pull requests.
 
 *(The **Run Unit Tests** workflow has been consolidated into the main CI process.)*
 

@@ -39,6 +39,10 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $workflowContent | Should -Match '(?ms)^  self-hosted-capacity:\s*.*?outputs:\s*.*?\n\s*self_hosted_online_count:'
         $workflowContent | Should -Match '(?ms)^  self-hosted-capacity:\s*.*?outputs:\s*.*?\n\s*self_hosted_total_count:'
         $workflowContent | Should -Match '(?ms)^  self-hosted-capacity:\s*.*?outputs:\s*.*?\n\s*self_hosted_online_runners:'
+        $workflowContent | Should -Match '(?ms)^  self-hosted-capacity:\s*.*?outputs:\s*.*?\n\s*runner_label_64:'
+        $workflowContent | Should -Match '(?ms)^  self-hosted-capacity:\s*.*?outputs:\s*.*?\n\s*runner_label_32:'
+        $workflowContent | Should -Match '(?ms)^  self-hosted-capacity:\s*.*?outputs:\s*.*?\n\s*self_hosted_64_available:'
+        $workflowContent | Should -Match '(?ms)^  self-hosted-capacity:\s*.*?outputs:\s*.*?\n\s*self_hosted_32_available:'
 
         $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?needs:\s*\[\s*self-hosted-capacity\s*\]'
         $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*parity_mode_effective:\s*\$\{\{\s*steps\.resolve\.outputs\.parity_mode_effective\s*\}\}'
@@ -46,6 +50,10 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*self_hosted_online_count:\s*\$\{\{\s*steps\.resolve\.outputs\.self_hosted_online_count\s*\}\}'
         $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*self_hosted_total_count:\s*\$\{\{\s*steps\.resolve\.outputs\.self_hosted_total_count\s*\}\}'
         $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*self_hosted_online_runners:\s*\$\{\{\s*steps\.resolve\.outputs\.self_hosted_online_runners\s*\}\}'
+        $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*self_hosted_runner_label_64:\s*\$\{\{\s*steps\.resolve\.outputs\.self_hosted_runner_label_64\s*\}\}'
+        $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*self_hosted_runner_label_32:\s*\$\{\{\s*steps\.resolve\.outputs\.self_hosted_runner_label_32\s*\}\}'
+        $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*self_hosted_64_available:\s*\$\{\{\s*steps\.resolve\.outputs\.self_hosted_64_available\s*\}\}'
+        $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*self_hosted_32_available:\s*\$\{\{\s*steps\.resolve\.outputs\.self_hosted_32_available\s*\}\}'
         $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*run_self_hosted_64_effective:\s*\$\{\{\s*steps\.resolve\.outputs\.run_self_hosted_64_effective\s*\}\}'
         $workflowContent | Should -Match '(?ms)^  resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*run_self_hosted_32_effective:\s*\$\{\{\s*steps\.resolve\.outputs\.run_self_hosted_32_effective\s*\}\}'
     }
@@ -67,6 +75,10 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $capacityBlock | Should -Match 'core\.setOutput\(''self_hosted_online_count'''
         $capacityBlock | Should -Match 'core\.setOutput\(''self_hosted_total_count'''
         $capacityBlock | Should -Match 'core\.setOutput\(''self_hosted_online_runners'''
+        $capacityBlock | Should -Match 'core\.setOutput\(''runner_label_64'''
+        $capacityBlock | Should -Match 'core\.setOutput\(''runner_label_32'''
+        $capacityBlock | Should -Match 'core\.setOutput\(''self_hosted_64_available'', ''unknown''\)'
+        $capacityBlock | Should -Match 'core\.setOutput\(''self_hosted_32_available'', ''unknown''\)'
     }
 
     It 'derives Linux container parity job name from .lvcontainer contract' {
@@ -152,6 +164,12 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $policyGateBlock | Should -Match 'Full parity mode requires an available self-hosted runner'
         $policyGateBlock | Should -Match 'self_hosted_online_count'
         $policyGateBlock | Should -Match 'self_hosted_online_runners'
+        $policyGateBlock | Should -Match 'self_hosted_64_available'
+        $policyGateBlock | Should -Match 'self_hosted_32_available'
+        $policyGateBlock | Should -Match 'self_hosted_runner_label_64'
+        $policyGateBlock | Should -Match 'self_hosted_runner_label_32'
+        $policyGateBlock | Should -Match 'requested64 -eq ''true'' -and \$available64 -ne ''true'''
+        $policyGateBlock | Should -Match 'requested32 -eq ''true'' -and \$available32 -ne ''true'''
         $policyGateBlock | Should -Match 'parallel-capable'
         $policyGateBlock | Should -Match 'queue-expected'
 
@@ -183,6 +201,7 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $paritySelfHosted64Block | Should -Match 'close_bitness:\s*64'
         $paritySelfHosted64Block | Should -Match 'labview-parity-self-hosted-labviewcli-logs-64'
         $paritySelfHosted64Block | Should -Match 'labview-parity-self-hosted-editor-packed-library-64'
+        $paritySelfHosted64Block | Should -Match '(?m)^\s*runs-on:\s*\$\{\{\s*needs\.resolve-parity-context\.outputs\.self_hosted_runner_label_64\s*\}\}'
         $paritySelfHosted64Block | Should -Not -Match 'dotnet run --project \.\\Tooling\\runner-cli\\RunnerCli\\RunnerCli\.csproj'
 
         $paritySelfHosted32Match = [regex]::Match(
@@ -203,6 +222,7 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $paritySelfHosted32Block | Should -Match 'close_bitness:\s*32'
         $paritySelfHosted32Block | Should -Match 'labview-parity-self-hosted-labviewcli-logs-32'
         $paritySelfHosted32Block | Should -Match 'labview-parity-self-hosted-editor-packed-library-32'
+        $paritySelfHosted32Block | Should -Match '(?m)^\s*runs-on:\s*\$\{\{\s*needs\.resolve-parity-context\.outputs\.self_hosted_runner_label_32\s*\}\}'
         $paritySelfHosted32Block | Should -Not -Match 'dotnet run --project \.\\Tooling\\runner-cli\\RunnerCli\\RunnerCli\.csproj'
     }
 
@@ -219,7 +239,13 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $summaryBlock | Should -Match 'needs\.resolve-parity-context\.outputs\.parity_mode_effective'
         $summaryBlock | Should -Match 'needs\.resolve-parity-context\.outputs\.self_hosted_online_count'
         $summaryBlock | Should -Match 'needs\.resolve-parity-context\.outputs\.self_hosted_online_runners'
+        $summaryBlock | Should -Match 'needs\.resolve-parity-context\.outputs\.self_hosted_runner_label_64'
+        $summaryBlock | Should -Match 'needs\.resolve-parity-context\.outputs\.self_hosted_runner_label_32'
+        $summaryBlock | Should -Match 'needs\.resolve-parity-context\.outputs\.self_hosted_64_available'
+        $summaryBlock | Should -Match 'needs\.resolve-parity-context\.outputs\.self_hosted_32_available'
         $summaryBlock | Should -Match 'self_hosted_online_count:'
+        $summaryBlock | Should -Match 'self_hosted_64_online_count/runners:'
+        $summaryBlock | Should -Match 'self_hosted_32_online_count/runners:'
         $summaryBlock | Should -Match "self-hosted-policy-gate"
         $summaryBlock | Should -Match "vi-analyzer-linux"
     }

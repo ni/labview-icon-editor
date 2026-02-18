@@ -9,6 +9,8 @@ permissions:
 env:
   LVIE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
   LVIE_EXPECTED_RUNNER_LABEL: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+  LVIE_RUNNER_LABEL_64: ${{ vars.LVIE_RUNNER_LABEL_64 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+  LVIE_RUNNER_LABEL_32: ${{ vars.LVIE_RUNNER_LABEL_32 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
   LVIE_CANONICAL_RUNNER_LABEL: self-hosted-windows-lv
   LVIE_FORCE_NO_LABVIEW_DEVMODE: 1
   LVIE_RUNNER_ACL_CHECK: 1
@@ -791,10 +793,10 @@ jobs:
             vipc:
               - '**/*.vipc'
 
-  apply-deps:
-    name: Apply VIPC (LV ${{ needs.version-gate.outputs.raw }} x64/x86, serialized)
+  apply-deps-64:
+    name: Apply VIPC (LV ${{ needs.version-gate.outputs.raw }} x64)
     needs: [run-metadata, version-gate, changes]
-    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL_64 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
       LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
@@ -891,10 +893,22 @@ jobs:
       - name: Job teardown (LV x64)
         if: always()
         uses: ./.github/actions/lvie-job-teardown
+
+  apply-deps-32:
+    name: Apply VIPC (LV ${{ needs.version-gate.outputs.raw }} x86)
+    needs: [run-metadata, version-gate, changes]
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL_32 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    env:
+      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
+      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
+      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
+      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          release_lock: 'false'
+          fetch-depth: 0
       - name: Job setup (LV x86)
-        if: ${{ always() }}
         uses: ./.github/actions/lvie-job-setup
         with:
           checkout: 'false'
@@ -902,7 +916,6 @@ jobs:
           create_worktree: 'true'
           worktree_root_mode: runner_temp
       - name: Audit VIPC apply (LV x86)
-        if: ${{ always() }}
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
         run: |
@@ -920,7 +933,6 @@ jobs:
           )
           & dotnet run --project $runnerCliProject --configuration Release -- @runnerCliArgs
       - name: Report VIPC change status (LV x86)
-        if: ${{ always() }}
         shell: pwsh
         run: |
           if ('${{ needs.changes.outputs.vipc }}' -eq 'true') {
@@ -929,7 +941,7 @@ jobs:
             Write-Host "No .vipc changes detected; audit-first policy still enforced."
           }
       - name: Apply VIPC (LV x86, informational)
-        if: ${{ always() && github.event_name == 'workflow_dispatch' && github.event.inputs.vipc_apply_info == 'true' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.vipc_apply_info == 'true' }}
         continue-on-error: true
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
@@ -1034,8 +1046,8 @@ jobs:
   unit-tests:
     name: Test Source Using LV ${{ matrix.bitness }}-bit
     if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
-    needs: [run-metadata, prerelease-context, version-gate, apply-deps]
-    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    needs: [run-metadata, prerelease-context, version-gate, apply-deps-64, apply-deps-32]
+    runs-on: ${{ matrix.runner_label }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
       LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
@@ -1049,7 +1061,11 @@ jobs:
       fail-fast: false
       max-parallel: 2
       matrix:
-        bitness: ${{ fromJson('["64","32"]') }}
+        include:
+          - bitness: '64'
+            runner_label: ${{ vars.LVIE_RUNNER_LABEL_64 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+          - bitness: '32'
+            runner_label: ${{ vars.LVIE_RUNNER_LABEL_32 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -1062,6 +1078,24 @@ jobs:
           bitness: ${{ matrix.bitness }}
           create_worktree: 'true'
           worktree_root_mode: runner_temp
+      - name: Assert VIPC dependencies on source-test runner (LV ${{ matrix.bitness }}-bit)
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          $runnerCliProject = Join-Path $env:REPO_ROOT 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+          if (-not (Test-Path -Path $runnerCliProject -PathType Leaf)) {
+            throw "runner-cli project not found at $runnerCliProject"
+          }
+
+          $precheckOutputPath = Join-Path $env:REPO_ROOT ("builds\\status\\vipc-audit-pretest-{0}-{1}.json" -f $env:RUNNER_OS, '${{ matrix.bitness }}')
+          $runnerCliArgs = @(
+            'vipc', 'assert',
+            '--repo-root', $env:REPO_ROOT,
+            '--supported-bitness', '${{ matrix.bitness }}',
+            '--vipc-path', '.github/actions/apply-vipc/runner_dependencies.vipc',
+            '--output-path', $precheckOutputPath
+          )
+          & dotnet run --project $runnerCliProject --configuration Release -- @runnerCliArgs
       - name: Test Source Using LV ${{ matrix.bitness }}-bit
         id: source_test
         shell: pwsh
@@ -1565,6 +1599,13 @@ jobs:
         with:
           name: source-test-evidence-${{ runner.os }}-${{ matrix.bitness }}-bit
           path: ${{ env.REPO_ROOT }}/builds/status/source-test-evidence-${{ runner.os }}-${{ matrix.bitness }}.json
+          if-no-files-found: warn
+      - name: Upload VIPC pretest audit (LV ${{ matrix.bitness }}-bit)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vipc-audit-pretest-${{ runner.os }}-${{ matrix.bitness }}-bit
+          path: ${{ env.REPO_ROOT }}/builds/status/vipc-audit-pretest-${{ runner.os }}-${{ matrix.bitness }}.json
           if-no-files-found: warn
       - name: Job teardown
         if: always()
@@ -2469,7 +2510,8 @@ jobs:
       - vip-prerelease-requirements-lint
       - pylavi-validate
       - changes
-      - apply-deps
+      - apply-deps-64
+      - apply-deps-32
       - unit-tests
       - build-ppl-x64
       - build-ppl-x86
@@ -2518,7 +2560,8 @@ jobs:
           )
           $requiredFullValidation = @(
             'changes',
-            'apply-deps',
+            'apply-deps-64',
+            'apply-deps-32',
             'unit-tests'
           )
           $isLv2020 = '${{ needs.version-gate.outputs.year }}' -eq '2020'
@@ -2935,7 +2978,8 @@ jobs:
       - vip-prerelease-requirements-lint
       - pylavi-validate
       - changes
-      - apply-deps
+      - apply-deps-64
+      - apply-deps-32
       - unit-tests
       - build-ppl-x64
       - build-ppl-x86
@@ -2980,7 +3024,8 @@ jobs:
           }
           $requiredFullValidation = @(
             'changes',
-            'apply-deps',
+            'apply-deps-64',
+            'apply-deps-32',
             'unit-tests'
           )
           $isLv2020 = '${{ needs.version-gate.outputs.year }}' -eq '2020'
@@ -3080,3 +3125,34 @@ jobs:
           } else {
             Write-Host 'Pipeline contract satisfied.'
           }
+
+  required-context:
+    name: CI Required / Lint+Contract
+    if: always()
+    needs:
+      - powershell-lint
+      - pipeline-contract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate canonical required check context
+        shell: pwsh
+        run: |
+          $lintResult = '${{ needs.powershell-lint.result }}'
+          $contractResult = '${{ needs.pipeline-contract.result }}'
+
+          Write-Host ("PowerShell Lint result: {0}" -f $lintResult)
+          Write-Host ("Pipeline Contract result: {0}" -f $contractResult)
+
+          $failing = @()
+          if ($lintResult -ne 'success') {
+            $failing += "powershell-lint:$lintResult"
+          }
+          if ($contractResult -ne 'success') {
+            $failing += "pipeline-contract:$contractResult"
+          }
+
+          if ($failing.Count -gt 0) {
+            throw ("CI required context failed because prerequisite checks were not successful: {0}" -f ($failing -join ', '))
+          }
+
+          Write-Host 'CI required context passed.'

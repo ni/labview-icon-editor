@@ -14,9 +14,14 @@ Describe 'CI workflow unit-test bitness contract' {
         ).Groups['body'].Value
     }
 
-    It 'defines unit-tests matrix for both 64-bit and 32-bit lanes' {
+    It 'defines unit-tests matrix for both 64-bit and 32-bit lanes with bitness runner routing' {
         $script:unitTestsSection | Should -Not -BeNullOrEmpty
-        $script:unitTestsSection | Should -Match 'bitness:\s*\$\{\{\s*fromJson\(''\["64","32"\]''\)\s*\}\}'
+        $script:unitTestsSection | Should -Match 'matrix:\s*\r?\n\s*include:'
+        $script:unitTestsSection | Should -Match "bitness:\s*'64'"
+        $script:unitTestsSection | Should -Match "bitness:\s*'32'"
+        $script:unitTestsSection | Should -Match 'runner_label:\s*\$\{\{\s*vars\.LVIE_RUNNER_LABEL_64 \|\| vars\.LVIE_RUNNER_LABEL \|\| ''self-hosted-windows-lv''\s*\}\}'
+        $script:unitTestsSection | Should -Match 'runner_label:\s*\$\{\{\s*vars\.LVIE_RUNNER_LABEL_32 \|\| vars\.LVIE_RUNNER_LABEL \|\| ''self-hosted-windows-lv''\s*\}\}'
+        $script:unitTestsSection | Should -Match 'runs-on:\s*\$\{\{\s*matrix\.runner_label\s*\}\}'
     }
 
     It 'allows unit-tests matrix to use two self-hosted runners in parallel' {
@@ -24,6 +29,9 @@ Describe 'CI workflow unit-test bitness contract' {
     }
 
     It 'uploads per-lane source-test evidence artifacts' {
+        $script:unitTestsSection | Should -Match 'Assert VIPC dependencies on source-test runner \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
+        $script:unitTestsSection | Should -Match 'vipc-audit-pretest-\$\{\{ runner\.os \}\}-\$\{\{ matrix\.bitness \}\}\.json'
+        $script:unitTestsSection | Should -Match 'Upload VIPC pretest audit \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
         $script:unitTestsSection | Should -Match 'id:\s*source_test'
         $script:unitTestsSection | Should -Match 'source_test_verdict='
         $script:unitTestsSection | Should -Match 'report_fallback_used='
@@ -81,5 +89,24 @@ Describe 'CI workflow unit-test bitness contract' {
     It 'removes LV2020 edge test lane and dead toggle env var' {
         $script:workflowContent | Should -Not -Match '^\s*unit-tests-lv2020-edge:'
         $script:workflowContent | Should -Not -Match 'LVIE_RUN_LV2020_EDGE_SMOKE'
+    }
+
+    It 'requires split apply-deps lanes for unit-tests and pipeline gating' {
+        $script:workflowContent | Should -Match '(?ms)^  apply-deps-64:\s*$'
+        $script:workflowContent | Should -Match '(?ms)^  apply-deps-32:\s*$'
+        $script:unitTestsSection | Should -Match 'needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-64,\s*apply-deps-32\s*\]'
+        $script:workflowContent | Should -Match '(?ms)^  publish-gate:\s*.*?\n\s*-\s*apply-deps-64\s*$'
+        $script:workflowContent | Should -Match '(?ms)^  publish-gate:\s*.*?\n\s*-\s*apply-deps-32\s*$'
+        $script:workflowContent | Should -Match '(?ms)^  pipeline-contract:\s*.*?\n\s*-\s*apply-deps-64\s*$'
+        $script:workflowContent | Should -Match '(?ms)^  pipeline-contract:\s*.*?\n\s*-\s*apply-deps-32\s*$'
+        $script:workflowContent | Should -Match "'apply-deps-64'"
+        $script:workflowContent | Should -Match "'apply-deps-32'"
+    }
+
+    It 'emits a stable canonical required check context job' {
+        $script:workflowContent | Should -Match '(?ms)^  required-context:\s*$'
+        $script:workflowContent | Should -Match '(?ms)^  required-context:\s*.*?\n\s*name:\s*CI Required / Lint\+Contract'
+        $script:workflowContent | Should -Match '(?ms)^  required-context:\s*.*?\n\s*-\s*powershell-lint\s*$'
+        $script:workflowContent | Should -Match '(?ms)^  required-context:\s*.*?\n\s*-\s*pipeline-contract\s*$'
     }
 }
