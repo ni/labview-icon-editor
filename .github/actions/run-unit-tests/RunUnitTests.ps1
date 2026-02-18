@@ -90,16 +90,76 @@ $Script:Results = @()
 $Script:FailedResults = @()
 $Script:ReportMissing = $false
 $Script:ParseError = $null
+$Script:ReportPathCanonical = $null
+$Script:ReportPathLegacyCandidate = $null
+$Script:ReportPathUsed = $null
+$Script:ReportFallbackUsed = $false
+$Script:ReportParseSource = 'canonical'
+$Script:SourceTestStrictMode = $false
+
+function Test-PathEquivalent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Left,
+        [Parameter(Mandatory = $true)]
+        [string]$Right
+    )
+
+    $leftFull = [System.IO.Path]::GetFullPath($Left)
+    $rightFull = [System.IO.Path]::GetFullPath($Right)
+    $comparison = if ($IsWindows) {
+        [StringComparison]::OrdinalIgnoreCase
+    } else {
+        [StringComparison]::Ordinal
+    }
+
+    return [string]::Equals($leftFull, $rightFull, $comparison)
+}
+
+function Resolve-ReportOsSegment {
+    if ($IsWindows) {
+        return 'Windows'
+    }
+    if ($IsLinux) {
+        return 'Linux'
+    }
+    if ($IsMacOS) {
+        return 'macOS'
+    }
+
+    return 'Unknown'
+}
+
+function Resolve-SourceTestStrictMode {
+    $strictModeRaw = [Environment]::GetEnvironmentVariable('LVIE_SOURCE_TEST_STRICT')
+    if ([string]::IsNullOrWhiteSpace($strictModeRaw)) {
+        return $false
+    }
+
+    $normalized = $strictModeRaw.Trim().ToLowerInvariant()
+    return $normalized -notin @('0', 'false', 'no')
+}
+
+$Script:SourceTestStrictMode = Resolve-SourceTestStrictMode
 
 if ([string]::IsNullOrWhiteSpace($ReportPath)) {
     $reportRoot = if ([string]::IsNullOrWhiteSpace($env:LVIE_ARTIFACT_ROOT)) { $PSScriptRoot } else { Join-Path $env:LVIE_ARTIFACT_ROOT 'unit-tests' }
     if (-not [string]::IsNullOrWhiteSpace($env:LVIE_ARTIFACT_ROOT) -and -not (Test-Path -Path $reportRoot)) {
         New-Item -Path $reportRoot -ItemType Directory -Force | Out-Null
     }
-    $ReportPath = Join-Path -Path $reportRoot -ChildPath "UnitTestReport.xml"
+    $reportOs = Resolve-ReportOsSegment
+    $ReportPath = Join-Path -Path $reportRoot -ChildPath ("UnitTestReport-{0}-{1}.xml" -f $reportOs, $SupportedBitness)
 } else {
     Write-Host "Using report path override: $ReportPath"
 }
+
+$Script:ReportPathCanonical = $ReportPath
+$reportDirectory = Split-Path -Parent $Script:ReportPathCanonical
+$legacyCandidatePath = Join-Path -Path $reportDirectory -ChildPath 'UnitTestReport.xml'
+if (-not (Test-PathEquivalent -Left $Script:ReportPathCanonical -Right $legacyCandidatePath)) {
+    $Script:ReportPathLegacyCandidate = $legacyCandidatePath
+}
+$Script:ReportPathUsed = $Script:ReportPathCanonical
 
 $repoRoot = (Resolve-Path -Path (Join-Path $PSScriptRoot '..\..\..')).Path
 $preflightScript = Join-Path $repoRoot 'Tooling\Invoke-Preflight.ps1'
@@ -223,25 +283,72 @@ function Parse-Report {
     $Script:FailedResults = @()
     $Script:ReportMissing = $false
     $Script:ParseError = $null
+    $Script:ReportPathUsed = $Script:ReportPathCanonical
+    $Script:ReportFallbackUsed = $false
+    $Script:ReportParseSource = 'canonical'
 
-    if (-not (Test-Path $ReportPath)) {
+    $parsePath = $Script:ReportPathCanonical
+    $parseSource = 'canonical'
+
+    if (-not (Test-Path -Path $parsePath -PathType Leaf)) {
+        if (-not [string]::IsNullOrWhiteSpace($Script:ReportPathLegacyCandidate) -and (Test-Path -Path $Script:ReportPathLegacyCandidate -PathType Leaf)) {
+            Write-Warning ("Canonical unit test report missing at {0}; falling back to legacy alias {1}." -f $Script:ReportPathCanonical, $Script:ReportPathLegacyCandidate)
+            $parsePath = $Script:ReportPathLegacyCandidate
+            $parseSource = 'legacy'
+            $Script:ReportFallbackUsed = $true
+        }
+    }
+
+    if (-not (Test-Path -Path $parsePath -PathType Leaf)) {
+        $Script:ReportPathUsed = $parsePath
+        $Script:ReportParseSource = $parseSource
+        Write-Host ("Unit test report parse source: {0}" -f $Script:ReportParseSource)
+        Write-Host ("Unit test report parse path: {0}" -f $Script:ReportPathUsed)
         $Script:ReportMissing = $true
         $Script:TestsHadFailures = $true
         return
     }
 
     try {
-        [xml]$xmlDoc = Get-Content $ReportPath -ErrorAction Stop
+        [xml]$xmlDoc = Get-Content -Path $parsePath -Raw -ErrorAction Stop
     }
     catch {
-        $Script:ParseError = $_.Exception.Message
-        $Script:TestsHadFailures = $true
-        return
+        if ($parseSource -eq 'canonical' -and -not [string]::IsNullOrWhiteSpace($Script:ReportPathLegacyCandidate) -and (Test-Path -Path $Script:ReportPathLegacyCandidate -PathType Leaf)) {
+            Write-Warning ("Canonical unit test report unreadable at {0}; falling back to legacy alias {1}. Error: {2}" -f $Script:ReportPathCanonical, $Script:ReportPathLegacyCandidate, $_.Exception.Message)
+            $parsePath = $Script:ReportPathLegacyCandidate
+            $parseSource = 'legacy'
+            $Script:ReportFallbackUsed = $true
+            try {
+                [xml]$xmlDoc = Get-Content -Path $parsePath -Raw -ErrorAction Stop
+            }
+            catch {
+                $Script:ParseError = $_.Exception.Message
+                $Script:TestsHadFailures = $true
+                $Script:ReportPathUsed = $parsePath
+                $Script:ReportParseSource = $parseSource
+                Write-Host ("Unit test report parse source: {0}" -f $Script:ReportParseSource)
+                Write-Host ("Unit test report parse path: {0}" -f $Script:ReportPathUsed)
+                return
+            }
+        } else {
+            $Script:ParseError = $_.Exception.Message
+            $Script:TestsHadFailures = $true
+            $Script:ReportPathUsed = $parsePath
+            $Script:ReportParseSource = $parseSource
+            Write-Host ("Unit test report parse source: {0}" -f $Script:ReportParseSource)
+            Write-Host ("Unit test report parse path: {0}" -f $Script:ReportPathUsed)
+            return
+        }
     }
+
+    $Script:ReportPathUsed = $parsePath
+    $Script:ReportParseSource = $parseSource
+    Write-Host ("Unit test report parse source: {0}" -f $Script:ReportParseSource)
+    Write-Host ("Unit test report parse path: {0}" -f $Script:ReportPathUsed)
 
     $testCases = $xmlDoc.SelectNodes("//testcase")
     if (!$testCases -or $testCases.Count -eq 0) {
-        $Script:ParseError = "No <testcase> entries found in UnitTestReport.xml."
+        $Script:ParseError = ("No <testcase> entries found in report '{0}'." -f $Script:ReportPathUsed)
         $Script:TestsHadFailures = $true
         return
     }
@@ -289,13 +396,13 @@ function Parse-Report {
 function Emit-Results {
     if ($Script:Results.Count -eq 0) {
         if ($Script:ReportMissing) {
-            Write-Warning "UnitTestReport.xml not found at $ReportPath."
-            if ($env:GITHUB_ACTIONS -eq "true") {
+            Write-Warning ("Unit test report not found at {0}." -f $Script:ReportPathUsed)
+            if ($env:GITHUB_ACTIONS -eq "true" -and $Script:SourceTestStrictMode) {
                 Write-Host "::error::Unit test report missing. runner exit code $Script:OriginalExitCode."
             }
         } elseif ($Script:ParseError) {
-            Write-Warning "UnitTestReport.xml parse error: $Script:ParseError"
-            if ($env:GITHUB_ACTIONS -eq "true") {
+            Write-Warning ("Unit test report parse error ({0}): {1}" -f $Script:ReportPathUsed, $Script:ParseError)
+            if ($env:GITHUB_ACTIONS -eq "true" -and $Script:SourceTestStrictMode) {
                 Write-Host ("::error::Unit test report parse error: {0}" -f ($Script:ParseError -replace "\r?\n", " ").Trim())
             }
         }
@@ -307,11 +414,12 @@ function Emit-Results {
             $summary += "- Total: 0"
             $summary += "- Failed: 1"
             $summary += "- Skipped: 0"
-            $summary += "- Report: $ReportPath"
+            $summary += "- Report: $($Script:ReportPathUsed)"
+            $summary += "- Parse source: $($Script:ReportParseSource)"
             if ($Script:ReportMissing) {
-                $summary += "- Note: UnitTestReport.xml not found."
+                $summary += "- Note: Unit test report not found."
             } elseif ($Script:ParseError) {
-                $summary += "- Note: UnitTestReport.xml parse error."
+                $summary += "- Note: Unit test report parse error."
             } else {
                 $summary += "- Note: No test cases reported."
             }
@@ -374,7 +482,7 @@ function Emit-Results {
                 Write-Host ("  {0}" -f $reason)
             }
 
-            if ($env:GITHUB_ACTIONS -eq "true") {
+            if ($env:GITHUB_ACTIONS -eq "true" -and $Script:SourceTestStrictMode) {
                 $annotation = if (-not [string]::IsNullOrWhiteSpace($reason)) { $reason } else { "Test failed." }
                 $annotation = ($annotation -replace "\r?\n", " ").Trim()
                 if ($annotation.Length -gt 300) {
@@ -394,7 +502,8 @@ function Emit-Results {
         $summary += "- Total: $($Script:Results.Count)"
         $summary += "- Failed: $($Script:FailedResults.Count)"
         $summary += "- Skipped: $skippedCount"
-        $summary += "- Report: $ReportPath"
+        $summary += "- Report: $($Script:ReportPathUsed)"
+        $summary += "- Parse source: $($Script:ReportParseSource)"
         if ($Script:FailedResults.Count -gt 0) {
             $summary += ""
             $summary += "| Class | Test | Status | Time (s) | Message |"

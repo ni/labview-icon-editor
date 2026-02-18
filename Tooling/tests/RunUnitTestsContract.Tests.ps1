@@ -71,13 +71,19 @@ Describe 'RunUnitTests execution contract' {
         $unitTestsSection | Should -Match 'gcli_nonzero_empty_report'
         $unitTestsSection | Should -Match 'legacy_report_path\s*='
         $unitTestsSection | Should -Match 'legacy_report_written\s*='
+        $unitTestsSection | Should -Match 'report_path_canonical\s*='
+        $unitTestsSection | Should -Match 'report_path_used\s*='
+        $unitTestsSection | Should -Match 'report_fallback_used\s*='
+        $unitTestsSection | Should -Match 'report_parse_source\s*='
         $unitTestsSection | Should -Match 'Legacy UnitTestReport compatibility copy written'
+        $unitTestsSection | Should -Match 'Legacy UnitTestReport compatibility copy already present'
         $unitTestsSection | Should -Match 'UnitTestReport-\$\{\{ runner\.os \}\}-\$\{\{ matrix\.bitness \}\}\.xml'
         $unitTestsSection | Should -Match 'source-test-evidence-\$\{\{ runner\.os \}\}-\$\{\{ matrix\.bitness \}\}\.json'
         $unitTestsSection | Should -Match 'Upload source-test evidence \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
         $unitTestsSection | Should -Match 'Upload LabVIEW temp logs \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
         $unitTestsSection | Should -Match 'Upload unit test report legacy alias \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
         $unitTestsSection | Should -Match 'UnitTestReport\.xml'
+        $unitTestsSection | Should -Match "if:\s*\$\{\{\s*failure\(\)\s*\|\|\s*steps\.source_test\.outputs\.source_test_verdict\s*==\s*'fail'\s*\}\}"
     }
 
     It 'records strict report/testcase failure reasons with canary-mode pass-through support' {
@@ -97,8 +103,25 @@ Describe 'RunUnitTests execution contract' {
         $unitTestsSection | Should -Match 'Invoke-DotnetBuildServerShutdown -Phase ''post-lunit'''
         $unitTestsSection | Should -Match 'Close_LabVIEW\.ps1'
         $unitTestsSection | Should -Match '--verbose-gcli'
+        $unitTestsSection | Should -Match 'Unit test report parse source resolved by workflow'
+        $unitTestsSection | Should -Match 'Unit test report path resolved by workflow'
+        $unitTestsSection | Should -Match 'id:\s*source_test'
+        $unitTestsSection | Should -Match 'source_test_verdict='
+        $unitTestsSection | Should -Match 'report_fallback_used='
         $unitTestsSection | Should -Match 'Source-test canary mode active; keeping lane green'
         $unitTestsSection | Should -Not -Match 'Treating lane as skipped'
         $unitTestsSection | Should -Not -Match "\$unitTestYear -eq '2020'"
+    }
+
+    It 'keeps canonical-first parse policy with legacy fallback and strict-only error annotations' {
+        $content = Get-Content -Path $script:runUnitTestsPath -Raw
+        $content | Should -Match 'Resolve-ReportOsSegment'
+        $content | Should -Match 'UnitTestReport-\{0\}-\{1\}\.xml'
+        $content | Should -Match 'Canonical unit test report missing at'
+        $content | Should -Match 'Canonical unit test report unreadable at'
+        $content | Should -Match 'Unit test report parse source:'
+        $content | Should -Match 'Unit test report parse path:'
+        $content | Should -Match 'No <testcase> entries found in report'
+        $content | Should -Match '\$env:GITHUB_ACTIONS -eq "true" -and \$Script:SourceTestStrictMode'
     }
 }

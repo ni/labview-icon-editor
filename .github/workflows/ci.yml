@@ -1260,6 +1260,7 @@ jobs:
           create_worktree: 'true'
           worktree_root_mode: runner_temp
       - name: Test Source Using LV ${{ matrix.bitness }}-bit
+        id: source_test
         shell: pwsh
         working-directory: ${{ env.REPO_ROOT }}
         run: |
@@ -1449,34 +1450,59 @@ jobs:
           }
           $gcliExitCode = $null
           $parserExitCode = $null
+          $reportPathUsed = $reportPath
+          $reportParseSource = 'canonical'
+          $reportFallbackUsed = $false
           foreach ($line in @($output | ForEach-Object { $_.ToString() })) {
             if ($line -match 'g-cli lunit exit code:\s*(-?\d+)') {
               $gcliExitCode = [int]$Matches[1]
             } elseif ($line -match 'RunUnitTests parser exit code:\s*(-?\d+)') {
               $parserExitCode = [int]$Matches[1]
+            } elseif ($line -match 'Unit test report parse source:\s*(canonical|legacy)\s*$') {
+              $reportParseSource = $Matches[1].ToLowerInvariant()
+              $reportFallbackUsed = $reportParseSource -eq 'legacy'
+            } elseif ($line -match 'Unit test report parse path:\s*(.+)$') {
+              $reportPathUsed = $Matches[1].Trim()
             }
           }
+          if ([string]::IsNullOrWhiteSpace($reportPathUsed)) {
+            $reportPathUsed = $reportPath
+          }
+          Write-Host ("Unit test report parse source resolved by workflow: {0}" -f $reportParseSource)
+          Write-Host ("Unit test report path resolved by workflow: {0}" -f $reportPathUsed)
           $labviewTempLogs = @()
           if ($null -ne $gcliExitCode -and $gcliExitCode -ne 0) {
             $labviewTempLogs = Save-LabVIEWTempLogs -SinceUtc $lunitStartUtc -DestinationDir $labviewTempLogDir
           }
 
-          $reportExists = Test-Path -Path $reportPath
+          $reportPathCanonical = $reportPath
+          $reportExistsCanonical = Test-Path -Path $reportPathCanonical
+          $reportExists = Test-Path -Path $reportPathUsed
           $legacyReportWritten = $false
           if ($reportExists) {
-            try {
-              Copy-Item -Path $reportPath -Destination $legacyReportPath -Force
+            $reportUsedIsLegacy = [string]::Equals(
+              [System.IO.Path]::GetFullPath($reportPathUsed),
+              [System.IO.Path]::GetFullPath($legacyReportPath),
+              [System.StringComparison]::OrdinalIgnoreCase
+            )
+            if ($reportUsedIsLegacy) {
               $legacyReportWritten = $true
-              Write-Host ("Legacy UnitTestReport compatibility copy written: {0}" -f $legacyReportPath)
-            } catch {
-              Write-Warning ("Failed to write legacy UnitTestReport compatibility copy at {0}: {1}" -f $legacyReportPath, $_.Exception.Message)
+              Write-Host ("Legacy UnitTestReport compatibility copy already present: {0}" -f $legacyReportPath)
+            } else {
+              try {
+                Copy-Item -Path $reportPathUsed -Destination $legacyReportPath -Force
+                $legacyReportWritten = $true
+                Write-Host ("Legacy UnitTestReport compatibility copy written: {0}" -f $legacyReportPath)
+              } catch {
+                Write-Warning ("Failed to write legacy UnitTestReport compatibility copy at {0}: {1}" -f $legacyReportPath, $_.Exception.Message)
+              }
             }
           }
           $testcaseCount = 0
           $reportParseError = $null
           if ($reportExists) {
             try {
-              [xml]$reportXml = Get-Content -Path $reportPath -Raw -ErrorAction Stop
+              [xml]$reportXml = Get-Content -Path $reportPathUsed -Raw -ErrorAction Stop
               $testCases = $reportXml.SelectNodes('//testcase')
               if ($null -ne $testCases) {
                 $testcaseCount = $testCases.Count
@@ -1503,13 +1529,13 @@ jobs:
             $failureClassifications.Add('parser_nonzero') | Out-Null
           }
           if (-not $reportExists) {
-            $failureReasons.Add("Unit test report missing at $reportPath") | Out-Null
+            $failureReasons.Add("Unit test report missing at $reportPathUsed") | Out-Null
             $failureClassifications.Add('report_missing') | Out-Null
           } elseif (-not [string]::IsNullOrWhiteSpace($reportParseError)) {
             $failureReasons.Add(("Unit test report parse error: {0}" -f $reportParseError)) | Out-Null
             $failureClassifications.Add('report_parse_error') | Out-Null
           } elseif ($testcaseCount -le 0) {
-            $failureReasons.Add(("Unit test report has no <testcase> entries: {0}" -f $reportPath)) | Out-Null
+            $failureReasons.Add(("Unit test report has no <testcase> entries: {0}" -f $reportPathUsed)) | Out-Null
             $failureClassifications.Add('empty_testcase_report') | Out-Null
           }
           if (($null -ne $gcliExitCode -and $gcliExitCode -ne 0) -and $reportExists -and $testcaseCount -le 0) {
@@ -1537,7 +1563,12 @@ jobs:
             install_detected_requested_bitness = $requestedInstallDetected
             install_path_64 = if ($installDetected64) { $installRoot64 } else { $null }
             install_path_32 = if ($installDetected32) { $installRoot32 } else { $null }
-            report_path = $reportPath
+            report_path = $reportPathUsed
+            report_path_canonical = $reportPathCanonical
+            report_path_used = $reportPathUsed
+            report_fallback_used = $reportFallbackUsed
+            report_parse_source = $reportParseSource
+            report_exists_canonical = $reportExistsCanonical
             legacy_report_path = $legacyReportPath
             legacy_report_written = $legacyReportWritten
             report_exists = $reportExists
@@ -1564,6 +1595,10 @@ jobs:
           if ($env:GITHUB_STEP_SUMMARY) {
             Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ("- Source Test Evidence (LV {0}-bit): mode={1}; verdict={2}; testcase_count={3}; runner_cli={4}; gcli={5}; parser={6}; install_detected_requested_bitness={7}" -f '${{ matrix.bitness }}', $sourceTestMode, $verdict, $testcaseCount, $runnerCliExitCode, $gcliExitCode, $parserExitCode, $requestedInstallDetected)
           }
+          if ($env:GITHUB_OUTPUT) {
+            "source_test_verdict=$verdict" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "report_fallback_used=$([string]$reportFallbackUsed).ToLowerInvariant()" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
 
           if ($failureReasons.Count -gt 0) {
             foreach ($reason in $failureReasons) {
@@ -1585,28 +1620,28 @@ jobs:
           $summaryLine = "- Unit Tests (LV {0}-bit): LUnit executor = runner-cli (g-cli backend) (target={1}; source={2})" -f '${{ matrix.bitness }}', $env:LABVIEW_VERSION_YEAR, $env:LABVIEW_VERSION_YEAR
           Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $summaryLine
       - name: Upload unit test report (LV ${{ matrix.bitness }}-bit)
-        if: failure()
+        if: ${{ failure() || steps.source_test.outputs.source_test_verdict == 'fail' }}
         uses: actions/upload-artifact@v4
         with:
           name: unit-tests-${{ runner.os }}-${{ matrix.bitness }}-bit-report
           path: ${{ env.REPO_ROOT }}/.github/actions/run-unit-tests/UnitTestReport-${{ runner.os }}-${{ matrix.bitness }}.xml
           if-no-files-found: warn
       - name: Upload unit test report legacy alias (LV ${{ matrix.bitness }}-bit)
-        if: failure()
+        if: ${{ failure() || steps.source_test.outputs.source_test_verdict == 'fail' }}
         uses: actions/upload-artifact@v4
         with:
           name: unit-tests-${{ runner.os }}-${{ matrix.bitness }}-bit-report-legacy
           path: ${{ env.REPO_ROOT }}/.github/actions/run-unit-tests/UnitTestReport.xml
           if-no-files-found: warn
       - name: Upload lunit run log (LV ${{ matrix.bitness }}-bit)
-        if: failure()
+        if: ${{ failure() || steps.source_test.outputs.source_test_verdict == 'fail' }}
         uses: actions/upload-artifact@v4
         with:
           name: lunit-run-${{ runner.os }}-${{ matrix.bitness }}-bit-log
           path: ${{ env.REPO_ROOT }}/builds/status/lunit-run-${{ runner.os }}-${{ matrix.bitness }}.log
           if-no-files-found: warn
       - name: Upload LabVIEW temp logs (LV ${{ matrix.bitness }}-bit)
-        if: failure()
+        if: ${{ failure() || steps.source_test.outputs.source_test_verdict == 'fail' }}
         uses: actions/upload-artifact@v4
         with:
           name: labview-temp-logs-${{ runner.os }}-${{ matrix.bitness }}-bit
