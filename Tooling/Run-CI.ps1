@@ -75,6 +75,15 @@
       - force-pass2-fail
       - force-both-fail
 
+.PARAMETER SkipMarkdownLint
+    Skip markdownlint checks for repository documentation.
+
+.PARAMETER MarkdownLintConfigPath
+    Path to markdownlint-cli2 config file (relative to repo root).
+
+.PARAMETER MarkdownLintOnly
+    Run only markdownlint checks and exit.
+
 .PARAMETER SkipViValidate
     Skip pylavi vi_validate checks.
 
@@ -208,6 +217,13 @@ param(
     [Parameter(Mandatory = $false)]
     [ValidateSet('none', 'force-pass1-fail', 'force-unit-fail', 'force-pass2-fail', 'force-both-fail')]
     [string]$SequenceFaultProfile = 'none',
+
+    [switch]$SkipMarkdownLint,
+
+    [Parameter(Mandatory = $false)]
+    [string]$MarkdownLintConfigPath = '.markdownlint-cli2.jsonc',
+
+    [switch]$MarkdownLintOnly,
 
     [switch]$SkipViValidate,
 
@@ -371,6 +387,12 @@ if ($ViAnalyzerOnly -and $SkipViAnalyzer) {
 }
 if ($ViValidateOnly -and $ViAnalyzerOnly) {
     throw "ViValidateOnly cannot be combined with -ViAnalyzerOnly."
+}
+if ($MarkdownLintOnly -and $SkipMarkdownLint) {
+    throw "MarkdownLintOnly cannot be combined with -SkipMarkdownLint."
+}
+if ($MarkdownLintOnly -and ($ViValidateOnly -or $ViAnalyzerOnly)) {
+    throw "MarkdownLintOnly cannot be combined with -ViValidateOnly or -ViAnalyzerOnly."
 }
 
 $customViConfigSpecified = $PSBoundParameters.ContainsKey('ViValidateConfigPath')
@@ -706,6 +728,30 @@ function Resolve-ViValidateVersion {
     $numericMajor = if ($majorRaw -ge 2000) { $majorRaw - 2000 } else { $majorRaw }
 
     return "$numericMajor.$minor"
+}
+
+function Invoke-MarkdownLint {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$ConfigPath
+    )
+
+    $scriptPath = Join-Path $RepoRoot 'Tooling\Invoke-MarkdownLint.ps1'
+    if (-not (Test-Path -Path $scriptPath -PathType Leaf)) {
+        throw "Invoke-MarkdownLint.ps1 not found at $scriptPath"
+    }
+
+    $resolvedConfigPath = if ([System.IO.Path]::IsPathRooted($ConfigPath)) {
+        $ConfigPath
+    } else {
+        Join-Path $RepoRoot $ConfigPath
+    }
+
+    Invoke-Checked -Label 'Markdown Lint' -Action {
+        & $scriptPath -RepoRoot $RepoRoot -ConfigPath $resolvedConfigPath
+    }
 }
 
 function Get-ViValidatePlan {
@@ -1706,8 +1752,8 @@ if (Test-Path -Path $preflightScript) {
         -RunId $RunId `
         -ArtifactRoot $ArtifactRoot `
         -CleanRoom:$CleanRoom `
-        -RequireGcli:$(-not ($ViValidateOnly -or $ViAnalyzerOnly)) `
-        -RequireViValidate:$($ViValidateOnly -or ((-not $SkipViValidate) -and (-not $ViAnalyzerOnly))) `
+        -RequireGcli:$(-not ($ViValidateOnly -or $ViAnalyzerOnly -or $MarkdownLintOnly)) `
+        -RequireViValidate:$((-not $MarkdownLintOnly) -and ($ViValidateOnly -or ((-not $SkipViValidate) -and (-not $ViAnalyzerOnly)))) `
         -RunnerCliPath $RunnerCliPath `
         -RequireRunnerCli:$requireRunnerCliEnabled
     if ($preflight.Reinvoked) {
@@ -1752,7 +1798,7 @@ Initialize-CsvHeader -Path $script:RunHistoryPath -Header 'timestamp,status,dura
 Initialize-CsvHeader -Path $script:StepHistoryPath -Header 'timestamp,step,status,duration_seconds'
 $env:LABVIEW_CLOSE_METRICS_PATH = $script:CloseHistoryPath
 $runLog = Join-Path $logRoot "ci-local-$runTimestamp.log"
-$commandLine = "Run-CI.ps1 -LabVIEWVersion $LabVIEWVersion -LabVIEWBitness $LabVIEWBitness -AllowVersionMismatch:$AllowVersionMismatch -DryRun:$DryRun -SkipVerifyIEPaths:$SkipVerifyIEPaths -SkipVipc:$SkipVipc -VipcMode $VipcMode -SkipMissingInProject:$SkipMissingInProject -SkipUnitTests:$SkipUnitTests -SkipBuildPpl:$SkipBuildPpl -SkipBuildVip:$SkipBuildVip -EnableSingleBitnessRecoverySequence:$EnableSingleBitnessRecoverySequence -AllowSequenceFaultInjection:$AllowSequenceFaultInjection -SequenceFaultProfile $SequenceFaultProfile -SkipViValidate:$SkipViValidate -ViValidateConfigPath $ViValidateConfigPath -ViValidateProfile $ViValidateProfile -ViValidateReportOnly:$ViValidateReportOnly -ViValidateSkipVersionGate:$ViValidateSkipVersionGate -ViValidateOnly:$ViValidateOnly -SkipViAnalyzer:$SkipViAnalyzer -ViAnalyzerOnly:$ViAnalyzerOnly -BumpType $BumpType -ConnectTimeoutMs $ConnectTimeoutMs -ProcessTimeoutMs $ProcessTimeoutMs -StatusFileTimeoutMs $StatusFileTimeoutMs -VipmTimeoutSeconds $VipmTimeoutSeconds -CloseLabVIEWMode $CloseLabVIEWMode -WorktreeRoot $WorktreeRoot -SkipWorktreeRootCheck:$SkipWorktreeRootCheck -AutoWorktree:$AutoWorktree -RunId $RunId -ArtifactRoot $ArtifactRoot -CleanRoom:$CleanRoom -RunnerCliPath $RunnerCliPath -RequireRunnerCli:$requireRunnerCliEnabled"
+$commandLine = "Run-CI.ps1 -LabVIEWVersion $LabVIEWVersion -LabVIEWBitness $LabVIEWBitness -AllowVersionMismatch:$AllowVersionMismatch -DryRun:$DryRun -SkipVerifyIEPaths:$SkipVerifyIEPaths -SkipVipc:$SkipVipc -VipcMode $VipcMode -SkipMissingInProject:$SkipMissingInProject -SkipUnitTests:$SkipUnitTests -SkipBuildPpl:$SkipBuildPpl -SkipBuildVip:$SkipBuildVip -EnableSingleBitnessRecoverySequence:$EnableSingleBitnessRecoverySequence -AllowSequenceFaultInjection:$AllowSequenceFaultInjection -SequenceFaultProfile $SequenceFaultProfile -SkipMarkdownLint:$SkipMarkdownLint -MarkdownLintConfigPath $MarkdownLintConfigPath -MarkdownLintOnly:$MarkdownLintOnly -SkipViValidate:$SkipViValidate -ViValidateConfigPath $ViValidateConfigPath -ViValidateProfile $ViValidateProfile -ViValidateReportOnly:$ViValidateReportOnly -ViValidateSkipVersionGate:$ViValidateSkipVersionGate -ViValidateOnly:$ViValidateOnly -SkipViAnalyzer:$SkipViAnalyzer -ViAnalyzerOnly:$ViAnalyzerOnly -BumpType $BumpType -ConnectTimeoutMs $ConnectTimeoutMs -ProcessTimeoutMs $ProcessTimeoutMs -StatusFileTimeoutMs $StatusFileTimeoutMs -VipmTimeoutSeconds $VipmTimeoutSeconds -CloseLabVIEWMode $CloseLabVIEWMode -WorktreeRoot $WorktreeRoot -SkipWorktreeRootCheck:$SkipWorktreeRootCheck -AutoWorktree:$AutoWorktree -RunId $RunId -ArtifactRoot $ArtifactRoot -CleanRoom:$CleanRoom -RunnerCliPath $RunnerCliPath -RequireRunnerCli:$requireRunnerCliEnabled"
 $script:TranscriptStarted = $false
 try {
     Start-Transcript -Path $runLog -Append | Out-Null
@@ -1793,6 +1839,18 @@ try {
             -RepoRoot $repoRoot
         Write-Host ""
         Write-Host "VI Analyzer completed; exiting due to -ViAnalyzerOnly."
+        return
+    }
+
+    if (-not $SkipMarkdownLint) {
+        Invoke-MarkdownLint `
+            -RepoRoot $repoRoot `
+            -ConfigPath $MarkdownLintConfigPath
+    }
+
+    if ($MarkdownLintOnly) {
+        Write-Host ""
+        Write-Host "Markdown lint completed; exiting due to -MarkdownLintOnly."
         return
     }
 

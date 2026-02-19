@@ -9,7 +9,7 @@ This document is designed to help maintainers, contributors, and engineers autom
 > This guide documents packaging behavior. Release publication policy is defined in [CI Workflows Overview](../../ci-workflows.md), with normative prerelease contract details in [VI Package Pre-Release Requirements](../../vip-prerelease-requirements.md).
 
 
-# **Table of Contents**
+## **Table of Contents**
 
 1. [1. Overview and Purpose](#1-overview-and-purpose)
    - [1.1 What Problem Does This GitHub Action Solve?](#11-what-problem-does-this-github-action-solve)
@@ -94,7 +94,7 @@ It eliminates confusion around versioning, keeps everything in one pipeline, and
 
 ### 3.1 How the Action Is Triggered
 The `build-vi-package` directory defines a **composite action**. It does not listen for events on its own; instead, the CI workflow in [`ci.yml`](../../../.github/workflows/ci.yml) invokes it.
-That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Early jobs like `run-metadata`, `prerelease-context`, `version-gate`, and `changes` run on GitHub-hosted `ubuntu-latest`. Windows self-hosted jobs handle LabVIEW validation and packaging (`dev-mode-gate`, `unit-tests`, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) when the active `ci_profile` requires them. Branch filters in `ci.yml` are: `push` on `main`, `develop`, `release/*`; `pull_request` on `main`, `develop`, `release/*`, `feature/*`, `hotfix/*`.
+That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. Early jobs like `run-metadata`, `prerelease-context`, `version-gate`, and `changes` run on GitHub-hosted `ubuntu-latest`. Windows self-hosted jobs handle LabVIEW validation and packaging (`unit-tests`, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) when the active `ci_profile` requires them. Branch filters in `ci.yml` are: `push` on `main`, `develop`, `release/*`; `pull_request` on `main`, `develop`, `release/*`, `feature/*`, `hotfix/*`.
 Companion workflow note: [`runner-cli.yml`](../../../.github/workflows/runner-cli.yml) handles runner-cli-specific validation and publishing concerns separately from prerelease asset publication.
 
 ### 3.2 Configurable Inputs / Parameters
@@ -127,14 +127,14 @@ components remain unchanged and only the build number increases.
 - **Fork Setup**:
   1. **Copy** the workflow file (`.github/workflows/ci.yml`) into your fork.
   2. **Update** any references to the official repo name (`ni/labview-icon-editor`) if your fork is named differently.
- 3. **Self-Hosted Runner**: Confirm your runner uses the `self-hosted-windows-lv-ie` label (or the value set in `LVIE_RUNNER_LABEL`) or update `runs-on` to match your runner’s labels.
+  3. **Self-Hosted Runner**: Confirm your runner uses the `self-hosted-windows-lv-ie` label (or the value set in `LVIE_RUNNER_LABEL`) or update `runs-on` to match your runner’s labels.
   4. **Write Permissions**: In fork settings → Actions → General, ensure “Workflow Permissions” = “Read and write.”
 
 ### 3.4 Artifact Publication
 - Packaging output: the `.vip` is uploaded as a run artifact by `build-vip`.
 - Publication contract: prerelease publication is defined by [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md), including eligibility, version binding, and required asset rules.
 - Auto publish path: eligible merged-PR merge commits pushed to `develop` publish prerelease assets automatically.
-- Manual backfill path: `workflow_dispatch` can publish eligible assets when `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`.
+- Manual backfill path: `workflow_dispatch` can publish eligible assets when `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true` (use `Tooling/Invoke-DeterministicPrereleasePublish.ps1` for strict SHA pinning).
 - `ci_profile` behavior:
   - `full` and `pr-fast` runs include `build-vip` and full prerelease asset expectations.
   - `release-priority` (`workflow_dispatch` + `force_gcli_lunit=true`) intentionally skips `build-vip` and publishes container packed-library assets only.
@@ -159,7 +159,7 @@ components remain unchanged and only the build number increases.
 
 4. **Compute Final Version**
    - Merges the label-based bump with existing tags (if any).
-   - For optional legacy channel branch names (`release-alpha/*`, `release-beta/*`, `release-rc/*`), `compute-version` appends `-alpha.<commitCount>`, `-beta.<commitCount>`, or `-rc.<commitCount>` respectively. Here `<N>` equals the commit count, matching [`compute-version`](../../../.github/actions/compute-version/action.yml).
+   - For optional legacy channel branch names (legacy alpha/beta/rc channel branches), `compute-version` appends `-alpha.<commitCount>`, `-beta.<commitCount>`, or `-rc.<commitCount>` respectively. Here `<N>` equals the commit count, matching [`compute-version`](../../../.github/actions/compute-version/action.yml).
    - Always adds `-build<BUILD_NUMBER>` last (for example, `v1.2.3-build37` or `v1.2.3-rc.37-build37` when legacy channel suffixes are used).
 
 5. **Build the Icon Editor VI Package**
@@ -183,8 +183,8 @@ components remain unchanged and only the build number increases.
 ### 4.3 Pre-Release vs. Final Release
 
 - Develop prereleases are governed by [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md).
-- Prerelease publication is automatic on eligible merged-PR merge commits to `develop`; `workflow_dispatch` remains available for deterministic backfill (`publish_prerelease=true`, `expected_sha=<sha>`, `strict_sha=true`) and uses `needs.version.outputs.VERSION` as tag/title.
-- Optional legacy behavior: `compute-version` still supports alpha/beta/rc suffixes for `release-alpha/*`, `release-beta/*`, and `release-rc/*` branch names.
+- Prerelease publication is automatic on eligible merged-PR merge commits to `develop` via `prerelease-auto-dispatch.yml`; `workflow_dispatch` remains available for deterministic backfill (`publish_prerelease=true`, `expected_sha=<sha>`, `strict_sha=true`) and uses `needs.version.outputs.VERSION` as tag/title.
+- Optional legacy behavior: `compute-version` still supports alpha/beta/rc suffixes for legacy alpha/beta/rc channel branches branch names.
 - Merging to `main` remains the stable/final release path.
 
 
@@ -244,7 +244,7 @@ components remain unchanged and only the build number increases.
 1. PR labeled `minor`:
    - Previous version: `v1.2.3-build45`
    - New version on merge: `v1.3.0-build46`
-   - Optional legacy channel example: `release-rc/*` may produce `v1.3.0-rc.46-build46` (`release-alpha/*` and `release-beta/*` similarly yield `-alpha.<commitCount>` and `-beta.<commitCount>`).
+   - Optional legacy channel example: legacy release-rc channel branches may produce `v1.3.0-rc.46-build46` (legacy release-alpha channel branches and legacy release-beta channel branches similarly yield `-alpha.<commitCount>` and `-beta.<commitCount>`).
 
 ### 7.2 Direct Push to Main or Develop
 - **Scenario**: You quickly push a fix to `develop` without opening a PR.
@@ -324,7 +324,7 @@ components remain unchanged and only the build number increases.
 **A:** By default, we rely on `git rev-list --count HEAD`. You can change it by passing a custom environment variable or adjusting the version logic in your workflow.
 
 **Q:** Does it support alpha/beta channels out of the box?
-**A:** `compute-version` supports alpha/beta/rc suffixes for `release-alpha/*`, `release-beta/*`, and `release-rc/*` branch names. Treat this as optional legacy behavior unless your repository explicitly adopts those channels.
+**A:** `compute-version` supports alpha/beta/rc suffixes for legacy alpha/beta/rc channel branches branch names. Treat this as optional legacy behavior unless your repository explicitly adopts those channels.
 
 **Q:** What about manual triggers?  
 **A:** If `workflow_dispatch` is enabled, you can run it from the Actions tab, typically defaulting to the same logic (`none` for bump).
@@ -335,6 +335,7 @@ components remain unchanged and only the build number increases.
 ## 11. **Conclusion**
 
 By properly setting up environment variables, referencing your LabVIEW environment on a self-hosted runner, and using label-based version increments plus a commit-based build number, this GitHub Action automates `.vip` build and artifact handoff. Use `docs/ci-workflows.md` as the canonical release/publication policy source (auto publish on eligible develop merges plus explicit manual backfill controls).
+
 
 
 

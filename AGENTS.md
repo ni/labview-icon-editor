@@ -5,9 +5,10 @@ This repository uses LabVIEW, g-cli, and PowerShell tooling. Follow the steps be
 ## Prerequisites
 - Windows with PowerShell 7+ available as `pwsh`.
 - `g-cli` available on PATH.
-- LabVIEW 2026 (26.1) 32-bit and 64-bit installed (minimum supported baseline).
+- LabVIEW version declared in `.lvversion` (currently `20.0`) installed for required 32-bit/64-bit lanes.
 - VIPM/VIPC installed (required for dependency application).
 - Python 3 with `pylavi` installed so `vi_validate` is on PATH.
+- Node.js/npm available so `npx` can run `markdownlint-cli2` for local docs linting.
 
 ## Repo Setup
 - Open a PowerShell terminal at the repo root.
@@ -216,7 +217,7 @@ Troubleshooting:
 The workflow exports:
 - `REPO_ROOT` → worktree path (authoritative for all scripts)
 - `PROJECT_PATH` → `$REPO_ROOT\lv_icon_editor.lvproj`
-- `LABVIEW_VERSION_YEAR` / `LABVIEW_MINOR_REVISION` → derived from `.lvversion` (e.g., `26.1` → `2026` and minor `1`)
+- `LABVIEW_VERSION_YEAR` / `LABVIEW_MINOR_REVISION` → derived from `.lvversion` (for example, `20.0` resolves to year `2020` and minor `0`)
 
 Note: CI reads `.lvversion` from `REPO_ROOT` as the canonical LabVIEW version for runs.
 
@@ -244,7 +245,8 @@ pwsh -NoProfile -File .\Tooling\Invoke-WorktreeOrchestrator.ps1 `
 Notes:
 - Outputs go to `$WORKTREE_ROOT\artifacts\<runid>\ci-local` when guardrails are active (default for local runs).
 - GitHub Actions disables artifact roots by default unless `LVIE_ENABLE_ARTIFACT_ROOT=1` or an explicit `-RunId`/`-ArtifactRoot` is passed.
-- The script always runs both 64-bit and 32-bit steps for the `.lvversion` target (canonical baseline: `26.1`).
+- The script always runs both 64-bit and 32-bit steps for the `.lvversion` target (currently `20.0` in this repository).
+- The script runs markdown docs lint by default (`Tooling\Invoke-MarkdownLint.ps1` via pinned `markdownlint-cli2`); skip with `-SkipMarkdownLint` or run only docs lint with `-MarkdownLintOnly`.
 - The script handles Verify IE Paths, VIPC audit, unit tests, PPL builds, and VIP build.
 - VIPC default behavior is audit-first (`-VipcMode audit`); optional diagnostics are available via `-VipcMode apply-info` or strict apply via `-VipcMode apply-enforce`.
 - The script runs `vi_validate` (pylavi) and uses `.lvversion` as the canonical LabVIEW version. Skip with `-SkipViValidate`.
@@ -350,6 +352,28 @@ gh workflow run "CI Pipeline" --ref ci-run/<shortsha> -f expected_sha=<commit> -
 
 Notes:
 - Delete the temporary branch after dispatch when no longer needed: `git push origin --delete ci-run/<shortsha>`.
+
+## Automatic prerelease publish + deterministic backfill
+Auto path:
+- `.github/workflows/prerelease-auto-dispatch.yml` listens to successful `CI Pipeline` `push` runs on `develop`.
+- It re-checks merged-PR merge-commit eligibility and dispatches strict publish intent through `Tooling\Invoke-DeterministicPrereleasePublish.ps1 -ReleasePriority`.
+
+Fallback helper (manual):
+Use this when replaying publication for a specific merged `develop` SHA:
+```
+pwsh -NoProfile -File .\Tooling\Invoke-DeterministicPrereleasePublish.ps1
+```
+
+Explicit SHA (and wait for completion):
+```
+pwsh -NoProfile -File .\Tooling\Invoke-DeterministicPrereleasePublish.ps1 `
+  -Sha <merged-develop-merge-sha> `
+  -Wait
+```
+
+Notes:
+- The helper creates a temporary `ci-run` branch ref, dispatches with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`, and deletes the temp ref by default.
+- Optional `-ReleasePriority` selects the release-priority dispatch profile (`force_gcli_lunit=true`).
 
 ## Background automation safety
 Some automation may be running in the background and must not be killed. Do not terminate `g-cli` or `LabVIEW` processes unless you have explicit confirmation it is safe.

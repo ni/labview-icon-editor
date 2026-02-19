@@ -1,6 +1,6 @@
 # Local CI/CD Workflows
 
-**Last updated:** 2026-02-12
+**Last updated:** 2026-02-19
 
 Quick link: `.github/workflows/runner-cli.yml` (Runner CLI consolidated workflow).
 
@@ -31,7 +31,7 @@ Automating your Icon Editor builds and tests:
 - **Allows you to brand** each VI Package build with your organization or repository name for unique identification
 
 **Prerequisites**:
-- LabVIEW 2026 (26.1) 32-bit and 64-bit (minimum supported baseline)
+- LabVIEW version declared in `.lvversion` (currently `20.0`) installed for 32-bit and 64-bit lanes as needed by your workflow profile
 - PowerShell 7+
 - Git for Windows
 
@@ -42,10 +42,10 @@ Automating your Icon Editor builds and tests:
 - Windows container parity guardrail: `Tooling/Test-PathContract.ps1` now runs before Windows container parity execution to enforce `Tooling/support/PathContract.ps1` compatibility with Windows PowerShell 5.1 and prevent `ScriptRequiresUnmatchedPSVersion`.
 - Manual development mode support remains available through [`development-mode-toggle.yml`](../.github/workflows/development-mode-toggle.yml).
 
-### Solo Maintainer Mode (2026-02-11)
+### Solo Maintainer Operating Note (2026-02-19)
 
 - Repository operation is optimized for a single maintainer with PR-gated integration and auto publish on eligible `develop` merged-PR commits.
-- Normative policy: [`docs/ci/solo-maintainer-mode.md`](ci/solo-maintainer-mode.md)
+- Canonical release/publication behavior is defined by [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) and this document.
 - LLM runbook: [`docs/ci/llm-operator-runbook.md`](ci/llm-operator-runbook.md)
 
 ---
@@ -91,7 +91,9 @@ This document is the canonical source for release/publication policy.
 
 - Normative contract: [VI Package Pre-Release Requirements](vip-prerelease-requirements.md).
 - Merge strategy contract: pull requests intended to drive prerelease publication to `develop` must use merge commits (`--merge`), not squash or rebase.
-- Publish contract: prerelease publication is automatic on `push` to `develop` when `github.sha` is a merged-PR merge commit targeting `develop`; `workflow_dispatch` remains available for deterministic backfill.
+- Publish contract: prerelease publication is automatic for eligible merged-PR merge commits on `develop`.
+- Auto relay workflow: [`.github/workflows/prerelease-auto-dispatch.yml`](../.github/workflows/prerelease-auto-dispatch.yml) listens for successful `CI Pipeline` `push` runs on `develop`, re-validates merge-commit + merged-PR eligibility, then dispatches strict SHA-pinned publish intent through `ci.yml` with `release-priority`.
+- Manual fallback: `workflow_dispatch` remains available for deterministic backfill when auto relay is not sufficient.
 - Execution profiles (`prerelease-context` output `ci_profile`):
   - `release-priority`: `workflow_dispatch` with `force_gcli_lunit=true`; skips most self-hosted heavy jobs (`Verify IE Paths`, smoke, unit-tests, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) and targets <= 25 minutes.
   - `pr-fast`: `pull_request`; keeps validation coverage but uses 64-bit-only matrices for smoke/unit-tests, targeting <= 35 minutes.
@@ -104,16 +106,27 @@ This document is the canonical source for release/publication policy.
 - PR branch policy: `feature/*` and `hotfix/*` branch pushes no longer trigger `ci.yml`; PR synchronization is the single CI path for those branches.
 - Runner CLI trigger reality for `runner-cli.yml`: `push` runs on `main`, `develop`, and `release/*`; `pull_request` runs on `main` and `develop` when path filters match; `workflow_dispatch` is supported.
 
-#### Deterministic Manual Backfill Procedure
+#### Deterministic Manual Backfill Procedure (Fallback)
 
-1. Resolve the target SHA to publish:
+Use this procedure when you need to replay publication for a specific merged `develop` SHA, or when auto relay was intentionally bypassed.
+
+1. Run the deterministic publish helper:
+   ```powershell
+   pwsh -NoProfile -File .\Tooling\Invoke-DeterministicPrereleasePublish.ps1
+   ```
+2. Optional explicit SHA:
+   ```powershell
+   pwsh -NoProfile -File .\Tooling\Invoke-DeterministicPrereleasePublish.ps1 `
+     -Sha <merged-develop-merge-sha> `
+     -Wait
+   ```
+3. Manual fallback (if needed): create a temporary `ci-run` ref and dispatch strict publish intent against that ref:
    ```powershell
    $repo = pwsh -NoProfile -File .\Tooling\Resolve-GitHubRepo.ps1
    $sha = (git rev-parse HEAD).Trim()
-   ```
-2. Dispatch backfill publish intent explicitly:
-   ```powershell
-   gh workflow run ci.yml --repo $repo `
+   $shortSha = $sha.Substring(0,8)
+   git push origin "${sha}:refs/heads/ci-run/$shortSha"
+   gh workflow run "CI Pipeline" --repo $repo --ref "ci-run/$shortSha" `
      -f publish_prerelease=true `
      -f expected_sha=$sha `
      -f strict_sha=true
@@ -172,6 +185,11 @@ Below are the **key GitHub Actions** provided in this repository:
    - Rollout status: non-blocking diagnostic lane (not wired into publish required-job gates yet).
    - Artifacts: LabVIEWCLI logs, agent logs, build status, and `lv_icon_x64.lvlibp` when produced.
 
+5. **Prerelease Auto Dispatch**
+   - [`.github/workflows/prerelease-auto-dispatch.yml`](../.github/workflows/prerelease-auto-dispatch.yml) reacts to successful `CI Pipeline` `push` runs on `develop`.
+   - It re-checks merged-PR merge-commit eligibility for `github.event.workflow_run.head_sha`.
+   - When eligible, it dispatches `Tooling/Invoke-DeterministicPrereleasePublish.ps1 -ReleasePriority` for unattended strict-SHA publication.
+
 #### Jobs in CI workflow
 
 The [`ci.yml`](../.github/workflows/ci.yml) pipeline breaks the build into several jobs:
@@ -182,13 +200,16 @@ The [`ci.yml`](../.github/workflows/ci.yml) pipeline breaks the build into sever
 - **changes** – checks out the repository and detects `.vipc` file changes for diagnostics/reporting in downstream jobs.
 - **apply-deps-64 / apply-deps-32** – run VIPC audit (`Assert-VipcApplied`) per bitness lane on bitness-addressable runner labels (`LVIE_RUNNER_LABEL_64` / `LVIE_RUNNER_LABEL_32`, with fallback to `LVIE_RUNNER_LABEL`), then optionally run informational VIPC apply diagnostics when manually dispatched with `vipc_apply_info=true`.
 - **version** – computes the semantic version and build number using commit count and PR labels.
-- **unit-tests** – runs LabVIEW unit tests on Windows for the `.lvversion` target (canonical baseline `26.1`) after dependency application. Canonical execution is `runner-cli lunit run` (g-cli backend); parse/summary validation is parse-only via `runner-cli lunit validate` (`RunUnitTests.ps1 -SkipGcli`). Runs both 64-bit and 32-bit in `full` and `pr-fast`, and is skipped in `release-priority`.
+- **unit-tests** – runs LabVIEW unit tests on Windows for the `.lvversion` target (currently `20.0` in this repository) after dependency application. Canonical execution is `runner-cli lunit run` (g-cli backend); parse/summary validation is parse-only via `runner-cli lunit validate` (`RunUnitTests.ps1 -SkipGcli`). Runs both 64-bit and 32-bit in `full` and `pr-fast`, and is skipped in `release-priority`.
+  - Runtime compatibility mapping is execution-year only: source `.lvversion` year `2020` executes tests on year `2026`, while `.lvversion` remains the source contract.
   - Each matrix job appends a short `GITHUB_STEP_SUMMARY` line stating the fixed executor (`g-cli`).
-- **build-ppl** – uses a matrix to build 32-bit and 64-bit packed libraries through `runner-cli ppl build`, then uses the `rename-file` action to append the bitness to each library’s filename.
+- **build-ppl-x86 / build-ppl-x64** – separate self-hosted jobs that build 32-bit and 64-bit packed libraries through `runner-cli ppl build`, then rename each library artifact with explicit bitness.
+  - Runtime compatibility mapping mirrors source-test behavior: source `.lvversion` year `2020` maps to execution year `2026` for runtime operations, while source version validation remains `.lvversion`-strict.
 - **build-ppl-linux-container** – builds the Linux container packed library (`lv_icon.lvlibp`) via `runner-cli parity context/run` for publish-eligible runs and emits a versioned artifact for prerelease attachment.
 - **build-ppl-windows-container** – builds the Windows container packed library (`lv_icon.lvlibp`) via `runner-cli parity context/run` for publish-eligible runs and emits a versioned artifact for prerelease attachment.
 - **codex-skill-layer-asset** – downloads the pinned Codex skill-layer installer asset (`lvie-codex-skill-layer-installer.exe`), validates SHA256, performs silent install into a temp directory, verifies required files + `0BSD` manifest license, and publishes artifact `codex-skill-layer` for prerelease attachment.
 - **build-vip** – Windows/self-hosted VI Package packaging path. This job requires both PPL artifacts (`lv_icon_x86.lvlibp`, `lv_icon_x64.lvlibp`) and runs for `full`/`pr-fast`; it is intentionally skipped in `release-priority`.
+  - Runtime compatibility mapping is also execution-year only (`2020 -> 2026`) for VIPM/LabVIEW runtime actions, while `.lvversion` remains the source contract.
 - **publish-gate** – evaluates profile-required prepublish job outcomes and blocks prerelease publication when required checks are missing or non-success.
 - **publish-prerelease** – creates prereleases for eligible new tags, verifies required assets for existing immutable tags (`already-published`), attaches required assets for new tags, and emits `prerelease-publish-status`.
 - **pipeline-contract** – validates required-job outcomes using profile-specific expectations so intentionally skipped jobs in `release-priority` do not fail the run.
@@ -200,9 +221,7 @@ Dedicated headless parity note: [`headless-self-hosted-parity.yml`](../.github/w
 Manual VIPC diagnostics example (non-blocking apply after audit):
 `gh workflow run ci.yml --ref <branch> -f vipc_apply_info=true`
 
-Windows self-hosted build jobs (`build-ppl-*` and `build-vip`) run a `close-labview` step after their build actions finish but before any steps that rename files or upload artifacts, so it is not the final step.
-
-The `build-ppl` job uses a matrix to produce both bitnesses rather than distinct jobs.
+Windows self-hosted build jobs (`build-ppl-x86`, `build-ppl-x64`, and `build-vip`) run a `close-labview` step after their build actions finish but before any steps that rename files or upload artifacts, so it is not the final step.
 
 #### Event matrix (VIP packaging)
 
@@ -222,7 +241,7 @@ Branch protection recommendation for solo mode: require the canonical synthetic 
 ### 3.3 Setting Up a Self-Hosted Runner
 
 1. **Install Prerequisites**:
-   - LabVIEW 2026 (26.1) 32-bit and 64-bit (minimum supported baseline)
+   - LabVIEW version declared in `.lvversion` (currently `20.0`) for 32-bit and 64-bit lanes as required
    - PowerShell 7+
    - Git for Windows
 
@@ -287,7 +306,7 @@ Although GitHub Actions primarily run on GitHub-hosted or self-hosted agents, yo
 4. **Merge the PR into your target integration branch with a merge commit**:
      - The **Build VI Package** workflow builds and uploads the `.vip` artifact.
      - Use merge commits only (`gh pr merge <pr-number> --merge --delete-branch`); do not use squash/rebase for prerelease-driving changes.
-     - Merge-commit merges to `develop` publish automatically when eligible; use `workflow_dispatch` with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true` only for deterministic backfill.
+     - Merge-commit merges to `develop` publish automatically when eligible via `prerelease-auto-dispatch.yml`; use `Tooling/Invoke-DeterministicPrereleasePublish.ps1` only for deterministic fallback/backfill (`workflow_dispatch` with strict SHA inputs).
      - **Inside** that `.vip`, the **“Company Name”** and **“Author Name (Person or Company)”** fields are filled automatically using `github.repository_owner` and `github.event.repository.name`. Modify the “Generate display information JSON” step in `.github/workflows/ci.yml` to override them.
 
 5. **Disable Development Mode**:  
@@ -305,13 +324,13 @@ Although GitHub Actions primarily run on GitHub-hosted or self-hosted agents, yo
 ## Portability
 
 **What is portable**
-- Any Windows self-hosted runner with LabVIEW 2026 (26.1), PowerShell 7+, and Git installed.
+- Any Windows self-hosted runner with `.lvversion`-compatible LabVIEW installs, PowerShell 7+, and Git installed.
 - Forks or orgs that keep the canonical runner label `self-hosted-windows-lv`.
 - Environments where the GitHub Actions API is restricted (runner contract fallback is local).
 
 **What is not portable**
 - Non-Windows runners (LabVIEW + g-cli requires Windows).
-- Hosts without LabVIEW 2026 installed for both 32-bit and 64-bit.
+- Hosts without required `.lvversion`-compatible LabVIEW installs for the lanes they run.
 
 **Operational caveats**
 - Service restart requires admin rights on the host machine.

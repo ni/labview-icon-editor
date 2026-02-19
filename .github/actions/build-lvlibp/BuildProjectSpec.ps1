@@ -14,6 +14,11 @@
 .PARAMETER LabVIEWVersion
     LabVIEW version year (e.g., 2021) or numeric version (e.g., 21.0).
 
+.PARAMETER ExecutionLabVIEWYear
+    Optional execution-time LabVIEW year override for runtime operations.
+    When omitted, runtime operations use the LabVIEW year resolved from
+    LabVIEWVersion / .lvversion.
+
 .PARAMETER SupportedBitness
     Bitness of the LabVIEW environment ("32" or "64").
 
@@ -58,6 +63,9 @@ param(
     [AllowNull()]
     [AllowEmptyString()]
     [string]$LabVIEWVersion = '',
+    [AllowNull()]
+    [AllowEmptyString()]
+    [string]$ExecutionLabVIEWYear = '',
     [ValidateSet('32', '64')]
     [string]$SupportedBitness,
     [string]$RepoRoot,
@@ -182,17 +190,37 @@ if (-not (Test-Path -Path $projectPath -PathType Leaf)) {
     throw "Project file not found at $projectPath"
 }
 
-$labviewYear = $LabVIEWVersion
+$sourceLabVIEWVersion = $LabVIEWVersion
+$sourceLabVIEWYear = $LabVIEWVersion
 if ($RepoRoot) {
     $versionHelper = Join-Path -Path $RepoRoot -ChildPath 'Tooling\support\LabVIEWVersion.ps1'
     if (Test-Path -Path $versionHelper) {
         . $versionHelper
         $versionInfo = Get-LabVIEWVersionInfo -VersionInput $LabVIEWVersion -RepoRoot $RepoRoot
-        $labviewYear = $versionInfo.Year
+        $sourceLabVIEWVersion = $versionInfo.Raw
+        $sourceLabVIEWYear = $versionInfo.Year
     }
 }
-if ([string]::IsNullOrWhiteSpace($labviewYear)) {
+if ([string]::IsNullOrWhiteSpace($sourceLabVIEWYear)) {
     throw "LabVIEW version could not be resolved. Check .lvversion."
+}
+
+$executionLabVIEWYear = if ([string]::IsNullOrWhiteSpace($ExecutionLabVIEWYear)) {
+    $sourceLabVIEWYear
+} else {
+    $ExecutionLabVIEWYear.Trim()
+}
+if ($executionLabVIEWYear -notmatch '^\d{4}$') {
+    throw ("ExecutionLabVIEWYear '{0}' is invalid. Expected a four-digit year such as 2026." -f $executionLabVIEWYear)
+}
+
+$yearCompatMappingApplied = [string]::Equals($sourceLabVIEWYear, '2020', [System.StringComparison]::OrdinalIgnoreCase) -and
+    [string]::Equals($executionLabVIEWYear, '2026', [System.StringComparison]::OrdinalIgnoreCase)
+Write-Output ("LabVIEW source contract: raw={0}; year={1}" -f $sourceLabVIEWVersion, $sourceLabVIEWYear)
+Write-Output ("LabVIEW execution year: {0}" -f $executionLabVIEWYear)
+Write-Output ("LabVIEW execution-year compatibility mapping applied: {0}" -f $yearCompatMappingApplied)
+if ($yearCompatMappingApplied) {
+    Write-Output "LabVIEW execution-year compatibility mapping: source year 2020 -> execution year 2026"
 }
 
 $labviewExeResolver = Join-Path -Path $RepoRoot -ChildPath 'Tooling\support\LabVIEWExecutablePath.ps1'
@@ -200,7 +228,7 @@ if (-not (Test-Path -Path $labviewExeResolver -PathType Leaf)) {
     throw "LabVIEW executable path resolver not found at $labviewExeResolver"
 }
 . $labviewExeResolver
-$labviewExecutablePath = Resolve-LabVIEWExecutablePath -VersionYear $labviewYear -Bitness $SupportedBitness
+$labviewExecutablePath = Resolve-LabVIEWExecutablePath -VersionYear $executionLabVIEWYear -Bitness $SupportedBitness
 
 $labviewCliCommand = Get-Command LabVIEWCLI -ErrorAction SilentlyContinue
 if (-not $labviewCliCommand) {
@@ -224,7 +252,7 @@ function Resolve-LabVIEWCliPort {
 
     return Resolve-LabVIEWCliPortFromContract `
         -RepoRoot $RepoRoot `
-        -LabVIEWVersion $labviewYear `
+        -LabVIEWVersion $executionLabVIEWYear `
         -Bitness $Bitness `
         -LabVIEWExecutablePath $LabVIEWExecutablePath
 }
@@ -645,7 +673,7 @@ try {
     }
     Write-Output "MassCompile completed successfully."
 
-    $iconEditorSyncExcludes = @(Get-IconEditorSyncExcludeList -LabVIEWYear $labviewYear)
+    $iconEditorSyncExcludes = @(Get-IconEditorSyncExcludeList -LabVIEWYear $executionLabVIEWYear)
     Write-Output "Synchronizing workspace Icon Editor sources into LabVIEW install before build-spec execution."
     Sync-IconEditorSourcesForBuildSpec `
         -RepoRootPath $RepoRoot `
@@ -668,11 +696,11 @@ try {
         '-PortNumber', $portResolution.PortNumber.ToString()
     )
     $parsedLabVIEWYear = 0
-    $supportsHeadlessBuildSpec = [int]::TryParse([string]$labviewYear, [ref]$parsedLabVIEWYear) -and $parsedLabVIEWYear -gt 2020
+    $supportsHeadlessBuildSpec = [int]::TryParse([string]$executionLabVIEWYear, [ref]$parsedLabVIEWYear) -and $parsedLabVIEWYear -gt 2020
     if ($supportsHeadlessBuildSpec) {
         $labviewCliArgs += '-Headless'
     } else {
-        Write-Output ("LV{0} detected; running ExecuteBuildSpec without -Headless for compatibility." -f $labviewYear)
+        Write-Output ("LV{0} detected; running ExecuteBuildSpec without -Headless for compatibility." -f $executionLabVIEWYear)
     }
 
     $buildSpecResult = Invoke-LabVIEWCliOperation -OperationName 'executebuildspec' -Arguments $labviewCliArgs -LogRoot $logsDir
@@ -713,7 +741,7 @@ finally {
     }
 
     try {
-        Invoke-CloseLabVIEWSafely -Version $labviewYear -Bitness $SupportedBitness
+        Invoke-CloseLabVIEWSafely -Version $executionLabVIEWYear -Bitness $SupportedBitness
     }
     catch {
         Write-Warning ("Close LabVIEW cleanup failed: {0}" -f $_.Exception.Message)

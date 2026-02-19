@@ -16,8 +16,8 @@ This document provides **manual** steps to configure, edit, and distribute the L
 ## 1. Compatible LabVIEW Versions
 
 - Source is saved in **LabVIEW 2020 (20.0)** file format.
-- CI/build baseline is **LabVIEW 2026 (26.1)**, resolved from `.lvversion`.
-- Both **LabVIEW 2026 (26.1), 32-bit and 64-bit** are typically required if you plan to build or distribute for both architectures.
+- CI/build baseline is resolved from `.lvversion` (currently **20.0**).
+- Both 32-bit and 64-bit installs for the `.lvversion` target are typically required if you plan to build or distribute for both architectures.
 
 ---
 

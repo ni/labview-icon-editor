@@ -46,11 +46,17 @@ public static class VipBuildService
         }
 
         var repoRoot = Path.GetFullPath(options.RepoRoot);
+        var executionYearResolution = LabVIEWExecutionYearCompatibilityService.Resolve(
+            sourceLabviewVersion: options.LabviewVersion,
+            repoRoot: repoRoot,
+            commandLabel: "vip build");
         var args = new List<string>
         {
             "-SupportedBitness", options.SupportedBitness,
             "-RepoRoot", repoRoot,
-            "-VIPBPath", options.VipbPath
+            "-VIPBPath", options.VipbPath,
+            "-LabVIEWVersion", executionYearResolution.SourceVersion.Raw,
+            "-ExecutionLabVIEWYear", executionYearResolution.ExecutionYear
         };
 
         if (!string.IsNullOrWhiteSpace(options.DisplayInformationJsonPath))
@@ -77,7 +83,6 @@ public static class VipBuildService
             args.Add(options.DisplayInformationJson);
         }
 
-        AddValueArg(args, "-LabVIEWVersion", options.LabviewVersion);
         AddValueArg(args, "-LabVIEWMinorRevision", options.LabviewMinorRevision);
         AddValueArg(args, "-Major", options.Major);
         AddValueArg(args, "-Minor", options.Minor);

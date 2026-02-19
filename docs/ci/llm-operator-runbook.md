@@ -119,4 +119,4 @@ Expected result:
 
 ## Related Policy
 
-- `docs/ci/solo-maintainer-mode.md`
+- `docs/ci-workflows.md`

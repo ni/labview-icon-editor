@@ -6,12 +6,9 @@ This directory collects guides and references for working with the LabVIEW Icon 
 
 - [Manual Setup Instructions](manual-instructions.md)
 - [Automated Setup Instructions](automated-setup.md)
-- [PowerShell CLI GitHub Action Instructions](powershell-cli-github-action-instructions.md)
 - [PowerShell Dependency Scripts](powershell-dependency-scripts.md)
 - [CI Workflows Overview](ci-workflows.md)
   - Canonical source for release/publication policy and CI behavior contracts.
-- [Solo Maintainer Mode](ci/solo-maintainer-mode.md)
-  - Normative operating policy for single-maintainer integration and release.
 - [LLM Operator Runbook](ci/llm-operator-runbook.md)
   - Deterministic command-first workflow for `validate`, `integrate`, and `release` modes.
 - [VI Package Pre-Release Requirements](vip-prerelease-requirements.md)
@@ -30,6 +27,11 @@ This directory collects guides and references for working with the LabVIEW Icon 
   - [Development Mode Toggle](ci/actions/development-mode-toggle.md)
   - [Injecting Repo/Org to VI Package](ci/actions/injecting-repo-org-to-vi-package.md)
   - [Maintainer's Guide](ci/actions/maintainers-guide.md)
-  - [Multichannel Release Workflow](ci/actions/multichannel-release-workflow.md)
   - [Runner Setup Guide](ci/actions/runner-setup-guide.md)
   - [Troubleshooting Experiments](ci/actions/troubleshooting-experiments.md)
+
+## Archived/Historical CI References
+
+- [PowerShell CLI GitHub Action Instructions](powershell-cli-github-action-instructions.md)
+- [Multichannel Release Workflow](ci/actions/multichannel-release-workflow.md)
+- Not normative. Source of truth is [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) and [CI Workflows Overview](ci-workflows.md).

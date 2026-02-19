@@ -39,4 +39,13 @@ Describe 'CI workflow packed-library report naming contract' {
         $script:buildPpl64Section | Should -Match 'lv_icon\.lvlibp-\$\{\{ runner\.os \}\}-64-report'
         $script:buildPpl64Section | Should -Match 'lv_icon\.lvlibp-\$\{\{ runner\.os \}\}-64\.xml'
     }
+
+    It 'routes packed-library jobs to bitness-specific runners and removes x64->x86 chaining' {
+        $script:buildPpl32Section | Should -Match 'needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*unit-tests,\s*version\s*\]'
+        $script:buildPpl32Section | Should -Match "runs-on:\s*\$\{\{\s*vars\.LVIE_RUNNER_LABEL_32 \|\| vars\.LVIE_RUNNER_LABEL \|\| 'self-hosted-windows-lv'\s*\}\}"
+        $script:buildPpl32Section | Should -Not -Match 'build-ppl-x64'
+
+        $script:buildPpl64Section | Should -Match 'needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*unit-tests,\s*version\s*\]'
+        $script:buildPpl64Section | Should -Match "runs-on:\s*\$\{\{\s*vars\.LVIE_RUNNER_LABEL_64 \|\| vars\.LVIE_RUNNER_LABEL \|\| 'self-hosted-windows-lv'\s*\}\}"
+    }
 }

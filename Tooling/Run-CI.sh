@@ -9,9 +9,11 @@ runner_cli_project="${LVIE_RUNNER_CLI_PROJECT:-$repo_root/Tooling/runner-cli/Run
 mode="${LVIE_PARITY_MODE:-linux-container}"
 configuration="${LVIE_DOTNET_CONFIGURATION:-Release}"
 run_psscriptanalyzer_raw="${LVIE_RUN_PSSCRIPTANALYZER:-true}"
+run_markdownlint_raw="${LVIE_RUN_MARKDOWNLINT:-true}"
 run_pylavi_raw="${LVIE_RUN_PYLAVI:-true}"
 run_vi_analyzer_raw="${LVIE_RUN_VI_ANALYZER:-auto}"
 pwsh_bin="${LVIE_PWSH_BIN:-pwsh}"
+markdownlint_config_path="${LVIE_MARKDOWNLINT_CONFIG_PATH:-}"
 pylavi_profile="${LVIE_PYLAVI_PROFILE:-strict}"
 pylavi_config_path="${LVIE_PYLAVI_CONFIG_PATH:-}"
 pylavi_report_only_raw="${LVIE_PYLAVI_REPORT_ONLY:-false}"
@@ -72,6 +74,30 @@ run_powershell_lint() {
   (
     cd "$repo_root"
     "$pwsh_bin" -NoProfile -File "./Tooling/Invoke-PSScriptAnalyzer.ps1" -WriteSummary
+  )
+}
+
+run_markdown_lint() {
+  local enabled_raw="${1:-true}"
+  if ! normalize_bool "$enabled_raw"; then
+    echo "Skipping markdownlint (LVIE_RUN_MARKDOWNLINT=${enabled_raw})"
+    return 0
+  fi
+
+  if ! command -v "$pwsh_bin" >/dev/null 2>&1; then
+    echo "ERROR: pwsh was not found on PATH (LVIE_PWSH_BIN=${pwsh_bin})." >&2
+    exit 1
+  fi
+
+  local markdown_lint_args=(-NoProfile -File "./Tooling/Invoke-MarkdownLint.ps1")
+  if [[ -n "$markdownlint_config_path" ]]; then
+    markdown_lint_args+=(-ConfigPath "$markdownlint_config_path")
+  fi
+
+  echo "Running markdownlint..."
+  (
+    cd "$repo_root"
+    "$pwsh_bin" "${markdown_lint_args[@]}"
   )
 }
 
@@ -177,6 +203,7 @@ derive_lv_year() {
 }
 
 validate_mandatory_build_spec
+run_markdown_lint "$run_markdownlint_raw"
 run_powershell_lint "$run_psscriptanalyzer_raw"
 run_pylavi_gate "$run_pylavi_raw"
 run_vi_analyzer_gate "$run_vi_analyzer_raw"

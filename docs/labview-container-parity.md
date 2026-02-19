@@ -159,7 +159,7 @@ Deterministic runner remediation steps:
 Get-Content .\Tooling\labviewcli-port-contract.json
 ```
 
-2. Inspect installed LabVIEW ini state for each bitness:
+1. Inspect installed LabVIEW ini state for each bitness:
 
 ```powershell
 Get-Content "C:\Program Files\National Instruments\LabVIEW 2020\LabVIEW.ini" |
@@ -169,7 +169,7 @@ Get-Content "C:\Program Files (x86)\National Instruments\LabVIEW 2020\LabVIEW.in
   Select-String -Pattern 'server.tcp.enabled|server.tcp.port'
 ```
 
-3. Align each runner to contract values (`server.tcp.enabled=True`, `server.tcp.port=<contract-port>`), then rerun parity.
+1. Align each runner to contract values (`server.tcp.enabled=True`, `server.tcp.port=<contract-port>`), then rerun parity.
 
 Reference contract defaults currently used in this repo:
 - `2020/64 -> 3366`

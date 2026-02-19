@@ -8,6 +8,8 @@ CI workflows can use a hybrid worktree model where `lvie-job-setup` resolves `LV
 
 Per-run artifacts are written under `$WORKTREE_ROOT\artifacts\<runid>` when guardrails are active. Use `-RunId` or `-ArtifactRoot` to override, and `-CleanRoom` to purge known output folders before and after a run. Artifact roots are disabled by default inside GitHub Actions unless `LVIE_ENABLE_ARTIFACT_ROOT=1` (or an explicit `-ArtifactRoot`/`-RunId` is provided).
 
+Markdown documentation linting in local CI requires Node.js/npm (`npx`) because `Tooling\Invoke-MarkdownLint.ps1` runs pinned `markdownlint-cli2`.
+
 ## Table of Contents
 
 - [AddTokenToLabVIEW.ps1](#addtokentolabviewps1)
@@ -81,7 +83,7 @@ Policy-disabled for automation. The script now fails fast to enforce repository 
 Parse-only unit-test report validator. Test execution is canonicalized on `runner-cli lunit run` (g-cli backend). `RunUnitTests.ps1` is retained for report parsing/summary via `-SkipGcli` (or `runner-cli lunit validate`). Legacy backend knobs (`LVIE_LUNIT_BACKEND`, `LVIE_FORCE_GCLI_LUNIT`) and `-EnableGcliFallback` are unsupported and fail fast with migration guidance.
 
 ## Run-CI.ps1
-Runs a local CI parity sequence based on `ci.yml`. This script validates Verify IE Paths, applies VIPC dependencies, runs missing-in-project checks and unit tests for the LabVIEW version declared in `.lvversion` (canonical baseline `26.1`), 32- and 64-bit, builds packed libraries, and produces the VI package using the 64-bit install of that version. Local orchestration enters through runner-cli for migrated surfaces (`missing-in-project`, `ppl build`), while backend execution semantics remain unchanged. Unit tests execute directly through `g-cli lunit`; report parsing/summary uses `RunUnitTests.ps1`. The script always runs both 64-bit and 32-bit steps for the selected LabVIEW version, and most steps can be skipped via switches. Outputs are stored under `TestResults/ci-local`. Use `-ConnectTimeoutMs`, `-ProcessTimeoutMs`, and `-StatusFileTimeoutMs` to tune g-cli and status-file timing for your machine. Dev-mode request flags (`-EnsureCleanState`, `-SkipDevModeNoLabVIEWSmoke`, `-DevModeNoLabVIEWSmokeDepth`, `-UseLabVIEWDevMode`) are policy-disabled and throw when passed.
+Runs a local CI parity sequence based on `ci.yml`. This script validates markdown docs (`markdownlint`), Verify IE Paths, VIPC dependencies, missing-in-project checks, and unit tests for the LabVIEW version declared in `.lvversion` (currently `20.0` in this repository), then builds packed libraries and produces the VI package using the 64-bit install of that version. Local orchestration enters through runner-cli for migrated surfaces (`missing-in-project`, `ppl build`), while backend execution semantics remain unchanged. Unit tests execute directly through `g-cli lunit`; report parsing/summary uses `RunUnitTests.ps1`. The script always runs both 64-bit and 32-bit steps for the selected LabVIEW version, and most steps can be skipped via switches. Outputs are stored under `TestResults/ci-local`. Use `-ConnectTimeoutMs`, `-ProcessTimeoutMs`, and `-StatusFileTimeoutMs` to tune g-cli and status-file timing for your machine. Dev-mode request flags (`-EnsureCleanState`, `-SkipDevModeNoLabVIEWSmoke`, `-DevModeNoLabVIEWSmokeDepth`, `-UseLabVIEWDevMode`) are policy-disabled and throw when passed.
 
 ## Invoke-DevModeNoLabVIEWSmoke.ps1
 Policy-disabled for automation. The script now fails fast to enforce repository policy that dev mode must not be invoked.

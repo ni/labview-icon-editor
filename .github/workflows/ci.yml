@@ -724,6 +724,23 @@ jobs:
           path: builds/status/vip-prerelease-requirements-lint.json
           if-no-files-found: error
 
+  docs-lint:
+    name: Documentation Lint
+    needs: run-metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run markdownlint
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Invoke-MarkdownLint.ps1" -WriteSummary
+      - name: Validate CI docs source-of-truth contract
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-CiDocsSourceOfTruth.ps1" -WriteSummary
+
   pylavi-validate:
     name: Validate LabVIEW Files (pylavi, report-only)
     needs: [run-metadata, version-gate, runner-cli-build-win]
@@ -1617,9 +1634,9 @@ jobs:
 
   build-ppl-x86:
     name: Build 32-bit Packed Library
-    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' && needs.version-gate.outputs.year != '2020' }}
-    needs: [run-metadata, prerelease-context, version-gate, build-ppl-x64, version]
-    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+    needs: [run-metadata, prerelease-context, version-gate, unit-tests, version]
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL_32 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
       LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
@@ -1730,9 +1747,9 @@ jobs:
 
   build-ppl-x64:
     name: Build 64-bit Packed Library
-    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' && needs.version-gate.outputs.year != '2020' }}
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
     needs: [run-metadata, prerelease-context, version-gate, unit-tests, version]
-    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL_64 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
       LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
@@ -1843,9 +1860,8 @@ jobs:
 
   build-vip:
     name: Build VI Package
-    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' && needs.version-gate.outputs.year != '2020' }}
-    # Chain after 32-bit PPL build (which depends on 64-bit PPL build).
-    needs: [run-metadata, prerelease-context, version-gate, build-ppl-x86, version]
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+    needs: [run-metadata, prerelease-context, version-gate, build-ppl-x64, build-ppl-x86, version]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     outputs:
       vip_status_exists: ${{ steps.vip-status.outputs.exists }}
@@ -2508,6 +2524,7 @@ jobs:
       - version-gate
       - powershell-lint
       - vip-prerelease-requirements-lint
+      - docs-lint
       - pylavi-validate
       - changes
       - apply-deps-64
@@ -2551,6 +2568,7 @@ jobs:
             'version-gate',
             'powershell-lint',
             'vip-prerelease-requirements-lint',
+            'docs-lint',
             'pylavi-validate',
             'build-ppl-linux-container',
             'build-ppl-windows-container',
@@ -2562,18 +2580,11 @@ jobs:
             'changes',
             'apply-deps-64',
             'apply-deps-32',
-            'unit-tests'
+            'unit-tests',
+            'build-ppl-x64',
+            'build-ppl-x86',
+            'build-vip'
           )
-          $isLv2020 = '${{ needs.version-gate.outputs.year }}' -eq '2020'
-          if ($isLv2020) {
-            Write-Host 'LV2020 detected: self-hosted packed-library/VIP jobs are optional in pipeline contract.'
-          } else {
-            $requiredFullValidation += @(
-              'build-ppl-x64',
-              'build-ppl-x86',
-              'build-vip'
-            )
-          }
           $requiredByProfile = @{
             'full' = @($requiredCommon + $requiredFullValidation)
             'pr-fast' = @($requiredCommon + $requiredFullValidation)
@@ -2976,6 +2987,7 @@ jobs:
       - version-gate
       - powershell-lint
       - vip-prerelease-requirements-lint
+      - docs-lint
       - pylavi-validate
       - changes
       - apply-deps-64
@@ -3009,6 +3021,7 @@ jobs:
             'version-gate',
             'powershell-lint',
             'vip-prerelease-requirements-lint',
+            'docs-lint',
             'pylavi-validate',
             'build-ppl-linux-container',
             'build-ppl-windows-container',
@@ -3026,18 +3039,11 @@ jobs:
             'changes',
             'apply-deps-64',
             'apply-deps-32',
-            'unit-tests'
+            'unit-tests',
+            'build-ppl-x64',
+            'build-ppl-x86',
+            'build-vip'
           )
-          $isLv2020 = '${{ needs.version-gate.outputs.year }}' -eq '2020'
-          if ($isLv2020) {
-            Write-Host 'LV2020 detected: self-hosted packed-library/VIP jobs are optional in pipeline contract.'
-          } else {
-            $requiredFullValidation += @(
-              'build-ppl-x64',
-              'build-ppl-x86',
-              'build-vip'
-            )
-          }
           $requiredByProfile = @{
             'full' = @($requiredCommon + $requiredFullValidation)
             'pr-fast' = @($requiredCommon + $requiredFullValidation)
@@ -3130,6 +3136,7 @@ jobs:
     name: CI Required / Lint+Contract
     if: always()
     needs:
+      - docs-lint
       - powershell-lint
       - pipeline-contract
     runs-on: ubuntu-latest
@@ -3137,13 +3144,18 @@ jobs:
       - name: Evaluate canonical required check context
         shell: pwsh
         run: |
+          $docsLintResult = '${{ needs.docs-lint.result }}'
           $lintResult = '${{ needs.powershell-lint.result }}'
           $contractResult = '${{ needs.pipeline-contract.result }}'
 
+          Write-Host ("Documentation Lint result: {0}" -f $docsLintResult)
           Write-Host ("PowerShell Lint result: {0}" -f $lintResult)
           Write-Host ("Pipeline Contract result: {0}" -f $contractResult)
 
           $failing = @()
+          if ($docsLintResult -ne 'success') {
+            $failing += "docs-lint:$docsLintResult"
+          }
           if ($lintResult -ne 'success') {
             $failing += "powershell-lint:$lintResult"
           }
