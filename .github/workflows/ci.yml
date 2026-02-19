@@ -1635,8 +1635,8 @@ jobs:
   build-ppl-x86:
     name: Build 32-bit Packed Library
     if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
-    needs: [run-metadata, prerelease-context, version-gate, build-ppl-x64, version]
-    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    needs: [run-metadata, prerelease-context, version-gate, unit-tests, version]
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL_32 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
       LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
@@ -1749,7 +1749,7 @@ jobs:
     name: Build 64-bit Packed Library
     if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
     needs: [run-metadata, prerelease-context, version-gate, unit-tests, version]
-    runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    runs-on: ${{ vars.LVIE_RUNNER_LABEL_64 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
       LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
@@ -1861,8 +1861,7 @@ jobs:
   build-vip:
     name: Build VI Package
     if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
-    # Chain after 32-bit PPL build (which depends on 64-bit PPL build).
-    needs: [run-metadata, prerelease-context, version-gate, build-ppl-x86, version]
+    needs: [run-metadata, prerelease-context, version-gate, build-ppl-x64, build-ppl-x86, version]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     outputs:
       vip_status_exists: ${{ steps.vip-status.outputs.exists }}

@@ -84,6 +84,7 @@ Describe 'VIP build CLI contract' {
         $buildVipSection | Should -Match 'LVIE_REQUIRED_LABVIEW_VERSION:\s*\$\{\{\s*needs\.version-gate\.outputs\.raw\s*\}\}'
         $buildVipSection | Should -Match 'LVIE_REQUIRED_LABVIEW_VERSION_YEAR:\s*\$\{\{\s*needs\.version-gate\.outputs\.year\s*\}\}'
         $buildVipSection | Should -Match 'LVIE_REQUIRED_LABVIEW_MINOR_REVISION:\s*\$\{\{\s*needs\.version-gate\.outputs\.minor\s*\}\}'
+        $buildVipSection | Should -Match 'needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*build-ppl-x64,\s*build-ppl-x86,\s*version\s*\]'
         $buildVipSection | Should -Match 'Assert VI Package LabVIEW version contract'
         $buildVipSection | Should -Match 'LabVIEW version drift detected'
         $buildVipSection | Should -Match 'LabVIEW minor revision drift detected'
