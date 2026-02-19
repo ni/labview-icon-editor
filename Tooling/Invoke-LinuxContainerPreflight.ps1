@@ -238,7 +238,7 @@ try {
 
     if (-not $SkipViAnalyzer) {
         $viAnalyzerScriptInContainer = '/workspace/Tooling/container-parity/run-vi-analyzer-linux.sh'
-        $tasksPathInContainer = 'Tooling/vi-analyzer/tasks.linux.json'
+        $tasksPathInContainer = '/workspace/Tooling/vi-analyzer/tasks.linux.json'
         $dockerCommand = "chmod +x $viAnalyzerScriptInContainer && $viAnalyzerScriptInContainer"
 
         $viAnalyzerArgs = @(
