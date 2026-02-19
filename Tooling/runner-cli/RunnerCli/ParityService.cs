@@ -299,8 +299,11 @@ public static class ParityService
             throw new InvalidOperationException($"Unsupported LabVIEW bitness '{labviewBitness}'. Use 32 or 64.");
         }
 
+        var executionYear = ResolveSelfHostedExecutionYear(context);
+        Console.WriteLine($"Self-hosted parity LabVIEW year: {executionYear} (source .lvversion year: {context.LabVIEWYear})");
+
         var labviewPath = string.IsNullOrWhiteSpace(labviewPathOverride)
-            ? ResolveLabVIEWExecutablePath(context, bitness)
+            ? ResolveLabVIEWExecutablePath(context, bitness, executionYear)
             : Path.GetFullPath(labviewPathOverride);
 
         Console.WriteLine($"Using LabVIEW executable: {labviewPath}");
@@ -331,16 +334,23 @@ public static class ParityService
             "-TargetName",
             context.TargetName,
             "-LabVIEWVersion",
-            context.LabVIEWYear
+            executionYear,
+            "-LabVIEWBitness",
+            bitness
         };
 
         args.Add("-BuildProjectSpec");
+
+        var parityEnvironment = BuildParityEnvironment(context, windowsStyle: true);
+        parityEnvironment["CONTAINER_PARITY_LABVIEW_VERSION"] = executionYear;
+        parityEnvironment["CONTAINER_PARITY_SOURCE_LABVIEW_VERSION"] = context.LabVIEWYear;
+        parityEnvironment["CONTAINER_PARITY_LABVIEW_BITNESS"] = bitness;
 
         RunProcess(
             "pwsh",
             args,
             context.RepoRoot,
-            BuildParityEnvironment(context, windowsStyle: true));
+            parityEnvironment);
 
         VerifyBuildOutput(context);
     }
@@ -387,7 +397,20 @@ public static class ParityService
         };
     }
 
-    private static string ResolveLabVIEWExecutablePath(ParityContext context, string bitness)
+    private static string ResolveSelfHostedExecutionYear(ParityContext context)
+    {
+        if (string.Equals(context.LabVIEWYear, "2020", StringComparison.Ordinal))
+        {
+            var mappedYear = ResolveReleaseYear(DefaultContainerFallbackRelease, context.LabVIEWYear);
+            Console.WriteLine(
+                $"Self-hosted parity compatibility mapping applied: source .lvversion year {context.LabVIEWYear} -> execution year {mappedYear}.");
+            return mappedYear;
+        }
+
+        return context.LabVIEWYear;
+    }
+
+    private static string ResolveLabVIEWExecutablePath(ParityContext context, string bitness, string versionYear)
     {
         var scriptPath = Path.Combine(context.RepoRoot, "Tooling", "support", "LabVIEWExecutablePath.ps1");
         if (!File.Exists(scriptPath))
@@ -395,7 +418,7 @@ public static class ParityService
             throw new FileNotFoundException($"LabVIEW executable path resolver was not found: {scriptPath}", scriptPath);
         }
 
-        var command = $". '{EscapePwshSingleQuoted(scriptPath)}'; Resolve-LabVIEWExecutablePath -VersionYear '{EscapePwshSingleQuoted(context.LabVIEWYear)}' -Bitness '{EscapePwshSingleQuoted(bitness)}'";
+        var command = $". '{EscapePwshSingleQuoted(scriptPath)}'; Resolve-LabVIEWExecutablePath -VersionYear '{EscapePwshSingleQuoted(versionYear)}' -Bitness '{EscapePwshSingleQuoted(bitness)}'";
         var result = RunProcess(
             "pwsh",
             new[] { "-NoProfile", "-Command", command },

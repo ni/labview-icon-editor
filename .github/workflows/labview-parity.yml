@@ -1182,6 +1182,9 @@ jobs:
             throw "runner-cli executable not found at $runnerCliPath"
           }
 
+          $env:LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT = '1'
+          Write-Host "Enabled LabVIEWCLI port-contract remediation for self-hosted parity lane."
+
           $lvReleaseInput = '${{ needs.resolve-parity-context.outputs.lv_release_self_hosted }}'
           $args = @(
             'parity', 'self-hosted',
@@ -1322,6 +1325,9 @@ jobs:
           if (-not (Test-Path -LiteralPath $runnerCliPath -PathType Leaf)) {
             throw "runner-cli executable not found at $runnerCliPath"
           }
+
+          $env:LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT = '1'
+          Write-Host "Enabled LabVIEWCLI port-contract remediation for self-hosted parity lane."
 
           $lvReleaseInput = '${{ needs.resolve-parity-context.outputs.lv_release_self_hosted }}'
           $args = @(

@@ -145,3 +145,34 @@ Behavior contract:
 Outputs:
 - Parity context: `builds/status/local-preflight-parity-context-<sha>.json`
 - Summary: `builds/status/local-linux-preflight-summary-<sha>.json`
+
+## Self-Hosted Port-Contract Remediation
+
+Self-hosted Windows parity validates `LabVIEW.ini` against `Tooling/labviewcli-port-contract.json`.
+If a runner drifts from contract values, parity intentionally fails fast.
+
+Deterministic runner remediation steps:
+
+1. Read expected ports from contract:
+
+```powershell
+Get-Content .\Tooling\labviewcli-port-contract.json
+```
+
+2. Inspect installed LabVIEW ini state for each bitness:
+
+```powershell
+Get-Content "C:\Program Files\National Instruments\LabVIEW 2020\LabVIEW.ini" |
+  Select-String -Pattern 'server.tcp.enabled|server.tcp.port'
+
+Get-Content "C:\Program Files (x86)\National Instruments\LabVIEW 2020\LabVIEW.ini" |
+  Select-String -Pattern 'server.tcp.enabled|server.tcp.port'
+```
+
+3. Align each runner to contract values (`server.tcp.enabled=True`, `server.tcp.port=<contract-port>`), then rerun parity.
+
+Reference contract defaults currently used in this repo:
+- `2020/64 -> 3366`
+- `2020/32 -> 3365`
+- `2026/64 -> 3363`
+- `2026/32 -> 3364`

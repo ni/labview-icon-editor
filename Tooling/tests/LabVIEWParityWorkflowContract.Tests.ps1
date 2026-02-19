@@ -206,6 +206,7 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $paritySelfHosted64Block | Should -Match 'needs\.runner-cli-build-win\.outputs\.artifact_name'
         $paritySelfHosted64Block | Should -Match "'parity',\s*'self-hosted'"
         $paritySelfHosted64Block | Should -Match "'--labview-bitness',\s*'64'"
+        $paritySelfHosted64Block | Should -Match 'LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT\s*=\s*''1'''
         $paritySelfHosted64Block | Should -Match 'outputs\.lv_release_self_hosted'
         $paritySelfHosted64Block | Should -Match 'dotnet build-server shutdown'
         $paritySelfHosted64Block | Should -Match 'close_bitness:\s*64'
@@ -227,6 +228,7 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $paritySelfHosted32Block | Should -Match 'needs\.runner-cli-build-win\.outputs\.artifact_name'
         $paritySelfHosted32Block | Should -Match "'parity',\s*'self-hosted'"
         $paritySelfHosted32Block | Should -Match "'--labview-bitness',\s*'32'"
+        $paritySelfHosted32Block | Should -Match 'LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT\s*=\s*''1'''
         $paritySelfHosted32Block | Should -Match 'outputs\.lv_release_self_hosted'
         $paritySelfHosted32Block | Should -Match 'dotnet build-server shutdown'
         $paritySelfHosted32Block | Should -Match 'close_bitness:\s*32'
