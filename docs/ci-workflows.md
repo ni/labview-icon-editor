@@ -106,14 +106,23 @@ This document is the canonical source for release/publication policy.
 
 #### Deterministic Manual Backfill Procedure
 
-1. Resolve the target SHA to publish:
+1. Run the deterministic publish helper (recommended):
+   ```powershell
+   pwsh -NoProfile -File .\Tooling\Invoke-DeterministicPrereleasePublish.ps1
+   ```
+2. Optional explicit SHA:
+   ```powershell
+   pwsh -NoProfile -File .\Tooling\Invoke-DeterministicPrereleasePublish.ps1 `
+     -Sha <merged-develop-merge-sha> `
+     -Wait
+   ```
+3. Manual fallback (if needed): create a temporary `ci-run` ref and dispatch strict publish intent against that ref:
    ```powershell
    $repo = pwsh -NoProfile -File .\Tooling\Resolve-GitHubRepo.ps1
    $sha = (git rev-parse HEAD).Trim()
-   ```
-2. Dispatch backfill publish intent explicitly:
-   ```powershell
-   gh workflow run ci.yml --repo $repo `
+   $shortSha = $sha.Substring(0,8)
+   git push origin "${sha}:refs/heads/ci-run/$shortSha"
+   gh workflow run "CI Pipeline" --repo $repo --ref "ci-run/$shortSha" `
      -f publish_prerelease=true `
      -f expected_sha=$sha `
      -f strict_sha=true
@@ -285,7 +294,7 @@ Although GitHub Actions primarily run on GitHub-hosted or self-hosted agents, yo
 4. **Merge the PR into your target integration branch with a merge commit**:
      - The **Build VI Package** workflow builds and uploads the `.vip` artifact.
      - Use merge commits only (`gh pr merge <pr-number> --merge --delete-branch`); do not use squash/rebase for prerelease-driving changes.
-     - Merge-commit merges to `develop` publish automatically when eligible; use `workflow_dispatch` with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true` only for deterministic backfill.
+     - Merge-commit merges to `develop` publish automatically when eligible; use `Tooling/Invoke-DeterministicPrereleasePublish.ps1` for deterministic backfill (it dispatches `workflow_dispatch` with strict SHA inputs).
      - **Inside** that `.vip`, the **“Company Name”** and **“Author Name (Person or Company)”** fields are filled automatically using `github.repository_owner` and `github.event.repository.name`. Modify the “Generate display information JSON” step in `.github/workflows/ci.yml` to override them.
 
 5. **Disable Development Mode**:  

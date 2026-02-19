@@ -8,6 +8,12 @@ Common entrypoints:
   Precedence: `-Repo` argument, `GH_REPO` env var, then `origin` remote URL.
   Example: `pwsh -NoProfile -File .\\Tooling\\Resolve-GitHubRepo.ps1`
   Optional shell hygiene: `pwsh -NoProfile -File .\\Tooling\\Resolve-GitHubRepo.ps1 -SetGhDefault`
+- `Invoke-DeterministicPrereleasePublish.ps1`
+  One-command deterministic prerelease dispatch for `ci.yml`.
+  It resolves an eligible merged-PR merge commit on `develop` (or uses `-Sha`), creates a temporary `ci-run` ref, dispatches with strict publish intent (`publish_prerelease=true`, `expected_sha`, `strict_sha=true`), and cleans up the temp ref by default.
+  Example (latest eligible merged develop SHA): `pwsh -NoProfile -File .\\Tooling\\Invoke-DeterministicPrereleasePublish.ps1`
+  Example (explicit SHA + wait): `pwsh -NoProfile -File .\\Tooling\\Invoke-DeterministicPrereleasePublish.ps1 -Sha <merge-sha> -Wait`
+  Optional: `-ReleasePriority`, `-KeepDispatchBranch`, `-DryRun`.
 - `Invoke-MarkdownLint.ps1`
   Runs repository docs lint with pinned `markdownlint-cli2`.
   Example: `pwsh -NoProfile -File .\\Tooling\\Invoke-MarkdownLint.ps1`

@@ -353,6 +353,23 @@ gh workflow run "CI Pipeline" --ref ci-run/<shortsha> -f expected_sha=<commit> -
 Notes:
 - Delete the temporary branch after dispatch when no longer needed: `git push origin --delete ci-run/<shortsha>`.
 
+## Deterministic prerelease publish (streamlined)
+Use the helper to dispatch `ci.yml` prerelease publication with strict SHA pinning:
+```
+pwsh -NoProfile -File .\Tooling\Invoke-DeterministicPrereleasePublish.ps1
+```
+
+Explicit SHA (and wait for completion):
+```
+pwsh -NoProfile -File .\Tooling\Invoke-DeterministicPrereleasePublish.ps1 `
+  -Sha <merged-develop-merge-sha> `
+  -Wait
+```
+
+Notes:
+- The helper creates a temporary `ci-run` branch ref, dispatches with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`, and deletes the temp ref by default.
+- Optional `-ReleasePriority` selects the release-priority dispatch profile (`force_gcli_lunit=true`).
+
 ## Background automation safety
 Some automation may be running in the background and must not be killed. Do not terminate `g-cli` or `LabVIEW` processes unless you have explicit confirmation it is safe.
 - Before running a new step, record active processes:
