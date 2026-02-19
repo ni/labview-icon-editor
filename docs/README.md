@@ -9,8 +9,6 @@ This directory collects guides and references for working with the LabVIEW Icon 
 - [PowerShell Dependency Scripts](powershell-dependency-scripts.md)
 - [CI Workflows Overview](ci-workflows.md)
   - Canonical source for release/publication policy and CI behavior contracts.
-- [Solo Maintainer Mode](ci/solo-maintainer-mode.md)
-  - Normative operating policy for single-maintainer integration and release.
 - [LLM Operator Runbook](ci/llm-operator-runbook.md)
   - Deterministic command-first workflow for `validate`, `integrate`, and `release` modes.
 - [VI Package Pre-Release Requirements](vip-prerelease-requirements.md)

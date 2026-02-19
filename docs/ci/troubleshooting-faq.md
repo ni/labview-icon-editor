@@ -140,6 +140,7 @@ Below are 17 possible issues you might encounter, along with suggested steps to 
 1. Identify the exact SHA you want to publish.
 2. Confirm the run is an eligible publish path:
    - Auto path: `push` to `develop` where `github.sha` is the merged PR merge commit.
+   - Auto relay workflow: `Prerelease Auto Dispatch` should run for the same source SHA and dispatch strict publish intent.
    - Manual backfill path: `workflow_dispatch` with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`.
 3. For `release-priority` (`workflow_dispatch` + `force_gcli_lunit=true`), confirm there is a successful `full` profile run on `develop` in the previous 24 hours.
 4. Inspect the `publish-gate` and `publish-prerelease` job logs for explicit failure/skip reason output.
@@ -147,12 +148,9 @@ Below are 17 possible issues you might encounter, along with suggested steps to 
 
 Deterministic backfill command:
 ```powershell
-$repo = pwsh -NoProfile -File .\Tooling\Resolve-GitHubRepo.ps1
-$mergeSha = gh pr view <pr-number> --repo $repo --json mergeCommit --jq .mergeCommit.oid
-gh workflow run ci.yml --repo $repo `
-  -f publish_prerelease=true `
-  -f expected_sha=$mergeSha `
-  -f strict_sha=true
+pwsh -NoProfile -File .\Tooling\Invoke-DeterministicPrereleasePublish.ps1 `
+  -Sha <merged-develop-merge-sha> `
+  -Wait
 ```
 
 ---
@@ -372,7 +370,7 @@ By default, the workflow calculates the build number with `git rev-list --count 
 ### Q2: How Do I Create a Release?
 
 **Answer**:
-Repository policy auto-publishes on eligible merged-PR merge commits to `develop`. Use manual backfill only when needed by dispatching `ci.yml` with `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`, then review `prerelease-publish-status` when troubleshooting.
+Repository policy auto-publishes on eligible merged-PR merge commits to `develop`, with relay dispatch handled by `.github/workflows/prerelease-auto-dispatch.yml`. Use manual backfill only when needed via `Tooling/Invoke-DeterministicPrereleasePublish.ps1`, then review `prerelease-publish-status` when troubleshooting.
 
 ---
 

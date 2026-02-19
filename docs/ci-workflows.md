@@ -1,6 +1,6 @@
 # Local CI/CD Workflows
 
-**Last updated:** 2026-02-12
+**Last updated:** 2026-02-19
 
 Quick link: `.github/workflows/runner-cli.yml` (Runner CLI consolidated workflow).
 
@@ -42,10 +42,10 @@ Automating your Icon Editor builds and tests:
 - Windows container parity guardrail: `Tooling/Test-PathContract.ps1` now runs before Windows container parity execution to enforce `Tooling/support/PathContract.ps1` compatibility with Windows PowerShell 5.1 and prevent `ScriptRequiresUnmatchedPSVersion`.
 - Manual development mode support remains available through [`development-mode-toggle.yml`](../.github/workflows/development-mode-toggle.yml).
 
-### Solo Maintainer Mode (2026-02-11)
+### Solo Maintainer Operating Note (2026-02-19)
 
 - Repository operation is optimized for a single maintainer with PR-gated integration and auto publish on eligible `develop` merged-PR commits.
-- Normative policy: [`docs/ci/solo-maintainer-mode.md`](ci/solo-maintainer-mode.md)
+- Canonical release/publication behavior is defined by [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) and this document.
 - LLM runbook: [`docs/ci/llm-operator-runbook.md`](ci/llm-operator-runbook.md)
 
 ---
@@ -91,7 +91,9 @@ This document is the canonical source for release/publication policy.
 
 - Normative contract: [VI Package Pre-Release Requirements](vip-prerelease-requirements.md).
 - Merge strategy contract: pull requests intended to drive prerelease publication to `develop` must use merge commits (`--merge`), not squash or rebase.
-- Publish contract: prerelease publication is automatic on `push` to `develop` when `github.sha` is a merged-PR merge commit targeting `develop`; `workflow_dispatch` remains available for deterministic backfill.
+- Publish contract: prerelease publication is automatic for eligible merged-PR merge commits on `develop`.
+- Auto relay workflow: [`.github/workflows/prerelease-auto-dispatch.yml`](../.github/workflows/prerelease-auto-dispatch.yml) listens for successful `CI Pipeline` `push` runs on `develop`, re-validates merge-commit + merged-PR eligibility, then dispatches strict SHA-pinned publish intent through `ci.yml` with `release-priority`.
+- Manual fallback: `workflow_dispatch` remains available for deterministic backfill when auto relay is not sufficient.
 - Execution profiles (`prerelease-context` output `ci_profile`):
   - `release-priority`: `workflow_dispatch` with `force_gcli_lunit=true`; skips most self-hosted heavy jobs (`Verify IE Paths`, smoke, unit-tests, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) and targets <= 25 minutes.
   - `pr-fast`: `pull_request`; keeps validation coverage but uses 64-bit-only matrices for smoke/unit-tests, targeting <= 35 minutes.
@@ -104,9 +106,11 @@ This document is the canonical source for release/publication policy.
 - PR branch policy: `feature/*` and `hotfix/*` branch pushes no longer trigger `ci.yml`; PR synchronization is the single CI path for those branches.
 - Runner CLI trigger reality for `runner-cli.yml`: `push` runs on `main`, `develop`, and `release/*`; `pull_request` runs on `main` and `develop` when path filters match; `workflow_dispatch` is supported.
 
-#### Deterministic Manual Backfill Procedure
+#### Deterministic Manual Backfill Procedure (Fallback)
 
-1. Run the deterministic publish helper (recommended):
+Use this procedure when you need to replay publication for a specific merged `develop` SHA, or when auto relay was intentionally bypassed.
+
+1. Run the deterministic publish helper:
    ```powershell
    pwsh -NoProfile -File .\Tooling\Invoke-DeterministicPrereleasePublish.ps1
    ```
@@ -180,6 +184,11 @@ Below are the **key GitHub Actions** provided in this repository:
      - `push` to `develop` for observability.
    - Rollout status: non-blocking diagnostic lane (not wired into publish required-job gates yet).
    - Artifacts: LabVIEWCLI logs, agent logs, build status, and `lv_icon_x64.lvlibp` when produced.
+
+5. **Prerelease Auto Dispatch**
+   - [`.github/workflows/prerelease-auto-dispatch.yml`](../.github/workflows/prerelease-auto-dispatch.yml) reacts to successful `CI Pipeline` `push` runs on `develop`.
+   - It re-checks merged-PR merge-commit eligibility for `github.event.workflow_run.head_sha`.
+   - When eligible, it dispatches `Tooling/Invoke-DeterministicPrereleasePublish.ps1 -ReleasePriority` for unattended strict-SHA publication.
 
 #### Jobs in CI workflow
 
@@ -294,7 +303,7 @@ Although GitHub Actions primarily run on GitHub-hosted or self-hosted agents, yo
 4. **Merge the PR into your target integration branch with a merge commit**:
      - The **Build VI Package** workflow builds and uploads the `.vip` artifact.
      - Use merge commits only (`gh pr merge <pr-number> --merge --delete-branch`); do not use squash/rebase for prerelease-driving changes.
-     - Merge-commit merges to `develop` publish automatically when eligible; use `Tooling/Invoke-DeterministicPrereleasePublish.ps1` for deterministic backfill (it dispatches `workflow_dispatch` with strict SHA inputs).
+     - Merge-commit merges to `develop` publish automatically when eligible via `prerelease-auto-dispatch.yml`; use `Tooling/Invoke-DeterministicPrereleasePublish.ps1` only for deterministic fallback/backfill (`workflow_dispatch` with strict SHA inputs).
      - **Inside** that `.vip`, the **“Company Name”** and **“Author Name (Person or Company)”** fields are filled automatically using `github.repository_owner` and `github.event.repository.name`. Modify the “Generate display information JSON” step in `.github/workflows/ci.yml` to override them.
 
 5. **Disable Development Mode**:  

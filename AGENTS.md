@@ -353,8 +353,13 @@ gh workflow run "CI Pipeline" --ref ci-run/<shortsha> -f expected_sha=<commit> -
 Notes:
 - Delete the temporary branch after dispatch when no longer needed: `git push origin --delete ci-run/<shortsha>`.
 
-## Deterministic prerelease publish (streamlined)
-Use the helper to dispatch `ci.yml` prerelease publication with strict SHA pinning:
+## Automatic prerelease publish + deterministic backfill
+Auto path:
+- `.github/workflows/prerelease-auto-dispatch.yml` listens to successful `CI Pipeline` `push` runs on `develop`.
+- It re-checks merged-PR merge-commit eligibility and dispatches strict publish intent through `Tooling\Invoke-DeterministicPrereleasePublish.ps1 -ReleasePriority`.
+
+Fallback helper (manual):
+Use this when replaying publication for a specific merged `develop` SHA:
 ```
 pwsh -NoProfile -File .\Tooling\Invoke-DeterministicPrereleasePublish.ps1
 ```

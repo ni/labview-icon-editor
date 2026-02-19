@@ -134,7 +134,7 @@ components remain unchanged and only the build number increases.
 - Packaging output: the `.vip` is uploaded as a run artifact by `build-vip`.
 - Publication contract: prerelease publication is defined by [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md), including eligibility, version binding, and required asset rules.
 - Auto publish path: eligible merged-PR merge commits pushed to `develop` publish prerelease assets automatically.
-- Manual backfill path: `workflow_dispatch` can publish eligible assets when `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true`.
+- Manual backfill path: `workflow_dispatch` can publish eligible assets when `publish_prerelease=true`, `expected_sha=<sha>`, and `strict_sha=true` (use `Tooling/Invoke-DeterministicPrereleasePublish.ps1` for strict SHA pinning).
 - `ci_profile` behavior:
   - `full` and `pr-fast` runs include `build-vip` and full prerelease asset expectations.
   - `release-priority` (`workflow_dispatch` + `force_gcli_lunit=true`) intentionally skips `build-vip` and publishes container packed-library assets only.
@@ -183,7 +183,7 @@ components remain unchanged and only the build number increases.
 ### 4.3 Pre-Release vs. Final Release
 
 - Develop prereleases are governed by [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md).
-- Prerelease publication is automatic on eligible merged-PR merge commits to `develop`; `workflow_dispatch` remains available for deterministic backfill (`publish_prerelease=true`, `expected_sha=<sha>`, `strict_sha=true`) and uses `needs.version.outputs.VERSION` as tag/title.
+- Prerelease publication is automatic on eligible merged-PR merge commits to `develop` via `prerelease-auto-dispatch.yml`; `workflow_dispatch` remains available for deterministic backfill (`publish_prerelease=true`, `expected_sha=<sha>`, `strict_sha=true`) and uses `needs.version.outputs.VERSION` as tag/title.
 - Optional legacy behavior: `compute-version` still supports alpha/beta/rc suffixes for legacy alpha/beta/rc channel branches branch names.
 - Merging to `main` remains the stable/final release path.
 
