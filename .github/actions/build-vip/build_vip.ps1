@@ -18,6 +18,11 @@
 .PARAMETER LabVIEWVersion
     LabVIEW major version year (e.g., 2021).
 
+.PARAMETER ExecutionLabVIEWYear
+    Optional execution-time LabVIEW year override for runtime operations.
+    When omitted, runtime operations use the LabVIEW year resolved from
+    LabVIEWVersion / .lvversion.
+
 .PARAMETER LabVIEWMinorRevision
     Minor revision number of LabVIEW (e.g., 0 for 21.0).
 
@@ -54,6 +59,7 @@ param (
     [switch]$SkipWorktreeRootCheck,
 
     [string]$LabVIEWVersion,
+    [string]$ExecutionLabVIEWYear,
 
     [ValidateRange(0, 99)]
     [int]$LabVIEWMinorRevision = 0,
@@ -109,6 +115,8 @@ if (Test-Path -Path $preflightScript) {
 }
 
 # 1b) Resolve LabVIEW version against .lvversion (fail-fast on mismatch)
+$sourceLabVIEWVersionRaw = $LabVIEWVersion
+$sourceLabVIEWYear = $null
 $versionHelper = Join-Path $ResolvedRepoRoot 'Tooling\support\LabVIEWVersion.ps1'
 if (Test-Path -Path $versionHelper) {
     . $versionHelper
@@ -116,9 +124,11 @@ if (Test-Path -Path $versionHelper) {
     $inputProvided = $PSBoundParameters.ContainsKey('LabVIEWVersion') -and -not [string]::IsNullOrWhiteSpace([string]$LabVIEWVersion)
     if ($inputProvided) {
         $inputInfo = Get-LabVIEWVersionInfo -VersionInput $LabVIEWVersion -RepoRoot $ResolvedRepoRoot
-        $LabVIEWVersion = [int]$inputInfo.Year
+        $sourceLabVIEWVersionRaw = [string]$inputInfo.Raw
+        $sourceLabVIEWYear = [string]$inputInfo.Year
     } else {
-        $LabVIEWVersion = [int]$repoInfo.Year
+        $sourceLabVIEWVersionRaw = [string]$repoInfo.Raw
+        $sourceLabVIEWYear = [string]$repoInfo.Year
         Write-Warning "LabVIEWVersion not provided; defaulting to .lvversion ($($repoInfo.Raw))."
     }
 
@@ -129,6 +139,34 @@ if (Test-Path -Path $versionHelper) {
     } else {
         $LabVIEWMinorRevision = [int]$repoInfo.MinorRevision
     }
+}
+
+if ([string]::IsNullOrWhiteSpace($sourceLabVIEWYear) -and -not [string]::IsNullOrWhiteSpace($sourceLabVIEWVersionRaw)) {
+    if ($sourceLabVIEWVersionRaw -match '^(?<major>\d{2,4})(?:\.\d+)?$') {
+        $major = [int]$Matches['major']
+        $sourceLabVIEWYear = if ($major -ge 2000) { $major.ToString() } else { (2000 + $major).ToString() }
+    }
+}
+if ([string]::IsNullOrWhiteSpace($sourceLabVIEWYear)) {
+    throw "Failed to resolve LabVIEW source year from LabVIEWVersion/.lvversion."
+}
+
+$resolvedExecutionLabVIEWYear = if ([string]::IsNullOrWhiteSpace($ExecutionLabVIEWYear)) {
+    $sourceLabVIEWYear
+} else {
+    $ExecutionLabVIEWYear.Trim()
+}
+if ($resolvedExecutionLabVIEWYear -notmatch '^\d{4}$') {
+    throw ("ExecutionLabVIEWYear '{0}' is invalid. Expected a four-digit year such as 2026." -f $resolvedExecutionLabVIEWYear)
+}
+
+$yearCompatMappingApplied = [string]::Equals($sourceLabVIEWYear, '2020', [System.StringComparison]::OrdinalIgnoreCase) -and
+    [string]::Equals($resolvedExecutionLabVIEWYear, '2026', [System.StringComparison]::OrdinalIgnoreCase)
+Write-Output ("LabVIEW source contract: raw={0}; year={1}; minor={2}" -f $sourceLabVIEWVersionRaw, $sourceLabVIEWYear, $LabVIEWMinorRevision)
+Write-Output ("LabVIEW execution year: {0}" -f $resolvedExecutionLabVIEWYear)
+Write-Output ("LabVIEW execution-year compatibility mapping applied: {0}" -f $yearCompatMappingApplied)
+if ($yearCompatMappingApplied) {
+    Write-Output "LabVIEW execution-year compatibility mapping: source year 2020 -> execution year 2026"
 }
 
 function Get-VipmTargetVersionLabel {
@@ -404,7 +442,7 @@ $LogDirectory = if ([string]::IsNullOrWhiteSpace($artifactRoot)) {
 New-Item -ItemType Directory -Path $LogDirectory -Force | Out-Null
 
 # 3) Calculate the LabVIEW version string
-$lvNumericMajor    = $LabVIEWVersion - 2000
+$lvNumericMajor    = [int]$resolvedExecutionLabVIEWYear - 2000
 $lvNumericVersion  = "$($lvNumericMajor).$LabVIEWMinorRevision"
 if ($SupportedBitness -eq "64") {
     $VIP_LVVersion_A = "$lvNumericVersion (64-bit)"
@@ -496,7 +534,7 @@ if (-not $vipmCommand) {
 }
 
 $vipmArgs = @(
-    '--labview-version', $LabVIEWVersion.ToString(),
+    '--labview-version', $resolvedExecutionLabVIEWYear.ToString(),
     '--labview-bitness', $SupportedBitness,
     'build',
     $ResolvedVIPBPath
@@ -511,7 +549,7 @@ Write-Output ("Build metadata: version={0}.{1}.{2}.{3} commit={4}" -f $Major, $M
 # 6a) Keep VIPM target connection settings aligned with strict LabVIEWCLI contract.
 Set-VipmTargetSettingsFromContract `
     -RepoRoot $ResolvedRepoRoot `
-    -VersionYear $LabVIEWVersion.ToString() `
+    -VersionYear $resolvedExecutionLabVIEWYear.ToString() `
     -MinorRevision $LabVIEWMinorRevision `
     -Bitness $SupportedBitness `
     -ConnectionTimeoutSeconds $VipmTimeoutSeconds

@@ -702,14 +702,16 @@ public class RunnerCliCliTests
     public void Vip_build_dry_run_emits_invoke_vip_build_command()
     {
         var repoRoot = FindRepoRoot();
+        var repoLabview = GetRepoLabVIEWVersionInfo(repoRoot);
+        var expectedExecutionYear = ResolveExpectedExecutionYear(repoLabview.Year);
         var args = string.Join(' ', new[]
         {
             "vip build",
             $"--repo-root \"{repoRoot}\"",
             "--supported-bitness 64",
             "--vipb-path \"Tooling/deployment/NI Icon editor.vipb\"",
-            "--labview-version 26.1",
-            "--labview-minor-revision 1",
+            $"--labview-version {repoLabview.Raw}",
+            $"--labview-minor-revision {repoLabview.MinorRevision}",
             "--major 0",
             "--minor 0",
             "--patch 0",
@@ -726,12 +728,15 @@ public class RunnerCliCliTests
         Assert.True(string.IsNullOrWhiteSpace(stdout), $"stdout: {stdout}");
         Assert.Contains("vip build command:", stderr, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Invoke-VipBuild.ps1", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains($"-ExecutionLabVIEWYear {expectedExecutionYear}", stderr, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public void Vip_build_dry_run_accepts_display_information_json_path()
     {
         var repoRoot = FindRepoRoot();
+        var repoLabview = GetRepoLabVIEWVersionInfo(repoRoot);
+        var expectedExecutionYear = ResolveExpectedExecutionYear(repoLabview.Year);
         var tempDir = Directory.CreateTempSubdirectory("lvie-cli-vip-display");
         var displayInfoPath = Path.Combine(tempDir.FullName, "display-information.json");
         File.WriteAllText(displayInfoPath, "{}");
@@ -742,8 +747,8 @@ public class RunnerCliCliTests
             $"--repo-root \"{repoRoot}\"",
             "--supported-bitness 64",
             "--vipb-path \"Tooling/deployment/NI Icon editor.vipb\"",
-            "--labview-version 26.1",
-            "--labview-minor-revision 1",
+            $"--labview-version {repoLabview.Raw}",
+            $"--labview-minor-revision {repoLabview.MinorRevision}",
             "--major 0",
             "--minor 0",
             "--patch 0",
@@ -760,17 +765,20 @@ public class RunnerCliCliTests
         Assert.True(string.IsNullOrWhiteSpace(stdout), $"stdout: {stdout}");
         Assert.Contains("vip build command:", stderr, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("-DisplayInformationJsonPath", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains($"-ExecutionLabVIEWYear {expectedExecutionYear}", stderr, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public void Ppl_build_dry_run_emits_build_project_spec_command()
     {
         var repoRoot = FindRepoRoot();
+        var repoLabview = GetRepoLabVIEWVersionInfo(repoRoot);
+        var expectedExecutionYear = ResolveExpectedExecutionYear(repoLabview.Year);
         var args = string.Join(' ', new[]
         {
             "ppl build",
             $"--repo-root \"{repoRoot}\"",
-            "--labview-version 26.1",
+            $"--labview-version {repoLabview.Raw}",
             "--supported-bitness 64",
             "--major 0",
             "--minor 0",
@@ -785,6 +793,7 @@ public class RunnerCliCliTests
         Assert.True(string.IsNullOrWhiteSpace(stdout), $"stdout: {stdout}");
         Assert.Contains("ppl build command:", stderr, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("BuildProjectSpec.ps1", stderr, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains($"-ExecutionLabVIEWYear {expectedExecutionYear}", stderr, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -915,6 +924,14 @@ public class RunnerCliCliTests
 
         throw new DirectoryNotFoundException("Repo root not found (missing .lvversion).");
     }
+
+    private static LabVIEWVersionInfo GetRepoLabVIEWVersionInfo(string repoRoot) =>
+        LabVIEWVersionService.GetVersionInfo(versionInput: null, repoRoot: repoRoot);
+
+    private static string ResolveExpectedExecutionYear(string sourceYear) =>
+        string.Equals(sourceYear, LabVIEWExecutionYearCompatibilityService.SourceYearLv2020, StringComparison.Ordinal)
+            ? LabVIEWExecutionYearCompatibilityService.FallbackExecutionYear
+            : sourceYear;
 
     private static (int ExitCode, string StdOut, string StdErr) RunCli(
         string repoRoot,

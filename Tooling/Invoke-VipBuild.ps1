@@ -13,6 +13,7 @@ param(
     [string]$VIPBPath,
 
     [string]$LabVIEWVersion,
+    [string]$ExecutionLabVIEWYear,
 
     [ValidateRange(0, 99)]
     [int]$LabVIEWMinorRevision = 0,
@@ -184,6 +185,7 @@ if (-not (Test-Path -Path $buildVipScript)) {
     throw "build_vip.ps1 not found at $buildVipScript"
 }
 
+$sourceLabVIEWYear = $null
 $versionHelper = Join-Path $resolvedRepoRoot 'Tooling/support/LabVIEWVersion.ps1'
 if (Test-Path -Path $versionHelper) {
     . $versionHelper
@@ -192,8 +194,10 @@ if (Test-Path -Path $versionHelper) {
     if ($inputProvided) {
         $inputInfo = Get-LabVIEWVersionInfo -VersionInput $LabVIEWVersion -RepoRoot $resolvedRepoRoot
         $LabVIEWVersion = [string]$inputInfo.Raw
+        $sourceLabVIEWYear = [string]$inputInfo.Year
     } else {
         $LabVIEWVersion = [string]$repoInfo.Raw
+        $sourceLabVIEWYear = [string]$repoInfo.Year
         Write-Warning "LabVIEWVersion not provided; defaulting to .lvversion ($($repoInfo.Raw))."
     }
 
@@ -204,6 +208,28 @@ if (Test-Path -Path $versionHelper) {
     } else {
         $LabVIEWMinorRevision = [int]$repoInfo.MinorRevision
     }
+}
+
+if ([string]::IsNullOrWhiteSpace($sourceLabVIEWYear)) {
+    throw "Failed to resolve LabVIEW source year from LabVIEWVersion/.lvversion."
+}
+
+$resolvedExecutionLabVIEWYear = if ([string]::IsNullOrWhiteSpace($ExecutionLabVIEWYear)) {
+    $sourceLabVIEWYear
+} else {
+    $ExecutionLabVIEWYear.Trim()
+}
+if ($resolvedExecutionLabVIEWYear -notmatch '^\d{4}$') {
+    throw ("ExecutionLabVIEWYear '{0}' is invalid. Expected a four-digit year such as 2026." -f $resolvedExecutionLabVIEWYear)
+}
+
+$yearCompatMappingApplied = [string]::Equals($sourceLabVIEWYear, '2020', [System.StringComparison]::OrdinalIgnoreCase) -and
+    [string]::Equals($resolvedExecutionLabVIEWYear, '2026', [System.StringComparison]::OrdinalIgnoreCase)
+Write-Host ("VIP build LabVIEW source contract: raw={0}; year={1}; minor={2}" -f $LabVIEWVersion, $sourceLabVIEWYear, $LabVIEWMinorRevision)
+Write-Host ("VIP build LabVIEW execution year: {0}" -f $resolvedExecutionLabVIEWYear)
+Write-Host ("VIP build LabVIEW execution-year compatibility mapping applied: {0}" -f $yearCompatMappingApplied)
+if ($yearCompatMappingApplied) {
+    Write-Host "VIP build LabVIEW execution-year compatibility mapping: source year 2020 -> execution year 2026"
 }
 
 $timeoutSecondsValue = if ($PSBoundParameters.ContainsKey('VipmTimeoutSeconds')) {
@@ -261,6 +287,7 @@ $pwshArgs = @(
     '-RepoRoot', $resolvedRepoRoot,
     '-VIPBPath', $VIPBPath,
     '-LabVIEWVersion', $LabVIEWVersion.ToString(),
+    '-ExecutionLabVIEWYear', $resolvedExecutionLabVIEWYear,
     '-LabVIEWMinorRevision', $LabVIEWMinorRevision.ToString(),
     '-Major', $Major.ToString(),
     '-Minor', $Minor.ToString(),

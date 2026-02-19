@@ -56,10 +56,15 @@ public static class PplBuildService
         }
 
         var repoRoot = Path.GetFullPath(options.RepoRoot);
+        var executionYearResolution = LabVIEWExecutionYearCompatibilityService.Resolve(
+            sourceLabviewVersion: options.LabviewVersion,
+            repoRoot: repoRoot,
+            commandLabel: "ppl build");
         var args = new List<string>
         {
             "-RepoRoot", repoRoot,
-            "-LabVIEWVersion", options.LabviewVersion,
+            "-LabVIEWVersion", executionYearResolution.SourceVersion.Raw,
+            "-ExecutionLabVIEWYear", executionYearResolution.ExecutionYear,
             "-SupportedBitness", options.SupportedBitness,
             "-Major", options.Major,
             "-Minor", options.Minor,
