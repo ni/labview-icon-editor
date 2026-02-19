@@ -68,7 +68,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
     - Pre-release publication behavior is specified by [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md), including eligibility, assets, and failure policy.
     - Prerelease-driving changes should use merge commits (`--merge`), not squash/rebase.
     - Prerelease publication is automatic for eligible merged-PR merge commits pushed to `develop`.
-    - Auto relay is handled by [`.github/workflows/prerelease-auto-dispatch.yml`](../../../.github/workflows/prerelease-auto-dispatch.yml), which dispatches strict publish intent through `ci.yml`.
+    - Automatic publication is executed directly by `.github/workflows/ci.yml` for eligible `develop` pushes.
     - Deterministic manual backfill remains available through `Tooling/Invoke-DeterministicPrereleasePublish.ps1`.
     - `release-priority` manual publish intent (`force_gcli_lunit=true`) additionally requires a successful `full` profile run on `develop` within the previous 24 hours.
     - **You can also** pass in **org/repository** info (e.g., `-CompanyName "MyOrg"` or `-AuthorName "myorg/myrepo"`) to brand the resulting package with your unique identifiers.
@@ -205,10 +205,10 @@ With your runner online:
    - Execute the workflow and review `unit-tests` logs (`pr-fast`: 64-bit only, `full`: 64/32).
 
 3. **Build VI Package**
-     - Produces `.vip` using the version computed in the **version** job for `full`/`pr-fast` profiles.
+    - Produces `.vip` using the version computed in the **version** job for `full`/`pr-fast` profiles.
      - `release-priority` runs intentionally skip `build-vip`; publish artifacts come from Linux/Windows container packed-library jobs.
     - Prerelease publication policy is defined in [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md).
-    - Eligible merged-PR merge-commit pushes to `develop` publish automatically via `prerelease-auto-dispatch.yml`.
+    - Eligible merged-PR merge-commit pushes to `develop` publish automatically in the same `ci.yml` push run.
     - `workflow_dispatch` publishing remains for deterministic backfill and is best invoked with `Tooling/Invoke-DeterministicPrereleasePublish.ps1`.
     - `release-priority` manual publish intent requires a successful `full` profile run on `develop` in the prior 24 hours.
     - **Pass** your **org/repo** info (e.g. `-CompanyName "AcmeCorp"` / `-AuthorName "AcmeCorp/IconEditor"`) to embed in the final package.

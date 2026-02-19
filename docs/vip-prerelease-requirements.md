@@ -129,7 +129,7 @@ VR-GOV-004: All changed or new VR IDs shall map to at least one acceptance scena
 ## 10. Public Interface Summary (Normative)
 
 - `ci.yml` dispatch inputs `publish_prerelease` (boolean, default `false`), `expected_sha` (string), `strict_sha` (boolean), and `force_gcli_lunit` (boolean).
-- `.github/workflows/prerelease-auto-dispatch.yml` relays successful eligible `develop` push runs into strict SHA-pinned `ci.yml` publish-intent dispatches.
+- Eligible `develop` push runs publish directly in `ci.yml`; deterministic strict SHA-pinned publish-intent dispatch remains available via `workflow_dispatch`.
 - `prerelease-context` outputs include `ci_profile` values `release-priority`, `pr-fast`, and `full`.
 - `.github/actions/compute-version/action.yml` input `bump_type_override` (optional).
 - `build-vip` job outputs for VIP and release-notes artifact identifiers.

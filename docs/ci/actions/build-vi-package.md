@@ -183,7 +183,7 @@ components remain unchanged and only the build number increases.
 ### 4.3 Pre-Release vs. Final Release
 
 - Develop prereleases are governed by [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md).
-- Prerelease publication is automatic on eligible merged-PR merge commits to `develop` via `prerelease-auto-dispatch.yml`; `workflow_dispatch` remains available for deterministic backfill (`publish_prerelease=true`, `expected_sha=<sha>`, `strict_sha=true`) and uses `needs.version.outputs.VERSION` as tag/title.
+- Prerelease publication is automatic on eligible merged-PR merge commits to `develop` in the same `ci.yml` push run; `workflow_dispatch` remains available for deterministic backfill (`publish_prerelease=true`, `expected_sha=<sha>`, `strict_sha=true`) and uses `needs.version.outputs.VERSION` as tag/title.
 - Optional legacy behavior: `compute-version` still supports alpha/beta/rc suffixes for legacy alpha/beta/rc channel branches branch names.
 - Merging to `main` remains the stable/final release path.
 

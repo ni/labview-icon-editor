@@ -92,8 +92,8 @@ This document is the canonical source for release/publication policy.
 - Normative contract: [VI Package Pre-Release Requirements](vip-prerelease-requirements.md).
 - Merge strategy contract: pull requests intended to drive prerelease publication to `develop` must use merge commits (`--merge`), not squash or rebase.
 - Publish contract: prerelease publication is automatic for eligible merged-PR merge commits on `develop`.
-- Auto relay workflow: [`.github/workflows/prerelease-auto-dispatch.yml`](../.github/workflows/prerelease-auto-dispatch.yml) listens for successful `CI Pipeline` `push` runs on `develop`, re-validates merge-commit + merged-PR eligibility, then dispatches strict SHA-pinned publish intent through `ci.yml` with `release-priority`.
-- Manual fallback: `workflow_dispatch` remains available for deterministic backfill when auto relay is not sufficient.
+- Auto path owner: publication is decided and executed inside `.github/workflows/ci.yml` (`prerelease-context` -> `publish-gate` -> `publish-prerelease`) in the same eligible `develop` push run.
+- Manual fallback: `workflow_dispatch` remains available for deterministic backfill when the automatic path is insufficient.
 - Execution profiles (`prerelease-context` output `ci_profile`):
   - `release-priority`: `workflow_dispatch` with `force_gcli_lunit=true`; skips most self-hosted heavy jobs (`Verify IE Paths`, smoke, unit-tests, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) and targets <= 25 minutes.
   - `pr-fast`: `pull_request`; keeps validation coverage but uses 64-bit-only matrices for smoke/unit-tests, targeting <= 35 minutes.
@@ -108,7 +108,7 @@ This document is the canonical source for release/publication policy.
 
 #### Deterministic Manual Backfill Procedure (Fallback)
 
-Use this procedure when you need to replay publication for a specific merged `develop` SHA, or when auto relay was intentionally bypassed.
+Use this procedure when you need to replay publication for a specific merged `develop` SHA.
 
 1. Run the deterministic publish helper:
    ```powershell
@@ -185,10 +185,9 @@ Below are the **key GitHub Actions** provided in this repository:
    - Rollout status: non-blocking diagnostic lane (not wired into publish required-job gates yet).
    - Artifacts: LabVIEWCLI logs, agent logs, build status, and `lv_icon_x64.lvlibp` when produced.
 
-5. **Prerelease Auto Dispatch**
-   - [`.github/workflows/prerelease-auto-dispatch.yml`](../.github/workflows/prerelease-auto-dispatch.yml) reacts to successful `CI Pipeline` `push` runs on `develop`.
-   - It re-checks merged-PR merge-commit eligibility for `github.event.workflow_run.head_sha`.
-   - When eligible, it dispatches `Tooling/Invoke-DeterministicPrereleasePublish.ps1 -ReleasePriority` for unattended strict-SHA publication.
+5. **Deterministic Prerelease Backfill Helper**
+   - `Tooling/Invoke-DeterministicPrereleasePublish.ps1` dispatches strict SHA-pinned publish intent through `ci.yml`.
+   - Use it for manual backfill/replay when publishing a specific merged `develop` SHA.
 
 #### Jobs in CI workflow
 
@@ -306,7 +305,7 @@ Although GitHub Actions primarily run on GitHub-hosted or self-hosted agents, yo
 4. **Merge the PR into your target integration branch with a merge commit**:
      - The **Build VI Package** workflow builds and uploads the `.vip` artifact.
      - Use merge commits only (`gh pr merge <pr-number> --merge --delete-branch`); do not use squash/rebase for prerelease-driving changes.
-     - Merge-commit merges to `develop` publish automatically when eligible via `prerelease-auto-dispatch.yml`; use `Tooling/Invoke-DeterministicPrereleasePublish.ps1` only for deterministic fallback/backfill (`workflow_dispatch` with strict SHA inputs).
+     - Merge-commit merges to `develop` publish automatically when eligible in the same `ci.yml` push run; use `Tooling/Invoke-DeterministicPrereleasePublish.ps1` only for deterministic fallback/backfill (`workflow_dispatch` with strict SHA inputs).
      - **Inside** that `.vip`, the **“Company Name”** and **“Author Name (Person or Company)”** fields are filled automatically using `github.repository_owner` and `github.event.repository.name`. Modify the “Generate display information JSON” step in `.github/workflows/ci.yml` to override them.
 
 5. **Disable Development Mode**:  

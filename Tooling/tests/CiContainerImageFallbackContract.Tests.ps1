@@ -3,7 +3,7 @@
 
 $ErrorActionPreference = 'Stop'
 
-Describe 'CI container image fallback contract' {
+Describe 'CI container image fallback ownership contract' {
     BeforeAll {
         $script:repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
         $script:workflowPath = Join-Path $script:repoRoot '.github/workflows/ci.yml'
@@ -16,21 +16,29 @@ Describe 'CI container image fallback contract' {
             $script:workflowContent,
             '(?ms)^  build-ppl-windows-container:\r?\n(?<body>.*?)(?=^  [a-zA-Z0-9_-]+:\r?\n|\z)'
         ).Groups['body'].Value
+        $script:parityServicePath = Join-Path $script:repoRoot 'Tooling/runner-cli/RunnerCli/ParityService.cs'
+        $script:parityServiceContent = Get-Content -Path $script:parityServicePath -Raw
     }
 
-    It 'linux packed-library lane falls back to a deterministic container release when requested release is unavailable' {
-        $script:linuxContainerSection | Should -Match 'LV_REQUESTED_RELEASE:\s*\$\{\{\s*format\(''\{0\}q1'',\s*needs\.version-gate\.outputs\.year\)\s*\}\}'
-        $script:linuxContainerSection | Should -Match 'fallback_release="\$\{LVIE_CONTAINER_PARITY_FALLBACK_RELEASE:-2026q1\}"'
-        $script:linuxContainerSection | Should -Match "Requested Linux container release '\$\{requested_release\}' is unavailable\. Falling back to '\$\{fallback_release\}'\."
-        $script:linuxContainerSection | Should -Match 'Unable to pull LabVIEW Linux image for requested release'
+    It 'linux container lane delegates image pull/fallback to runner-cli parity run' {
+        $script:linuxContainerSection | Should -Not -Match '(?m)^\s*-\s*name:\s*Pull LabVIEW Linux image\s*$'
+        $script:linuxContainerSection | Should -Not -Match 'LV_REQUESTED_RELEASE'
+        $script:linuxContainerSection | Should -Not -Match 'fallback_release='
+        $script:linuxContainerSection | Should -Not -Match 'try_pull_release'
+        $script:linuxContainerSection | Should -Match 'parity run --mode linux-container --context \$contextPath --build-spec'
     }
 
-    It 'windows packed-library lane falls back to a deterministic container release when requested release is unavailable' {
-        $script:windowsContainerSection | Should -Match '\$requestedRelease = ''\$\{\{\s*needs\.version-gate\.outputs\.year\s*\}\}q1'''
-        $script:windowsContainerSection | Should -Match '\$fallbackRelease = \[Environment\]::GetEnvironmentVariable\(''LVIE_CONTAINER_PARITY_FALLBACK_RELEASE''\)'
-        $script:windowsContainerSection | Should -Match '\$fallbackRelease = ''2026q1'''
-        $script:windowsContainerSection | Should -Match 'function Try-PullWindowsRelease'
-        $script:windowsContainerSection | Should -Match "Requested Windows container release '\{0\}' is unavailable\. Falling back to '\{1\}'\."
-        $script:windowsContainerSection | Should -Match 'Unable to pull LabVIEW Windows image for requested release'
+    It 'windows container lane delegates image pull/fallback to runner-cli parity run' {
+        $script:windowsContainerSection | Should -Not -Match '(?m)^\s*-\s*name:\s*Pull LabVIEW Windows image\s*$'
+        $script:windowsContainerSection | Should -Not -Match 'Try-PullWindowsRelease'
+        $script:windowsContainerSection | Should -Not -Match 'LVIE_CONTAINER_PARITY_FALLBACK_RELEASE'
+        $script:windowsContainerSection | Should -Match 'parity run --mode windows-container --context \$contextPath --build-spec'
+    }
+
+    It 'runner-cli parity service owns deterministic container fallback policy' {
+        $script:parityServiceContent | Should -Match 'DefaultContainerFallbackRelease = "2026q1"'
+        $script:parityServiceContent | Should -Match 'Environment\.GetEnvironmentVariable\("LVIE_CONTAINER_PARITY_FALLBACK_RELEASE"\)'
+        $script:parityServiceContent | Should -Match "WARNING: Requested container release '\{requestedRelease\}' is unavailable\. Falling back to '\{candidate\}'\."
+        $script:parityServiceContent | Should -Match "Unable to pull LabVIEW container image for '\{requestedRelease\}'\. Tried:"
     }
 }

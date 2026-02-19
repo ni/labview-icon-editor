@@ -2224,41 +2224,6 @@ jobs:
         if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
         uses: actions/checkout@v4
 
-      - name: Pull LabVIEW Linux image
-        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
-        shell: bash
-        env:
-          LV_REQUESTED_RELEASE: ${{ format('{0}q1', needs.version-gate.outputs.year) }}
-        run: |
-          set -euo pipefail
-          requested_release="${LV_REQUESTED_RELEASE}"
-          fallback_release="${LVIE_CONTAINER_PARITY_FALLBACK_RELEASE:-2026q1}"
-
-          try_pull_release() {
-            local release="$1"
-            local image="nationalinstruments/labview:${release}-linux"
-            echo "Using image: ${image}"
-            if docker pull "${image}"; then
-              echo "LABVIEW_LINUX_IMAGE=${image}" >> "$GITHUB_ENV"
-              return 0
-            fi
-            return 1
-          }
-
-          if try_pull_release "${requested_release}"; then
-            exit 0
-          fi
-
-          if [[ "${requested_release}" != "${fallback_release}" ]]; then
-            echo "Requested Linux container release '${requested_release}' is unavailable. Falling back to '${fallback_release}'." >&2
-            if try_pull_release "${fallback_release}"; then
-              exit 0
-            fi
-          fi
-
-          echo "Unable to pull LabVIEW Linux image for requested release '${requested_release}' or fallback '${fallback_release}'." >&2
-          exit 1
-
       - name: Build Linux packed library via runner-cli parity run
         if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
         shell: pwsh
@@ -2355,48 +2320,6 @@ jobs:
       - name: Checkout code
         if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
         uses: actions/checkout@v4
-
-      - name: Pull LabVIEW Windows image
-        if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}
-        shell: pwsh
-        run: |
-          $requestedRelease = '${{ needs.version-gate.outputs.year }}q1'
-          $fallbackRelease = [Environment]::GetEnvironmentVariable('LVIE_CONTAINER_PARITY_FALLBACK_RELEASE')
-          if ([string]::IsNullOrWhiteSpace($fallbackRelease)) {
-            $fallbackRelease = '2026q1'
-          } else {
-            $fallbackRelease = $fallbackRelease.Trim()
-          }
-
-          function Try-PullWindowsRelease {
-            param(
-              [Parameter(Mandatory = $true)]
-              [string]$Release
-            )
-
-            $image = "nationalinstruments/labview:{0}-windows" -f $Release
-            Write-Host "Using image: $image"
-            docker pull $image
-            if ($LASTEXITCODE -eq 0) {
-              "LABVIEW_WINDOWS_IMAGE=$image" | Out-File -FilePath $Env:GITHUB_ENV -Append
-              return $true
-            }
-
-            return $false
-          }
-
-          if (Try-PullWindowsRelease -Release $requestedRelease) {
-            return
-          }
-
-          if (-not [string]::Equals($requestedRelease, $fallbackRelease, [System.StringComparison]::OrdinalIgnoreCase)) {
-            Write-Warning ("Requested Windows container release '{0}' is unavailable. Falling back to '{1}'." -f $requestedRelease, $fallbackRelease)
-            if (Try-PullWindowsRelease -Release $fallbackRelease) {
-              return
-            }
-          }
-
-          throw ("Unable to pull LabVIEW Windows image for requested release '{0}' or fallback '{1}'." -f $requestedRelease, $fallbackRelease)
 
       - name: Validate path contract for Windows container shell
         if: ${{ needs.prerelease-context.outputs.should_publish == 'true' }}

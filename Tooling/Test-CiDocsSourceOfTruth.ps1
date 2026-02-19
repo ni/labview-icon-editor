@@ -351,6 +351,11 @@ $staleRules = @(
         Id      = 'stale-fixed-26.1-baseline-claim'
         Pattern = '(?<![0-9])26\.1(?![0-9])'
         Message = "Fixed 26.1 baseline claim detected. Core docs must describe .lvversion-driven version sourcing."
+    },
+    [pscustomobject]@{
+        Id      = 'stale-relay-workflow-claim'
+        Pattern = '(?i)prerelease-auto-dispatch\.yml|Auto relay workflow|relay dispatch handled'
+        Message = "Stale relay workflow claim detected. ci.yml is the sole automatic prerelease publication path."
     }
 )
 

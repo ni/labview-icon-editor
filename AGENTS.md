@@ -355,8 +355,8 @@ Notes:
 
 ## Automatic prerelease publish + deterministic backfill
 Auto path:
-- `.github/workflows/prerelease-auto-dispatch.yml` listens to successful `CI Pipeline` `push` runs on `develop`.
-- It re-checks merged-PR merge-commit eligibility and dispatches strict publish intent through `Tooling\Invoke-DeterministicPrereleasePublish.ps1 -ReleasePriority`.
+- `CI Pipeline` (`.github/workflows/ci.yml`) automatically publishes on eligible merged-PR merge commits pushed to `develop`.
+- Eligibility and publication decisions are computed by the `prerelease-context`, `publish-gate`, and `publish-prerelease` jobs in the same run.
 
 Fallback helper (manual):
 Use this when replaying publication for a specific merged `develop` SHA:
