@@ -1,7 +1,7 @@
 #Requires -Version 7.0
 [CmdletBinding()]
 param(
-    [string]$Branch = '456-2026-migration',
+    [string]$Branch = 'develop',
     [string]$Repo = '',
     [ValidateRange(1, 2147483647)]
     [int]$RequiredCheckAppId = 15368,
@@ -34,12 +34,12 @@ if ([string]::IsNullOrWhiteSpace($repoRoot)) {
 }
 
 $resolverScript = Join-Path $repoRoot 'Tooling\Resolve-GitHubRepo.ps1'
-if (-not (Test-Path -LiteralPath $resolverScript -PathType Leaf)) {
-    throw "Missing repository resolver script: $resolverScript"
-}
-
 $resolvedRepo = if ([string]::IsNullOrWhiteSpace($Repo)) {
-    (& pwsh -NoProfile -File $resolverScript -RepoRoot $repoRoot | Select-Object -First 1).Trim()
+    if (Test-Path -LiteralPath $resolverScript -PathType Leaf) {
+        (& pwsh -NoProfile -File $resolverScript -RepoRoot $repoRoot | Select-Object -First 1).Trim()
+    } else {
+        (& gh repo view --json nameWithOwner --jq .nameWithOwner | Select-Object -First 1).Trim()
+    }
 } else {
     $Repo.Trim()
 }
