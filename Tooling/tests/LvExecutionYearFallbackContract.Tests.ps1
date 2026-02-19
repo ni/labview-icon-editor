@@ -45,5 +45,7 @@ Describe 'LabVIEW execution-year fallback contract' {
         $script:buildVipScriptContent | Should -Match '''--labview-version'',\s*\$resolvedExecutionLabVIEWYear\.ToString\(\)'
         $script:buildVipScriptContent | Should -Match '-VersionYear \$resolvedExecutionLabVIEWYear\.ToString\(\)'
         $script:buildVipScriptContent | Should -Match '\$lvNumericMajor\s*=\s*\[int\]\$resolvedExecutionLabVIEWYear - 2000'
+        $script:buildVipScriptContent | Should -Match 'VIPM target fallback applied'
+        $script:buildVipScriptContent | Should -Match 'major-compatible target'
     }
 }

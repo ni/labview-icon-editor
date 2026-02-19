@@ -298,6 +298,7 @@ function Set-VipmTargetSettingsFromContract {
 
     $numericVersion = "{0}.{1}" -f ([int]$VersionYear - 2000), $MinorRevision
     $targetVersionLabel = Get-VipmTargetVersionLabel -LabVIEWNumericVersion $numericVersion -Bitness $Bitness
+    $requestedTargetVersionLabel = $targetVersionLabel
     $settingsPath = Get-VipmSettingsPath
     if (-not (Test-Path -Path $settingsPath -PathType Leaf)) {
         throw "VIPM settings file not found at $settingsPath"
@@ -328,7 +329,44 @@ function Set-VipmTargetSettingsFromContract {
         }
     }
     if ($null -eq $targetIndex) {
-        throw ("VIPM settings file '{0}' does not define target version '{1}' under [Targets]." -f $settingsPath, $targetVersionLabel)
+        $executionNumericMajor = [int]$VersionYear - 2000
+        $majorCompatibleTargets = New-Object 'System.Collections.Generic.List[object]'
+        foreach ($entry in $sectionInfo.Versions.GetEnumerator() | Sort-Object Key) {
+            $candidateLabel = [string]$entry.Value
+            if ([string]::IsNullOrWhiteSpace($candidateLabel)) {
+                continue
+            }
+
+            $candidateBitness = if ($candidateLabel -match '\(64-bit\)\s*$') { '64' } else { '32' }
+            if ($candidateBitness -ne $Bitness) {
+                continue
+            }
+
+            $candidateNumericLabel = if ($candidateBitness -eq '64') {
+                ($candidateLabel -replace '\s+\(64-bit\)\s*$', '').Trim()
+            } else {
+                $candidateLabel.Trim()
+            }
+
+            if ($candidateNumericLabel -match '^(?<major>\d+)\.(?<minor>\d+)$' -and [int]$Matches['major'] -eq $executionNumericMajor) {
+                $majorCompatibleTargets.Add([pscustomobject]@{
+                    Index = [int]$entry.Key
+                    Label = $candidateLabel
+                    Minor = [int]$Matches['minor']
+                }) | Out-Null
+            }
+        }
+
+        if ($majorCompatibleTargets.Count -gt 0) {
+            $selectedTarget = $majorCompatibleTargets |
+                Sort-Object -Property @{ Expression = 'Minor'; Descending = $true }, @{ Expression = 'Index'; Descending = $false } |
+                Select-Object -First 1
+            $targetIndex = [int]$selectedTarget.Index
+            $targetVersionLabel = [string]$selectedTarget.Label
+            Write-Warning ("VIPM target fallback applied: requested '{0}' not found; using major-compatible target '{1}' from '{2}'." -f $requestedTargetVersionLabel, $targetVersionLabel, $settingsPath)
+        } else {
+            throw ("VIPM settings file '{0}' does not define target version '{1}' under [Targets]." -f $settingsPath, $targetVersionLabel)
+        }
     }
 
     $labviewExecutablePath = Resolve-LabVIEWExecutablePath -VersionYear $VersionYear -Bitness $Bitness
