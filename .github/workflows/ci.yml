@@ -1634,7 +1634,7 @@ jobs:
 
   build-ppl-x86:
     name: Build 32-bit Packed Library
-    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' && needs.version-gate.outputs.year != '2020' }}
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
     needs: [run-metadata, prerelease-context, version-gate, build-ppl-x64, version]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
@@ -1747,7 +1747,7 @@ jobs:
 
   build-ppl-x64:
     name: Build 64-bit Packed Library
-    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' && needs.version-gate.outputs.year != '2020' }}
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
     needs: [run-metadata, prerelease-context, version-gate, unit-tests, version]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
     env:
@@ -1860,7 +1860,7 @@ jobs:
 
   build-vip:
     name: Build VI Package
-    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' && needs.version-gate.outputs.year != '2020' }}
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
     # Chain after 32-bit PPL build (which depends on 64-bit PPL build).
     needs: [run-metadata, prerelease-context, version-gate, build-ppl-x86, version]
     runs-on: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
@@ -2581,18 +2581,11 @@ jobs:
             'changes',
             'apply-deps-64',
             'apply-deps-32',
-            'unit-tests'
+            'unit-tests',
+            'build-ppl-x64',
+            'build-ppl-x86',
+            'build-vip'
           )
-          $isLv2020 = '${{ needs.version-gate.outputs.year }}' -eq '2020'
-          if ($isLv2020) {
-            Write-Host 'LV2020 detected: self-hosted packed-library/VIP jobs are optional in pipeline contract.'
-          } else {
-            $requiredFullValidation += @(
-              'build-ppl-x64',
-              'build-ppl-x86',
-              'build-vip'
-            )
-          }
           $requiredByProfile = @{
             'full' = @($requiredCommon + $requiredFullValidation)
             'pr-fast' = @($requiredCommon + $requiredFullValidation)
@@ -3047,18 +3040,11 @@ jobs:
             'changes',
             'apply-deps-64',
             'apply-deps-32',
-            'unit-tests'
+            'unit-tests',
+            'build-ppl-x64',
+            'build-ppl-x86',
+            'build-vip'
           )
-          $isLv2020 = '${{ needs.version-gate.outputs.year }}' -eq '2020'
-          if ($isLv2020) {
-            Write-Host 'LV2020 detected: self-hosted packed-library/VIP jobs are optional in pipeline contract.'
-          } else {
-            $requiredFullValidation += @(
-              'build-ppl-x64',
-              'build-ppl-x86',
-              'build-vip'
-            )
-          }
           $requiredByProfile = @{
             'full' = @($requiredCommon + $requiredFullValidation)
             'pr-fast' = @($requiredCommon + $requiredFullValidation)
