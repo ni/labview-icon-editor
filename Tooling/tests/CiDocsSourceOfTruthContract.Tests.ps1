@@ -87,8 +87,8 @@ Describe 'CI docs source-of-truth contract' {
             '    inputs:'
         )
 
-        foreach ($input in $dispatchInputs) {
-            $ciLines += "      ${input}:"
+        foreach ($dispatchInputName in $dispatchInputs) {
+            $ciLines += "      ${dispatchInputName}:"
             $ciLines += '        required: false'
         }
 

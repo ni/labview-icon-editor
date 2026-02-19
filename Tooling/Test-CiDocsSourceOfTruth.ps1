@@ -84,7 +84,7 @@ function Resolve-SummaryPath {
     return (Join-Path $ResolvedRepoRoot 'TestResults\ci-docs-source-of-truth-summary.md')
 }
 
-function Parse-WorkflowSurface {
+function Get-WorkflowSurface {
     param([string[]]$Lines)
 
     $pushBranches = New-Object System.Collections.Generic.List[string]
@@ -235,7 +235,7 @@ if (-not (Test-Path -LiteralPath $ciWorkflowPath -PathType Leaf)) {
 } else {
     $ciLines = Get-Content -LiteralPath $ciWorkflowPath -ErrorAction Stop
     $ciRaw = Get-Content -LiteralPath $ciWorkflowPath -Raw -ErrorAction Stop
-    $surface = Parse-WorkflowSurface -Lines $ciLines
+    $surface = Get-WorkflowSurface -Lines $ciLines
 
     $pushExpected = @('main', 'develop', 'release/*')
     $prExpected = @('main', 'develop', 'release/*', 'feature/*', 'hotfix/*')
@@ -300,9 +300,9 @@ if (-not (Test-Path -LiteralPath $ciWorkflowPath -PathType Leaf)) {
         Add-Violation -List $violations -Type 'job-surface' -Path $ciWorkflowRelative -Message ("jobs missing: {0}" -f ($missingJobs -join ', '))
     }
 
-    foreach ($profile in @('release-priority', 'pr-fast', 'full')) {
-        if ($ciRaw -notmatch [regex]::Escape($profile)) {
-            Add-Violation -List $violations -Type 'ci-profile-surface' -Path $ciWorkflowRelative -Message ("ci_profile token '{0}' not found." -f $profile)
+    foreach ($profileName in @('release-priority', 'pr-fast', 'full')) {
+        if ($ciRaw -notmatch [regex]::Escape($profileName)) {
+            Add-Violation -List $violations -Type 'ci-profile-surface' -Path $ciWorkflowRelative -Message ("ci_profile token '{0}' not found." -f $profileName)
         }
     }
 
