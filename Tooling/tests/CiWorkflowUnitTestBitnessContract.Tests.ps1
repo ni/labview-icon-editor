@@ -95,10 +95,13 @@ Describe 'CI workflow unit-test bitness contract' {
         $script:workflowContent | Should -Match '(?ms)^  apply-deps-64:\s*$'
         $script:workflowContent | Should -Match '(?ms)^  apply-deps-32:\s*$'
         $script:unitTestsSection | Should -Match 'needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-64,\s*apply-deps-32\s*\]'
+        $script:workflowContent | Should -Match '(?ms)^  publish-gate:\s*.*?\n\s*-\s*docs-lint\s*$'
         $script:workflowContent | Should -Match '(?ms)^  publish-gate:\s*.*?\n\s*-\s*apply-deps-64\s*$'
         $script:workflowContent | Should -Match '(?ms)^  publish-gate:\s*.*?\n\s*-\s*apply-deps-32\s*$'
+        $script:workflowContent | Should -Match '(?ms)^  pipeline-contract:\s*.*?\n\s*-\s*docs-lint\s*$'
         $script:workflowContent | Should -Match '(?ms)^  pipeline-contract:\s*.*?\n\s*-\s*apply-deps-64\s*$'
         $script:workflowContent | Should -Match '(?ms)^  pipeline-contract:\s*.*?\n\s*-\s*apply-deps-32\s*$'
+        $script:workflowContent | Should -Match "'docs-lint'"
         $script:workflowContent | Should -Match "'apply-deps-64'"
         $script:workflowContent | Should -Match "'apply-deps-32'"
     }
@@ -106,6 +109,7 @@ Describe 'CI workflow unit-test bitness contract' {
     It 'emits a stable canonical required check context job' {
         $script:workflowContent | Should -Match '(?ms)^  required-context:\s*$'
         $script:workflowContent | Should -Match '(?ms)^  required-context:\s*.*?\n\s*name:\s*CI Required / Lint\+Contract'
+        $script:workflowContent | Should -Match '(?ms)^  required-context:\s*.*?\n\s*-\s*docs-lint\s*$'
         $script:workflowContent | Should -Match '(?ms)^  required-context:\s*.*?\n\s*-\s*powershell-lint\s*$'
         $script:workflowContent | Should -Match '(?ms)^  required-context:\s*.*?\n\s*-\s*pipeline-contract\s*$'
     }

@@ -24,13 +24,13 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
   - Debug locally the same steps used in CI, ensuring consistent results.
 
 - **Prerequisites**:
-  1. **LabVIEW 2026 (26.1), both 32-bit and 64-bit**.
+  1. **LabVIEW version declared in `.lvversion` (currently `20.0`)**, with both 32-bit and 64-bit installs as needed.
   2. **PowerShell 7+** and **Git**.  
-  3. **Apply** `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2026 (26.1), 32-bit & 64-bit**—matching the split `apply-deps-64` / `apply-deps-32` lanes in [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml).
+  3. **Apply** `.github\actions\apply-vipc\runner_dependencies.vipc` to the `.lvversion` target for 32-bit and 64-bit lanes—matching `apply-deps-64` / `apply-deps-32` in [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml).
 
 - **Source format note**:
   - Project sources are saved in **LabVIEW 2020 (20.0)** file format.
-  - Build/CI execution targets **LabVIEW 2026 (26.1)** from `.lvversion`.
+  - Build/CI execution targets the version in `.lvversion` (currently **20.0**).
 
 ---
 
@@ -44,7 +44,7 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 2. **Clone** the [Icon Editor](https://github.com/ni/labview-icon-editor.git) to your development location.
 
 3. **Apply** dependencies:  
-   `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2026 (26.1), 32-bit & 64-bit**.
+   `.github\actions\apply-vipc\runner_dependencies.vipc` to the `.lvversion` target for both 32-bit and 64-bit.
 
 4. **Open** PowerShell (Admin):
    Navigate to `.github\actions\set-development-mode`

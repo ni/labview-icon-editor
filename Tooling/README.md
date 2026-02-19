@@ -8,6 +8,10 @@ Common entrypoints:
   Precedence: `-Repo` argument, `GH_REPO` env var, then `origin` remote URL.
   Example: `pwsh -NoProfile -File .\\Tooling\\Resolve-GitHubRepo.ps1`
   Optional shell hygiene: `pwsh -NoProfile -File .\\Tooling\\Resolve-GitHubRepo.ps1 -SetGhDefault`
+- `Invoke-MarkdownLint.ps1`
+  Runs repository docs lint with pinned `markdownlint-cli2`.
+  Example: `pwsh -NoProfile -File .\\Tooling\\Invoke-MarkdownLint.ps1`
+  Requires Node.js/npm (`npx`) on PATH.
 - `Run-ViValidate.ps1`
   Runs the fast pylavi `vi_validate` gate only. Uses `.lvversion` as the canonical LabVIEW version.
   Example: `pwsh -NoProfile -File .\\Tooling\\Run-ViValidate.ps1`
@@ -21,11 +25,12 @@ Common entrypoints:
   Local CI parity run (Verify IE Paths, VIPC, unit tests, PPLs, VIP build).
   Example: `pwsh -NoProfile -File .\\Tooling\\Run-CI.ps1`
   Dev-mode request flags are policy-disabled and now fail fast.
+  Docs lint controls: `-SkipMarkdownLint`, `-MarkdownLintOnly`, `-MarkdownLintConfigPath`.
   VI gates: `-ViValidateOnly`, `-SkipViValidate`, `-ViAnalyzerOnly`, `-SkipViAnalyzer`.
 - `Run-CI.sh`
   Linux parity launcher that runs `runner-cli parity context/run` in `linux-container` mode by default.
   Example: `bash ./Tooling/Run-CI.sh`
-  Optional env: `LVIE_PARITY_MODE`, `LVIE_RUN_PSSCRIPTANALYZER`, `LVIE_RUN_PYLAVI`, `LVIE_RUN_VI_ANALYZER`, `LABVIEW_LINUX_IMAGE`, `LVIE_PARITY_CONTEXT_PATH`.
+  Optional env: `LVIE_PARITY_MODE`, `LVIE_RUN_MARKDOWNLINT`, `LVIE_MARKDOWNLINT_CONFIG_PATH`, `LVIE_RUN_PSSCRIPTANALYZER`, `LVIE_RUN_PYLAVI`, `LVIE_RUN_VI_ANALYZER`, `LABVIEW_LINUX_IMAGE`, `LVIE_PARITY_CONTEXT_PATH`.
   Build-spec execution is mandatory for parity; `LVIE_PARITY_BUILD_SPEC=false` is unsupported and fails fast.
   `LVIE_RUN_VI_ANALYZER=auto|true|false` defaults to `auto` (run only when `pwsh` and `docker` are available).
   Linux build-spec sync evidence: `builds/status/source-sync-manifest-parity-linux.json` (override with `LVIE_SOURCE_SYNC_MANIFEST_PATH`).

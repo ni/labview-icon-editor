@@ -31,7 +31,7 @@ Automating your Icon Editor builds and tests:
 - **Allows you to brand** each VI Package build with your organization or repository name for unique identification
 
 **Prerequisites**:
-- LabVIEW 2026 (26.1) 32-bit and 64-bit (minimum supported baseline)
+- LabVIEW version declared in `.lvversion` (currently `20.0`) installed for 32-bit and 64-bit lanes as needed by your workflow profile
 - PowerShell 7+
 - Git for Windows
 
@@ -182,9 +182,9 @@ The [`ci.yml`](../.github/workflows/ci.yml) pipeline breaks the build into sever
 - **changes** – checks out the repository and detects `.vipc` file changes for diagnostics/reporting in downstream jobs.
 - **apply-deps-64 / apply-deps-32** – run VIPC audit (`Assert-VipcApplied`) per bitness lane on bitness-addressable runner labels (`LVIE_RUNNER_LABEL_64` / `LVIE_RUNNER_LABEL_32`, with fallback to `LVIE_RUNNER_LABEL`), then optionally run informational VIPC apply diagnostics when manually dispatched with `vipc_apply_info=true`.
 - **version** – computes the semantic version and build number using commit count and PR labels.
-- **unit-tests** – runs LabVIEW unit tests on Windows for the `.lvversion` target (canonical baseline `26.1`) after dependency application. Canonical execution is `runner-cli lunit run` (g-cli backend); parse/summary validation is parse-only via `runner-cli lunit validate` (`RunUnitTests.ps1 -SkipGcli`). Runs both 64-bit and 32-bit in `full` and `pr-fast`, and is skipped in `release-priority`.
+- **unit-tests** – runs LabVIEW unit tests on Windows for the `.lvversion` target (currently `20.0` in this repository) after dependency application. Canonical execution is `runner-cli lunit run` (g-cli backend); parse/summary validation is parse-only via `runner-cli lunit validate` (`RunUnitTests.ps1 -SkipGcli`). Runs both 64-bit and 32-bit in `full` and `pr-fast`, and is skipped in `release-priority`.
   - Each matrix job appends a short `GITHUB_STEP_SUMMARY` line stating the fixed executor (`g-cli`).
-- **build-ppl** – uses a matrix to build 32-bit and 64-bit packed libraries through `runner-cli ppl build`, then uses the `rename-file` action to append the bitness to each library’s filename.
+- **build-ppl-x86 / build-ppl-x64** – separate self-hosted jobs that build 32-bit and 64-bit packed libraries through `runner-cli ppl build`, then rename each library artifact with explicit bitness.
 - **build-ppl-linux-container** – builds the Linux container packed library (`lv_icon.lvlibp`) via `runner-cli parity context/run` for publish-eligible runs and emits a versioned artifact for prerelease attachment.
 - **build-ppl-windows-container** – builds the Windows container packed library (`lv_icon.lvlibp`) via `runner-cli parity context/run` for publish-eligible runs and emits a versioned artifact for prerelease attachment.
 - **codex-skill-layer-asset** – downloads the pinned Codex skill-layer installer asset (`lvie-codex-skill-layer-installer.exe`), validates SHA256, performs silent install into a temp directory, verifies required files + `0BSD` manifest license, and publishes artifact `codex-skill-layer` for prerelease attachment.
@@ -200,9 +200,7 @@ Dedicated headless parity note: [`headless-self-hosted-parity.yml`](../.github/w
 Manual VIPC diagnostics example (non-blocking apply after audit):
 `gh workflow run ci.yml --ref <branch> -f vipc_apply_info=true`
 
-Windows self-hosted build jobs (`build-ppl-*` and `build-vip`) run a `close-labview` step after their build actions finish but before any steps that rename files or upload artifacts, so it is not the final step.
-
-The `build-ppl` job uses a matrix to produce both bitnesses rather than distinct jobs.
+Windows self-hosted build jobs (`build-ppl-x86`, `build-ppl-x64`, and `build-vip`) run a `close-labview` step after their build actions finish but before any steps that rename files or upload artifacts, so it is not the final step.
 
 #### Event matrix (VIP packaging)
 
@@ -222,7 +220,7 @@ Branch protection recommendation for solo mode: require the canonical synthetic 
 ### 3.3 Setting Up a Self-Hosted Runner
 
 1. **Install Prerequisites**:
-   - LabVIEW 2026 (26.1) 32-bit and 64-bit (minimum supported baseline)
+   - LabVIEW version declared in `.lvversion` (currently `20.0`) for 32-bit and 64-bit lanes as required
    - PowerShell 7+
    - Git for Windows
 
@@ -305,13 +303,13 @@ Although GitHub Actions primarily run on GitHub-hosted or self-hosted agents, yo
 ## Portability
 
 **What is portable**
-- Any Windows self-hosted runner with LabVIEW 2026 (26.1), PowerShell 7+, and Git installed.
+- Any Windows self-hosted runner with `.lvversion`-compatible LabVIEW installs, PowerShell 7+, and Git installed.
 - Forks or orgs that keep the canonical runner label `self-hosted-windows-lv`.
 - Environments where the GitHub Actions API is restricted (runner contract fallback is local).
 
 **What is not portable**
 - Non-Windows runners (LabVIEW + g-cli requires Windows).
-- Hosts without LabVIEW 2026 installed for both 32-bit and 64-bit.
+- Hosts without required `.lvversion`-compatible LabVIEW installs for the lanes they run.
 
 **Operational caveats**
 - Service restart requires admin rights on the host machine.

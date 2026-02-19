@@ -724,6 +724,23 @@ jobs:
           path: builds/status/vip-prerelease-requirements-lint.json
           if-no-files-found: error
 
+  docs-lint:
+    name: Documentation Lint
+    needs: run-metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run markdownlint
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Invoke-MarkdownLint.ps1" -WriteSummary
+      - name: Validate CI docs source-of-truth contract
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-CiDocsSourceOfTruth.ps1" -WriteSummary
+
   pylavi-validate:
     name: Validate LabVIEW Files (pylavi, report-only)
     needs: [run-metadata, version-gate, runner-cli-build-win]
@@ -2508,6 +2525,7 @@ jobs:
       - version-gate
       - powershell-lint
       - vip-prerelease-requirements-lint
+      - docs-lint
       - pylavi-validate
       - changes
       - apply-deps-64
@@ -2551,6 +2569,7 @@ jobs:
             'version-gate',
             'powershell-lint',
             'vip-prerelease-requirements-lint',
+            'docs-lint',
             'pylavi-validate',
             'build-ppl-linux-container',
             'build-ppl-windows-container',
@@ -2976,6 +2995,7 @@ jobs:
       - version-gate
       - powershell-lint
       - vip-prerelease-requirements-lint
+      - docs-lint
       - pylavi-validate
       - changes
       - apply-deps-64
@@ -3009,6 +3029,7 @@ jobs:
             'version-gate',
             'powershell-lint',
             'vip-prerelease-requirements-lint',
+            'docs-lint',
             'pylavi-validate',
             'build-ppl-linux-container',
             'build-ppl-windows-container',
@@ -3130,6 +3151,7 @@ jobs:
     name: CI Required / Lint+Contract
     if: always()
     needs:
+      - docs-lint
       - powershell-lint
       - pipeline-contract
     runs-on: ubuntu-latest
@@ -3137,13 +3159,18 @@ jobs:
       - name: Evaluate canonical required check context
         shell: pwsh
         run: |
+          $docsLintResult = '${{ needs.docs-lint.result }}'
           $lintResult = '${{ needs.powershell-lint.result }}'
           $contractResult = '${{ needs.pipeline-contract.result }}'
 
+          Write-Host ("Documentation Lint result: {0}" -f $docsLintResult)
           Write-Host ("PowerShell Lint result: {0}" -f $lintResult)
           Write-Host ("Pipeline Contract result: {0}" -f $contractResult)
 
           $failing = @()
+          if ($docsLintResult -ne 'success') {
+            $failing += "docs-lint:$docsLintResult"
+          }
           if ($lintResult -ne 'success') {
             $failing += "powershell-lint:$lintResult"
           }

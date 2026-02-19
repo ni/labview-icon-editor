@@ -1,5 +1,10 @@
 # **Updated Guide: Multi-Channel Release Workflow**
 
+> [!WARNING]
+> Archived/Historical document. Not normative; `ci.yml` is source of truth.
+> Use [`docs/ci-workflows.md`](../../ci-workflows.md) and
+> [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) for current behavior.
+
 This revised guide focuses on the **release workflow**, specifically how we handle **multiple pre-release channels** (Alpha, Beta, RC) in addition to final versions.
 
 

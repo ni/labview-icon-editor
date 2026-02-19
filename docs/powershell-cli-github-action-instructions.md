@@ -1,5 +1,10 @@
 # CI Workflow (Multi-Channel Release Support)
 
+> [!WARNING]
+> Archived/Historical document. Not normative; `ci.yml` is source of truth.
+> Use [`docs/ci-workflows.md`](ci-workflows.md) and
+> [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) for current behavior.
+
 This guide explains how to automate build, test, and distribution steps for the **LabVIEW Icon Editor** using GitHub Actions—**with multiple pre-release channels** (Alpha, Beta, RC), optional hotfix branches, and a toggleable **Development Mode** feature. It is designed to align with **Gitflow** practices, allowing you to enforce a hands-off approach where merges flow naturally from `develop` → `release-alpha` → `release-beta` → `release-rc` → `main`, while also ensuring forks can reuse the same build scripts.
 
 > [!NOTE]

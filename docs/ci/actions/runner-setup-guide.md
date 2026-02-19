@@ -28,7 +28,7 @@ This document details how to automate **building**, **testing**, and **packaging
 Additionally, **you can pass metadata fields** (like **organization** or **repository name**) to the **build script**. These fields are embedded into the **VI Package** display information, effectively **branding** the Icon Editor package with a unique identifier. This is especially useful when multiple forks or organizations produce their own versions of the Icon Editor—ensuring each `.vip` is clearly labeled with the correct “author” or “company.”
 
 > **Prerequisites**:
-> - **LabVIEW 2026 (26.1), 32-bit and 64-bit** (minimum supported baseline).
+> - **LabVIEW version from `.lvversion` (currently `20.0`), 32-bit and 64-bit as required** (minimum supported baseline).
 > - **LabVIEWCLI** available on PATH on self-hosted runners for Windows LabVIEW automation paths (build/test/teardown). The blocking VI Analyzer lane runs in [`labview-parity.yml`](../../../.github/workflows/labview-parity.yml) on `ubuntu-latest` via Dockerized LabVIEW Linux.
 > - The relevant **VIPC** file is now at `.github/actions/apply-vipc/runner_dependencies.vipc`.
 > - [PowerShell 7+](https://github.com/PowerShell/PowerShell/releases/latest)
@@ -40,30 +40,30 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 **For experienced users**, a brief overview:
 
 1. **Install Required Software**
-   - Ensure **LabVIEW 2026 (26.1) 32-bit and 64-bit** are installed.
+   - Ensure **LabVIEW version from `.lvversion` (currently `20.0`) for 32-bit and 64-bit as required** are installed.
    - [PowerShell 7+](https://github.com/PowerShell/PowerShell/releases/latest)
    - [Git for Windows](https://github.com/git-for-windows/git/releases/latest)
 
-2. **Apply the VIPC**
-  - Apply `.github/actions/apply-vipc/runner_dependencies.vipc` with VIPM in **LabVIEW 2026 (26.1) 32-bit**; repeat for **LabVIEW 2026 (26.1) 64-bit**.
+1. **Apply the VIPC**
+  - Apply `.github/actions/apply-vipc/runner_dependencies.vipc` with VIPM in **the `.lvversion` target (currently `20.0`) 32-bit**; repeat for **the `.lvversion` target (currently `20.0`) 64-bit**.
    - CI now runs `Assert-VipcApplied` on every run (audit-first hard-stop). Apply VIPC manually on new runners to satisfy the audit before running full CI.
    - Optional diagnostics-only apply can be triggered via `workflow_dispatch` input `vipc_apply_info=true`.
 
-3. **Configure a Self-Hosted Runner**  
+1. **Configure a Self-Hosted Runner**  
    - Go to **Settings → Actions → Runners** in your (forked) repo.  
    - Follow GitHub’s steps to add a Windows runner.
 
-4. **Development Mode Toggle**  
+1. **Development Mode Toggle**  
    - (Optional) Toggle LabVIEW dev mode (`Set_Development_Mode.ps1` or `RevertDevelopmentMode.ps1`) via the **Development Mode Toggle** workflow.
 
-5. **Run Tests**
+1. **Run Tests**
     - Run tests using **CI Pipeline**.
     - `pull_request` runs use the `pr-fast` profile (64-bit smoke/missing/unit).
     - `workflow_dispatch` with `force_gcli_lunit=true` uses `release-priority` and skips heavy self-hosted validation jobs.
     - VI Analyzer ownership is in `labview-parity.yml`; `ci.yml` no longer hosts a duplicate VI Analyzer lane.
     - **CI Pipeline** (`.github/workflows/ci.yml`) runs on `push` (`main`, `develop`, `release/*`), `pull_request`, and `workflow_dispatch`; feature/hotfix branch pushes are intentionally excluded so PR synchronization is the single CI path for those branches.
 
-6. **Build VI Package**
+1. **Build VI Package**
      - Invoke the **Build VI Package** job within the CI Pipeline workflow to produce a `.vip` using the version computed by the workflow's separate **version** job (see that job's output for the generated version).
     - Pre-release publication behavior is specified by [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md), including eligibility, assets, and failure policy.
     - Prerelease-driving changes should use merge commits (`--merge`), not squash/rebase.
@@ -72,7 +72,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
     - `release-priority` manual publish intent (`force_gcli_lunit=true`) additionally requires a successful `full` profile run on `develop` within the previous 24 hours.
     - **You can also** pass in **org/repository** info (e.g., `-CompanyName "MyOrg"` or `-AuthorName "myorg/myrepo"`) to brand the resulting package with your unique identifiers.
 
-7. **Disable Dev Mode** (Optional)  
+1. **Disable Dev Mode** (Optional)  
    - Revert environment once building/testing is done.
 
 
@@ -129,7 +129,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 
 **Steps**:
 
-1. **Install LabVIEW 2026 (26.1), 32-bit and 64-bit**  
+1. **Install LabVIEW version from `.lvversion` (currently `20.0`), 32-bit and 64-bit as required**  
    - Confirm both are present on your Windows machine.  
    - Apply `.github/actions/apply-vipc/runner_dependencies.vipc` to each if needed.
    - **Version contract**: CI treats `.lvversion` as the single source of truth. The runner sanity step validates that the installed LabVIEW version matches `.lvversion` and fails fast if it does not.
@@ -221,7 +221,7 @@ With your runner online:
    - Download from **Artifacts**.
    - Confirm publish status via `prerelease-publish-status` artifact when prerelease publication is in scope for the run.
 
-#### Develop Pre-Release Direction
+#### Develop Pre-Release Direction (Example Workflow)
 
 - Policy contract: [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md).
 - Summary source: [CI Workflows Overview](../../ci-workflows.md).
@@ -237,7 +237,7 @@ CI jobs run from short-path worktrees to avoid Windows path limits. Each job cre
 The workflow exports:
 - `REPO_ROOT` → worktree path (authoritative for scripts)
 - `PROJECT_PATH` → `$REPO_ROOT\lv_icon_editor.lvproj`
-- `LABVIEW_VERSION_YEAR` / `LABVIEW_MINOR_REVISION` → derived from `.lvversion` (e.g., `26.1` → `2026` and minor `1`)
+- `LABVIEW_VERSION_YEAR` / `LABVIEW_MINOR_REVISION` → derived from `.lvversion` (for example, `20.0` → `2020` and minor `0`)
 - `LVIE_WORKTREE_ROOT_SOURCE` → `explicit`, `runner_temp`, or `contract`
 
 CI treats `.lvversion` in `REPO_ROOT` as the canonical LabVIEW version for the run.
@@ -295,4 +295,5 @@ Notes:
 - **Troubleshoot**: If manual environment edits are needed, consult `ManualSetup.md` or the original documentation for advanced configuration steps.  
 
 **Happy Building!** By integrating these workflows, you’ll maintain a **robust, automated CI/CD** pipeline for the LabVIEW Icon Editor—complete with **semantic versioning**, **build artifact uploads**, and **metadata branding** (company/repo).
+
 

@@ -58,7 +58,7 @@ Below are 17 possible issues you might encounter, along with suggested steps to 
 - The environment variable or path to LabVIEW isn’t set correctly.
 
 **Solution**:
-1. Ensure you’ve actually installed LabVIEW on the machine (e.g., LabVIEW 2026 (26.1)).
+1. Ensure you’ve installed a `.lvversion`-compatible LabVIEW version on the machine (this repository currently pins `.lvversion` to `20.0`).
 2. Double-check your PATH or environment variables.  
 3. See `runner-setup-guide.md` for details on configuring the runner to locate LabVIEW.
 
@@ -185,7 +185,7 @@ gh workflow run ci.yml --repo $repo `
 - You expected a `-beta.<N>` suffix, but got `-alpha.<N>` or no suffix at all.
 
 **Possible Causes**:
-- Your repository intentionally uses legacy channel branch names and your branch name does not match the expected pattern (for example, `release-beta/*`).  
+- Your repository intentionally uses legacy channel branch names and your branch name does not match the expected pattern.  
 - The script that checks legacy alpha/beta/rc suffixes is not updated for your custom naming.
 
 **Solution**:
@@ -296,7 +296,7 @@ gh workflow run ci.yml --repo $repo `
 - The job logs show missing paths or an archived `missing_IE_paths.txt` file.
 
 **Possible Causes**:
-- One or more LabVIEW Icon API files are missing in the LabVIEW 2026 (26.1) install.
+- One or more LabVIEW Icon API files are missing in the required `.lvversion`-compatible LabVIEW install.
 - The runner is in development mode (missing `LabVIEW Icon API` or `lv_icon.lvlibp`).
 
 **Solution**:
@@ -310,14 +310,14 @@ gh workflow run ci.yml --repo $repo `
 
 **Symptoms**:
 - One or more jobs show `skipped`, but the workflow still proceeds to publish checks.
-- Common examples: `dev-mode-gate`, `unit-tests`, `build-ppl-x64`, `build-ppl-x86`, `build-vip`.
+- Common examples: `unit-tests`, `build-ppl-x64`, `build-ppl-x86`, `build-vip`.
 
 **Possible Causes**:
 - The run used a different `ci_profile`:
   - `release-priority` (`workflow_dispatch` + `force_gcli_lunit=true`) intentionally skips heavy self-hosted validation/build jobs.
   - `pr-fast` (`pull_request`) keeps the jobs but uses 64-bit-only matrices for smoke/unit tests.
   - `full` runs the full matrix and full self-hosted flow.
-- You are looking at `CI Pipeline` (`ci.yml`), which is a PR-only non-publishing companion workflow.
+- You are looking at `CI Pipeline` (`ci.yml`), which is publish-capable only on eligible paths defined by `prerelease-context` and `publish-gate`.
 
 **Solution**:
 1. Check `prerelease-context` outputs for `ci_profile`.
@@ -421,7 +421,7 @@ The Dev Mode Toggle scripts rely on a self-hosted runner context. If you’re tr
 ### Q9: Can I Use a Different LabVIEW Version?
 
 **Answer**:  
-CI usage is standardized on **LabVIEW 2026 (26.1), 32-bit and 64-bit** as the minimum supported baseline. If you want to use a different version locally, keep `.lvversion` and workflow/script overrides aligned.
+CI usage is standardized on the LabVIEW version declared in `.lvversion` (currently `20.0` in this repository). If you need a different version locally, keep `.lvversion` and workflow/script overrides aligned.
 
 ---
 

@@ -34,6 +34,9 @@ Describe 'Run-CI parity entrypoint contract' {
         $content | Should -Match '--build-spec true'
         $content | Should -Not -Match 'run_args\+=\(false\)'
         $content | Should -Match 'LVIE_PARITY_BUILD_SPEC disable is unsupported'
+        $content | Should -Match 'LVIE_RUN_MARKDOWNLINT'
+        $content | Should -Match 'LVIE_MARKDOWNLINT_CONFIG_PATH'
+        $content | Should -Match 'Invoke-MarkdownLint\.ps1'
         $content | Should -Match 'LVIE_RUN_PSSCRIPTANALYZER'
         $content | Should -Match 'Invoke-PSScriptAnalyzer\.ps1'
         $content | Should -Match 'LVIE_RUN_PYLAVI'
@@ -43,6 +46,17 @@ Describe 'Run-CI parity entrypoint contract' {
         $content | Should -Match 'LabVIEWCLI was not found on PATH; VI Analyzer gate cannot run'
         $content | Should -Not -Match 'docker (was )?not found on PATH; Linux VI Analyzer gate cannot run'
         $content | Should -Match 'Run-ViAnalyzer\.ps1'
+    }
+
+    It 'Run-CI.ps1 exposes markdownlint control switches' {
+        $content = Get-Content -Path $script:runCiPs1 -Raw
+        $content | Should -Match '\.PARAMETER SkipMarkdownLint'
+        $content | Should -Match '\.PARAMETER MarkdownLintConfigPath'
+        $content | Should -Match '\.PARAMETER MarkdownLintOnly'
+        $content | Should -Match '\[switch\]\$SkipMarkdownLint'
+        $content | Should -Match '\[string\]\$MarkdownLintConfigPath'
+        $content | Should -Match '\[switch\]\$MarkdownLintOnly'
+        $content | Should -Match 'Invoke-MarkdownLint\.ps1'
     }
 
     It 'local entrypoint guidance no longer depends on C:\\dev defaults' {
