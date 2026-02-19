@@ -3,24 +3,23 @@
     Gracefully closes a running LabVIEW instance.
 
 .DESCRIPTION
-    Utilizes g-cli's QuitLabVIEW command to shut down the specified LabVIEW
-    version and bitness, ensuring the application exits cleanly.
+    Uses LabVIEWCLI CloseLabVIEW on the strict port-contract path to shut down
+    the specified LabVIEW version and bitness, ensuring deterministic close
+    semantics for LabVIEWCLI-managed sessions.
 
 .PARAMETER LabVIEWVersion
     LabVIEW version year (e.g., 2021) or numeric version (e.g., 21.0).
-    Alias: MinimumSupportedLVVersion.
 
 .PARAMETER SupportedBitness
     Bitness of the LabVIEW instance ("32" or "64").
 
 .EXAMPLE
-    .\Close_LabVIEW.ps1 -LabVIEWVersion "2021" -SupportedBitness "64"
+    .\Close_LabVIEW.ps1 -SupportedBitness "64"
 #>
 param(
-    [Alias('MinimumSupportedLVVersion')]
     [AllowNull()]
     [AllowEmptyString()]
-    [string]$LabVIEWVersion = '2021',
+    [string]$LabVIEWVersion = '',
     [string]$SupportedBitness,
     [ValidateRange(5, 600)]
     [int]$TimeoutSeconds = 120,
@@ -39,7 +38,7 @@ if (Test-Path -Path $versionHelper) {
     $labviewYear = $versionInfo.Year
 }
 if ([string]::IsNullOrWhiteSpace($labviewYear)) {
-    $labviewYear = '2021'
+    throw "LabVIEW version could not be resolved. Check .lvversion."
 }
 
 function Ensure-CsvHeader {
@@ -113,38 +112,70 @@ function Get-TargetLabVIEWProcesses {
     }
 }
 
-function Invoke-SafeQuitLabVIEW {
+function Resolve-LabVIEWCliPortForClose {
     param(
+        [string]$RepoRoot,
         [string]$Version,
+        [ValidateSet('32', '64')]
+        [string]$Bitness,
+        [string]$LabVIEWExecutablePath
+    )
+
+    $portContractHelper = Join-Path $RepoRoot 'Tooling\support\LabVIEWCliPortContract.ps1'
+    if (-not (Test-Path -Path $portContractHelper -PathType Leaf)) {
+        throw "LabVIEWCliPortContract helper not found at $portContractHelper"
+    }
+    . $portContractHelper
+
+    return Resolve-LabVIEWCliPortFromContract `
+        -RepoRoot $RepoRoot `
+        -LabVIEWVersion $Version `
+        -Bitness $Bitness `
+        -LabVIEWExecutablePath $LabVIEWExecutablePath
+}
+
+function Invoke-SafeCloseLabVIEWViaLabVIEWCLI {
+    param(
+        [string]$RepoRoot,
+        [string]$Version,
+        [ValidateSet('32', '64')]
         [string]$Bitness
     )
 
-    if (-not (Get-Command g-cli -ErrorAction SilentlyContinue)) {
-        throw "g-cli.exe not found in PATH."
+    $labviewCliCommand = Get-Command LabVIEWCLI -ErrorAction SilentlyContinue
+    if (-not $labviewCliCommand) {
+        throw "LabVIEWCLI is not available on PATH."
     }
 
-    $args = @(
-        "--lv-ver", $Version,
-        "--arch",   $Bitness,
-        "QuitLabVIEW"
+    $installRoot = Get-LabVIEWInstallRoot -Version $Version -Bitness $Bitness
+    $labviewExecutablePath = Join-Path $installRoot 'LabVIEW.exe'
+    if (-not (Test-Path -Path $labviewExecutablePath -PathType Leaf)) {
+        throw "LabVIEW executable not found at $labviewExecutablePath"
+    }
+
+    $portResolution = Resolve-LabVIEWCliPortForClose `
+        -RepoRoot $RepoRoot `
+        -Version $Version `
+        -Bitness $Bitness `
+        -LabVIEWExecutablePath $labviewExecutablePath
+
+    Write-Host ("Using LabVIEWCLI close port {0} (source: {1})" -f $portResolution.PortNumber, $portResolution.Source)
+    $cliArgs = @(
+        '-LogToConsole', 'TRUE',
+        '-OperationName', 'CloseLabVIEW',
+        '-LabVIEWPath', $labviewExecutablePath,
+        '-PortNumber', $portResolution.PortNumber.ToString()
     )
 
-    Write-Host ("Executing: g-cli {0}" -f ($args -join ' '))
-    $output   = & g-cli @args 2>&1
-    $exitCode = $LASTEXITCODE
+    Write-Host ("Executing: {0} {1}" -f $labviewCliCommand.Source, ($cliArgs -join ' '))
+    $output = & $labviewCliCommand.Source @cliArgs 2>&1
+    $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
 
     # echo all output for log visibility
     $output | ForEach-Object { Write-Host $_ }
 
     if ($exitCode -eq 0) { return }
-
-    $joined = ($output -join ' ')
-    if ($joined -match 'not (currently )?running' -or $joined -match 'does not appear to be running') {
-        Write-Host "LabVIEW $Version ($Bitness-bit) was not running; nothing to close."
-        return
-    }
-
-    throw "g-cli QuitLabVIEW failed with exit code $exitCode."
+    throw "LabVIEWCLI CloseLabVIEW failed with exit code $exitCode."
 }
 
 function Wait-ForLabVIEWExit {
@@ -203,7 +234,7 @@ $otherInstances = Get-CimInstance Win32_Process -Filter "Name='LabVIEW.exe'" -Er
 $targetBefore = Get-TargetLabVIEWProcesses -Version $labviewYear -Bitness $SupportedBitness
 if (-not $targetBefore -or $targetBefore.Count -eq 0) {
     if ($otherInstances) {
-        Write-Host "No matching LabVIEW $labviewYear ($SupportedBitness-bit) instance found. Other LabVIEW instances are running; skipping QuitLabVIEW."
+        Write-Host "No matching LabVIEW $labviewYear ($SupportedBitness-bit) instance found. Other LabVIEW instances are running; skipping CloseLabVIEW."
     }
     else {
         Write-Host "LabVIEW $labviewYear ($SupportedBitness-bit) closed or not running."
@@ -214,10 +245,10 @@ if (-not $targetBefore -or $targetBefore.Count -eq 0) {
 
 $closeOutcome = 'quit'
 try {
-    Invoke-SafeQuitLabVIEW -Version $labviewYear -Bitness $SupportedBitness
+    Invoke-SafeCloseLabVIEWViaLabVIEWCLI -RepoRoot $repoRoot -Version $labviewYear -Bitness $SupportedBitness
 }
 catch {
-    Write-Warning ("QuitLabVIEW failed: {0}" -f $_.Exception.Message)
+    Write-Warning ("CloseLabVIEW failed: {0}" -f $_.Exception.Message)
     $closeOutcome = 'error'
 }
 
@@ -245,3 +276,4 @@ if (-not (Wait-ForLabVIEWExit -Version $labviewYear -Bitness $SupportedBitness -
 
 Write-Host "LabVIEW $labviewYear ($SupportedBitness-bit) closed or not running."
 Write-CloseMetric -Outcome $closeOutcome -HadProcess $true
+

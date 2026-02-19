@@ -9,40 +9,78 @@ runs:
         fetch-depth: 0
         clean: false
 
-    - name: Pre-flight LabVIEW availability check
+    - name: Resolve LabVIEW version
+      shell: pwsh
+      run: |
+        $repoRoot = "${{ inputs.repo_root }}"
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          $repoRoot = $env:GITHUB_WORKSPACE
+        }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "repo_root is required."
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
+
+        $lvVersionInput = "${{ inputs.labview_version }}"
+        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+        if (-not (Test-Path -Path $assertScript)) {
+          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+        }
+        $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $lvVersionInput -Context 'build-vip'
+        if ([string]::IsNullOrWhiteSpace($lvVersionInput)) {
+          Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
+        }
+        $minorInput = "${{ inputs.labview_minor_revision }}"
+        if (-not [string]::IsNullOrWhiteSpace($minorInput)) {
+          if ([int]$minorInput -ne [int]$lvInfo.MinorRevision) {
+            throw "labview_minor_revision '$minorInput' does not match .lvversion minor '$($lvInfo.MinorRevision)'."
+          }
+        }
+        $lvMinor = if ([string]::IsNullOrWhiteSpace($minorInput)) { $lvInfo.MinorRevision } else { [int]$minorInput }
+
+        "LVIE_ACTION_REPO_ROOT=$repoRoot" | Out-File -FilePath $Env:GITHUB_ENV -Append
+        "LVIE_ACTION_LABVIEW_VERSION=$($lvInfo.Year)" | Out-File -FilePath $Env:GITHUB_ENV -Append
+        "LVIE_ACTION_LABVIEW_MINOR=$lvMinor" | Out-File -FilePath $Env:GITHUB_ENV -Append
+
+    - name: Pre-flight VIPM CLI availability check
       shell: pwsh
       run: |
         $ErrorActionPreference = 'Stop'
-        $lvVersion = "${{ inputs.labview_version }}"
+        $lvVersion = $env:LVIE_ACTION_LABVIEW_VERSION
+        $repoRoot = $env:LVIE_ACTION_REPO_ROOT
         if ([string]::IsNullOrWhiteSpace($lvVersion)) {
-          throw "labview_version is required."
+          throw "Resolved LabVIEW version not found; check .lvversion."
         }
-        $logDir = Join-Path -Path "${{ inputs.repo_root }}" -ChildPath "builds/logs"
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "Resolved repo root not found."
+        }
+        $logDir = Join-Path -Path $repoRoot -ChildPath "builds/logs"
         New-Item -ItemType Directory -Path $logDir -Force | Out-Null
-        $logFile = Join-Path -Path $logDir -ChildPath "gcli-preflight.log"
+        $logFile = Join-Path -Path $logDir -ChildPath "vipm-preflight.log"
 
-        $gcliArgs = @(
-          "--lv-ver", $lvVersion,
-          "--arch", "${{ inputs.supported_bitness }}",
-          "--connect-timeout", "60000",
-          "--kill",
-          "--kill-timeout", "5000",
-          "--verbose",
-          "QuitLabVIEW"
+        $vipmCommand = Get-Command vipm -ErrorAction SilentlyContinue
+        if (-not $vipmCommand) {
+          throw "VIPM CLI (vipm) not found on PATH."
+        }
+
+        $vipmArgs = @(
+          '--labview-version', $lvVersion,
+          '--labview-bitness', "${{ inputs.supported_bitness }}",
+          '--version'
         )
 
-        Write-Host "Pre-flight command: g-cli $($gcliArgs -join ' ')"
-        & g-cli @gcliArgs 2>&1 | Tee-Object -FilePath $logFile | Out-Null
+        Write-Host "Pre-flight command: $($vipmCommand.Source) $($vipmArgs -join ' ')"
+        & $vipmCommand.Source @vipmArgs 2>&1 | Tee-Object -FilePath $logFile | Out-Null
 
         if ($LASTEXITCODE -ne 0) {
           if (Test-Path $logFile) {
-            Write-Host "---- g-cli preflight log ($logFile) ----"
+            Write-Host "---- VIPM preflight log ($logFile) ----"
             Get-Content -Path $logFile | ForEach-Object { Write-Host $_ }
-            Write-Host "---- end g-cli preflight log ----"
+            Write-Host "---- end VIPM preflight log ----"
           } else {
             Write-Host "Pre-flight log file not found at $logFile."
           }
-          Write-Error "Pre-flight g-cli check failed. Inspect $logFile for details."
+          Write-Error "Pre-flight VIPM CLI check failed. Inspect $logFile for details."
           exit $LASTEXITCODE
         }
 
@@ -100,18 +138,23 @@ runs:
         DISPLAY_INFORMATION_JSON: |
           ${{ inputs.display_information_json }}
       run: |
-        $lvVersion = "${{ inputs.labview_version }}"
+        $lvVersion = $env:LVIE_ACTION_LABVIEW_VERSION
+        $repoRoot = $env:LVIE_ACTION_REPO_ROOT
+        $lvMinor = $env:LVIE_ACTION_LABVIEW_MINOR
         if ([string]::IsNullOrWhiteSpace($lvVersion)) {
-          throw "labview_version is required."
+          throw "Resolved LabVIEW version not found; check .lvversion."
+        }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "Resolved repo root not found."
         }
         $displayInformationJson = $Env:DISPLAY_INFORMATION_JSON
 
         & "${{ github.action_path }}/build_vip.ps1" `
           -SupportedBitness ${{ inputs.supported_bitness }} `
-          -RepoRoot "${{ inputs.repo_root }}" `
+          -RepoRoot $repoRoot `
           -VIPBPath "${{ inputs.vipb_path }}" `
-          -MinimumSupportedLVVersion $lvVersion `
-          -LabVIEWMinorRevision ${{ inputs.labview_minor_revision }} `
+          -LabVIEWVersion $lvVersion `
+          -LabVIEWMinorRevision $lvMinor `
           -Major ${{ inputs.major }} `
           -Minor ${{ inputs.minor }} `
           -Patch ${{ inputs.patch }} `
@@ -120,7 +163,7 @@ runs:
           -ReleaseNotesFile "${{ inputs.release_notes_file }}" `
           -DisplayInformationJSON $displayInformationJson
 
-    - name: Dump g-cli build logs on failure
+    - name: Dump VIPM build logs on failure
       if: failure()
       shell: pwsh
       run: |
@@ -131,16 +174,16 @@ runs:
           exit 0
         }
 
-        $logs = Get-ChildItem -Path $logDir -Filter "gcli-build-attempt-*.log" -File | Sort-Object Name
+        $logs = Get-ChildItem -Path $logDir -Filter "vipm-build*.log" -File | Sort-Object Name
         if (-not $logs) {
-          Write-Host "No g-cli build attempt logs found under $logDir."
+          Write-Host "No VIPM build logs found under $logDir."
           exit 0
         }
 
         foreach ($log in $logs) {
-          Write-Host ("---- g-cli build log ({0}) ----" -f $log.FullName)
+          Write-Host ("---- VIPM build log ({0}) ----" -f $log.FullName)
           Get-Content -Path $log.FullName | ForEach-Object { Write-Host $_ }
-          Write-Host ("---- end g-cli build log ({0}) ----" -f $log.FullName)
+          Write-Host ("---- end VIPM build log ({0}) ----" -f $log.FullName)
         }
     
     - name: Prepare release notes artifact
@@ -211,11 +254,11 @@ runs:
         path: ${{ steps.locate-vip.outputs.vip_path }}
         if-no-files-found: ignore
 
-    - name: Upload g-cli logs (if present)
+    - name: Upload VIPM logs (if present)
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: gcli-logs
+        name: vipm-logs
         path: ${{ inputs.repo_root }}/builds/logs
         if-no-files-found: ignore
 
@@ -235,7 +278,7 @@ runs:
 inputs:
   labview_version:
     description: 'LabVIEW version to target (year or numeric).'
-    required: true
+    required: false
   supported_bitness:
     description: '32 or 64'
     required: true
@@ -248,7 +291,7 @@ inputs:
   labview_minor_revision:
     description: 'LabVIEW minor revision (e.g., 0 for 21.0)'
     required: false
-    default: '0'
+    default: ''
   major:
     description: 'Major version component'
     required: true
@@ -274,5 +317,6 @@ inputs:
     description: 'If true, fail when multiple .vip files exist after the build step'
     required: false
     default: 'true'
+
 
 

@@ -129,7 +129,20 @@ function Resolve-RepoRoot {
         return (Resolve-Path -Path $PathOverride).Path
     }
 
-    return (Resolve-Path -Path (Join-Path $PSScriptRoot '..\..')).Path
+    $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $PSCommandPath }
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        try {
+            $gitRoot = git -C $scriptRoot rev-parse --show-toplevel 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRoot)) {
+                return (Resolve-Path -Path $gitRoot.Trim()).Path
+            }
+        } catch {
+            Write-Verbose ("git rev-parse failed: {0}" -f $_.Exception.Message)
+        }
+    }
+
+    return (Resolve-Path -Path (Join-Path $scriptRoot '..\..')).Path
 }
 
 function Resolve-LabVIEWVersion {
@@ -148,7 +161,7 @@ function Resolve-LabVIEWVersion {
         }
     }
     if ([string]::IsNullOrWhiteSpace($resolvedVersion)) {
-        $resolvedVersion = '2021'
+        $resolvedVersion = '2026'
     }
     return $resolvedVersion
 }
@@ -235,6 +248,210 @@ function Get-LabVIEWInstallRoot {
     return $null
 }
 
+function Resolve-LabVIEWCliPort {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$LabVIEWVersion,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('32', '64')]
+        [string]$Bitness,
+
+        [Parameter(Mandatory = $true)]
+        [string]$LabVIEWExecutablePath
+    )
+
+    $repoRoot = Resolve-RepoRoot
+    $portContractHelper = Join-Path $repoRoot 'Tooling\support\LabVIEWCliPortContract.ps1'
+    if (-not (Test-Path -Path $portContractHelper -PathType Leaf)) {
+        throw "LabVIEW CLI port contract helper not found at $portContractHelper"
+    }
+    . $portContractHelper
+
+    return Resolve-LabVIEWCliPortFromContract `
+        -RepoRoot $repoRoot `
+        -LabVIEWVersion $LabVIEWVersion `
+        -Bitness $Bitness `
+        -LabVIEWExecutablePath $LabVIEWExecutablePath
+}
+
+function Invoke-LabVIEWCli {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments
+    )
+
+    $labviewCliCommand = Get-Command LabVIEWCLI -ErrorAction SilentlyContinue
+    if (-not $labviewCliCommand) {
+        throw "LabVIEWCLI is not available on PATH."
+    }
+
+    $rawOutput = & $labviewCliCommand.Source @Arguments 2>&1
+    $exitCode = $LASTEXITCODE
+    $lines = @()
+    foreach ($entry in $rawOutput) {
+        if ($null -ne $entry) {
+            $lines += [string]$entry
+        }
+    }
+    $lines | Out-Host
+
+    return [pscustomobject]@{
+        ExitCode    = $exitCode
+        OutputLines = $lines
+    }
+}
+
+function Test-LabVIEWCliConnectionFailure {
+    param(
+        [string[]]$OutputLines
+    )
+
+    if (-not $OutputLines -or $OutputLines.Count -eq 0) {
+        return $false
+    }
+
+    $outputText = $OutputLines -join [Environment]::NewLine
+    if ([string]::IsNullOrWhiteSpace($outputText)) {
+        return $false
+    }
+
+    return ($outputText -match '(?i)Error\s*code\s*:\s*-350000' -or $outputText -match '(?i)failed to establish a connection with LabVIEW')
+}
+
+function Set-LabVIEWCliPortArgument {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [int]$PortNumber
+    )
+
+    $updated = New-Object System.Collections.Generic.List[string]
+    $portSet = $false
+    for ($index = 0; $index -lt $Arguments.Count; $index++) {
+        $arg = [string]$Arguments[$index]
+        if ($arg -ieq '-PortNumber') {
+            if (-not $portSet) {
+                $updated.Add('-PortNumber') | Out-Null
+                $updated.Add($PortNumber.ToString()) | Out-Null
+                $portSet = $true
+            }
+
+            if (($index + 1) -lt $Arguments.Count) {
+                $index++
+            }
+            continue
+        }
+
+        $updated.Add($arg) | Out-Null
+    }
+
+    if (-not $portSet) {
+        $updated.Add('-PortNumber') | Out-Null
+        $updated.Add($PortNumber.ToString()) | Out-Null
+    }
+
+    return @($updated.ToArray())
+}
+
+function New-LabVIEWCliResultWithRetryInfo {
+    param(
+        [Parameter(Mandatory = $true)]
+        [pscustomobject]$Result,
+        [string[]]$Attempts,
+        [AllowNull()]
+        [int]$PortNumber,
+        [AllowNull()]
+        [string]$PortSource,
+        [bool]$UsedImplicitPort
+    )
+
+    return [pscustomobject]@{
+        ExitCode         = $Result.ExitCode
+        OutputLines      = @($Result.OutputLines)
+        Attempts         = @($Attempts)
+        PortNumber       = $PortNumber
+        PortSource       = $PortSource
+        UsedImplicitPort = $UsedImplicitPort
+    }
+}
+
+function Invoke-LabVIEWCliWithConnectionRetry {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$OperationName,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments,
+        [Parameter(Mandatory = $true)]
+        [int]$PrimaryPortNumber
+    )
+
+    $portArgs = Set-LabVIEWCliPortArgument -Arguments $Arguments -PortNumber $PrimaryPortNumber
+    $result = Invoke-LabVIEWCli -Arguments $portArgs
+    return New-LabVIEWCliResultWithRetryInfo `
+        -Result $result `
+        -Attempts @(("{0}: port:{1} source:primary exit:{2}" -f $OperationName, $PrimaryPortNumber, $result.ExitCode)) `
+        -PortNumber $PrimaryPortNumber `
+        -PortSource 'primary' `
+        -UsedImplicitPort:$false
+}
+
+function Invoke-RunIconEditorFromSourceSelector {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$LabVIEWVersion,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('32', '64')]
+        [string]$Bitness,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('enable', 'disable')]
+        [string]$Mode
+    )
+
+    try {
+        $selectorViPath = Join-Path $RepoRoot 'Tooling\Run Icon Editor from Source Selector.vi'
+        if (-not (Test-Path -Path $selectorViPath -PathType Leaf)) {
+            throw "Selector VI not found at $selectorViPath"
+        }
+
+        $installRoot = Get-LabVIEWInstallRoot -Version $LabVIEWVersion -Bitness $Bitness
+        if ([string]::IsNullOrWhiteSpace($installRoot)) {
+            throw "LabVIEW $LabVIEWVersion ($Bitness-bit) install not found."
+        }
+
+        $labviewExecutablePath = Join-Path $installRoot 'LabVIEW.exe'
+        if (-not (Test-Path -Path $labviewExecutablePath -PathType Leaf)) {
+            throw "LabVIEW executable not found at $labviewExecutablePath"
+        }
+
+        $portResolution = Resolve-LabVIEWCliPort -LabVIEWVersion $LabVIEWVersion -Bitness $Bitness -LabVIEWExecutablePath $labviewExecutablePath
+        $selectorMode = if ($Mode -eq 'enable') { 'set' } else { 'unset' }
+        Write-Host ("Running selector VI mode '{0}' ({1}-bit) via LabVIEWCLI on port {2} (source: {3})" -f $selectorMode, $Bitness, $portResolution.PortNumber, $portResolution.Source)
+
+        return Invoke-LabVIEWCliWithConnectionRetry -OperationName ("Selector-{0}-{1}-bit" -f $selectorMode, $Bitness) -PrimaryPortNumber $portResolution.PortNumber -Arguments @(
+            '-OperationName', 'RunVI',
+            '-LabVIEWPath', $labviewExecutablePath,
+            '-PortNumber', $portResolution.PortNumber.ToString(),
+            '-VIPath', $selectorViPath,
+            '-Headless',
+            $selectorMode
+        )
+    } catch {
+        $message = $_.Exception.Message
+        Write-Error $message
+        return [pscustomobject]@{
+            ExitCode    = 1
+            OutputLines = @($message)
+        }
+    }
+}
+
 function Invoke-LabVIEWScript {
     param(
         [string]$ScriptPath,
@@ -281,24 +498,19 @@ function Invoke-DevModeNoLabVIEW {
         [string]$LabVIEWVersion,
         [string]$Bitness,
         [ValidateSet('enable', 'disable')]
-        [string]$Mode
+        [string]$Mode,
+        [switch]$SkipProcessCheck
     )
 
-    $scriptPath = if ($Mode -eq 'enable') {
-        Join-Path $RepoRoot 'Tooling\Set-DevelopmentMode-NoLabVIEW.ps1'
-    } else {
-        Join-Path $RepoRoot 'Tooling\Revert-DevelopmentMode-NoLabVIEW.ps1'
+    if ($SkipProcessCheck) {
+        Write-Verbose "SkipProcessCheck is ignored for selector-based dev-mode toggles."
     }
 
-    if (-not (Test-Path -Path $scriptPath)) {
-        throw "Dev mode script not found at $scriptPath"
-    }
-
-    return Invoke-LabVIEWScript -ScriptPath $scriptPath -Arguments @(
-        '-LabVIEWVersion', $LabVIEWVersion,
-        '-SupportedBitness', $Bitness,
-        '-RepoRoot', $RepoRoot
-    )
+    return Invoke-RunIconEditorFromSourceSelector `
+        -RepoRoot $RepoRoot `
+        -LabVIEWVersion $LabVIEWVersion `
+        -Bitness $Bitness `
+        -Mode $Mode
 }
 
 function New-LabVIEWStageContext {
@@ -336,6 +548,8 @@ function Invoke-LabVIEWStage {
 
         [switch]$DevModeNoLabVIEW,
 
+        [switch]$SkipDevModeProcessCheck,
+
         [switch]$CloseBetweenStages,
 
         [switch]$SkipOnBaselineFailure,
@@ -348,6 +562,13 @@ function Invoke-LabVIEWStage {
 
     $closeBetweenStagesEnabled = $CloseBetweenStages.IsPresent -or -not $PSBoundParameters.ContainsKey('CloseBetweenStages')
     $skipOnBaselineFailureEnabled = $SkipOnBaselineFailure.IsPresent -or -not $PSBoundParameters.ContainsKey('SkipOnBaselineFailure')
+    $skipDevModeProcessCheckEnabled = $SkipDevModeProcessCheck.IsPresent
+    if (-not $skipDevModeProcessCheckEnabled -and -not [string]::IsNullOrWhiteSpace($env:LVIE_SKIP_DEVMODE_PROCESS_CHECK)) {
+        $skipSetting = $env:LVIE_SKIP_DEVMODE_PROCESS_CHECK.Trim().ToLowerInvariant()
+        if (@('1', 'true', 'yes', 'y', 'on') -contains $skipSetting) {
+            $skipDevModeProcessCheckEnabled = $true
+        }
+    }
 
     $resolvedRepoRoot = Resolve-RepoRoot -PathOverride $RepoRoot
     $resolvedVersion = Resolve-LabVIEWVersion -VersionInput $LabVIEWVersion -RepoRoot $resolvedRepoRoot
@@ -387,6 +608,7 @@ function Invoke-LabVIEWStage {
                 EndUtc          = $bitnessEnd.ToUniversalTime().ToString('o')
                 DurationMs      = [int]([Math]::Round(($bitnessEnd - $bitnessStart).TotalMilliseconds))
                 DevModeNoLabVIEW = [bool]$DevModeNoLabVIEW
+                SkipDevModeProcessCheck = [bool]$skipDevModeProcessCheckEnabled
                 CloseBetweenStages = [bool]$closeBetweenStagesEnabled
                 Result          = $resultEntry
                 Steps           = [pscustomobject]@{
@@ -412,7 +634,7 @@ function Invoke-LabVIEWStage {
 
         if ($DevModeNoLabVIEW) {
             $baselineStart = Get-Date
-            $baseline = Invoke-DevModeNoLabVIEW -RepoRoot $resolvedRepoRoot -LabVIEWVersion $resolvedVersion -Bitness $bitness -Mode 'disable'
+            $baseline = Invoke-DevModeNoLabVIEW -RepoRoot $resolvedRepoRoot -LabVIEWVersion $resolvedVersion -Bitness $bitness -Mode 'disable' -SkipProcessCheck:$skipDevModeProcessCheckEnabled
             $baselineEnd = Get-Date
             $baselineInfo = New-LabVIEWStageStepLog -Name 'baseline-revert' -StartTime $baselineStart -EndTime $baselineEnd -ExitCode $baseline.ExitCode -ErrorMessage $null -OutputLines $baseline.OutputLines
             if ($baseline.ExitCode -ne 0) {
@@ -443,6 +665,7 @@ function Invoke-LabVIEWStage {
                         EndUtc          = $bitnessEnd.ToUniversalTime().ToString('o')
                         DurationMs      = [int]([Math]::Round(($bitnessEnd - $bitnessStart).TotalMilliseconds))
                         DevModeNoLabVIEW = [bool]$DevModeNoLabVIEW
+                        SkipDevModeProcessCheck = [bool]$skipDevModeProcessCheckEnabled
                         CloseBetweenStages = [bool]$closeBetweenStagesEnabled
                         Result          = $resultEntry
                         Steps           = [pscustomobject]@{
@@ -468,7 +691,7 @@ function Invoke-LabVIEWStage {
         try {
             if ($DevModeNoLabVIEW) {
                 $enableStart = Get-Date
-                $enable = Invoke-DevModeNoLabVIEW -RepoRoot $resolvedRepoRoot -LabVIEWVersion $resolvedVersion -Bitness $bitness -Mode 'enable'
+                $enable = Invoke-DevModeNoLabVIEW -RepoRoot $resolvedRepoRoot -LabVIEWVersion $resolvedVersion -Bitness $bitness -Mode 'enable' -SkipProcessCheck:$skipDevModeProcessCheckEnabled
                 $enableEnd = Get-Date
                 $enableInfo = New-LabVIEWStageStepLog -Name 'enable-devmode' -StartTime $enableStart -EndTime $enableEnd -ExitCode $enable.ExitCode -ErrorMessage $null -OutputLines $enable.OutputLines
                 if ($enable.ExitCode -ne 0) {
@@ -533,7 +756,7 @@ function Invoke-LabVIEWStage {
         } finally {
             if ($devModeEnabled) {
                 $revertStart = Get-Date
-                $revertResult = Invoke-DevModeNoLabVIEW -RepoRoot $resolvedRepoRoot -LabVIEWVersion $resolvedVersion -Bitness $bitness -Mode 'disable'
+                $revertResult = Invoke-DevModeNoLabVIEW -RepoRoot $resolvedRepoRoot -LabVIEWVersion $resolvedVersion -Bitness $bitness -Mode 'disable' -SkipProcessCheck:$skipDevModeProcessCheckEnabled
                 $revertEnd = Get-Date
                 $revertInfo = New-LabVIEWStageStepLog -Name 'revert-devmode' -StartTime $revertStart -EndTime $revertEnd -ExitCode $revertResult.ExitCode -ErrorMessage $null -OutputLines $revertResult.OutputLines
             }
@@ -556,6 +779,7 @@ function Invoke-LabVIEWStage {
             EndUtc          = $bitnessEnd.ToUniversalTime().ToString('o')
             DurationMs      = [int]([Math]::Round(($bitnessEnd - $bitnessStart).TotalMilliseconds))
             DevModeNoLabVIEW = [bool]$DevModeNoLabVIEW
+            SkipDevModeProcessCheck = [bool]$skipDevModeProcessCheckEnabled
             CloseBetweenStages = [bool]$closeBetweenStagesEnabled
             Result          = $resultEntry
             Steps           = [pscustomobject]@{

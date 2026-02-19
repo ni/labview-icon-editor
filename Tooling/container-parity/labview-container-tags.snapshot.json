@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "generatedAtUtc": "2026-02-17T00:00:00Z",
+  "source": "docker-hub-nationalinstruments-labview",
+  "latestYear": "2026",
+  "tags": [
+    {
+      "tag": "2025q3-linux",
+      "os": "linux",
+      "year": "2025",
+      "minorRevision": 3,
+      "releaseTag": "2025q3"
+    },
+    {
+      "tag": "2025q3patch1-linux",
+      "os": "linux",
+      "year": "2025",
+      "minorRevision": 3,
+      "releaseTag": "2025q3"
+    },
+    {
+      "tag": "2026q1-linux",
+      "os": "linux",
+      "year": "2026",
+      "minorRevision": 1,
+      "releaseTag": "2026q1"
+    },
+    {
+      "tag": "2026q1-windows",
+      "os": "windows",
+      "year": "2026",
+      "minorRevision": 1,
+      "releaseTag": "2026q1"
+    },
+    {
+      "tag": "2026q1-windows-beta",
+      "os": "windows",
+      "year": "2026",
+      "minorRevision": 1,
+      "releaseTag": "2026q1"
+    },
+    {
+      "tag": "latest-linux",
+      "os": "linux",
+      "year": "2026",
+      "minorRevision": 1,
+      "releaseTag": "2026q1"
+    },
+    {
+      "tag": "latest-windows",
+      "os": "windows",
+      "year": "2026",
+      "minorRevision": 1,
+      "releaseTag": "2026q1"
+    }
+  ]
+}

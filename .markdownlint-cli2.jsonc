@@ -1,0 +1,24 @@
+{
+  "globs": [
+    "README.md",
+    "CONTRIBUTING.md",
+    "AGENTS.md",
+    "Tooling/README.md",
+    "docs/**/*.md"
+  ],
+  "ignores": [
+    "docs/powershell-cli-github-action-instructions.md",
+    "docs/ci/actions/multichannel-release-workflow.md",
+    "docs/**/fixtures/**",
+    "Tooling/tests/fixtures/**"
+  ],
+  "config": {
+    "default": false,
+    "MD001": true,
+    "MD024": true,
+    "MD025": true,
+    "MD029": true,
+    "MD041": true,
+    "MD047": true
+  }
+}

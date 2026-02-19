@@ -6,9 +6,17 @@ This directory collects guides and references for working with the LabVIEW Icon 
 
 - [Manual Setup Instructions](manual-instructions.md)
 - [Automated Setup Instructions](automated-setup.md)
-- [PowerShell CLI GitHub Action Instructions](powershell-cli-github-action-instructions.md)
 - [PowerShell Dependency Scripts](powershell-dependency-scripts.md)
 - [CI Workflows Overview](ci-workflows.md)
+  - Canonical source for release/publication policy and CI behavior contracts.
+- [LLM Operator Runbook](ci/llm-operator-runbook.md)
+  - Deterministic command-first workflow for `validate`, `integrate`, and `release` modes.
+- [VI Package Pre-Release Requirements](vip-prerelease-requirements.md)
+  - Normative contract for `develop` prerelease publication behavior and workflow interfaces.
+  - Acceptance matrix: [vip-prerelease-requirements-v1-acceptance.md](vip-prerelease-requirements-v1-acceptance.md)
+  - Trace matrix: [vip-prerelease-requirements-v0-to-v1-trace.md](vip-prerelease-requirements-v0-to-v1-trace.md)
+- [Runner CLI Requirements](runner-cli-requirements.md)
+  - `runner-cli.yml` consolidates runner-cli build/test/smoke and Docker validation (see CI Workflows Overview).
 
 ## CI and Advanced Topics
 
@@ -19,6 +27,11 @@ This directory collects guides and references for working with the LabVIEW Icon 
   - [Development Mode Toggle](ci/actions/development-mode-toggle.md)
   - [Injecting Repo/Org to VI Package](ci/actions/injecting-repo-org-to-vi-package.md)
   - [Maintainer's Guide](ci/actions/maintainers-guide.md)
-  - [Multichannel Release Workflow](ci/actions/multichannel-release-workflow.md)
   - [Runner Setup Guide](ci/actions/runner-setup-guide.md)
   - [Troubleshooting Experiments](ci/actions/troubleshooting-experiments.md)
+
+## Archived/Historical CI References
+
+- [PowerShell CLI GitHub Action Instructions](powershell-cli-github-action-instructions.md)
+- [Multichannel Release Workflow](ci/actions/multichannel-release-workflow.md)
+- Not normative. Source of truth is [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) and [CI Workflows Overview](ci-workflows.md).

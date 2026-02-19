@@ -1,34 +1,30 @@
 name: "Run Unit Tests"
-description: "Runs RunUnitTests.ps1 to execute LabVIEW unit tests via g-cli."
+description: "Deprecated. Use runner-cli lunit run for canonical g-cli LUnit execution."
 runs:
   using: "composite"
   steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
-    - name: Run RunUnitTests.ps1
+    - name: Deprecated action guard
       shell: pwsh
       run: |
-        $lvVersion = "${{ inputs.labview_version }}"
-        if ([string]::IsNullOrWhiteSpace($lvVersion)) {
-          throw "labview_version is required."
-        }
-
-        & "${{ github.action_path }}/RunUnitTests.ps1" `
-          -MinimumSupportedLVVersion $lvVersion `
-          -SupportedBitness ${{ inputs.supported_bitness }} `
-          -ProjectPath "${{ inputs.project_path }}"
+        throw "Deprecated action '.github/actions/run-unit-tests'. Use 'runner-cli lunit run --repo-root <repo> --year <yyyy> --labview-version <raw> --bitness <32|64> --project-path <lvproj> --report-path <report>'."
 inputs:
   labview_version:
-    description: 'LabVIEW version to run (year or numeric).'
-    required: true
+    description: 'Deprecated input (unused).'
+    required: false
   supported_bitness:
-    description: '32 or 64'
+    description: 'Deprecated input (unused).'
     required: true
   project_path:
-    description: 'Path to the LabVIEW project (.lvproj)'
+    description: 'Deprecated input (unused).'
     required: true
+  enable_gcli_fallback:
+    description: 'Deprecated input (unused).'
+    required: false
+    default: 'false'
+  lunit_backend:
+    description: 'Deprecated input (unused).'
+    required: false
+    default: 'gcli'
+
 
 

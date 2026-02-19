@@ -12,9 +12,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$VIPBPath,
 
-    [Alias('MinimumSupportedLVVersion')]
-    [ValidateRange(2000, 2100)]
-    [int]$LabVIEWVersion,
+    [string]$LabVIEWVersion,
+    [string]$ExecutionLabVIEWYear,
 
     [ValidateRange(0, 99)]
     [int]$LabVIEWMinorRevision = 0,
@@ -26,17 +25,11 @@ param(
     [string]$Commit,
     [string]$ReleaseNotesFile,
 
-    [Parameter(Mandatory = $true)]
     [string]$DisplayInformationJSON,
+    [string]$DisplayInformationJsonPath,
 
     [ValidateRange(60, 7200)]
     [int]$VipmTimeoutSeconds,
-
-    [ValidateRange(1, 5)]
-    [int]$MaxAttempts,
-
-    [ValidateRange(5, 600)]
-    [int]$RetryDelaySeconds,
 
     [string]$StatusPath,
 
@@ -67,6 +60,21 @@ function Resolve-IntSetting {
 
     Write-Warning "Ignoring invalid $Name value '$raw'; using $Fallback."
     return $Fallback
+}
+
+function Assert-DeprecatedVipmRetrySettingsUnset {
+    $deprecatedSettings = @('LVIE_VIPM_MAX_ATTEMPTS', 'LVIE_VIPM_RETRY_DELAY_SECONDS')
+    foreach ($setting in $deprecatedSettings) {
+        if (-not (Test-Path -Path "Env:$setting")) {
+            continue
+        }
+        $value = (Get-Item -Path "Env:$setting").Value
+        if ([string]::IsNullOrWhiteSpace($value)) {
+            continue
+        }
+
+        throw ("Deprecated VIPM retry setting '{0}' is set to '{1}'. Retry configuration was removed; clear this variable and rerun." -f $setting, $value)
+    }
 }
 
 function Resolve-StatusPath {
@@ -177,93 +185,142 @@ if (-not (Test-Path -Path $buildVipScript)) {
     throw "build_vip.ps1 not found at $buildVipScript"
 }
 
+$sourceLabVIEWYear = $null
+$versionHelper = Join-Path $resolvedRepoRoot 'Tooling/support/LabVIEWVersion.ps1'
+if (Test-Path -Path $versionHelper) {
+    . $versionHelper
+    $repoInfo = Get-LabVIEWVersionInfo -RepoRoot $resolvedRepoRoot
+    $inputProvided = $PSBoundParameters.ContainsKey('LabVIEWVersion') -and -not [string]::IsNullOrWhiteSpace([string]$LabVIEWVersion)
+    if ($inputProvided) {
+        $inputInfo = Get-LabVIEWVersionInfo -VersionInput $LabVIEWVersion -RepoRoot $resolvedRepoRoot
+        $LabVIEWVersion = [string]$inputInfo.Raw
+        $sourceLabVIEWYear = [string]$inputInfo.Year
+    } else {
+        $LabVIEWVersion = [string]$repoInfo.Raw
+        $sourceLabVIEWYear = [string]$repoInfo.Year
+        Write-Warning "LabVIEWVersion not provided; defaulting to .lvversion ($($repoInfo.Raw))."
+    }
+
+    if ($PSBoundParameters.ContainsKey('LabVIEWMinorRevision')) {
+        if ([int]$LabVIEWMinorRevision -ne [int]$repoInfo.MinorRevision) {
+            throw "LabVIEWMinorRevision '$LabVIEWMinorRevision' does not match .lvversion minor '$($repoInfo.MinorRevision)'."
+        }
+    } else {
+        $LabVIEWMinorRevision = [int]$repoInfo.MinorRevision
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($sourceLabVIEWYear)) {
+    throw "Failed to resolve LabVIEW source year from LabVIEWVersion/.lvversion."
+}
+
+$resolvedExecutionLabVIEWYear = if ([string]::IsNullOrWhiteSpace($ExecutionLabVIEWYear)) {
+    $sourceLabVIEWYear
+} else {
+    $ExecutionLabVIEWYear.Trim()
+}
+if ($resolvedExecutionLabVIEWYear -notmatch '^\d{4}$') {
+    throw ("ExecutionLabVIEWYear '{0}' is invalid. Expected a four-digit year such as 2026." -f $resolvedExecutionLabVIEWYear)
+}
+
+$yearCompatMappingApplied = [string]::Equals($sourceLabVIEWYear, '2020', [System.StringComparison]::OrdinalIgnoreCase) -and
+    [string]::Equals($resolvedExecutionLabVIEWYear, '2026', [System.StringComparison]::OrdinalIgnoreCase)
+Write-Host ("VIP build LabVIEW source contract: raw={0}; year={1}; minor={2}" -f $LabVIEWVersion, $sourceLabVIEWYear, $LabVIEWMinorRevision)
+Write-Host ("VIP build LabVIEW execution year: {0}" -f $resolvedExecutionLabVIEWYear)
+Write-Host ("VIP build LabVIEW execution-year compatibility mapping applied: {0}" -f $yearCompatMappingApplied)
+if ($yearCompatMappingApplied) {
+    Write-Host "VIP build LabVIEW execution-year compatibility mapping: source year 2020 -> execution year 2026"
+}
+
 $timeoutSecondsValue = if ($PSBoundParameters.ContainsKey('VipmTimeoutSeconds')) {
     $VipmTimeoutSeconds
 } else {
     Resolve-IntSetting -Name 'LVIE_VIPM_TIMEOUT_SECONDS' -Fallback 300
 }
-
-$maxAttemptsValue = if ($PSBoundParameters.ContainsKey('MaxAttempts')) {
-    $MaxAttempts
-} else {
-    Resolve-IntSetting -Name 'LVIE_VIPM_MAX_ATTEMPTS' -Fallback 2
-}
-
-$retryDelayValue = if ($PSBoundParameters.ContainsKey('RetryDelaySeconds')) {
-    $RetryDelaySeconds
-} else {
-    Resolve-IntSetting -Name 'LVIE_VIPM_RETRY_DELAY_SECONDS' -Fallback 30
-}
+Assert-DeprecatedVipmRetrySettingsUnset
 
 $statusPath = Resolve-StatusPath -ExplicitPath $StatusPath -RepoRoot $resolvedRepoRoot
 $logDirectory = Resolve-LogDirectory -RepoRoot $resolvedRepoRoot
 $null = New-Item -Path $logDirectory -ItemType Directory -Force
-$gcliLog = Join-Path -Path $logDirectory -ChildPath 'gcli-build.log'
+$vipmLog = Join-Path -Path $logDirectory -ChildPath 'vipm-build.log'
+$legacyGcliLog = Join-Path -Path $logDirectory -ChildPath 'gcli-build.log'
+$resolvedDisplayInformationJsonPath = $null
+
+if (-not [string]::IsNullOrWhiteSpace($DisplayInformationJsonPath)) {
+    $displaySourcePath = $DisplayInformationJsonPath
+    if (-not [System.IO.Path]::IsPathRooted($displaySourcePath)) {
+        $displaySourcePath = Join-Path -Path $resolvedRepoRoot -ChildPath $displaySourcePath
+    }
+
+    if (-not (Test-Path -Path $displaySourcePath -PathType Leaf)) {
+        throw "DisplayInformationJsonPath '$displaySourcePath' does not exist."
+    }
+
+    $resolvedDisplayInformationJsonPath = (Resolve-Path -Path $displaySourcePath).Path
+} elseif ([string]::IsNullOrWhiteSpace($DisplayInformationJSON)) {
+    throw "DisplayInformationJSON was not provided. Pass -DisplayInformationJSON or -DisplayInformationJsonPath."
+}
 
 $startedAt = Get-Date
-$attempt = 0
-$success = $false
+$attempt = 1
+$success = $true
 $lastExitCode = $null
 $lastError = $null
+$attemptStart = Get-Date
+Write-Host 'VIP build attempt 1 of 1'
 
-while ($attempt -lt $maxAttemptsValue) {
-    $attempt++
-    $attemptStart = Get-Date
-    Write-Host ("VIP build attempt {0} of {1}" -f $attempt, $maxAttemptsValue)
-
-    $displayInfoPath = Join-Path -Path $logDirectory -ChildPath 'vipb-display-info.json'
-    try {
+$displayInfoPath = Join-Path -Path $logDirectory -ChildPath 'vipb-display-info.json'
+try {
+    if (-not [string]::IsNullOrWhiteSpace($resolvedDisplayInformationJsonPath)) {
+        Copy-Item -Path $resolvedDisplayInformationJsonPath -Destination $displayInfoPath -Force
+    } else {
         Set-Content -Path $displayInfoPath -Value $DisplayInformationJSON -Encoding utf8
-    } catch {
-        throw "Failed to write display information JSON to $displayInfoPath. $($_.Exception.Message)"
     }
+} catch {
+    throw "Failed to write display information JSON to $displayInfoPath. $($_.Exception.Message)"
+}
 
-    $pwshArgs = @(
-        '-NoProfile',
-        '-File', $buildVipScript,
-        '-SupportedBitness', $SupportedBitness,
-        '-RepoRoot', $resolvedRepoRoot,
-        '-VIPBPath', $VIPBPath,
-        '-LabVIEWVersion', $LabVIEWVersion.ToString(),
-        '-LabVIEWMinorRevision', $LabVIEWMinorRevision.ToString(),
-        '-Major', $Major.ToString(),
-        '-Minor', $Minor.ToString(),
-        '-Patch', $Patch.ToString(),
-        '-Build', $Build.ToString(),
-        '-Commit', $Commit,
-        '-ReleaseNotesFile', $ReleaseNotesFile,
-        '-DisplayInformationJsonPath', $displayInfoPath,
-        '-VipmTimeoutSeconds', $timeoutSecondsValue.ToString()
-    )
+$pwshArgs = @(
+    '-NoProfile',
+    '-File', $buildVipScript,
+    '-SupportedBitness', $SupportedBitness,
+    '-RepoRoot', $resolvedRepoRoot,
+    '-VIPBPath', $VIPBPath,
+    '-LabVIEWVersion', $LabVIEWVersion.ToString(),
+    '-ExecutionLabVIEWYear', $resolvedExecutionLabVIEWYear,
+    '-LabVIEWMinorRevision', $LabVIEWMinorRevision.ToString(),
+    '-Major', $Major.ToString(),
+    '-Minor', $Minor.ToString(),
+    '-Patch', $Patch.ToString(),
+    '-Build', $Build.ToString(),
+    '-Commit', $Commit,
+    '-ReleaseNotesFile', $ReleaseNotesFile,
+    '-DisplayInformationJsonPath', $displayInfoPath,
+    '-VipmTimeoutSeconds', $timeoutSecondsValue.ToString()
+)
 
-    if (-not [string]::IsNullOrWhiteSpace($WorktreeRoot)) {
-        $pwshArgs += @('-WorktreeRoot', $WorktreeRoot)
+if (-not [string]::IsNullOrWhiteSpace($WorktreeRoot)) {
+    $pwshArgs += @('-WorktreeRoot', $WorktreeRoot)
+}
+if ($SkipWorktreeRootCheck.IsPresent) {
+    $pwshArgs += '-SkipWorktreeRootCheck'
+}
+
+try {
+    & pwsh @pwshArgs
+    $lastExitCode = if ($LASTEXITCODE -ne $null) { $LASTEXITCODE } else { 0 }
+    if ($lastExitCode -ne 0) {
+        $success = $false
     }
-    if ($SkipWorktreeRootCheck.IsPresent) {
-        $pwshArgs += '-SkipWorktreeRootCheck'
-    }
+} catch {
+    $lastError = $_
+    $lastExitCode = if ($LASTEXITCODE -ne $null) { $LASTEXITCODE } else { 1 }
+    $success = $false
+}
 
-    try {
-        & pwsh @pwshArgs
-        $lastExitCode = if ($LASTEXITCODE -ne $null) { $LASTEXITCODE } else { 0 }
-    } catch {
-        $lastError = $_
-        $lastExitCode = if ($LASTEXITCODE -ne $null) { $LASTEXITCODE } else { 1 }
-    }
-
-    if ($lastExitCode -eq 0) {
-        $success = $true
-        break
-    }
-
+if (-not $success) {
     $attemptDuration = [Math]::Round(((Get-Date) - $attemptStart).TotalSeconds, 2)
-    Write-Warning ("VIP build attempt {0} failed with exit code {1} after {2}s." -f $attempt, $lastExitCode, $attemptDuration)
-
-    if ($attempt -lt $maxAttemptsValue) {
-        $delay = $retryDelayValue * $attempt
-        Write-Host ("Retrying after {0}s..." -f $delay)
-        Start-Sleep -Seconds $delay
-    }
+    Write-Warning ("VIP build attempt 1 failed with exit code {0} after {1}s." -f $lastExitCode, $attemptDuration)
 }
 
 $finishedAt = Get-Date
@@ -273,8 +330,18 @@ $vip = Get-LatestVip -RepoRoot $resolvedRepoRoot
 $vipPath = if ($vip) { $vip.FullName } else { $null }
 
 $reason = $null
-if (-not $success -and (Test-Path -Path $gcliLog)) {
-    $timeoutMatch = Select-String -Path $gcliLog -Pattern 'Timeout waiting on VIPM' -SimpleMatch -Quiet
+if (-not $success) {
+    $timeoutLogPath = if (Test-Path -Path $vipmLog) {
+        $vipmLog
+    } elseif (Test-Path -Path $legacyGcliLog) {
+        $legacyGcliLog
+    } else {
+        $null
+    }
+    $timeoutMatch = $false
+    if (-not [string]::IsNullOrWhiteSpace($timeoutLogPath)) {
+        $timeoutMatch = Select-String -Path $timeoutLogPath -Pattern 'Timeout waiting on VIPM' -SimpleMatch -Quiet
+    }
     if ($timeoutMatch) {
         $reason = 'vipm_timeout'
     }
@@ -294,7 +361,8 @@ $status = @{
     finished_at      = $finishedAt.ToString('o')
     duration_seconds = $durationSeconds
     vip_path         = $vipPath
-    gcli_log         = if (Test-Path -Path $gcliLog) { $gcliLog } else { $null }
+    vipm_log         = if (Test-Path -Path $vipmLog) { $vipmLog } else { $null }
+    gcli_log         = if (Test-Path -Path $legacyGcliLog) { $legacyGcliLog } else { $null }
     vipm_logs        = if ($vipmLogsCopied) { (Join-Path $logDirectory 'vipm') } else { $null }
     repo_root        = $resolvedRepoRoot
 }

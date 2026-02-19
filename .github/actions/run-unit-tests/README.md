@@ -1,23 +1,28 @@
-# Run Unit Tests ✅
+# Run Unit Tests (Deprecated)
 
-Invoke **`RunUnitTests.ps1`** to execute LabVIEW unit tests and output a result table.
+This composite action is deprecated and intentionally fails fast.
+Use `runner-cli lunit run` for canonical g-cli execution and `runner-cli lunit validate` for parse-only report validation.
 
-## Inputs
-| Name | Required | Example | Description |
-|------|----------|---------|-------------|
-| `labview_version` | **Yes** | `2021` | LabVIEW 2021 (21.0). |
-| `supported_bitness` | **Yes** | `32` or `64` | Target LabVIEW bitness. |
-| `project_path` | **Yes** | `${{ env.REPO_ROOT }}/lv_icon_editor.lvproj` | Absolute path to the LabVIEW project. |
+Canonical LUnit execution is now:
 
-## Quick-start
-```yaml
-- uses: ./.github/actions/run-unit-tests
-  with:
-    labview_version: 2021
-    supported_bitness: 64
-    project_path: ${{ env.REPO_ROOT }}/lv_icon_editor.lvproj
+```pwsh
+dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj -- `
+  lunit run `
+  --repo-root . `
+  --year 2020 `
+  --labview-version 20.0 `
+  --bitness 64 `
+  --project-path .\lv_icon_editor.lvproj `
+  --report-path .\.github\actions\run-unit-tests\UnitTestReport-Windows-64.xml
 ```
 
-## License
-This directory inherits the root repository’s license (MIT, unless otherwise noted).
+Parse-only validation remains available via:
 
+```pwsh
+dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj -- `
+  lunit validate `
+  --repo-root . `
+  --labview-version 20.0 `
+  --bitness 64 `
+  --report-path .\.github\actions\run-unit-tests\UnitTestReport-Windows-64.xml
+```

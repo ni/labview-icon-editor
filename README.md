@@ -1,6 +1,6 @@
 # LabVIEW Icon Editor
 
-[![CI Status](https://img.shields.io/github/actions/workflow/status/ni/labview-icon-editor/ci-composite.yml?branch=main)](https://github.com/ni/labview-icon-editor/actions/workflows/ci-composite.yml)
+[![CI Status](https://img.shields.io/github/actions/workflow/status/ni/labview-icon-editor/ci.yml?branch=main)](https://github.com/ni/labview-icon-editor/actions/workflows/ci.yml)
 [![Latest Release](https://img.shields.io/github/v/release/ni/labview-icon-editor?label=release)](https://github.com/ni/labview-icon-editor/releases/latest)
 [![Discord Chat](https://img.shields.io/discord/1319915996789739540?label=Discord&logo=discord&style=flat)](https://discord.gg/q4d3ggrFVA)
 [![License: MIT](https://img.shields.io/github/license/ni/labview-icon-editor?style=flat)](LICENSE)
@@ -64,7 +64,7 @@ For additional details and troubleshooting tips, see [INSTALL.md](INSTALL.md).
 3. **CI/CD Workflows** – GitHub Actions workflows are provided for common tasks:
    - **Build VI Package** – Compiles the source and produces a `.vip` artifact (VI Package).
    - **Run Unit Tests** (now part of the main CI pipeline) – Executes automated tests to verify the Icon Editor’s behavior in a clean LabVIEW environment.
-   Additional details on these pipelines are in [CI Workflows](docs/ci-workflows.md) and the [CI Workflow (Multi-Channel Release Support)](docs/powershell-cli-github-action-instructions.md).
+   Additional details on these pipelines are in [CI Workflows](docs/ci-workflows.md).
 
 ---
 
@@ -86,7 +86,7 @@ For detailed contribution guidelines (branching strategy, coding style, etc.), p
 **Standard Feature Contribution Workflow:**
 
 1. **Propose & Discuss** – Start by proposing your idea via [GitHub Discussions](https://github.com/ni/labview-icon-editor/discussions) or by opening an issue. Discussing first helps refine the idea and get feedback.
-2. **Issue Approval & Assignment** – Once the idea is approved, maintainers label the issue `Workflow: Open to contribution`. After you volunteer, a maintainer assigns the issue and sets up a branch such as `feature/<issue number>-<short-description>`, ensuring the issue is marked `In Progress`. The workflow defined in [ci-composite.yml](.github/workflows/ci-composite.yml) triggers, but its jobs run only when the `issue-status` gate passes (branch pattern `issue-<number>` and issue Status `In Progress`). Runs failing this gate appear in GitHub Actions but skip subsequent jobs.
+2. **Issue Approval & Assignment** – Once the idea is approved, maintainers label the issue `Workflow: Open to contribution`. After you volunteer, a maintainer assigns the issue and sets up a branch such as `feature/<issue number>-<short-description>`. CI behavior is defined by [ci.yml](.github/workflows/ci.yml), with pull-request validation on PR targets (`main`, `develop`, `release/*`, `feature/*`, `hotfix/*`) and push validation on `main`, `develop`, and `release/*`.
 3. **Development Setup** – Fork the repository and clone your fork. Check out the feature branch. Prepare your LabVIEW environment (recommend LabVIEW 2025 (25.0) or newer with required dependencies applied). You can develop straight from the project.
 **NOTE:** You will be able to run the lv_icon.vi from the project, but it will not be the active icon editor in the IDE. It is recommended to build the PPL and VI Package and install the package to test in the IDE.
 4. **Implement & Test** – Develop your changes using LabVIEW. Test the editor manually in LabVIEW to ensure your changes work. Run any available unit tests.
@@ -111,9 +111,10 @@ For very large or long-term contributions, NI may use an `experiment/<feature-na
 
 In-depth documentation and reference guides are located in the `/docs` directory. A complete index is available in [docs/README.md](docs/README.md). Notable documents include:
 
-- **Build & CI Guides:** How to build the Icon Editor and use continuous integration tools. For local setup, see [manual-instructions.md](docs/manual-instructions.md) or the script-driven [automated-setup.md](docs/automated-setup.md). CI pipelines are covered in [CI Workflows](docs/ci-workflows.md) and the [CI Workflow (Multi-Channel Release Support)](docs/powershell-cli-github-action-instructions.md). Reference scripts are listed in [PowerShell Dependency Scripts](docs/powershell-dependency-scripts.md). Packaging and runner configuration are detailed in [Build VI Package](docs/ci/actions/build-vi-package.md) and the [Runner Setup Guide](docs/ci/actions/runner-setup-guide.md).
+- **Build & CI Guides:** How to build the Icon Editor and use continuous integration tools. For local setup, see [manual-instructions.md](docs/manual-instructions.md) or the script-driven [automated-setup.md](docs/automated-setup.md). CI pipelines are covered in [CI Workflows](docs/ci-workflows.md). Reference scripts are listed in [PowerShell Dependency Scripts](docs/powershell-dependency-scripts.md). Packaging and runner configuration are detailed in [Build VI Package](docs/ci/actions/build-vi-package.md) and the [Runner Setup Guide](docs/ci/actions/runner-setup-guide.md).
 - **Composite Actions:** Summary of the repository's reusable GitHub Actions is available in [Composite Actions](docs/ci/actions/README.md).
-- **Advanced Workflows:** Details on complex release processes and branching strategies. For example, the [Multichannel Release Workflow](docs/ci/actions/multichannel-release-workflow.md) explains alpha/beta/RC release branches, and [EXPERIMENTS.md](docs/ci/experiments.md) covers long-running feature branches. Maintainers can refer to the [Maintainer's Guide](docs/ci/actions/maintainers-guide.md) for internal release duties.
+- **Advanced Workflows:** Details on release and branching strategies are documented in [CI Workflows](docs/ci-workflows.md), while [EXPERIMENTS.md](docs/ci/experiments.md) covers long-running feature branches. Maintainers can refer to the [Maintainer's Guide](docs/ci/actions/maintainers-guide.md) for internal release duties.
+- **Archived/Historical CI Docs:** Historical references retained for context include [CI Workflow (Multi-Channel Release Support)](docs/powershell-cli-github-action-instructions.md) and [Multichannel Release Workflow](docs/ci/actions/multichannel-release-workflow.md). These are not normative; use [ci.yml](.github/workflows/ci.yml) and [CI Workflows](docs/ci-workflows.md) as source of truth.
 - **Troubleshooting:** If you encounter issues, see the [Troubleshooting & FAQ](docs/ci/troubleshooting-faq.md) for common problems (environment setup, build failures, etc.). There is also a specialized [Experiments Troubleshooting](docs/ci/actions/troubleshooting-experiments.md) guide for experimental branch issues.
 - **Project Governance:** This project adheres to NI’s open-source governance model. See [GOVERNANCE.md](GOVERNANCE.md) for roles and decision-making processes, and refer to our [Code of Conduct](CODE_OF_CONDUCT.md) for community interaction guidelines.
 

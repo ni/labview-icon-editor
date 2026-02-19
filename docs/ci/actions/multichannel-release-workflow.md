@@ -1,5 +1,10 @@
 # **Updated Guide: Multi-Channel Release Workflow**
 
+> [!WARNING]
+> Archived/Historical document. Not normative; `ci.yml` is source of truth.
+> Use [`docs/ci-workflows.md`](../../ci-workflows.md) and
+> [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) for current behavior.
+
 This revised guide focuses on the **release workflow**, specifically how we handle **multiple pre-release channels** (Alpha, Beta, RC) in addition to final versions.
 
 
@@ -8,7 +13,6 @@ This revised guide focuses on the **release workflow**, specifically how we hand
 1. [Overview & Purpose](#overview--purpose)  
 2. [Requirements & Environment](#requirements--environment)
 3. [Configuration & Branch Patterns](#configuration--branch-patterns)
-   - [Issue-Status Gate](#issue-status-gate)
 4. [Workflow Steps](#workflow-steps)
    - [Fetch & Determine Version](#fetch--determine-version)
    - [Build & Artifact Handling](#build--artifact-handling)
@@ -66,7 +70,7 @@ By adopting these patterns, maintainers can run alpha, beta, and RC pipelines in
   - `main`, `develop`, `hotfix/*` produce final releases with no alpha/beta/rc suffix.
   - No label => major/minor/patch remain unchanged; build increments only.
 
-The accompanying GitHub Actions workflow (`ci-composite.yml`) lists `release-alpha/*`, `release-beta/*`, and `release-rc/*` in its trigger patterns so commits or pull requests to these branches automatically run this pipeline.
+The accompanying GitHub Actions workflow (`ci.yml`) lists `release-alpha/*`, `release-beta/*`, and `release-rc/*` in its trigger patterns so commits or pull requests to these branches automatically run this pipeline.
 
 To enable these pre-release branches, ensure the workflow's `on.push.branches` and `on.pull_request.branches` sections include the patterns:
 
@@ -97,16 +101,10 @@ on:
 Use whichever patterns best fit your project’s branching model. If you prefer subdirectories (`release/alpha/*` vs. `release-alpha/*`), adapt the snippet accordingly.
 
 
-<a name="issue-status-gate"></a>
-### **Issue-Status Gate**
-
-The composite CI workflow only runs full jobs when the `issue-status` check succeeds. That job requires the source branch name to contain `issue-<number>` (for example, `release-alpha/issue-123` or `issue-456`) and the linked GitHub issue’s Status to be **In Progress**. Branches without this prefix—such as `release-alpha/2.0`—trigger the workflow but skip all subsequent jobs. See the `issue-status` job in [ci-composite.yml](../../../.github/workflows/ci-composite.yml) for details and its downstream gate.
-
-
 <a name="workflow-steps"></a>
 ## **4. Workflow Steps**
 
-Below is a **high-level** breakdown. In your `.github/workflows/ci-composite.yml`, these steps typically appear in order:
+Below is a **high-level** breakdown. In your `.github/workflows/ci.yml`, these steps typically appear in order:
 
 <a name="fetch--determine-version"></a>
 ### **Fetch & Determine Version**
@@ -121,7 +119,7 @@ Below is a **high-level** breakdown. In your `.github/workflows/ci-composite.yml
 
 <a name="build--artifact-handling"></a>
 ### **Build & Artifact Handling**
-- Uses the `build-lvlibp` and `build-vi-package` actions to compile code and produce the `.vip` package.
+- Uses the `build-project-spec` and `build-vi-package` actions to compile code and produce the `.vip` package.
 
 <a name="artifact-upload-only"></a>
 ### **Artifact Upload Only**

@@ -1,0 +1,11 @@
+{
+  "project_relative_path": "lv_icon_editor.lvproj",
+  "target_dir_relative_path": "Test/Templates",
+  "build_output_relative_path": "resource/plugins/lv_icon.lvlibp",
+  "build_spec_name": "Editor Packed Library",
+  "target_name": "My Computer",
+  "exclude_files": [
+    "Polymorphic Template.vi"
+  ],
+  "default_release_suffix": "q1"
+}

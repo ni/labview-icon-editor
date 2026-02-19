@@ -1,0 +1,90 @@
+name: "Build Project Spec"
+description: "Runs BuildProjectSpec.ps1 to build a LabVIEW project specification via LabVIEWCLI."
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Run BuildProjectSpec.ps1
+      shell: pwsh
+      run: |
+        $repoRoot = "${{ inputs.repo_root }}"
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          $repoRoot = $env:GITHUB_WORKSPACE
+        }
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "repo_root is required."
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot -ErrorAction Stop).Path
+
+        $lvVersionInput = "${{ inputs.labview_version }}"
+        $assertScript = Join-Path $repoRoot 'Tooling\Assert-LabVIEWVersion.ps1'
+        if (-not (Test-Path -Path $assertScript)) {
+          throw "Assert-LabVIEWVersion.ps1 not found at $assertScript"
+        }
+        $lvInfo = & $assertScript -RepoRoot $repoRoot -ExpectedVersion $lvVersionInput -Context 'build-project-spec'
+        if ([string]::IsNullOrWhiteSpace($lvVersionInput)) {
+          Write-Warning "labview_version not provided; using .lvversion ($($lvInfo.Raw))."
+        }
+        $lvVersion = $lvInfo.Year
+
+        $buildScript = Join-Path "${{ github.action_path }}" '..\build-lvlibp\BuildProjectSpec.ps1'
+        $buildScript = (Resolve-Path -Path $buildScript -ErrorAction Stop).Path
+
+        & $buildScript `
+          -LabVIEWVersion $lvVersion `
+          -SupportedBitness ${{ inputs.supported_bitness }} `
+          -RepoRoot $repoRoot `
+          -ProjectSpecType "${{ inputs.project_spec_type }}" `
+          -BuildSpecName "${{ inputs.build_spec_name }}" `
+          -OutputRelativePath "${{ inputs.output_relative_path }}" `
+          -TargetName "${{ inputs.target_name }}" `
+          -Major ${{ inputs.major }} `
+          -Minor ${{ inputs.minor }} `
+          -Patch ${{ inputs.patch }} `
+          -Build ${{ inputs.build }} `
+          -Commit "${{ inputs.commit }}"
+inputs:
+  labview_version:
+    description: 'LabVIEW version to target (year or numeric).'
+    required: false
+  supported_bitness:
+    description: '32 or 64'
+    required: true
+  repo_root:
+    description: 'Workspace root path'
+    required: true
+  project_spec_type:
+    description: 'Project spec type: PackedLibrary or SourceDistribution'
+    required: false
+    default: 'PackedLibrary'
+  build_spec_name:
+    description: 'LabVIEW build specification name (required for SourceDistribution)'
+    required: false
+    default: ''
+  output_relative_path:
+    description: 'Output artifact path relative to repo root (required for SourceDistribution)'
+    required: false
+    default: ''
+  target_name:
+    description: 'LabVIEW target name'
+    required: false
+    default: 'My Computer'
+  major:
+    description: 'Major version component'
+    required: true
+  minor:
+    description: 'Minor version component'
+    required: true
+  patch:
+    description: 'Patch version component'
+    required: true
+  build:
+    description: 'Build number'
+    required: true
+  commit:
+    description: 'Commit identifier'
+    required: true

@@ -5,7 +5,7 @@ Runs **`Prepare_LabVIEW_source.ps1`** to unpack and configure project sources be
 ## Inputs
 | Name | Required | Example | Description |
 |------|----------|---------|-------------|
-| `labview_version` | **Yes** | `2021` | LabVIEW 2021 (21.0). |
+| `labview_version` | No | `2021` | LabVIEW 2021 (21.0). Defaults to `.lvversion` and fails if it conflicts. |
 | `supported_bitness` | **Yes** | `32` or `64` | Target LabVIEW bitness. |
 | `repo_root` | No | `${{ github.workspace }}` | Repository root path (optional). |
 
@@ -13,7 +13,6 @@ Runs **`Prepare_LabVIEW_source.ps1`** to unpack and configure project sources be
 ```yaml
 - uses: ./.github/actions/prepare-labview-source
   with:
-    labview_version: 2021
     supported_bitness: 64
     repo_root: ${{ github.workspace }}
 ```

@@ -1,0 +1,25 @@
+name: Repo-Agnostic Issue Routing
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Repo-Agnostic Issue/Discussion Routing
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate repo-agnostic issue/discussion routing
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File .\Tooling\Test-RepoAgnosticIssueRouting.ps1
+
+      - name: Run repository resolver tests
+        shell: pwsh
+        run: |
+          Invoke-Pester -Path .\Tooling\tests\ResolveGitHubRepo.Tests.ps1 -Output Detailed

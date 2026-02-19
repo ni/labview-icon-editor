@@ -10,7 +10,6 @@
 
 .PARAMETER LabVIEWVersion
     LabVIEW version year (e.g., 2021) or numeric version (e.g., 21.0).
-    Alias: MinimumSupportedLVVersion.
 
 .PARAMETER SupportedBitness
     Bitness of the LabVIEW environment ("32" or "64").
@@ -26,15 +25,14 @@
     Maximum time to wait for g-cli to finish in milliseconds (0 disables the timeout).
 
 .EXAMPLE
-    .\RestoreSetupLVSource.ps1 -LabVIEWVersion "2021" -SupportedBitness "64"
+    .\RestoreSetupLVSource.ps1 -SupportedBitness "64"  # Uses .lvversion by default
 #>
 
 param(
-    [Parameter(Mandatory = $true)]
+    [Parameter(Mandatory = $false)]
     [AllowNull()]
     [AllowEmptyString()]
-    [Alias('MinimumSupportedLVVersion')]
-    [string]$LabVIEWVersion,
+    [string]$LabVIEWVersion = '',
 
     [Parameter(Mandatory = $true)]
     [ValidateSet('32', '64', IgnoreCase = $true)]
@@ -119,7 +117,7 @@ if (Test-Path -Path $versionHelper) {
     $labviewYear = $versionInfo.Year
 }
 if ([string]::IsNullOrWhiteSpace($labviewYear)) {
-    $labviewYear = '2021'
+    throw "LabVIEW version could not be resolved. Check .lvversion."
 }
 $gCliRunner = Join-Path -Path $repoRoot -ChildPath 'Tooling\support\GcliRunner.ps1'
 if (-not (Test-Path -Path $gCliRunner)) {
@@ -250,3 +248,4 @@ if ($failure) {
 if ($closeFailure) {
     throw $closeFailure
 }
+

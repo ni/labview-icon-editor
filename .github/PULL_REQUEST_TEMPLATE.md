@@ -1,41 +1,38 @@
-# GitHub Issue for the Pull Request  
-Link to the relevant GitHub issue
-
-# GitHub Discussions Related to this Pull Request  
-List any GitHub discussion links related to this PR
-
-# Checklists
-
-Completing these checklists ensures that your PR meets our build server requirements on the first attempt. If you're unable to complete any of the following checks, please submit your PR as a draft to the best of your ability. We will provide any clarification you may need after posting it.
-
-- [ ] I do not require assistance from NI to complete any of the following checks.
-- [ ] The changes in this PR are based on the appropriate NI-repo feature branch
-- [ ] I am submitting the changes in this PR to the appropriate NI-repo feature branch
-- [ ] I built a VI Package using the [Powershell build tool](https://github.com/ni/labview-icon-editor/wiki/automation#pwsh).
-- [ ] I installed the VI Package produced by the Powershell build tool and tested my change.
-- [ ] I tested my changes after [installing the VI package](https://github.com/ni/labview-icon-editor/wiki/test#localtesting).
-- [ ] NI has my contributor license agreement.
+# Related Links
+- GitHub issue:
+- GitHub discussion(s):
 
 # Summary of Changes
+- What changed:
+- Why this change is needed:
+- Out of scope:
 
-Provide a concise overview of what is being added, modified, or fixed in this pull request. Make an emphasis on whas was not captured on the GitHub issue, or discussion associated with this PR.
+# Version Increment Label
+- [ ] I applied exactly one canonical release label:
+  - `Version Increment: Major`
+  - `Version Increment: Minor`
+  - `Version Increment: Patch`
+- Compatibility aliases are accepted during migration (deprecated after two release cycles): `major`, `minor`, `patch`
 
-# Reason for Change
+# Checklist
+If any item is incomplete, mark this PR as draft and note the gap.
 
-Explain the problem or need addressed by this pull request, including any relevant background information.
-
-# Visual Aids
-
-Include any visual aids that would help the reviewer gain additional context.
-
-# Additional Information
-
-Include any further details that may assist the reviewer in understanding the context of this PR.
+- [ ] Changes are based on and target the correct NI feature branch
+- [ ] I used repository docs for setup/build/test guidance: `docs/ci-workflows.md`, `Tooling/README.md`, `docs/powershell-dependency-scripts.md`
+- [ ] I validated this change with appropriate automated and/or manual testing
+- [ ] I documented test evidence in this PR
+- [ ] I updated documentation when behavior changed, or noted why no docs update is needed
+- [ ] NI has my contributor license agreement
 
 # Testing
+## Automated
+- Commands and/or workflow links:
+- Result:
 
-This section describes the automated and manual tests performed for this bugfix/feature.
+## Manual
+- Steps:
+- Result:
 
-## Manual Tests
-
-Describe any manual tests conducted.
+# Additional Context
+- Visual aids (optional):
+- Notes for reviewers:

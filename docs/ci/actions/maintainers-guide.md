@@ -22,16 +22,13 @@ current.
 
 1. Confirm the related GitHub issue is approved for work.
 2. Create a branch from `develop` named `issue-<number>-<short-description>`
-   (for example, `issue-123-fix-toolbar`). Branch names **must** include
-   `issue-<number>`.
-3. Set the linked issue's **Status** field to **In Progress**. The
-   [`issue-status` job](../../../.github/workflows/ci-composite.yml)
-   enforces the branch naming and status requirements, skipping most jobs when
-   either condition is not met.
-4. Push the branch to the main repository and open a pull request targeting
+   (for example, `issue-123-fix-toolbar`). This naming is recommended for
+   traceability, but CI no longer requires it.
+3. Ensure the branch matches CI trigger patterns and open a pull request targeting
    `develop` (or another appropriate branch).
-5. Run unit tests or scripted checks locally whenever possible.
-6. Ensure CI passes and obtain at least one maintainer approval before merging.
+4. Run unit tests or scripted checks locally whenever possible.
+5. Ensure CI passes and obtain at least one maintainer approval before merging.
+6. For PRs targeting `develop` that drive prerelease publication, merge with a merge commit (`gh pr merge <pr-number> --merge --delete-branch`) and avoid squash/rebase.
 7. After merging, delete the source branch to keep the repository tidy.
 
 ## Workflow Administration
@@ -40,15 +37,78 @@ current.
   artifacts (VIPs), run the `approve-experiment` workflow in GitHub Actions.
   Coordinate with the NI Open-Source Program Manager (OSPM) before execution.
 - **Finalize experiment merges** – Prior to merging an experiment branch into
-  `develop`, apply an appropriate version label (major/minor/patch) and remove
-  any temporary settings or `NoCI` labels. A `NoCI` label causes the CI
-  workflow to skip all jobs, so clear it before running final tests. The OSPM
-  or designated NI staff typically gives the final approval.
+  `develop`, apply exactly one canonical version label (`Version Increment:
+  Major`, `Version Increment: Minor`, or `Version Increment: Patch`) and remove
+  any temporary settings. Compatibility aliases (`major`, `minor`, `patch`)
+  remain accepted during migration. The OSPM or designated NI staff typically
+  gives the final approval.
 - **Hotfix branches** – For critical fixes on an official release, create or
   approve a `hotfix/*` branch targeting `main`. After merging into `main`, merge
   the changes back into `develop` to keep branches synchronized.
 - **Documentation updates** – When workflows change, update related
   documentation in the `/docs` directory as part of the same pull request.
+
+## Stale Issue Automation
+
+- Workflow: `.github/workflows/stale-issues.yml`
+- Schedule: daily UTC run plus manual `workflow_dispatch`
+- Scope: issues only (`days-before-pr-stale` and `days-before-pr-close` are
+  disabled)
+- Policy: mark issues stale after 45 inactive days and close after 14
+  additional inactive days
+- Stale label: `Workflow: Stale` (created/updated automatically before each run)
+- Exempt labels:
+  - `Workflow: Actively discussing`
+  - `Workflow: NI Approves`
+  - `Workflow: Requires R&D clarification`
+  - `Workflow: Open to contribution`
+  - `Issue group: Added to agenda`
+  - `good first issue`
+
+Recovery and override:
+1. If an issue was marked stale but should stay open, add context in a comment
+   or edit the issue; stale status is removed automatically when activity occurs.
+2. If an issue was auto-closed but should remain open, reopen the issue and
+   add updated context.
+3. If a class of issues should never go stale, apply one of the exempt labels
+   above (or extend the workflow exempt list in a PR).
+
+Debug-only/manual validation:
+- Run `stale-issues.yml` with `debug_only=true` to preview candidates without
+  mutation.
+
+## Label Compatibility Policy
+
+- Canonical label taxonomy is immediate:
+  - Release: `Version Increment: Major|Minor|Patch`
+  - Issue type: `Issue group: Bug`, `Type: Enhancement`
+  - Stale lifecycle: `Workflow: Stale`
+- Compatibility aliases remain accepted for two release cycles:
+  - `major`, `minor`, `patch`, `bug`, `enhancement`
+- Alias retirement is documented but not auto-enforced in this phase.
+- Use `labels-sync.yml` to create/update contract labels from
+  `.github/labels/label-contract.json`.
+- Resolve the repository for `gh` commands:
+  - `$repo = pwsh -NoProfile -File .\Tooling\Resolve-GitHubRepo.ps1`
+  - `GH_REPO` is optional override and takes precedence when maintainers need to target a specific repo.
+
+## Label Metadata Automation
+
+- Daily audit workflow: `.github/workflows/label-metadata-audit.yml`
+  - Reports unlabeled PRs/issues, alias-only usage, conflicts, and missing stale
+    exempt labels.
+  - Uploads JSON artifact: `label-metadata-audit`.
+- Event normalization workflow: `.github/workflows/label-metadata-normalize.yml`
+  - Triggered by `pull_request_target` and `issues` events.
+  - Defaults to `warn` mode before enforcement date; supports manual
+    `workflow_dispatch` override (`mode=warn|enforce`).
+  - Adds canonical labels when alias-only labels are found and applies default
+    release/type labels when missing.
+- Enforcement gate: `.github/workflows/label-metadata-gate.yml`
+  - Required PR context name: `Label Metadata Gate / PR Release Label Contract`.
+  - PR rule: exactly one normalized release bump family (`major|minor|patch`).
+  - Issue rule: exactly one normalized issue type family (`bug|enhancement`);
+    aliases are accepted during transition.
 
 ## Pull Request Review Checklist
 

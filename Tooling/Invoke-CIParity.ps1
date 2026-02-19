@@ -5,7 +5,7 @@
 
 .DESCRIPTION
     Creates a short-path worktree (optional), records pre/post process snapshots,
-    and runs Run-CICompositeLocal.ps1 or Run-CICompositeLocal-Auto.ps1 with
+    and runs Run-CI.ps1 with
     consistent status output.
 #>
 
@@ -112,17 +112,33 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    throw "git was not found on PATH."
+}
 function Resolve-RepoRoot {
     param([string]$PathOverride)
 
-    if ($PathOverride) {
+    if (-not [string]::IsNullOrWhiteSpace($PathOverride)) {
         if (-not (Test-Path -Path $PathOverride)) {
             throw "RepoRoot does not exist: $PathOverride"
         }
         return (Resolve-Path -Path $PathOverride).Path
     }
 
-    return (Resolve-Path -Path (Join-Path $PSScriptRoot '..')).Path
+    $scriptRoot = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $PSCommandPath }
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($git) {
+        try {
+            $gitRoot = git -C $scriptRoot rev-parse --show-toplevel 2>$null
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRoot)) {
+                return (Resolve-Path -Path $gitRoot.Trim()).Path
+            }
+        } catch {
+            Write-Verbose ("git rev-parse failed: {0}" -f $_.Exception.Message)
+        }
+    }
+
+    return (Resolve-Path -Path (Join-Path $scriptRoot '..')).Path
 }
 
 function Get-DefaultWorktreeName {
@@ -309,15 +325,11 @@ $statusLatestPath = Join-Path $statusRoot 'ci-parity-latest.json'
 $snapshotBeforePath = Join-Path $statusRoot ("ci-parity-process-before-{0}.json" -f $timestamp)
 $snapshotAfterPath = Join-Path $statusRoot ("ci-parity-process-after-{0}.json" -f $timestamp)
 
-if ($AutoLoop -and ($SkipVerifyIEPaths -or $SkipVipc -or $SkipMissingInProject -or $SkipUnitTests -or $SkipBuildPpl -or $SkipBuildVip)) {
-    Write-Warning "Skip flags are ignored in AutoLoop mode."
+if ($AutoLoop) {
+    throw "AutoLoop mode was removed. Use Tooling/Run-CI.ps1 directly."
 }
 
-$runScriptPath = if ($AutoLoop) {
-    Join-Path $repoRoot 'Tooling/Run-CICompositeLocal-Auto.ps1'
-} else {
-    Join-Path $repoRoot 'Tooling/Run-CICompositeLocal.ps1'
-}
+$runScriptPath = Join-Path $repoRoot 'Tooling/Run-CI.ps1'
 if (-not (Test-Path -Path $runScriptPath)) {
     throw "Run script not found at $runScriptPath"
 }
@@ -332,7 +344,7 @@ if ($UseWorktree) {
 
     $resolvedWorktreeRoot = & $ensureWorktreeScript -WorktreeRoot $WorktreeRoot
     $env:LVIE_WORKTREE_ROOT = $resolvedWorktreeRoot
-    $defaultPrefix = if ($AutoLoop) { 'ci-parity-auto' } else { 'ci-parity-run' }
+    $defaultPrefix = 'ci-parity-run'
     $resolvedWorktreeName = Resolve-WorktreeName -Name $WorktreeName -Timestamp $timestamp -DefaultPrefix $defaultPrefix
 } elseif (-not $SkipWorktreeRootCheck) {
     Write-Warning 'UseWorktree is disabled; skipping worktree root guard.'
@@ -342,7 +354,7 @@ $worktreesBefore = if ($UseWorktree) { Get-WorktreePathList -RepoRoot $repoRoot 
 $worktreePath = $null
 $runRepoRoot = $repoRoot
 
-if ($UseWorktree -and -not $AutoLoop) {
+if ($UseWorktree) {
     # If we're already running from a short-path worktree under the configured root,
     # reuse it instead of nesting worktrees.
     if ((Test-IsGitWorktree -RepoRoot $repoRoot) -and (Test-IsUnderRoot -Path $repoRoot -Root $resolvedWorktreeRoot)) {
@@ -388,73 +400,46 @@ $runSucceeded = $false
 Copy-Item -Path $statusPath -Destination $statusLatestPath -Force
 
 try {
-    if ($AutoLoop) {
-        $autoParams = @{}
-        if ($PSBoundParameters.ContainsKey('LabVIEWVersion')) { $autoParams.LabVIEWVersion = $LabVIEWVersion }
-        $autoParams.LabVIEWBitness = $LabVIEWBitness
-        if ($PSBoundParameters.ContainsKey('MaxAttempts')) { $autoParams.MaxAttempts = $MaxAttempts }
-        if ($PSBoundParameters.ContainsKey('ConnectTimeoutMs')) { $autoParams.ConnectTimeoutMs = $ConnectTimeoutMs }
-        if ($PSBoundParameters.ContainsKey('ProcessTimeoutMs')) { $autoParams.ProcessTimeoutMs = $ProcessTimeoutMs }
-        if ($EnsureCleanState) { $autoParams.EnsureCleanState = $true }
-        if ($PSBoundParameters.ContainsKey('RunId')) { $autoParams.RunId = $RunId }
-        if ($PSBoundParameters.ContainsKey('ArtifactRoot')) { $autoParams.ArtifactRoot = $ArtifactRoot }
-        if ($CleanRoom) { $autoParams.CleanRoom = $true }
+    $runParams = @{}
+    if ($PSBoundParameters.ContainsKey('LabVIEWVersion')) { $runParams.LabVIEWVersion = $LabVIEWVersion }
+    $runParams.LabVIEWBitness = $LabVIEWBitness
+    if ($EnsureCleanState) { $runParams.EnsureCleanState = $true }
+    if ($SkipVerifyIEPaths) { $runParams.SkipVerifyIEPaths = $true }
+    if ($SkipVipc) { $runParams.SkipVipc = $true }
+    if ($SkipMissingInProject) { $runParams.SkipMissingInProject = $true }
+    if ($SkipUnitTests) { $runParams.SkipUnitTests = $true }
+    if ($SkipBuildPpl) { $runParams.SkipBuildPpl = $true }
+    if ($SkipBuildVip) { $runParams.SkipBuildVip = $true }
+    if ($PSBoundParameters.ContainsKey('BumpType')) { $runParams.BumpType = $BumpType }
+    if ($PSBoundParameters.ContainsKey('ConnectTimeoutMs')) { $runParams.ConnectTimeoutMs = $ConnectTimeoutMs }
+    if ($PSBoundParameters.ContainsKey('ProcessTimeoutMs')) { $runParams.ProcessTimeoutMs = $ProcessTimeoutMs }
+    if ($PSBoundParameters.ContainsKey('StatusFileTimeoutMs')) { $runParams.StatusFileTimeoutMs = $StatusFileTimeoutMs }
+    if ($PSBoundParameters.ContainsKey('VipmTimeoutSeconds')) { $runParams.VipmTimeoutSeconds = $VipmTimeoutSeconds }
+    if ($PSBoundParameters.ContainsKey('CloseLabVIEWMode')) { $runParams.CloseLabVIEWMode = $CloseLabVIEWMode }
+    if ($PSBoundParameters.ContainsKey('VipcPath')) { $runParams.VipcPath = $VipcPath }
+    if ($PSBoundParameters.ContainsKey('VipbPath')) { $runParams.VipbPath = $VipbPath }
+    if ($PSBoundParameters.ContainsKey('ReleaseNotesPath')) { $runParams.ReleaseNotesPath = $ReleaseNotesPath }
+    if ($PSBoundParameters.ContainsKey('RunId')) { $runParams.RunId = $RunId }
+    if ($PSBoundParameters.ContainsKey('ArtifactRoot')) { $runParams.ArtifactRoot = $ArtifactRoot }
+    if ($CleanRoom) { $runParams.CleanRoom = $true }
 
-        $autoParams.RepoRoot = $repoRoot
-        $autoParams.UseWorktree = $UseWorktree
-        if ($UseWorktree) {
-            $autoParams.WorktreeRoot = $resolvedWorktreeRoot
-            $autoParams.WorktreeName = $resolvedWorktreeName
-        }
+    if ($PSBoundParameters.ContainsKey('Major')) { $runParams.Major = $Major }
+    if ($PSBoundParameters.ContainsKey('Minor')) { $runParams.Minor = $Minor }
+    if ($PSBoundParameters.ContainsKey('Patch')) { $runParams.Patch = $Patch }
+    if ($PSBoundParameters.ContainsKey('Build')) { $runParams.Build = $Build }
+    if ($PSBoundParameters.ContainsKey('Commit')) { $runParams.Commit = $Commit }
 
-        $skipGuard = $SkipWorktreeRootCheck -or (-not $UseWorktree)
-        if ($skipGuard) {
-            $autoParams.SkipWorktreeRootCheck = $true
-        }
-
-        & $runScriptPath @autoParams
-    } else {
-        $runParams = @{}
-        if ($PSBoundParameters.ContainsKey('LabVIEWVersion')) { $runParams.LabVIEWVersion = $LabVIEWVersion }
-        $runParams.LabVIEWBitness = $LabVIEWBitness
-        if ($EnsureCleanState) { $runParams.EnsureCleanState = $true }
-        if ($SkipVerifyIEPaths) { $runParams.SkipVerifyIEPaths = $true }
-        if ($SkipVipc) { $runParams.SkipVipc = $true }
-        if ($SkipMissingInProject) { $runParams.SkipMissingInProject = $true }
-        if ($SkipUnitTests) { $runParams.SkipUnitTests = $true }
-        if ($SkipBuildPpl) { $runParams.SkipBuildPpl = $true }
-        if ($SkipBuildVip) { $runParams.SkipBuildVip = $true }
-        if ($PSBoundParameters.ContainsKey('BumpType')) { $runParams.BumpType = $BumpType }
-        if ($PSBoundParameters.ContainsKey('ConnectTimeoutMs')) { $runParams.ConnectTimeoutMs = $ConnectTimeoutMs }
-        if ($PSBoundParameters.ContainsKey('ProcessTimeoutMs')) { $runParams.ProcessTimeoutMs = $ProcessTimeoutMs }
-        if ($PSBoundParameters.ContainsKey('StatusFileTimeoutMs')) { $runParams.StatusFileTimeoutMs = $StatusFileTimeoutMs }
-        if ($PSBoundParameters.ContainsKey('VipmTimeoutSeconds')) { $runParams.VipmTimeoutSeconds = $VipmTimeoutSeconds }
-        if ($PSBoundParameters.ContainsKey('CloseLabVIEWMode')) { $runParams.CloseLabVIEWMode = $CloseLabVIEWMode }
-        if ($PSBoundParameters.ContainsKey('VipcPath')) { $runParams.VipcPath = $VipcPath }
-        if ($PSBoundParameters.ContainsKey('VipbPath')) { $runParams.VipbPath = $VipbPath }
-        if ($PSBoundParameters.ContainsKey('ReleaseNotesPath')) { $runParams.ReleaseNotesPath = $ReleaseNotesPath }
-        if ($PSBoundParameters.ContainsKey('RunId')) { $runParams.RunId = $RunId }
-        if ($PSBoundParameters.ContainsKey('ArtifactRoot')) { $runParams.ArtifactRoot = $ArtifactRoot }
-        if ($CleanRoom) { $runParams.CleanRoom = $true }
-
-        if ($PSBoundParameters.ContainsKey('Major')) { $runParams.Major = $Major }
-        if ($PSBoundParameters.ContainsKey('Minor')) { $runParams.Minor = $Minor }
-        if ($PSBoundParameters.ContainsKey('Patch')) { $runParams.Patch = $Patch }
-        if ($PSBoundParameters.ContainsKey('Build')) { $runParams.Build = $Build }
-        if ($PSBoundParameters.ContainsKey('Commit')) { $runParams.Commit = $Commit }
-
-        $runParams.RepoRoot = $runRepoRoot
-        if ($UseWorktree) {
-            $runParams.WorktreeRoot = $resolvedWorktreeRoot
-        }
-
-        $skipGuard = $SkipWorktreeRootCheck -or (-not $UseWorktree)
-        if ($skipGuard) {
-            $runParams.SkipWorktreeRootCheck = $true
-        }
-
-        & $runScriptPath @runParams
+    $runParams.RepoRoot = $runRepoRoot
+    if ($UseWorktree) {
+        $runParams.WorktreeRoot = $resolvedWorktreeRoot
     }
+
+    $skipGuard = $SkipWorktreeRootCheck -or (-not $UseWorktree)
+    if ($skipGuard) {
+        $runParams.SkipWorktreeRootCheck = $true
+    }
+
+    & $runScriptPath @runParams
 
     $runSucceeded = $true
 } catch {

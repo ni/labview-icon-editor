@@ -19,7 +19,6 @@
 
 .PARAMETER LabVIEWVersion
     LabVIEW major version year (e.g., 2021).
-    Alias: MinimumSupportedLVVersion.
 
 .PARAMETER LabVIEWMinorRevision
     Minor revision number of LabVIEW (e.g., 0 for 21.0).
@@ -45,8 +44,11 @@
 .PARAMETER DisplayInformationJSON
     JSON string representing the VIPB display information to update.
 
+.PARAMETER DisplayInformationJsonPath
+    File path to a JSON payload representing the VIPB display information.
+
 .EXAMPLE
-    .\ModifyVIPBDisplayInfo.ps1 -SupportedBitness "64" -RepoRoot "C:\repo" -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -LabVIEWVersion 2021 -LabVIEWMinorRevision 0 -Major 1 -Minor 0 -Patch 0 -Build 2 -Commit "abcd123" -ReleaseNotesFile "Tooling\deployment\release_notes.md" -DisplayInformationJSON '{"Package Version":{"major":1,"minor":0,"patch":0,"build":2}}'
+    .\ModifyVIPBDisplayInfo.ps1 -SupportedBitness "64" -RepoRoot "C:\repo" -VIPBPath "Tooling\deployment\NI Icon editor.vipb" -Major 1 -Minor 0 -Patch 0 -Build 2 -Commit "abcd123" -ReleaseNotesFile "Tooling\deployment\release_notes.md" -DisplayInformationJSON '{"Package Version":{"major":1,"minor":0,"patch":0,"build":2}}'
 #>
 param (
     [string]$SupportedBitness,
@@ -55,9 +57,7 @@ param (
     [string]$WorktreeRoot,
     [switch]$SkipWorktreeRootCheck,
 
-    [Alias('MinimumSupportedLVVersion')]
-    [ValidateRange(2000, 2100)]
-    [int]$LabVIEWVersion,
+    [string]$LabVIEWVersion,
 
     [ValidateRange(0, 99)]
     [int]$LabVIEWMinorRevision = 0,
@@ -69,8 +69,8 @@ param (
     [string]$Commit,
     [string]$ReleaseNotesFile,
 
-    [Parameter(Mandatory=$true)]
-    [string]$DisplayInformationJSON
+    [string]$DisplayInformationJSON,
+    [string]$DisplayInformationJsonPath
 )
 
 # 1) Resolve paths
@@ -109,6 +109,29 @@ if (Test-Path -Path $preflightScript) {
     $ResolvedRepoRoot = $preflight.RepoRoot
 }
 
+# 1b) Resolve LabVIEW version against .lvversion (fail-fast on mismatch)
+$versionHelper = Join-Path $ResolvedRepoRoot 'Tooling\support\LabVIEWVersion.ps1'
+if (Test-Path -Path $versionHelper) {
+    . $versionHelper
+    $repoInfo = Get-LabVIEWVersionInfo -RepoRoot $ResolvedRepoRoot
+    $inputProvided = $PSBoundParameters.ContainsKey('LabVIEWVersion') -and -not [string]::IsNullOrWhiteSpace([string]$LabVIEWVersion)
+    if ($inputProvided) {
+        $inputInfo = Get-LabVIEWVersionInfo -VersionInput $LabVIEWVersion -RepoRoot $ResolvedRepoRoot
+        $LabVIEWVersion = [int]$inputInfo.Year
+    } else {
+        $LabVIEWVersion = [int]$repoInfo.Year
+        Write-Warning "LabVIEWVersion not provided; defaulting to .lvversion ($($repoInfo.Raw))."
+    }
+
+    if ($PSBoundParameters.ContainsKey('LabVIEWMinorRevision')) {
+        if ([int]$LabVIEWMinorRevision -ne [int]$repoInfo.MinorRevision) {
+            throw "LabVIEWMinorRevision '$LabVIEWMinorRevision' does not match .lvversion minor '$($repoInfo.MinorRevision)'."
+        }
+    } else {
+        $LabVIEWMinorRevision = [int]$repoInfo.MinorRevision
+    }
+}
+
 # 2) Create release notes if needed
 if (-not (Test-Path $ReleaseNotesFile)) {
     Write-Host "Release notes file '$ReleaseNotesFile' does not exist. Creating it..."
@@ -139,7 +162,41 @@ else {
 }
 Write-Output "Modifying VI Package Information metadata (no LabVIEW dependency)..."
 
-# 4) Parse and update the DisplayInformationJSON
+# 4) Resolve and parse display-information JSON
+if (-not [string]::IsNullOrWhiteSpace($DisplayInformationJsonPath)) {
+    if (-not (Test-Path -Path $DisplayInformationJsonPath -PathType Leaf)) {
+        $errorObject = [PSCustomObject]@{
+            error = "DisplayInformationJsonPath does not exist."
+            path  = $DisplayInformationJsonPath
+        }
+        $errorObject | ConvertTo-Json -Depth 10
+        exit 1
+    }
+
+    try {
+        $DisplayInformationJSON = Get-Content -Raw -Path $DisplayInformationJsonPath -ErrorAction Stop
+    }
+    catch {
+        $errorObject = [PSCustomObject]@{
+            error      = "Failed to read DisplayInformationJsonPath."
+            path       = $DisplayInformationJsonPath
+            exception  = $_.Exception.Message
+            stackTrace = $_.Exception.StackTrace
+        }
+        $errorObject | ConvertTo-Json -Depth 10
+        exit 1
+    }
+}
+
+if ([string]::IsNullOrWhiteSpace($DisplayInformationJSON)) {
+    $errorObject = [PSCustomObject]@{
+        error = "DisplayInformationJSON was empty. Provide -DisplayInformationJSON or -DisplayInformationJsonPath."
+    }
+    $errorObject | ConvertTo-Json -Depth 10
+    exit 1
+}
+
+# 5) Parse and update the DisplayInformationJSON
 try {
     $jsonObj = $DisplayInformationJSON | ConvertFrom-Json
 }

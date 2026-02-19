@@ -1,0 +1,1582 @@
+name: LabVIEW Parity
+
+on:
+  workflow_call:
+    inputs:
+      parity_mode:
+        required: false
+        type: string
+      lv_release:
+        required: false
+        type: string
+      lv_release_self_hosted:
+        required: false
+        type: string
+      run_self_hosted:
+        required: false
+        type: boolean
+        default: true
+      run_self_hosted_64:
+        required: false
+        type: boolean
+        default: true
+      run_self_hosted_32:
+        required: false
+        type: boolean
+        default: true
+      expected_sha:
+        required: false
+        type: string
+  workflow_dispatch:
+    inputs:
+      parity_mode:
+        description: Parity execution mode (auto, containers-only, full).
+        required: false
+        type: choice
+        options:
+          - auto
+          - containers-only
+          - full
+      lv_release:
+        description: Optional LabVIEW release tag override (for example, 2020q1). Defaults from .lvversion.
+        required: false
+        type: string
+      lv_release_self_hosted:
+        description: Optional self-hosted LabVIEW release tag override (for example, 2020q1). Defaults from lv_release input.
+        required: false
+        type: string
+      run_self_hosted:
+        description: Legacy toggle for self-hosted parity lanes (applies to both bitness lanes)
+        required: false
+        type: boolean
+        default: true
+      run_self_hosted_64:
+        description: Run self-hosted parity lane for LabVIEW 64-bit
+        required: false
+        type: boolean
+        default: true
+      run_self_hosted_32:
+        description: Run self-hosted parity lane for LabVIEW 32-bit
+        required: false
+        type: boolean
+        default: true
+      expected_sha:
+        description: Optional commit SHA contract; workflow fails if github.sha does not match
+        required: false
+        type: string
+  push:
+    branches:
+      - develop
+  pull_request:
+    paths:
+      - ".github/workflows/labview-parity.yml"
+      - "Tooling/container-parity/**"
+      - "Tooling/runner-cli/**"
+      - "Test/Templates/**"
+      - "lv_icon_editor.lvproj"
+      - ".lvversion"
+      - ".lvcontainer"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  self-hosted-capacity:
+    name: Resolve self-hosted capacity
+    runs-on: ubuntu-latest
+    outputs:
+      self_hosted_available: ${{ steps.capacity.outputs.self_hosted_available }}
+      self_hosted_availability_reason: ${{ steps.capacity.outputs.self_hosted_availability_reason }}
+      self_hosted_online_count: ${{ steps.capacity.outputs.self_hosted_online_count }}
+      self_hosted_total_count: ${{ steps.capacity.outputs.self_hosted_total_count }}
+      self_hosted_online_runners: ${{ steps.capacity.outputs.self_hosted_online_runners }}
+      runner_label: ${{ steps.capacity.outputs.runner_label }}
+      runner_label_64: ${{ steps.capacity.outputs.runner_label_64 }}
+      runner_label_32: ${{ steps.capacity.outputs.runner_label_32 }}
+      self_hosted_64_available: ${{ steps.capacity.outputs.self_hosted_64_available }}
+      self_hosted_64_availability_reason: ${{ steps.capacity.outputs.self_hosted_64_availability_reason }}
+      self_hosted_64_online_count: ${{ steps.capacity.outputs.self_hosted_64_online_count }}
+      self_hosted_64_total_count: ${{ steps.capacity.outputs.self_hosted_64_total_count }}
+      self_hosted_64_online_runners: ${{ steps.capacity.outputs.self_hosted_64_online_runners }}
+      self_hosted_32_available: ${{ steps.capacity.outputs.self_hosted_32_available }}
+      self_hosted_32_availability_reason: ${{ steps.capacity.outputs.self_hosted_32_availability_reason }}
+      self_hosted_32_online_count: ${{ steps.capacity.outputs.self_hosted_32_online_count }}
+      self_hosted_32_total_count: ${{ steps.capacity.outputs.self_hosted_32_total_count }}
+      self_hosted_32_online_runners: ${{ steps.capacity.outputs.self_hosted_32_online_runners }}
+    steps:
+      - id: capacity
+        name: Resolve self-hosted runner availability
+        uses: actions/github-script@v7
+        env:
+          RUNNER_LABEL: ${{ vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+          RUNNER_LABEL_64: ${{ vars.LVIE_RUNNER_LABEL_64 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+          RUNNER_LABEL_32: ${{ vars.LVIE_RUNNER_LABEL_32 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+        with:
+          script: |
+            const fallbackLabel = 'self-hosted-windows-lv';
+            const sharedLabel = String(process.env.RUNNER_LABEL || '').trim() || fallbackLabel;
+            const label64 = String(process.env.RUNNER_LABEL_64 || '').trim() || sharedLabel;
+            const label32 = String(process.env.RUNNER_LABEL_32 || '').trim() || sharedLabel;
+            const normalizeLabel = (value) => String(value || '').trim().toLowerCase();
+
+            core.setOutput('runner_label', sharedLabel);
+            core.setOutput('runner_label_64', label64);
+            core.setOutput('runner_label_32', label32);
+
+            function getCapacityForLabel(runners, label) {
+              const normalized = normalizeLabel(label);
+              const matching = runners.filter((runner) => {
+                const labels = Array.isArray(runner.labels)
+                  ? runner.labels.map((item) => normalizeLabel(item && item.name))
+                  : [];
+                return labels.includes(normalized);
+              });
+              const online = matching.filter((runner) => normalizeLabel(runner.status) === 'online');
+              const onlineNames = online
+                .map((runner) => String(runner && runner.name ? runner.name : '').trim())
+                .filter((name) => name.length > 0);
+              return {
+                label,
+                matching,
+                online,
+                onlineNames,
+                totalCount: matching.length,
+                onlineCount: online.length,
+                available: online.length > 0 ? 'true' : 'false',
+                reason: matching.length === 0
+                  ? `no-runner-registered-for-label:${label}`
+                  : (online.length > 0
+                      ? `online-runner-found-for-label:${label}`
+                      : `no-online-runner-for-label:${label}`),
+              };
+            }
+
+            function setCapacityOutputs(prefix, capacity) {
+              core.setOutput(`${prefix}_available`, capacity.available);
+              core.setOutput(`${prefix}_availability_reason`, capacity.reason);
+              core.setOutput(`${prefix}_total_count`, String(capacity.totalCount));
+              core.setOutput(`${prefix}_online_count`, String(capacity.onlineCount));
+              core.setOutput(`${prefix}_online_runners`, capacity.onlineNames.join(','));
+            }
+
+            try {
+              const runners = await github.paginate(
+                github.rest.actions.listSelfHostedRunnersForRepo,
+                {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  per_page: 100,
+                }
+              );
+
+              const capacity64 = getCapacityForLabel(runners, label64);
+              const capacity32 = getCapacityForLabel(runners, label32);
+              setCapacityOutputs('self_hosted_64', capacity64);
+              setCapacityOutputs('self_hosted_32', capacity32);
+
+              const sharedTopology = normalizeLabel(label64) === normalizeLabel(label32);
+              let aggregateAvailable = 'false';
+              let aggregateReason = 'no-online-runner-for-requested-labels';
+              let aggregateTotalCount = 0;
+              let aggregateOnlineCount = 0;
+              let aggregateOnlineNames = [];
+
+              if (sharedTopology) {
+                aggregateAvailable = capacity64.available;
+                aggregateReason = capacity64.reason;
+                aggregateTotalCount = capacity64.totalCount;
+                aggregateOnlineCount = capacity64.onlineCount;
+                aggregateOnlineNames = capacity64.onlineNames;
+              } else {
+                const aggregateMatchingMap = new Map();
+                for (const runner of [...capacity64.matching, ...capacity32.matching]) {
+                  aggregateMatchingMap.set(String(runner.id), runner);
+                }
+                const aggregateOnlineMap = new Map();
+                for (const runner of [...capacity64.online, ...capacity32.online]) {
+                  aggregateOnlineMap.set(String(runner.id), runner);
+                }
+                aggregateTotalCount = aggregateMatchingMap.size;
+                aggregateOnlineCount = aggregateOnlineMap.size;
+                aggregateOnlineNames = [...aggregateOnlineMap.values()]
+                  .map((runner) => String(runner && runner.name ? runner.name : '').trim())
+                  .filter((name) => name.length > 0);
+
+                if (aggregateTotalCount === 0) {
+                  aggregateAvailable = 'false';
+                  aggregateReason = `no-runner-registered-for-labels:${label64},${label32}`;
+                } else if (aggregateOnlineCount > 0) {
+                  aggregateAvailable = 'true';
+                  aggregateReason = `online-runner-found-for-labels:${label64},${label32}`;
+                } else {
+                  aggregateAvailable = 'false';
+                  aggregateReason = `no-online-runner-for-labels:${label64},${label32}`;
+                }
+              }
+
+              core.setOutput('self_hosted_available', aggregateAvailable);
+              core.setOutput('self_hosted_availability_reason', aggregateReason);
+              core.setOutput('self_hosted_total_count', String(aggregateTotalCount));
+              core.setOutput('self_hosted_online_count', String(aggregateOnlineCount));
+              core.setOutput('self_hosted_online_runners', aggregateOnlineNames.join(','));
+            } catch (error) {
+              const rawError = (error && typeof error.message === 'string') ? error.message : String(error);
+              const normalizedError = rawError.replace(/\s+/g, ' ').trim();
+              const lowerError = normalizedError.toLowerCase();
+              const permissionDenied = lowerError.includes('resource not accessible by integration') ||
+                lowerError.includes('must have admin rights');
+
+              if (permissionDenied) {
+                core.info(`Self-hosted availability lookup unavailable with workflow token; treating as unknown. ${normalizedError}`);
+              } else {
+                core.warning(`Self-hosted availability lookup failed; treating as unknown. ${normalizedError}`);
+              }
+              core.setOutput('self_hosted_available', 'unknown');
+              core.setOutput('self_hosted_availability_reason', `runner-lookup-error:${normalizedError}`);
+              core.setOutput('self_hosted_total_count', '-1');
+              core.setOutput('self_hosted_online_count', '-1');
+              core.setOutput('self_hosted_online_runners', '');
+              core.setOutput('self_hosted_64_available', 'unknown');
+              core.setOutput('self_hosted_64_availability_reason', `runner-lookup-error:${normalizedError}`);
+              core.setOutput('self_hosted_64_total_count', '-1');
+              core.setOutput('self_hosted_64_online_count', '-1');
+              core.setOutput('self_hosted_64_online_runners', '');
+              core.setOutput('self_hosted_32_available', 'unknown');
+              core.setOutput('self_hosted_32_availability_reason', `runner-lookup-error:${normalizedError}`);
+              core.setOutput('self_hosted_32_total_count', '-1');
+              core.setOutput('self_hosted_32_online_count', '-1');
+              core.setOutput('self_hosted_32_online_runners', '');
+            }
+
+  resolve-parity-context:
+    name: Resolve parity context
+    needs: [self-hosted-capacity]
+    runs-on: ubuntu-latest
+    outputs:
+      lv_release_input: ${{ steps.resolve.outputs.lv_release_input }}
+      lv_release_linux: ${{ steps.resolve.outputs.lv_release_linux }}
+      lv_release_windows: ${{ steps.resolve.outputs.lv_release_windows }}
+      lv_release_self_hosted: ${{ steps.resolve.outputs.lv_release_self_hosted }}
+      lvcontainer_linux_year: ${{ steps.resolve.outputs.lvcontainer_linux_year }}
+      lvcontainer_raw: ${{ steps.resolve.outputs.lvcontainer_raw }}
+      lvcontainer_linux_tag: ${{ steps.resolve.outputs.lvcontainer_linux_tag }}
+      lvcontainer_windows_tag: ${{ steps.resolve.outputs.lvcontainer_windows_tag }}
+      windows_release_exception_applied: ${{ steps.resolve.outputs.windows_release_exception_applied }}
+      windows_release_exception_note: ${{ steps.resolve.outputs.windows_release_exception_note }}
+      parity_mode_effective: ${{ steps.resolve.outputs.parity_mode_effective }}
+      self_hosted_available: ${{ steps.resolve.outputs.self_hosted_available }}
+      self_hosted_availability_reason: ${{ steps.resolve.outputs.self_hosted_availability_reason }}
+      self_hosted_online_count: ${{ steps.resolve.outputs.self_hosted_online_count }}
+      self_hosted_total_count: ${{ steps.resolve.outputs.self_hosted_total_count }}
+      self_hosted_online_runners: ${{ steps.resolve.outputs.self_hosted_online_runners }}
+      self_hosted_runner_label_64: ${{ steps.resolve.outputs.self_hosted_runner_label_64 }}
+      self_hosted_runner_label_32: ${{ steps.resolve.outputs.self_hosted_runner_label_32 }}
+      self_hosted_64_available: ${{ steps.resolve.outputs.self_hosted_64_available }}
+      self_hosted_64_availability_reason: ${{ steps.resolve.outputs.self_hosted_64_availability_reason }}
+      self_hosted_64_online_count: ${{ steps.resolve.outputs.self_hosted_64_online_count }}
+      self_hosted_64_total_count: ${{ steps.resolve.outputs.self_hosted_64_total_count }}
+      self_hosted_64_online_runners: ${{ steps.resolve.outputs.self_hosted_64_online_runners }}
+      self_hosted_32_available: ${{ steps.resolve.outputs.self_hosted_32_available }}
+      self_hosted_32_availability_reason: ${{ steps.resolve.outputs.self_hosted_32_availability_reason }}
+      self_hosted_32_online_count: ${{ steps.resolve.outputs.self_hosted_32_online_count }}
+      self_hosted_32_total_count: ${{ steps.resolve.outputs.self_hosted_32_total_count }}
+      self_hosted_32_online_runners: ${{ steps.resolve.outputs.self_hosted_32_online_runners }}
+      run_self_hosted: ${{ steps.resolve.outputs.run_self_hosted }}
+      run_self_hosted_64: ${{ steps.resolve.outputs.run_self_hosted_64 }}
+      run_self_hosted_32: ${{ steps.resolve.outputs.run_self_hosted_32 }}
+      run_self_hosted_64_effective: ${{ steps.resolve.outputs.run_self_hosted_64_effective }}
+      run_self_hosted_32_effective: ${{ steps.resolve.outputs.run_self_hosted_32_effective }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - id: resolve
+        name: Resolve inputs + SHA contract
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $sha = '${{ github.sha }}'
+          $expectedSha = '${{ inputs.expected_sha }}'
+          if ([string]::IsNullOrWhiteSpace($expectedSha)) {
+            $expectedSha = '${{ github.event.inputs.expected_sha }}'
+          }
+          if (-not [string]::IsNullOrWhiteSpace($expectedSha) -and $expectedSha -ne $sha) {
+            throw ("expected_sha '{0}' does not match github.sha '{1}'." -f $expectedSha, $sha)
+          }
+
+          $eventName = '${{ github.event_name }}'
+          $refName = '${{ github.ref_name }}'
+
+          $parityModeInput = '${{ inputs.parity_mode }}'
+          if ([string]::IsNullOrWhiteSpace($parityModeInput)) {
+            $parityModeInput = '${{ github.event.inputs.parity_mode }}'
+          }
+          if ([string]::IsNullOrWhiteSpace($parityModeInput)) {
+            if ($eventName -eq 'push' -and $refName -eq 'develop') {
+              $parityModeInput = 'full'
+            } else {
+              $parityModeInput = 'auto'
+            }
+          }
+          $parityModeEffective = $parityModeInput.Trim().ToLowerInvariant()
+          if ($parityModeEffective -notin @('auto', 'containers-only', 'full')) {
+            throw ("Invalid parity_mode '{0}'. Supported values: auto, containers-only, full." -f $parityModeInput)
+          }
+
+          function Resolve-AvailabilityState {
+            param([string]$RawValue)
+
+            if ([string]::IsNullOrWhiteSpace($RawValue)) {
+              return 'unknown'
+            }
+
+            $normalized = $RawValue.Trim().ToLowerInvariant()
+            if ($normalized -notin @('true', 'false', 'unknown')) {
+              return 'unknown'
+            }
+
+            return $normalized
+          }
+
+          function Resolve-CountValue {
+            param([string]$RawValue)
+
+            if ([string]::IsNullOrWhiteSpace($RawValue)) {
+              return '-1'
+            }
+
+            return $RawValue.Trim()
+          }
+
+          function Resolve-ReasonValue {
+            param(
+              [string]$RawValue,
+              [string]$DefaultValue
+            )
+
+            if ([string]::IsNullOrWhiteSpace($RawValue)) {
+              return $DefaultValue
+            }
+
+            return $RawValue.Trim().Replace("`r", ' ').Replace("`n", ' ')
+          }
+
+          function Resolve-RunnerList {
+            param([string]$RawValue)
+
+            if ([string]::IsNullOrWhiteSpace($RawValue)) {
+              return ''
+            }
+
+            return $RawValue.Trim()
+          }
+
+          $selfHostedAvailable = Resolve-AvailabilityState -RawValue '${{ needs.self-hosted-capacity.outputs.self_hosted_available }}'
+          $selfHostedOnlineCount = Resolve-CountValue -RawValue '${{ needs.self-hosted-capacity.outputs.self_hosted_online_count }}'
+          $selfHostedTotalCount = Resolve-CountValue -RawValue '${{ needs.self-hosted-capacity.outputs.self_hosted_total_count }}'
+          $selfHostedOnlineRunners = Resolve-RunnerList -RawValue '${{ needs.self-hosted-capacity.outputs.self_hosted_online_runners }}'
+          $selfHostedAvailabilityReason = Resolve-ReasonValue -RawValue '${{ needs.self-hosted-capacity.outputs.self_hosted_availability_reason }}' -DefaultValue 'availability-not-reported'
+
+          $selfHostedRunnerLabel64 = Resolve-ReasonValue -RawValue '${{ needs.self-hosted-capacity.outputs.runner_label_64 }}' -DefaultValue 'self-hosted-windows-lv'
+          $selfHostedRunnerLabel32 = Resolve-ReasonValue -RawValue '${{ needs.self-hosted-capacity.outputs.runner_label_32 }}' -DefaultValue 'self-hosted-windows-lv'
+
+          $selfHosted64Available = Resolve-AvailabilityState -RawValue '${{ needs.self-hosted-capacity.outputs.self_hosted_64_available }}'
+          $selfHosted64AvailabilityReason = Resolve-ReasonValue -RawValue '${{ needs.self-hosted-capacity.outputs.self_hosted_64_availability_reason }}' -DefaultValue ("availability-not-reported-for-label:{0}" -f $selfHostedRunnerLabel64)
+          $selfHosted64OnlineCount = Resolve-CountValue -RawValue '${{ needs.self-hosted-capacity.outputs.self_hosted_64_online_count }}'
+          $selfHosted64TotalCount = Resolve-CountValue -RawValue '${{ needs.self-hosted-capacity.outputs.self_hosted_64_total_count }}'
+          $selfHosted64OnlineRunners = Resolve-RunnerList -RawValue '${{ needs.self-hosted-capacity.outputs.self_hosted_64_online_runners }}'
+
+          $selfHosted32Available = Resolve-AvailabilityState -RawValue '${{ needs.self-hosted-capacity.outputs.self_hosted_32_available }}'
+          $selfHosted32AvailabilityReason = Resolve-ReasonValue -RawValue '${{ needs.self-hosted-capacity.outputs.self_hosted_32_availability_reason }}' -DefaultValue ("availability-not-reported-for-label:{0}" -f $selfHostedRunnerLabel32)
+          $selfHosted32OnlineCount = Resolve-CountValue -RawValue '${{ needs.self-hosted-capacity.outputs.self_hosted_32_online_count }}'
+          $selfHosted32TotalCount = Resolve-CountValue -RawValue '${{ needs.self-hosted-capacity.outputs.self_hosted_32_total_count }}'
+          $selfHosted32OnlineRunners = Resolve-RunnerList -RawValue '${{ needs.self-hosted-capacity.outputs.self_hosted_32_online_runners }}'
+
+          function Resolve-BoolToggle {
+            param(
+              [Parameter(Mandatory = $false)]
+              [string]$PrimaryRaw,
+              [Parameter(Mandatory = $false)]
+              [string]$FallbackRaw,
+              [Parameter(Mandatory = $true)]
+              [string]$DefaultValue
+            )
+
+            if (-not [string]::IsNullOrWhiteSpace($PrimaryRaw)) {
+              $candidate = $PrimaryRaw.Trim()
+            } elseif (-not [string]::IsNullOrWhiteSpace($FallbackRaw)) {
+              $candidate = $FallbackRaw.Trim()
+            } else {
+              $candidate = $DefaultValue
+            }
+
+            if ($candidate.Equals('true', [System.StringComparison]::OrdinalIgnoreCase)) {
+              return 'true'
+            }
+            if ($candidate.Equals('false', [System.StringComparison]::OrdinalIgnoreCase)) {
+              return 'false'
+            }
+
+            throw ("Invalid boolean toggle value '{0}'. Expected true or false." -f $candidate)
+          }
+
+          $lvReleaseInput = '${{ inputs.lv_release }}'
+          if ([string]::IsNullOrWhiteSpace($lvReleaseInput)) {
+            $lvReleaseInput = '${{ github.event.inputs.lv_release }}'
+          }
+          if ([string]::IsNullOrWhiteSpace($lvReleaseInput)) {
+            $lvReleaseInput = ''
+          } else {
+            $lvReleaseInput = $lvReleaseInput.Trim()
+          }
+
+          $lvReleaseSelfHostedInput = '${{ inputs.lv_release_self_hosted }}'
+          if ([string]::IsNullOrWhiteSpace($lvReleaseSelfHostedInput)) {
+            $lvReleaseSelfHostedInput = '${{ github.event.inputs.lv_release_self_hosted }}'
+          }
+          if ([string]::IsNullOrWhiteSpace($lvReleaseSelfHostedInput)) {
+            $lvReleaseSelfHostedInput = $lvReleaseInput
+          } else {
+            $lvReleaseSelfHostedInput = $lvReleaseSelfHostedInput.Trim()
+          }
+          if (-not [string]::IsNullOrWhiteSpace($lvReleaseSelfHostedInput) -and $lvReleaseSelfHostedInput -notmatch '^\d{4}q[1-4]$') {
+            throw ("Invalid self-hosted lv_release override '{0}'. Expected format 'YYYYqN' (for example, 2026q1)." -f $lvReleaseSelfHostedInput)
+          }
+
+          . "$env:GITHUB_WORKSPACE/Tooling/support/LabVIEWContainerRelease.ps1"
+          $catalogSnapshotPath = Join-Path $env:GITHUB_WORKSPACE 'Tooling/container-parity/labview-container-tags.snapshot.json'
+          if (-not (Test-Path -LiteralPath $catalogSnapshotPath -PathType Leaf)) {
+            throw "Container tag snapshot is missing: $catalogSnapshotPath"
+          }
+
+          function Resolve-ContainerInfoFromTag {
+            param(
+              [Parameter(Mandatory = $true)]
+              [string]$Tag
+            )
+
+            return Get-LabVIEWContainerReleaseInfo `
+              -VersionInput $Tag `
+              -CatalogSnapshotPath $catalogSnapshotPath `
+              -DisableLiveDiscovery
+          }
+
+          function Get-LinuxTagFromContainerInfo {
+            param(
+              [Parameter(Mandatory = $true)]
+              [object]$ContainerInfo
+            )
+
+            $tag = [string]$ContainerInfo.Tag
+            $os = [string]$ContainerInfo.Os
+            if ([string]::Equals($os, 'linux', [System.StringComparison]::OrdinalIgnoreCase)) {
+              return $tag
+            }
+
+            if ([string]::Equals($tag, 'latest-windows', [System.StringComparison]::OrdinalIgnoreCase)) {
+              return 'latest-linux'
+            }
+
+            if ($tag -match '^(?<release>\d{4}q[1-4](?:patch\d+)?)-windows(?:-beta)?$') {
+              return "$($Matches['release'])-linux"
+            }
+
+            throw ("Unable to derive linux parity tag from .lvcontainer tag '{0}' (os={1})." -f $tag, $os)
+          }
+
+          function Get-WindowsTagFromContainerInfo {
+            param(
+              [Parameter(Mandatory = $true)]
+              [object]$ContainerInfo
+            )
+
+            $tag = [string]$ContainerInfo.Tag
+            $os = [string]$ContainerInfo.Os
+            if ([string]::Equals($os, 'windows', [System.StringComparison]::OrdinalIgnoreCase)) {
+              return $tag
+            }
+
+            if ([string]::Equals($tag, 'latest-linux', [System.StringComparison]::OrdinalIgnoreCase)) {
+              return 'latest-windows'
+            }
+
+            if ($tag -match '^(?<release>\d{4}q[1-4](?:patch\d+)?)-linux$') {
+              return "$($Matches['release'])-windows"
+            }
+
+            throw ("Unable to derive windows parity tag from .lvcontainer tag '{0}' (os={1})." -f $tag, $os)
+          }
+
+          function Get-ReleaseInputTag {
+            param(
+              [Parameter(Mandatory = $true)]
+              [string]$Release,
+              [Parameter(Mandatory = $true)]
+              [ValidateSet('linux', 'windows')]
+              [string]$Os
+            )
+
+            $normalized = $Release.Trim().ToLowerInvariant()
+            if ($normalized -notmatch '^\d{4}q[1-4]$') {
+              throw ("Invalid lv_release override '{0}'. Expected format 'YYYYqN' (for example, 2026q1)." -f $Release)
+            }
+
+            return "$normalized-$Os"
+          }
+
+          $lvContainerInfo = Get-LabVIEWContainerReleaseInfo -RepoRoot $env:GITHUB_WORKSPACE
+          $lvContainerRaw = [string]$lvContainerInfo.Raw
+          if ([string]::IsNullOrWhiteSpace($lvContainerRaw)) {
+            throw '.lvcontainer resolved to an empty value.'
+          }
+
+          $linuxRequestedTag = ''
+          $windowsRequestedTag = ''
+          if ([string]::IsNullOrWhiteSpace($lvReleaseInput)) {
+            $linuxRequestedTag = Get-LinuxTagFromContainerInfo -ContainerInfo $lvContainerInfo
+            $windowsRequestedTag = Get-WindowsTagFromContainerInfo -ContainerInfo $lvContainerInfo
+          } else {
+            $linuxRequestedTag = Get-ReleaseInputTag -Release $lvReleaseInput -Os 'linux'
+            $windowsRequestedTag = Get-ReleaseInputTag -Release $lvReleaseInput -Os 'windows'
+          }
+
+          $linuxContainerInfo = Resolve-ContainerInfoFromTag -Tag $linuxRequestedTag
+          if (-not [string]::Equals([string]$linuxContainerInfo.Os, 'linux', [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw ("Resolved linux parity tag '{0}' is not linux (os={1})." -f [string]$linuxContainerInfo.Tag, [string]$linuxContainerInfo.Os)
+          }
+
+          $fallbackRelease = [Environment]::GetEnvironmentVariable('LVIE_CONTAINER_PARITY_FALLBACK_RELEASE')
+          if ([string]::IsNullOrWhiteSpace($fallbackRelease)) {
+            $fallbackRelease = '2026q1'
+          } else {
+            $fallbackRelease = $fallbackRelease.Trim()
+          }
+          $fallbackWindowsTag = "$fallbackRelease-windows"
+
+          $windowsReleaseExceptionApplied = 'false'
+          $windowsReleaseExceptionNote = ''
+          $windowsContainerInfo = $null
+          try {
+            $windowsContainerInfo = Resolve-ContainerInfoFromTag -Tag $windowsRequestedTag
+            if (-not [string]::Equals([string]$windowsContainerInfo.Os, 'windows', [System.StringComparison]::OrdinalIgnoreCase)) {
+              throw ("Resolved windows parity tag '{0}' is not windows (os={1})." -f [string]$windowsContainerInfo.Tag, [string]$windowsContainerInfo.Os)
+            }
+          } catch {
+            $windowsReleaseExceptionApplied = 'true'
+            $windowsReleaseExceptionNote = "Windows parity fallback applied: requested '$windowsRequestedTag' unavailable, forced '$fallbackWindowsTag'."
+            Write-Host $windowsReleaseExceptionNote
+
+            $windowsContainerInfo = Resolve-ContainerInfoFromTag -Tag $fallbackWindowsTag
+            if (-not [string]::Equals([string]$windowsContainerInfo.Os, 'windows', [System.StringComparison]::OrdinalIgnoreCase)) {
+              throw ("Fallback windows parity tag '{0}' is not windows (os={1})." -f [string]$windowsContainerInfo.Tag, [string]$windowsContainerInfo.Os)
+            }
+          }
+
+          $lvContainerLinuxTag = [string]$linuxContainerInfo.Tag
+          $lvContainerWindowsTag = [string]$windowsContainerInfo.Tag
+          $lvReleaseLinux = [string]$linuxContainerInfo.ReleaseTag
+          $lvReleaseWindows = [string]$windowsContainerInfo.ReleaseTag
+          $lvContainerLinuxYear = [string]$linuxContainerInfo.Year
+          if ([string]::IsNullOrWhiteSpace($lvContainerLinuxTag)) {
+            throw ("Failed to resolve linux container tag from requested '{0}'." -f $linuxRequestedTag)
+          }
+          if ([string]::IsNullOrWhiteSpace($lvReleaseLinux)) {
+            throw ("Failed to resolve linux release tag from '{0}'." -f [string]$linuxContainerInfo.Tag)
+          }
+          if ([string]::IsNullOrWhiteSpace($lvReleaseWindows)) {
+            throw ("Failed to resolve windows release tag from '{0}'." -f [string]$windowsContainerInfo.Tag)
+          }
+          if ([string]::IsNullOrWhiteSpace($lvContainerLinuxYear)) {
+            throw ("Failed to resolve linux container year from '{0}'." -f [string]$linuxContainerInfo.Tag)
+          }
+          $windowsReleaseExceptionNote = $windowsReleaseExceptionNote.Replace("`r", ' ').Replace("`n", ' ')
+
+          $runSelfHostedLegacyRaw = '${{ inputs.run_self_hosted }}'
+          if ([string]::IsNullOrWhiteSpace($runSelfHostedLegacyRaw)) {
+            $runSelfHostedLegacyRaw = '${{ github.event.inputs.run_self_hosted }}'
+          }
+
+          $runSelfHosted64InputRaw = '${{ inputs.run_self_hosted_64 }}'
+          $runSelfHosted64EventRaw = '${{ github.event.inputs.run_self_hosted_64 }}'
+          $runSelfHosted32InputRaw = '${{ inputs.run_self_hosted_32 }}'
+          $runSelfHosted32EventRaw = '${{ github.event.inputs.run_self_hosted_32 }}'
+
+          $runSelfHostedLegacy = Resolve-BoolToggle -PrimaryRaw $null -FallbackRaw $runSelfHostedLegacyRaw -DefaultValue 'true'
+          if ($runSelfHostedLegacy -eq 'false') {
+            $runSelfHosted64 = 'false'
+            $runSelfHosted32 = 'false'
+          } else {
+            $runSelfHosted64 = Resolve-BoolToggle -PrimaryRaw $runSelfHosted64InputRaw -FallbackRaw $runSelfHosted64EventRaw -DefaultValue 'true'
+            $runSelfHosted32 = Resolve-BoolToggle -PrimaryRaw $runSelfHosted32InputRaw -FallbackRaw $runSelfHosted32EventRaw -DefaultValue 'true'
+          }
+
+          $runSelfHosted = if ($runSelfHosted64 -eq 'true' -and $runSelfHosted32 -eq 'true') { 'true' } else { 'false' }
+
+          function Test-PermissionLimitedLookupUnknown {
+            param(
+              [Parameter(Mandatory = $true)]
+              [string]$Availability,
+              [Parameter(Mandatory = $true)]
+              [string]$Reason
+            )
+
+            if ($Availability -ne 'unknown') {
+              return $false
+            }
+
+            $normalizedReason = ''
+            if (-not [string]::IsNullOrWhiteSpace($Reason)) {
+              $normalizedReason = $Reason.Trim().ToLowerInvariant()
+            }
+
+            if ($normalizedReason -notlike 'runner-lookup-error:*') {
+              return $false
+            }
+
+            return (
+              $normalizedReason.Contains('resource not accessible by integration') -or
+              $normalizedReason.Contains('must have admin rights')
+            )
+          }
+
+          $isSelfHostedAvailable64 = ($selfHosted64Available -eq 'true')
+          $isSelfHostedAvailable32 = ($selfHosted32Available -eq 'true')
+          $permissionLimitedLookupUnknown64 = Test-PermissionLimitedLookupUnknown -Availability $selfHosted64Available -Reason $selfHosted64AvailabilityReason
+          $permissionLimitedLookupUnknown32 = Test-PermissionLimitedLookupUnknown -Availability $selfHosted32Available -Reason $selfHosted32AvailabilityReason
+          $runSelfHosted64Effective = 'false'
+          $runSelfHosted32Effective = 'false'
+          switch ($parityModeEffective) {
+            'containers-only' {
+              $runSelfHosted64Effective = 'false'
+              $runSelfHosted32Effective = 'false'
+              break
+            }
+            'auto' {
+              if ($runSelfHosted64 -eq 'true' -and $isSelfHostedAvailable64) { $runSelfHosted64Effective = 'true' }
+              if ($runSelfHosted32 -eq 'true' -and $isSelfHostedAvailable32) { $runSelfHosted32Effective = 'true' }
+              break
+            }
+            'full' {
+              if ($runSelfHosted64 -eq 'true' -and ($isSelfHostedAvailable64 -or $permissionLimitedLookupUnknown64)) { $runSelfHosted64Effective = 'true' }
+              if ($runSelfHosted32 -eq 'true' -and ($isSelfHostedAvailable32 -or $permissionLimitedLookupUnknown32)) { $runSelfHosted32Effective = 'true' }
+              break
+            }
+          }
+
+          "lv_release_input=$lvReleaseInput" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "lv_release_linux=$lvReleaseLinux" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "lv_release_windows=$lvReleaseWindows" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "lv_release_self_hosted=$lvReleaseSelfHostedInput" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "lvcontainer_linux_year=$lvContainerLinuxYear" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "lvcontainer_raw=$lvContainerRaw" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "lvcontainer_linux_tag=$lvContainerLinuxTag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "lvcontainer_windows_tag=$lvContainerWindowsTag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "windows_release_exception_applied=$windowsReleaseExceptionApplied" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "windows_release_exception_note=$windowsReleaseExceptionNote" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "parity_mode_effective=$parityModeEffective" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_available=$selfHostedAvailable" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_availability_reason=$selfHostedAvailabilityReason" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_online_count=$selfHostedOnlineCount" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_total_count=$selfHostedTotalCount" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_online_runners=$selfHostedOnlineRunners" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_runner_label_64=$selfHostedRunnerLabel64" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_runner_label_32=$selfHostedRunnerLabel32" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_64_available=$selfHosted64Available" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_64_availability_reason=$selfHosted64AvailabilityReason" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_64_online_count=$selfHosted64OnlineCount" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_64_total_count=$selfHosted64TotalCount" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_64_online_runners=$selfHosted64OnlineRunners" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_32_available=$selfHosted32Available" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_32_availability_reason=$selfHosted32AvailabilityReason" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_32_online_count=$selfHosted32OnlineCount" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_32_total_count=$selfHosted32TotalCount" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "self_hosted_32_online_runners=$selfHosted32OnlineRunners" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "run_self_hosted=$runSelfHosted" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "run_self_hosted_64=$runSelfHosted64" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "run_self_hosted_32=$runSelfHosted32" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "run_self_hosted_64_effective=$runSelfHosted64Effective" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "run_self_hosted_32_effective=$runSelfHosted32Effective" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+  runner-cli-build-win:
+    name: Build runner-cli (win-x64)
+    needs: [resolve-parity-context]
+    uses: ./.github/workflows/runner-cli-reusable.yml
+    permissions:
+      contents: read
+    with:
+      rid: win-x64
+      artifact_name: runner-cli-win-x64
+
+  self-hosted-policy-gate:
+    name: Self-hosted policy gate
+    needs: [resolve-parity-context]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce full-mode self-hosted availability
+        shell: pwsh
+        run: |
+          $mode = '${{ needs.resolve-parity-context.outputs.parity_mode_effective }}'
+          $available = '${{ needs.resolve-parity-context.outputs.self_hosted_available }}'
+          $reason = '${{ needs.resolve-parity-context.outputs.self_hosted_availability_reason }}'
+          $onlineCountRaw = '${{ needs.resolve-parity-context.outputs.self_hosted_online_count }}'
+          $totalCountRaw = '${{ needs.resolve-parity-context.outputs.self_hosted_total_count }}'
+          $onlineRunners = '${{ needs.resolve-parity-context.outputs.self_hosted_online_runners }}'
+          $label64 = '${{ needs.resolve-parity-context.outputs.self_hosted_runner_label_64 }}'
+          $label32 = '${{ needs.resolve-parity-context.outputs.self_hosted_runner_label_32 }}'
+          $available64 = '${{ needs.resolve-parity-context.outputs.self_hosted_64_available }}'
+          $available32 = '${{ needs.resolve-parity-context.outputs.self_hosted_32_available }}'
+          $reason64 = '${{ needs.resolve-parity-context.outputs.self_hosted_64_availability_reason }}'
+          $reason32 = '${{ needs.resolve-parity-context.outputs.self_hosted_32_availability_reason }}'
+          $onlineCount64Raw = '${{ needs.resolve-parity-context.outputs.self_hosted_64_online_count }}'
+          $onlineCount32Raw = '${{ needs.resolve-parity-context.outputs.self_hosted_32_online_count }}'
+          $onlineRunners64 = '${{ needs.resolve-parity-context.outputs.self_hosted_64_online_runners }}'
+          $onlineRunners32 = '${{ needs.resolve-parity-context.outputs.self_hosted_32_online_runners }}'
+          $requested64 = '${{ needs.resolve-parity-context.outputs.run_self_hosted_64 }}'
+          $requested32 = '${{ needs.resolve-parity-context.outputs.run_self_hosted_32 }}'
+          $onlineCount = -1
+          [void][int]::TryParse($onlineCountRaw, [ref]$onlineCount)
+          $totalCount = -1
+          [void][int]::TryParse($totalCountRaw, [ref]$totalCount)
+          $onlineCount64 = -1
+          [void][int]::TryParse($onlineCount64Raw, [ref]$onlineCount64)
+          $onlineCount32 = -1
+          [void][int]::TryParse($onlineCount32Raw, [ref]$onlineCount32)
+          $sharedBitnessLabel = [string]::Equals($label64, $label32, [System.StringComparison]::OrdinalIgnoreCase)
+
+          function Test-PermissionLimitedLookupUnknown {
+            param(
+              [Parameter(Mandatory = $true)]
+              [string]$Availability,
+              [Parameter(Mandatory = $true)]
+              [string]$Reason
+            )
+
+            if ($Availability -ne 'unknown') {
+              return $false
+            }
+
+            $normalizedReason = ''
+            if (-not [string]::IsNullOrWhiteSpace($Reason)) {
+              $normalizedReason = $Reason.Trim().ToLowerInvariant()
+            }
+
+            if ($normalizedReason -notlike 'runner-lookup-error:*') {
+              return $false
+            }
+
+            return (
+              $normalizedReason.Contains('resource not accessible by integration') -or
+              $normalizedReason.Contains('must have admin rights')
+            )
+          }
+
+          $permissionLimitedLookupUnknown64 = Test-PermissionLimitedLookupUnknown -Availability $available64 -Reason $reason64
+          $permissionLimitedLookupUnknown32 = Test-PermissionLimitedLookupUnknown -Availability $available32 -Reason $reason32
+
+          Write-Host ("Parity mode: {0}" -f $mode)
+          Write-Host ("Self-hosted availability: {0}" -f $available)
+          Write-Host ("Self-hosted availability reason: {0}" -f $reason)
+          Write-Host ("Self-hosted online count: {0}" -f $onlineCountRaw)
+          Write-Host ("Self-hosted total count: {0}" -f $totalCountRaw)
+          Write-Host ("Self-hosted online runners: {0}" -f $onlineRunners)
+          Write-Host ("Self-hosted label 64: {0}" -f $label64)
+          Write-Host ("Self-hosted label 32: {0}" -f $label32)
+          Write-Host ("Self-hosted availability 64: {0} ({1})" -f $available64, $reason64)
+          Write-Host ("Self-hosted availability 32: {0} ({1})" -f $available32, $reason32)
+          Write-Host ("Self-hosted online count 64: {0}; runners: {1}" -f $onlineCount64Raw, $onlineRunners64)
+          Write-Host ("Self-hosted online count 32: {0}; runners: {1}" -f $onlineCount32Raw, $onlineRunners32)
+          Write-Host ("Self-hosted requested lanes: 64={0}, 32={1}" -f $requested64, $requested32)
+
+          $bothRequested = ($requested64 -eq 'true' -and $requested32 -eq 'true')
+          if ($bothRequested) {
+            if ($sharedBitnessLabel) {
+              if ($onlineCount64 -ge 2) {
+                Write-Host ("Self-hosted capacity classification: parallel-capable (shared-label={0}; online_count={1}; total_count={2})." -f $label64, $onlineCount64, $totalCountRaw)
+              } elseif ($onlineCount64 -eq 1) {
+                Write-Host ("Self-hosted capacity classification: queue-expected (shared-label={0}; online_count={1}; total_count={2})." -f $label64, $onlineCount64, $totalCountRaw)
+              }
+            } else {
+              if ($onlineCount64 -ge 1 -and $onlineCount32 -ge 1) {
+                Write-Host ("Self-hosted capacity classification: parallel-capable (64-label={0};32-label={1})." -f $label64, $label32)
+              } elseif ($onlineCount64 -ge 1 -or $onlineCount32 -ge 1) {
+                Write-Host ("Self-hosted capacity classification: queue-expected (64-online={0};32-online={1})." -f $onlineCount64, $onlineCount32)
+              }
+            }
+          }
+
+          if ($mode -ne 'full') {
+            Write-Host 'Full-mode gate not required for this run.'
+            exit 0
+          }
+
+          $requestedAny = ($requested64 -eq 'true' -or $requested32 -eq 'true')
+          if (-not $requestedAny) {
+            Write-Host 'No self-hosted lanes requested; full-mode gate passes.'
+            exit 0
+          }
+
+          if ($requested64 -eq 'true' -and $available64 -ne 'true') {
+            if ($permissionLimitedLookupUnknown64) {
+              Write-Warning ("Full parity mode: self-hosted 64-bit availability lookup is permission-limited (reason='{0}'); proceeding and relying on runner queue for label '{1}'." -f $reason64, $label64)
+            } else {
+              throw ("Full parity mode requires an available self-hosted runner for 64-bit lane; availability='{0}' reason='{1}' label='{2}'." -f $available64, $reason64, $label64)
+            }
+          }
+
+          if ($requested32 -eq 'true' -and $available32 -ne 'true') {
+            if ($permissionLimitedLookupUnknown32) {
+              Write-Warning ("Full parity mode: self-hosted 32-bit availability lookup is permission-limited (reason='{0}'); proceeding and relying on runner queue for label '{1}'." -f $reason32, $label32)
+            } else {
+              throw ("Full parity mode requires an available self-hosted runner for 32-bit lane; availability='{0}' reason='{1}' label='{2}'." -f $available32, $reason32, $label32)
+            }
+          }
+
+          if ($available -ne 'true') {
+            Write-Warning ("Aggregate availability is '{0}' (reason='{1}'), but per-bitness availability checks passed." -f $available, $reason)
+          }
+
+          Write-Host 'Full parity mode self-hosted availability gate passed.'
+
+  parity-linux:
+    name: Parity (Linux Container ${{ needs.resolve-parity-context.outputs.lvcontainer_raw }})
+    needs: [resolve-parity-context]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.418'
+
+      - name: Resolve parity context via runner-cli
+        shell: bash
+        run: |
+          set -euo pipefail
+          CONTEXT_PATH="$RUNNER_TEMP/parity-context-linux.json"
+          LV_RELEASE_INPUT="${{ needs.resolve-parity-context.outputs.lv_release_linux }}"
+
+          if [[ -n "$LV_RELEASE_INPUT" ]]; then
+            dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj -- \
+              parity context \
+              --mode linux-container \
+              --repo-root "$GITHUB_WORKSPACE" \
+              --lv-release "$LV_RELEASE_INPUT" \
+              --output "$CONTEXT_PATH"
+          else
+            dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj -- \
+              parity context \
+              --mode linux-container \
+              --repo-root "$GITHUB_WORKSPACE" \
+              --output "$CONTEXT_PATH"
+          fi
+
+          echo "PARITY_CONTEXT_PATH=$CONTEXT_PATH" >> "$GITHUB_ENV"
+
+      - name: Run parity lane via runner-cli (linux-container)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dotnet run --project Tooling/runner-cli/RunnerCli/RunnerCli.csproj -- \
+            parity run \
+            --mode linux-container \
+            --context "$PARITY_CONTEXT_PATH" \
+            --build-spec true
+
+      - name: Verify built specification output (Linux container)
+        shell: bash
+        run: |
+          set -euo pipefail
+          output_path="${GITHUB_WORKSPACE}/resource/plugins/lv_icon.lvlibp"
+          if [[ ! -f "$output_path" ]]; then
+            echo "Expected build output was not found: $output_path" >&2
+            exit 1
+          fi
+          bytes="$(wc -c < "$output_path" | xargs)"
+          echo "Built specification artifact: $output_path ($bytes bytes)"
+
+      - name: Upload built specification artifact (Linux container)
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-container-editor-packed-library-linux
+          path: resource/plugins/lv_icon.lvlibp
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload LabVIEWCLI logs (Linux container)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-container-logs-linux
+          path: TestResults/container-parity/linux/logs
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload source sync manifest (Linux container)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-container-source-sync-manifest-linux
+          path: builds/status/source-sync-manifest-parity-linux.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  vi-analyzer-linux:
+    name: VI Analyzer Linux container ${{ needs.resolve-parity-context.outputs.lvcontainer_raw }}
+    needs: [resolve-parity-context]
+    runs-on: ubuntu-latest
+    env:
+      LVIE_VI_ANALYZER_TASKS_PATH: Tooling/vi-analyzer/tasks.linux.json
+      LVIE_CONTAINER_CONTRACT_RAW: ${{ needs.resolve-parity-context.outputs.lvcontainer_raw }}
+      LVIE_CONTAINER_CONTRACT_TAG: ${{ needs.resolve-parity-context.outputs.lvcontainer_linux_tag }}
+      LVIE_CONTAINER_CONTRACT_IMAGE: nationalinstruments/labview:${{ needs.resolve-parity-context.outputs.lvcontainer_linux_tag }}
+      LVIE_CONTAINER_CONTRACT_OS: linux
+      LVIE_CONTAINER_CONTRACT_YEAR: ${{ needs.resolve-parity-context.outputs.lvcontainer_linux_year }}
+      LVIE_CONTAINER_CONTRACT_RELEASE_TAG: ${{ needs.resolve-parity-context.outputs.lv_release_linux }}
+      LVIE_CONTAINER_CONTRACT_LINUX_IMAGE: nationalinstruments/labview:${{ needs.resolve-parity-context.outputs.lvcontainer_linux_tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate vi-analyzer container selection
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${LVIE_CONTAINER_CONTRACT_OS}" != "linux" ]]; then
+            echo "vi-analyzer on ubuntu-latest requires a linux container tag; .lvcontainer resolved to tag '${LVIE_CONTAINER_CONTRACT_TAG}' (os=${LVIE_CONTAINER_CONTRACT_OS}, image=${LVIE_CONTAINER_CONTRACT_IMAGE})." >&2
+            exit 1
+          fi
+          if [[ -z "${LVIE_CONTAINER_CONTRACT_LINUX_IMAGE}" ]]; then
+            echo "linux_image output is empty for linux tag '${LVIE_CONTAINER_CONTRACT_TAG}'." >&2
+            exit 1
+          fi
+
+      - name: Pull LabVIEW Linux image
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="${LVIE_CONTAINER_CONTRACT_LINUX_IMAGE}"
+          echo "Using image: ${image}"
+          docker pull "${image}"
+          echo "LABVIEW_LINUX_IMAGE=${image}" >> "$GITHUB_ENV"
+
+      - name: Run VI Analyzer tasks (Linux container)
+        shell: bash
+        env:
+          LVIE_VI_ANALYZER_LABVIEW_YEAR: ${{ needs.resolve-parity-context.outputs.lvcontainer_linux_year }}
+        run: |
+          set -euo pipefail
+          script_path="${GITHUB_WORKSPACE}/Tooling/container-parity/run-vi-analyzer-linux.sh"
+          tasks_path_rel="${LVIE_VI_ANALYZER_TASKS_PATH:-Tooling/vi-analyzer/tasks.linux.json}"
+          tasks_path_host="${GITHUB_WORKSPACE}/${tasks_path_rel}"
+          tasks_path_container="/workspace/${tasks_path_rel}"
+          if [[ ! -f "$script_path" ]]; then
+            echo "VI Analyzer Linux worker script not found: $script_path" >&2
+            exit 1
+          fi
+          if [[ ! -f "$tasks_path_host" ]]; then
+            echo "VI Analyzer Linux task registry not found: $tasks_path_host" >&2
+            exit 1
+          fi
+
+          docker run --rm \
+            -v "${GITHUB_WORKSPACE}:/workspace" \
+            -e LVIE_REPO_ROOT=/workspace \
+            -e WORKSPACE_ROOT=/workspace \
+            -e REPO_ROOT=/workspace \
+            -e LVIE_VI_ANALYZER_LABVIEW_YEAR="${LVIE_VI_ANALYZER_LABVIEW_YEAR}" \
+            -e LVIE_VI_ANALYZER_TASKS_PATH="${tasks_path_container}" \
+            "${LABVIEW_LINUX_IMAGE}" \
+            bash -lc "chmod +x /workspace/Tooling/container-parity/run-vi-analyzer-linux.sh && /workspace/Tooling/container-parity/run-vi-analyzer-linux.sh"
+
+      - name: Normalize Linux container output ownership
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          uid="$(id -u)"
+          gid="$(id -g)"
+          for path in \
+            "${GITHUB_WORKSPACE}/builds" \
+            "${GITHUB_WORKSPACE}/TestResults/container-parity/linux/vi-analyzer"; do
+            if [[ -e "$path" ]]; then
+              sudo chown -R "${uid}:${gid}" "$path"
+            fi
+          done
+
+      - name: Write VI Analyzer status summary (Linux container)
+        if: always()
+        shell: pwsh
+        run: |
+          $repoRoot = $env:GITHUB_WORKSPACE
+          $tasksRelativePath = if ([string]::IsNullOrWhiteSpace($env:LVIE_VI_ANALYZER_TASKS_PATH)) {
+            'Tooling/vi-analyzer/tasks.linux.json'
+          } else {
+            $env:LVIE_VI_ANALYZER_TASKS_PATH
+          }
+          $tasksPath = Join-Path $repoRoot $tasksRelativePath
+          $reportsRoot = Join-Path $repoRoot 'builds/vi-analyzer'
+          $statusPath = Join-Path $repoRoot 'builds/status/vi-analyzer-summary.parity.json'
+          New-Item -ItemType Directory -Path (Split-Path -Path $statusPath -Parent) -Force | Out-Null
+
+          $taskResults = @()
+          if (Test-Path -Path $tasksPath -PathType Leaf) {
+            $tasksDoc = Get-Content -Raw -Path $tasksPath | ConvertFrom-Json
+            foreach ($task in @($tasksDoc.tasks)) {
+              $taskId = [string]$task.id
+              if ([string]::IsNullOrWhiteSpace($taskId)) {
+                continue
+              }
+
+              $safeTaskId = $taskId -replace '[^A-Za-z0-9_.-]', '-'
+              $reportPath = Join-Path $reportsRoot ("vi-analyzer-{0}.txt" -f $safeTaskId)
+              $taskResults += [pscustomobject]@{
+                id          = $taskId
+                config_path = [string]$task.config_path
+                report_path = $reportPath
+                succeeded   = (Test-Path -Path $reportPath -PathType Leaf)
+              }
+            }
+          }
+
+          $failedTasks = @($taskResults | Where-Object { -not $_.succeeded })
+          $sourceVersionRaw = ''
+          $sourceVersionYear = ''
+          $sourceVersionMinor = ''
+          $sourceVersionPath = Join-Path $repoRoot '.lvversion'
+          if (Test-Path -LiteralPath $sourceVersionPath -PathType Leaf) {
+            $sourceVersionRaw = (Get-Content -LiteralPath $sourceVersionPath -Raw).Trim()
+            if ($sourceVersionRaw -match '^(?<major>\d{2,4})\.(?<minor>\d+)$') {
+              $major = [int]$Matches['major']
+              $sourceVersionYear = if ($major -ge 1000) { [string]$major } else { [string](2000 + $major) }
+              $sourceVersionMinor = [string]([int]$Matches['minor'])
+            }
+          }
+
+          $status = [ordered]@{
+            generated_utc   = (Get-Date).ToUniversalTime().ToString('o')
+            repo_root       = $repoRoot
+            tasks_path      = $tasksPath
+            tasks_path_relative = $tasksRelativePath
+            reports_root    = $reportsRoot
+            overall_success = ($taskResults.Count -gt 0 -and $failedTasks.Count -eq 0)
+            task_count      = $taskResults.Count
+            labview         = [ordered]@{
+              source_contract = [ordered]@{
+                raw            = $sourceVersionRaw
+                year           = $sourceVersionYear
+                minor_revision = $sourceVersionMinor
+              }
+              container_contract = [ordered]@{
+                raw            = $env:LVIE_CONTAINER_CONTRACT_RAW
+                tag            = $env:LVIE_CONTAINER_CONTRACT_TAG
+                image          = $env:LVIE_CONTAINER_CONTRACT_IMAGE
+                os             = $env:LVIE_CONTAINER_CONTRACT_OS
+                year           = $env:LVIE_CONTAINER_CONTRACT_YEAR
+                release_tag    = $env:LVIE_CONTAINER_CONTRACT_RELEASE_TAG
+                linux_image    = $env:LVIE_CONTAINER_CONTRACT_LINUX_IMAGE
+              }
+              runtime = [ordered]@{
+                year = $env:LVIE_CONTAINER_CONTRACT_YEAR
+              }
+              bitness        = 64
+              execution_mode = 'linux-container'
+            }
+            task_results    = $taskResults
+          }
+
+          $status | ConvertTo-Json -Depth 8 | Out-File -FilePath $statusPath -Encoding utf8
+
+      - name: Upload VI Analyzer logs (Linux container)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-analyzer-linux-logs-parity
+          path: ${{ github.workspace }}/TestResults/container-parity/linux/vi-analyzer/logs
+          if-no-files-found: warn
+
+      - name: Upload VI Analyzer reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-analyzer-reports-parity
+          path: ${{ github.workspace }}/builds/vi-analyzer
+          if-no-files-found: warn
+
+      - name: Upload VI Analyzer status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-analyzer-status-parity
+          path: ${{ github.workspace }}/builds/status/vi-analyzer-summary.parity.json
+          if-no-files-found: error
+
+  parity-self-hosted-64:
+    name: Parity (Self-Hosted Windows LabVIEW 64-bit)
+    needs: [resolve-parity-context, runner-cli-build-win, self-hosted-policy-gate]
+    if: ${{ needs.resolve-parity-context.outputs.run_self_hosted_64_effective == 'true' }}
+    runs-on: ${{ needs.resolve-parity-context.outputs.self_hosted_runner_label_64 }}
+    timeout-minutes: 180
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download runner-cli artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.runner-cli-build-win.outputs.artifact_name }}
+          path: ${{ runner.temp }}/runner-cli
+
+      - name: Assert .NET SDK availability (self-hosted)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
+          if (-not $dotnet) {
+            throw ".NET SDK is required on the self-hosted runner. Install .NET 8 SDK and ensure 'dotnet' is on PATH."
+          }
+
+          & dotnet --info | Out-Host
+          if ($LASTEXITCODE -ne 0) {
+            throw "dotnet --info failed with exit code $LASTEXITCODE."
+          }
+
+          $dotnetVersion = (& dotnet --version).Trim()
+          if (-not $dotnetVersion.StartsWith('8.')) {
+            throw "Self-hosted parity requires .NET 8 SDK. Found: $dotnetVersion"
+          }
+
+          Write-Host ("Using .NET SDK {0} at {1}" -f $dotnetVersion, $dotnet.Source)
+
+      - name: Job setup
+        uses: ./.github/actions/lvie-job-setup
+        with:
+          checkout: 'false'
+          acquire_lock: 'true'
+          create_worktree: 'true'
+          bitness: 64
+          worktree_root_mode: runner_temp
+
+      - name: Assert .lvversion contract
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          pwsh -NoProfile -File .\Tooling\Assert-LabVIEWVersion.ps1 `
+            -RepoRoot "$env:REPO_ROOT" `
+            -Context 'headless-version-contract' `
+            -WriteSummary
+
+      - name: Run parity lane via runner-cli (self-hosted-windows 64-bit)
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runnerCliPath = Join-Path $env:RUNNER_TEMP 'runner-cli' 'runner-cli.exe'
+          if (-not (Test-Path -LiteralPath $runnerCliPath -PathType Leaf)) {
+            throw "runner-cli executable not found at $runnerCliPath"
+          }
+
+          $env:LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT = '1'
+          Write-Host "Enabled LabVIEWCLI port-contract remediation for self-hosted parity lane."
+
+          $lvReleaseInput = '${{ needs.resolve-parity-context.outputs.lv_release_self_hosted }}'
+          $args = @(
+            'parity', 'self-hosted',
+            '--repo-root', $env:REPO_ROOT,
+            '--labview-bitness', '64',
+            '--build-spec', 'true'
+          )
+          if (-not [string]::IsNullOrWhiteSpace($lvReleaseInput)) {
+            $args += @('--lv-release', $lvReleaseInput)
+          }
+
+          & $runnerCliPath @args
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli parity self-hosted failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Verify built specification output (Self-hosted 64-bit)
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          $outputPath = Join-Path $env:REPO_ROOT 'resource\plugins\lv_icon.lvlibp'
+          if (-not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
+            throw "Expected build output was not found: $outputPath"
+          }
+          $item = Get-Item -LiteralPath $outputPath
+          Write-Host ("Built specification artifact: {0} ({1} bytes)" -f $item.FullName, $item.Length)
+
+      - name: Resolve artifact root
+        if: always()
+        shell: pwsh
+        run: |
+          $repoRoot = if ([string]::IsNullOrWhiteSpace($env:REPO_ROOT)) { $env:GITHUB_WORKSPACE } else { $env:REPO_ROOT }
+          "HEADLESS_REPO_ROOT=$repoRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Upload LabVIEWCLI logs (Self-hosted 64-bit)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-parity-self-hosted-labviewcli-logs-64
+          path: ${{ env.HEADLESS_REPO_ROOT }}/TestResults/container-parity/windows/logs
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload built specification artifact (Self-hosted 64-bit)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-parity-self-hosted-editor-packed-library-64
+          path: ${{ env.HEADLESS_REPO_ROOT }}/resource/plugins/lv_icon.lvlibp
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Shutdown dotnet build servers (Self-hosted 64-bit)
+        if: always()
+        shell: pwsh
+        run: |
+          $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
+          if ($dotnet) {
+            & dotnet build-server shutdown | Out-Host
+          } else {
+            Write-Warning "dotnet not found; skipping build-server shutdown."
+          }
+
+      - name: Job teardown
+        if: always()
+        uses: ./.github/actions/lvie-job-teardown
+        with:
+          repo_root: ${{ env.REPO_ROOT }}
+          close_labview: 'true'
+          close_executor: labviewcli
+          close_bitness: 64
+          cleanup_worktree: 'true'
+          release_lock: 'true'
+
+  parity-self-hosted-32:
+    name: Parity (Self-Hosted Windows LabVIEW 32-bit)
+    needs: [resolve-parity-context, runner-cli-build-win, self-hosted-policy-gate]
+    if: ${{ needs.resolve-parity-context.outputs.run_self_hosted_32_effective == 'true' }}
+    runs-on: ${{ needs.resolve-parity-context.outputs.self_hosted_runner_label_32 }}
+    timeout-minutes: 180
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download runner-cli artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.runner-cli-build-win.outputs.artifact_name }}
+          path: ${{ runner.temp }}/runner-cli
+
+      - name: Assert .NET SDK availability (self-hosted)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
+          if (-not $dotnet) {
+            throw ".NET SDK is required on the self-hosted runner. Install .NET 8 SDK and ensure 'dotnet' is on PATH."
+          }
+
+          & dotnet --info | Out-Host
+          if ($LASTEXITCODE -ne 0) {
+            throw "dotnet --info failed with exit code $LASTEXITCODE."
+          }
+
+          $dotnetVersion = (& dotnet --version).Trim()
+          if (-not $dotnetVersion.StartsWith('8.')) {
+            throw "Self-hosted parity requires .NET 8 SDK. Found: $dotnetVersion"
+          }
+
+          Write-Host ("Using .NET SDK {0} at {1}" -f $dotnetVersion, $dotnet.Source)
+
+      - name: Job setup
+        uses: ./.github/actions/lvie-job-setup
+        with:
+          checkout: 'false'
+          acquire_lock: 'true'
+          create_worktree: 'true'
+          bitness: 32
+          worktree_root_mode: runner_temp
+
+      - name: Assert .lvversion contract
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          pwsh -NoProfile -File .\Tooling\Assert-LabVIEWVersion.ps1 `
+            -RepoRoot "$env:REPO_ROOT" `
+            -Context 'headless-version-contract' `
+            -WriteSummary
+
+      - name: Run parity lane via runner-cli (self-hosted-windows 32-bit)
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runnerCliPath = Join-Path $env:RUNNER_TEMP 'runner-cli' 'runner-cli.exe'
+          if (-not (Test-Path -LiteralPath $runnerCliPath -PathType Leaf)) {
+            throw "runner-cli executable not found at $runnerCliPath"
+          }
+
+          $env:LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT = '1'
+          Write-Host "Enabled LabVIEWCLI port-contract remediation for self-hosted parity lane."
+
+          $lvReleaseInput = '${{ needs.resolve-parity-context.outputs.lv_release_self_hosted }}'
+          $args = @(
+            'parity', 'self-hosted',
+            '--repo-root', $env:REPO_ROOT,
+            '--labview-bitness', '32',
+            '--build-spec', 'true'
+          )
+          if (-not [string]::IsNullOrWhiteSpace($lvReleaseInput)) {
+            $args += @('--lv-release', $lvReleaseInput)
+          }
+
+          & $runnerCliPath @args
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli parity self-hosted failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Verify built specification output (Self-hosted 32-bit)
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          $outputPath = Join-Path $env:REPO_ROOT 'resource\plugins\lv_icon.lvlibp'
+          if (-not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
+            throw "Expected build output was not found: $outputPath"
+          }
+          $item = Get-Item -LiteralPath $outputPath
+          Write-Host ("Built specification artifact: {0} ({1} bytes)" -f $item.FullName, $item.Length)
+
+      - name: Resolve artifact root
+        if: always()
+        shell: pwsh
+        run: |
+          $repoRoot = if ([string]::IsNullOrWhiteSpace($env:REPO_ROOT)) { $env:GITHUB_WORKSPACE } else { $env:REPO_ROOT }
+          "HEADLESS_REPO_ROOT=$repoRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Upload LabVIEWCLI logs (Self-hosted 32-bit)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-parity-self-hosted-labviewcli-logs-32
+          path: ${{ env.HEADLESS_REPO_ROOT }}/TestResults/container-parity/windows/logs
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload built specification artifact (Self-hosted 32-bit)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-parity-self-hosted-editor-packed-library-32
+          path: ${{ env.HEADLESS_REPO_ROOT }}/resource/plugins/lv_icon.lvlibp
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Shutdown dotnet build servers (Self-hosted 32-bit)
+        if: always()
+        shell: pwsh
+        run: |
+          $dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
+          if ($dotnet) {
+            & dotnet build-server shutdown | Out-Host
+          } else {
+            Write-Warning "dotnet not found; skipping build-server shutdown."
+          }
+
+      - name: Job teardown
+        if: always()
+        uses: ./.github/actions/lvie-job-teardown
+        with:
+          repo_root: ${{ env.REPO_ROOT }}
+          close_labview: 'true'
+          close_executor: labviewcli
+          close_bitness: 32
+          cleanup_worktree: 'true'
+          release_lock: 'true'
+
+  parity-windows:
+    name: Parity (Windows Container ${{ needs.resolve-parity-context.outputs.lvcontainer_windows_tag }})
+    needs: [resolve-parity-context]
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.418'
+
+      - name: Resolve parity context via runner-cli
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $contextPath = Join-Path $env:RUNNER_TEMP 'parity-context-windows.json'
+          $lvReleaseInput = '${{ needs.resolve-parity-context.outputs.lv_release_windows }}'
+
+          $args = @(
+            'run', '--project', '.\Tooling\runner-cli\RunnerCli\RunnerCli.csproj', '--',
+            'parity', 'context',
+            '--mode', 'windows-container',
+            '--repo-root', $env:GITHUB_WORKSPACE,
+            '--output', $contextPath
+          )
+          if (-not [string]::IsNullOrWhiteSpace($lvReleaseInput)) {
+            $args += @('--lv-release', $lvReleaseInput)
+          }
+
+          & dotnet @args
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli parity context failed with exit code $LASTEXITCODE."
+          }
+
+          "PARITY_CONTEXT_PATH=$contextPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Validate path contract for Windows container shell
+        shell: pwsh
+        run: |
+          Write-Host 'Windows container parity script runs under powershell.exe (Windows PowerShell 5.1) inside the NI container.'
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE\Tooling\Test-PathContract.ps1" -WriteSummary
+
+      - name: Run parity lane via runner-cli (windows-container)
+        shell: pwsh
+        run: |
+          dotnet run --project .\Tooling\runner-cli\RunnerCli\RunnerCli.csproj -- `
+            parity run `
+            --mode windows-container `
+            --context "$env:PARITY_CONTEXT_PATH" `
+            --build-spec true
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "runner-cli parity run failed with exit code $LASTEXITCODE."
+          }
+
+      - name: Verify built specification output (Windows container)
+        shell: pwsh
+        run: |
+          $outputPath = Join-Path $env:GITHUB_WORKSPACE 'resource\plugins\lv_icon.lvlibp'
+          if (-not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
+            throw "Expected build output was not found: $outputPath"
+          }
+          $item = Get-Item -LiteralPath $outputPath
+          Write-Host ("Built specification artifact: {0} ({1} bytes)" -f $item.FullName, $item.Length)
+
+      - name: Upload built specification artifact (Windows container)
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-container-editor-packed-library-windows
+          path: resource/plugins/lv_icon.lvlibp
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload LabVIEWCLI logs (Windows container)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: labview-container-logs-windows
+          path: TestResults/container-parity/windows/logs
+          if-no-files-found: warn
+          retention-days: 14
+
+  parity-summary:
+    name: Parity Summary
+    if: ${{ always() }}
+    needs:
+      - resolve-parity-context
+      - self-hosted-policy-gate
+      - parity-linux
+      - vi-analyzer-linux
+      - parity-windows
+      - parity-self-hosted-64
+      - parity-self-hosted-32
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write parity summary
+        shell: pwsh
+        env:
+          LVIE_POLICY_GATE_RESULT: ${{ needs['self-hosted-policy-gate'].result }}
+          LVIE_PARITY_LINUX_RESULT: ${{ needs['parity-linux'].result }}
+          LVIE_VI_ANALYZER_RESULT: ${{ needs['vi-analyzer-linux'].result }}
+          LVIE_PARITY_WINDOWS_RESULT: ${{ needs['parity-windows'].result }}
+          LVIE_SELF_HOSTED_64_RESULT: ${{ needs['parity-self-hosted-64'].result }}
+          LVIE_SELF_HOSTED_32_RESULT: ${{ needs['parity-self-hosted-32'].result }}
+        run: |
+          $mode = '${{ needs.resolve-parity-context.outputs.parity_mode_effective }}'
+          $available = '${{ needs.resolve-parity-context.outputs.self_hosted_available }}'
+          $availabilityReason = '${{ needs.resolve-parity-context.outputs.self_hosted_availability_reason }}'
+          $onlineCount = '${{ needs.resolve-parity-context.outputs.self_hosted_online_count }}'
+          $totalCount = '${{ needs.resolve-parity-context.outputs.self_hosted_total_count }}'
+          $onlineRunners = '${{ needs.resolve-parity-context.outputs.self_hosted_online_runners }}'
+          $label64 = '${{ needs.resolve-parity-context.outputs.self_hosted_runner_label_64 }}'
+          $label32 = '${{ needs.resolve-parity-context.outputs.self_hosted_runner_label_32 }}'
+          $available64 = '${{ needs.resolve-parity-context.outputs.self_hosted_64_available }}'
+          $available32 = '${{ needs.resolve-parity-context.outputs.self_hosted_32_available }}'
+          $availabilityReason64 = '${{ needs.resolve-parity-context.outputs.self_hosted_64_availability_reason }}'
+          $availabilityReason32 = '${{ needs.resolve-parity-context.outputs.self_hosted_32_availability_reason }}'
+          $onlineCount64 = '${{ needs.resolve-parity-context.outputs.self_hosted_64_online_count }}'
+          $onlineCount32 = '${{ needs.resolve-parity-context.outputs.self_hosted_32_online_count }}'
+          $onlineRunners64 = '${{ needs.resolve-parity-context.outputs.self_hosted_64_online_runners }}'
+          $onlineRunners32 = '${{ needs.resolve-parity-context.outputs.self_hosted_32_online_runners }}'
+          $requested64 = '${{ needs.resolve-parity-context.outputs.run_self_hosted_64 }}'
+          $requested32 = '${{ needs.resolve-parity-context.outputs.run_self_hosted_32 }}'
+          $effective64 = '${{ needs.resolve-parity-context.outputs.run_self_hosted_64_effective }}'
+          $effective32 = '${{ needs.resolve-parity-context.outputs.run_self_hosted_32_effective }}'
+          $windowsExceptionApplied = '${{ needs.resolve-parity-context.outputs.windows_release_exception_applied }}'
+          $windowsExceptionNote = '${{ needs.resolve-parity-context.outputs.windows_release_exception_note }}'
+
+          Write-Host ("Parity mode: {0}" -f $mode)
+          Write-Host ("Self-hosted availability: {0}" -f $available)
+          Write-Host ("Self-hosted availability reason: {0}" -f $availabilityReason)
+          Write-Host ("Self-hosted online count: {0}" -f $onlineCount)
+          Write-Host ("Self-hosted total count: {0}" -f $totalCount)
+          Write-Host ("Self-hosted online runners: {0}" -f $onlineRunners)
+          Write-Host ("Self-hosted label 64: {0}" -f $label64)
+          Write-Host ("Self-hosted label 32: {0}" -f $label32)
+          Write-Host ("Self-hosted 64 availability: {0} ({1})" -f $available64, $availabilityReason64)
+          Write-Host ("Self-hosted 32 availability: {0} ({1})" -f $available32, $availabilityReason32)
+          Write-Host ("Self-hosted 64 online count/runners: {0} / {1}" -f $onlineCount64, $onlineRunners64)
+          Write-Host ("Self-hosted 32 online count/runners: {0} / {1}" -f $onlineCount32, $onlineRunners32)
+          Write-Host ("Self-hosted requested lanes: 64={0}, 32={1}" -f $requested64, $requested32)
+          Write-Host ("Self-hosted effective lanes: 64={0}, 32={1}" -f $effective64, $effective32)
+
+          if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY)) {
+            @(
+              '## LabVIEW Parity Summary'
+              ''
+              ('- mode: `{0}`' -f $mode)
+              ('- self_hosted_available: `{0}`' -f $available)
+              ('- self_hosted_availability_reason: `{0}`' -f $availabilityReason)
+              ('- self_hosted_online_count: `{0}`' -f $onlineCount)
+              ('- self_hosted_total_count: `{0}`' -f $totalCount)
+              ('- self_hosted_online_runners: `{0}`' -f $onlineRunners)
+              ('- self_hosted_runner_label_64: `{0}`' -f $label64)
+              ('- self_hosted_runner_label_32: `{0}`' -f $label32)
+              ('- self_hosted_64_available/reason: `{0}` / `{1}`' -f $available64, $availabilityReason64)
+              ('- self_hosted_32_available/reason: `{0}` / `{1}`' -f $available32, $availabilityReason32)
+              ('- self_hosted_64_online_count/runners: `{0}` / `{1}`' -f $onlineCount64, $onlineRunners64)
+              ('- self_hosted_32_online_count/runners: `{0}` / `{1}`' -f $onlineCount32, $onlineRunners32)
+              ('- run_self_hosted_64 requested/effective: `{0}` / `{1}`' -f $requested64, $effective64)
+              ('- run_self_hosted_32 requested/effective: `{0}` / `{1}`' -f $requested32, $effective32)
+              ('- windows_release_exception_applied: `{0}`' -f $windowsExceptionApplied)
+              ('- windows_release_exception_note: `{0}`' -f $windowsExceptionNote)
+              ''
+              '### Job Results'
+              ''
+              ('- self-hosted-policy-gate: `{0}`' -f $env:LVIE_POLICY_GATE_RESULT)
+              ('- parity-linux: `{0}`' -f $env:LVIE_PARITY_LINUX_RESULT)
+              ('- vi-analyzer-linux: `{0}`' -f $env:LVIE_VI_ANALYZER_RESULT)
+              ('- parity-windows: `{0}`' -f $env:LVIE_PARITY_WINDOWS_RESULT)
+              ('- parity-self-hosted-64: `{0}`' -f $env:LVIE_SELF_HOSTED_64_RESULT)
+              ('- parity-self-hosted-32: `{0}`' -f $env:LVIE_SELF_HOSTED_32_RESULT)
+            ) | Add-Content -Path $env:GITHUB_STEP_SUMMARY
+          }

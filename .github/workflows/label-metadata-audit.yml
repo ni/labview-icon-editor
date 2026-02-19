@@ -1,0 +1,176 @@
+name: Label Metadata Audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  audit:
+    name: Audit Label Metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - id: audit
+        name: Scan label metadata state
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const {
+              loadLabelContract,
+              buildReleaseLabelMap,
+              buildIssueTypeLabelMap,
+              normalizeLabels,
+              getExemptStaleLabels,
+            } = require(path.join(process.env.GITHUB_WORKSPACE || process.cwd(), '.github', 'scripts', 'label-metadata.js'));
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const contractPath = path.join(process.env.GITHUB_WORKSPACE || process.cwd(), '.github', 'labels', 'label-contract.json');
+            const contract = loadLabelContract(contractPath);
+
+            const releaseMap = buildReleaseLabelMap(contract);
+            const issueTypeMap = buildIssueTypeLabelMap(contract);
+            const releaseCanonical = new Set(
+              (contract.labels || [])
+                .filter((entry) => String(entry.category || '').trim().toLowerCase() === 'release_increment')
+                .map((entry) => String(entry.name || '').trim().toLowerCase())
+                .filter(Boolean)
+            );
+            const issueCanonical = new Set(
+              (contract.labels || [])
+                .filter((entry) => String(entry.category || '').trim().toLowerCase() === 'issue_type')
+                .map((entry) => String(entry.name || '').trim().toLowerCase())
+                .filter(Boolean)
+            );
+
+            function isAliasOnly(found, canonicalSet) {
+              if (!Array.isArray(found.matches) || found.matches.length === 0) {
+                return false;
+              }
+              return found.matches.every((entry) => !canonicalSet.has(String(entry.raw || '').trim().toLowerCase()));
+            }
+
+            const repoLabels = await github.paginate(github.rest.issues.listLabelsForRepo, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+            const repoLabelSet = new Set(
+              repoLabels
+                .map((entry) => String(entry.name || '').trim().toLowerCase())
+                .filter(Boolean)
+            );
+
+            const openPrs = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+
+            const openIssuesRaw = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const openIssues = openIssuesRaw.filter((item) => !item.pull_request);
+
+            const unlabeledPrs = [];
+            const conflictingPrs = [];
+            const aliasOnlyPrs = [];
+            for (const pr of openPrs) {
+              const labels = (pr.labels || []).map((entry) => String(entry.name || '').trim()).filter(Boolean);
+              const found = normalizeLabels(labels, releaseMap);
+              if (found.normalized.length === 0) {
+                unlabeledPrs.push({ number: pr.number, title: pr.title, labels });
+              } else {
+                if (found.normalized.length > 1) {
+                  conflictingPrs.push({ number: pr.number, title: pr.title, labels, matched_release_labels: found.matchedRaw });
+                }
+                if (isAliasOnly(found, releaseCanonical)) {
+                  aliasOnlyPrs.push({ number: pr.number, title: pr.title, labels, matched_release_labels: found.matchedRaw });
+                }
+              }
+            }
+
+            const unlabeledIssues = [];
+            const aliasOnlyIssues = [];
+            for (const issue of openIssues) {
+              const labels = (issue.labels || []).map((entry) => String(entry.name || '').trim()).filter(Boolean);
+              const found = normalizeLabels(labels, issueTypeMap);
+              if (found.normalized.length === 0) {
+                unlabeledIssues.push({ number: issue.number, title: issue.title, labels });
+              } else if (isAliasOnly(found, issueCanonical)) {
+                aliasOnlyIssues.push({ number: issue.number, title: issue.title, labels, matched_issue_type_labels: found.matchedRaw });
+              }
+            }
+
+            const staleExemptLabels = getExemptStaleLabels(contract);
+            const missingExemptLabels = staleExemptLabels.filter((name) => !repoLabelSet.has(name.toLowerCase()));
+
+            const report = {
+              generated_utc: new Date().toISOString(),
+              repository: `${owner}/${repo}`,
+              contract_path: path.relative(process.env.GITHUB_WORKSPACE || process.cwd(), contractPath),
+              counts: {
+                open_prs: openPrs.length,
+                open_issues: openIssues.length,
+                unlabeled_prs: unlabeledPrs.length,
+                conflicting_pr_release_labels: conflictingPrs.length,
+                alias_only_pr_release_labels: aliasOnlyPrs.length,
+                unlabeled_issues: unlabeledIssues.length,
+                alias_only_issue_type_labels: aliasOnlyIssues.length,
+                missing_exempt_labels: missingExemptLabels.length,
+              },
+              details: {
+                unlabeled_prs: unlabeledPrs,
+                conflicting_pr_release_labels: conflictingPrs,
+                alias_only_pr_release_labels: aliasOnlyPrs,
+                unlabeled_issues: unlabeledIssues,
+                alias_only_issue_type_labels: aliasOnlyIssues,
+                missing_exempt_labels: missingExemptLabels,
+              },
+            };
+
+            const reportPath = path.join(process.env.GITHUB_WORKSPACE || process.cwd(), 'builds', 'status', 'label-metadata-audit.json');
+            fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+            fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+            core.setOutput('report_path', reportPath);
+
+            const lines = [];
+            lines.push('## Label Metadata Audit');
+            lines.push('');
+            lines.push(`- Repository: \`${report.repository}\``);
+            lines.push(`- Generated (UTC): \`${report.generated_utc}\``);
+            lines.push(`- Unlabeled PRs: **${report.counts.unlabeled_prs}**`);
+            lines.push(`- Conflicting PR release labels: **${report.counts.conflicting_pr_release_labels}**`);
+            lines.push(`- Alias-only PR release labels: **${report.counts.alias_only_pr_release_labels}**`);
+            lines.push(`- Unlabeled issues: **${report.counts.unlabeled_issues}**`);
+            lines.push(`- Alias-only issue-type labels: **${report.counts.alias_only_issue_type_labels}**`);
+            lines.push(`- Missing stale-exempt labels: **${report.counts.missing_exempt_labels}**`);
+            lines.push('');
+            lines.push('| Category | Count |');
+            lines.push('| --- | ---: |');
+            lines.push(`| Unlabeled PRs | ${report.counts.unlabeled_prs} |`);
+            lines.push(`| Conflicting PR release labels | ${report.counts.conflicting_pr_release_labels} |`);
+            lines.push(`| Alias-only PR release labels | ${report.counts.alias_only_pr_release_labels} |`);
+            lines.push(`| Unlabeled issues | ${report.counts.unlabeled_issues} |`);
+            lines.push(`| Alias-only issue-type labels | ${report.counts.alias_only_issue_type_labels} |`);
+            lines.push(`| Missing stale-exempt labels | ${report.counts.missing_exempt_labels} |`);
+            await core.summary.addRaw(lines.join('\n') + '\n').write();
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: label-metadata-audit
+          path: ${{ steps.audit.outputs.report_path }}
+          if-no-files-found: error

@@ -22,12 +22,14 @@ This document details how to automate **building**, **testing**, and **packaging
 - **Eliminate** manual tasks like editing `vi.lib` or toggling `labview.ini`.  
 - **Run** consistent builds and tests across different machines or developers.  
 - **Automatically version** your Icon Editor code via **semantic labeling** (major/minor/patch) plus a global build counter.
-- **Upload** the `.vip` artifact for download; the workflow does **not** create tags or GitHub releases.
+- **Upload** the `.vip` artifact for download, with active GitHub prerelease publication on eligible merges to `develop`.
+  - Normative prerelease contract: [`docs/vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md).
 
 Additionally, **you can pass metadata fields** (like **organization** or **repository name**) to the **build script**. These fields are embedded into the **VI Package** display information, effectively **branding** the Icon Editor package with a unique identifier. This is especially useful when multiple forks or organizations produce their own versions of the Icon Editor—ensuring each `.vip` is clearly labeled with the correct “author” or “company.”
 
 > **Prerequisites**:
-> - **LabVIEW 2021 (21.0), 32-bit and 64-bit**.
+> - **LabVIEW version from `.lvversion` (currently `20.0`), 32-bit and 64-bit as required** (minimum supported baseline).
+> - **LabVIEWCLI** available on PATH on self-hosted runners for Windows LabVIEW automation paths (build/test/teardown). The blocking VI Analyzer lane runs in [`labview-parity.yml`](../../../.github/workflows/labview-parity.yml) on `ubuntu-latest` via Dockerized LabVIEW Linux.
 > - The relevant **VIPC** file is now at `.github/actions/apply-vipc/runner_dependencies.vipc`.
 > - [PowerShell 7+](https://github.com/PowerShell/PowerShell/releases/latest)
 > - [Git for Windows](https://github.com/git-for-windows/git/releases/latest)
@@ -38,29 +40,40 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 **For experienced users**, a brief overview:
 
 1. **Install Required Software**
-   - Ensure **LabVIEW 2021 (21.0) 32-bit and 64-bit** are installed.
+   - Ensure **LabVIEW version from `.lvversion` (currently `20.0`) for 32-bit and 64-bit as required** are installed.
    - [PowerShell 7+](https://github.com/PowerShell/PowerShell/releases/latest)
    - [Git for Windows](https://github.com/git-for-windows/git/releases/latest)
 
-2. **Apply the VIPC**
-  - Apply `.github/actions/apply-vipc/runner_dependencies.vipc` with VIPM in **LabVIEW 2021 (21.0) 32-bit**; repeat for **LabVIEW 2021 (21.0) 64-bit**.
-   - This is required on new runners because the workflow's `apply-deps` job in `.github/workflows/ci-composite.yml` runs only when `.vipc` files change (`if: needs.changes.outputs.vipc == 'true'`). When no `.vipc` updates exist, dependencies aren't installed automatically, so apply the VIPC manually.
+1. **Apply the VIPC**
+  - Apply `.github/actions/apply-vipc/runner_dependencies.vipc` with VIPM in **the `.lvversion` target (currently `20.0`) 32-bit**; repeat for **the `.lvversion` target (currently `20.0`) 64-bit**.
+   - CI now runs `Assert-VipcApplied` on every run (audit-first hard-stop). Apply VIPC manually on new runners to satisfy the audit before running full CI.
+   - Optional diagnostics-only apply can be triggered via `workflow_dispatch` input `vipc_apply_info=true`.
 
-3. **Configure a Self-Hosted Runner**  
+1. **Configure a Self-Hosted Runner**  
    - Go to **Settings → Actions → Runners** in your (forked) repo.  
    - Follow GitHub’s steps to add a Windows runner.
 
-4. **Development Mode Toggle**  
+1. **Development Mode Toggle**  
    - (Optional) Toggle LabVIEW dev mode (`Set_Development_Mode.ps1` or `RevertDevelopmentMode.ps1`) via the **Development Mode Toggle** workflow.
 
-5. **Run Tests**
-   - Run the tests using the **CI Pipeline (Composite)** workflow; its dedicated **test** job executes the unit tests.
+1. **Run Tests**
+    - Run tests using **CI Pipeline**.
+    - `pull_request` runs use the `pr-fast` profile (64-bit smoke/missing/unit).
+    - `workflow_dispatch` with `force_gcli_lunit=true` uses `release-priority` and skips heavy self-hosted validation jobs.
+    - VI Analyzer ownership is in `labview-parity.yml`; `ci.yml` no longer hosts a duplicate VI Analyzer lane.
+    - **CI Pipeline** (`.github/workflows/ci.yml`) runs on `push` (`main`, `develop`, `release/*`), `pull_request`, and `workflow_dispatch`; feature/hotfix branch pushes are intentionally excluded so PR synchronization is the single CI path for those branches.
 
-6. **Build VI Package**
-   - Invoke the **Build VI Package** job within the CI Pipeline (Composite) workflow to produce a `.vip` using the version computed by the workflow's separate **version** job (see that job's output for the generated version). Publishing tags or GitHub releases requires a separate workflow.
-   - **You can also** pass in **org/repository** info (e.g., `-CompanyName "MyOrg"` or `-AuthorName "myorg/myrepo"`) to brand the resulting package with your unique identifiers.
+1. **Build VI Package**
+     - Invoke the **Build VI Package** job within the CI Pipeline workflow to produce a `.vip` using the version computed by the workflow's separate **version** job (see that job's output for the generated version).
+    - Pre-release publication behavior is specified by [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md), including eligibility, assets, and failure policy.
+    - Prerelease-driving changes should use merge commits (`--merge`), not squash/rebase.
+    - Prerelease publication is automatic for eligible merged-PR merge commits pushed to `develop`.
+    - Auto relay is handled by [`.github/workflows/prerelease-auto-dispatch.yml`](../../../.github/workflows/prerelease-auto-dispatch.yml), which dispatches strict publish intent through `ci.yml`.
+    - Deterministic manual backfill remains available through `Tooling/Invoke-DeterministicPrereleasePublish.ps1`.
+    - `release-priority` manual publish intent (`force_gcli_lunit=true`) additionally requires a successful `full` profile run on `develop` within the previous 24 hours.
+    - **You can also** pass in **org/repository** info (e.g., `-CompanyName "MyOrg"` or `-AuthorName "myorg/myrepo"`) to brand the resulting package with your unique identifiers.
 
-7. **Disable Dev Mode** (Optional)  
+1. **Disable Dev Mode** (Optional)  
    - Revert environment once building/testing is done.
 
 
@@ -85,18 +98,31 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 1. **Development Mode Toggle**  
    - `mode: enable` → calls `Set_Development_Mode.ps1`.  
    - `mode: disable` → calls `RevertDevelopmentMode.ps1`.  
-   - `labview_version` (default `2021`, only `2021` is supported).
+   - `labview_version` (defaults to `.lvversion`; if provided it must match).
    - Great for reconfiguring LabVIEW for local dev vs. distribution builds.
 
-2. **CI Pipeline (Composite)**
-   - Includes a **test** job for unit tests, a **version** job that computes semantic versioning, and a **build-vi-package** job that packages the `.vip` using the version job's outputs.
+2. **CI Pipeline**
+   - Includes `unit-tests`, `version`, and `build-vip` jobs, plus container packed-library and prerelease publication jobs.
+   - VI Analyzer execution is owned by `labview-parity.yml` (`vi-analyzer-linux` on `ubuntu-latest`) and runs `Tooling/Run-ViAnalyzer.ps1` (Dockerized Linux worker) against `Tooling/vi-analyzer/tasks.linux.json`.
+   - Execution profile is computed as `ci_profile`:
+     - `release-priority` = `workflow_dispatch` + `force_gcli_lunit=true` (target <= 25 minutes).
+     - `pr-fast` = `pull_request` (target <= 35 minutes).
+     - `full` = all other events.
+    - `pipeline-contract` enforces profile-specific required-job outcomes so intentional profile skips do not fail the run.
+    - `publish-gate` enforces profile-required prepublish outcomes before `publish-prerelease`.
    - **Label-based** semantic versioning (`major`, `minor`, `patch`). Defaults to `patch` if no label.
    - **Derives build number from total commit count** (`git rev-list --count HEAD`).
    - **Fork-friendly**: runs on forks without requiring signing keys.
-   - Publishes `.vip` as an artifact; creating Git tags or GitHub releases requires a separate workflow.
-   - **Branding the Package**:
-     - You can **pass** metadata parameters like `-CompanyName` and `-AuthorName` into the build script. These map to fields in the **VI Package** (e.g., “Company Name,” “Author Name (Person or Company)”).
-     - This means each package can show the **organization** and **repository** that produced it, providing a **unique ID** if you have multiple forks or parallel versions.
+    - Produces `.vip` and release-notes artifacts in CI.
+   - Publish contract: `publish-prerelease` job behavior is defined in [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md).
+    - **Branding the Package**:
+      - You can **pass** metadata parameters like `-CompanyName` and `-AuthorName` into the build script. These map to fields in the **VI Package** (e.g., “Company Name,” “Author Name (Person or Company)”).
+      - This means each package can show the **organization** and **repository** that produced it, providing a **unique ID** if you have multiple forks or parallel versions.
+
+3. **Runner CLI**
+   - [`runner-cli.yml`](../../../.github/workflows/runner-cli.yml) is the runner-cli-specific companion workflow.
+   - Trigger policy: `push` on `main`, `develop`, `release/*`; `pull_request` on `main` and `develop` when runner-cli paths change; plus `workflow_dispatch`.
+   - This workflow is separate from icon prerelease asset publication in `ci.yml`.
 
 
 <a name="setting-up-a-self-hosted-runner"></a>
@@ -104,7 +130,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 
 **Steps**:
 
-1. **Install LabVIEW 2021 (21.0), 32-bit and 64-bit**  
+1. **Install LabVIEW version from `.lvversion` (currently `20.0`), 32-bit and 64-bit as required**  
    - Confirm both are present on your Windows machine.  
    - Apply `.github/actions/apply-vipc/runner_dependencies.vipc` to each if needed.
    - **Version contract**: CI treats `.lvversion` as the single source of truth. The runner sanity step validates that the installed LabVIEW version matches `.lvversion` and fails fast if it does not.
@@ -156,6 +182,10 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
      - `pwsh -NoProfile -File .\Tooling\Setup-Runner.ps1 -RunnerRoot C:\actions-runner -Scope Machine`
    - This writes `<runner-root>\_work\lvie\runner-contract.json` and sets `LVIE_WORKTREE_ROOT`, `LVIE_ARTIFACT_ROOT`, `LVIE_LOCK_ROOT`, and `LVIE_LOG_ROOT`.
    - Restart the runner service after setting Machine/User environment variables.
+   - Hybrid CI mode: jobs that call `lvie-job-setup` with `worktree_root_mode: runner_temp` resolve worktrees under `$env:RUNNER_TEMP\lvie\w` for that job only, and export:
+     - `LVIE_WORKTREE_ROOT=<resolved path>`
+     - `LVIE_WORKTREE_ROOT_SOURCE=runner_temp|contract|explicit`
+   - In hybrid mode, `LVIE_ARTIFACT_ROOT`, `LVIE_LOCK_ROOT`, and `LVIE_LOG_ROOT` continue to come from runner contract paths under `<runner-root>\_work\lvie\...`.
 
 7. **Stateless runner bootstrap (no service restart)**
    - Workflows call the `runner-bootstrap` action, which runs `Tooling/Initialize-Runner.ps1` at job start to refresh the runner contract and export `LVIE_*` variables into the job environment.
@@ -169,61 +199,92 @@ With your runner online:
 
 1. **Enable Dev Mode** (if needed)
    - **Actions → Development Mode Toggle**, set `mode: enable`.
-   - `labview_version` is fixed to `2021` if provided.
+   - `labview_version` must match `.lvversion` if provided.
 
-2. **Run Tests via CI Pipeline (Composite)**
-   - Execute the workflow and review the **test** job logs to confirm all unit tests pass.
+2. **Run Tests via CI Pipeline**
+   - Execute the workflow and review `unit-tests` logs (`pr-fast`: 64-bit only, `full`: 64/32).
 
 3. **Build VI Package**
-   - Produces `.vip` using the version computed in the **version** job (review that job's output for version details). The workflow only uploads the artifact; creating tags or GitHub releases requires additional steps.
-   - **Pass** your **org/repo** info (e.g. `-CompanyName "AcmeCorp"` / `-AuthorName "AcmeCorp/IconEditor"`) to embed in the final package.
+     - Produces `.vip` using the version computed in the **version** job for `full`/`pr-fast` profiles.
+     - `release-priority` runs intentionally skip `build-vip`; publish artifacts come from Linux/Windows container packed-library jobs.
+    - Prerelease publication policy is defined in [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md).
+    - Eligible merged-PR merge-commit pushes to `develop` publish automatically via `prerelease-auto-dispatch.yml`.
+    - `workflow_dispatch` publishing remains for deterministic backfill and is best invoked with `Tooling/Invoke-DeterministicPrereleasePublish.ps1`.
+    - `release-priority` manual publish intent requires a successful `full` profile run on `develop` in the prior 24 hours.
+    - **Pass** your **org/repo** info (e.g. `-CompanyName "AcmeCorp"` / `-AuthorName "AcmeCorp/IconEditor"`) to embed in the final package.
    - Artifacts appear in the run summary under **Artifacts**.
 
 4. **Disable Dev Mode** (if used)  
    - `mode: disable` reverts your LabVIEW environment.
-   - Keep `labview_version` set to `2021` if you include it.
+   - Keep `labview_version` aligned with `.lvversion` if you include it.
 
 5. **Review the `.vip`**
-   - Download from **Artifacts**. Publishing to a GitHub release requires a separate workflow.
+   - Download from **Artifacts**.
+   - Confirm publish status via `prerelease-publish-status` artifact when prerelease publication is in scope for the run.
+
+#### Develop Pre-Release Direction (Example Workflow)
+
+- Policy contract: [`vip-prerelease-requirements.md`](../../vip-prerelease-requirements.md).
+- Summary source: [CI Workflows Overview](../../ci-workflows.md).
 
 #### Worktree naming (CI)
 CI jobs run from short-path worktrees to avoid Windows path limits. Each job creates:
 - `ci-<jobhash>-<bitness>-<runid>-<attempt>`
 - `jobhash` = first 8 chars of SHA1(`GITHUB_JOB`) to keep job names unique.
 - Some workflows insert an extra variant token (e.g. LabVIEW version) between `<jobhash>` and `<bitness>`.
-- Example: `C:\dev\ci-D170BDEE-64-21534416929-1`
+- Example (contract mode): `C:\actions-runner\_work\lvie\w\ci-D170BDEE-64-21534416929-1`
+- Example (runner_temp mode): `<RUNNER_TEMP>\lvie\w\ci-D170BDEE-64-21534416929-1`
 
 The workflow exports:
 - `REPO_ROOT` → worktree path (authoritative for scripts)
 - `PROJECT_PATH` → `$REPO_ROOT\lv_icon_editor.lvproj`
-- `LABVIEW_VERSION_YEAR` / `LABVIEW_MINOR_REVISION` → derived from `.lvversion` (e.g., `21.0` → `2021` and minor `0`)
+- `LABVIEW_VERSION_YEAR` / `LABVIEW_MINOR_REVISION` → derived from `.lvversion` (for example, `20.0` → `2020` and minor `0`)
+- `LVIE_WORKTREE_ROOT_SOURCE` → `explicit`, `runner_temp`, or `contract`
 
 CI treats `.lvversion` in `REPO_ROOT` as the canonical LabVIEW version for the run.
 
 #### Run CI for a specific commit (workflow_dispatch)
-If you need deterministic runs for a specific commit, use the helper script:
+If you need deterministic runs for a specific commit, dispatch CI against a temporary branch that points to that SHA:
 ```
-pwsh -NoProfile -File .\Tooling\Run-CICompositeForCommit.ps1 -Sha <commit>
+git push origin <commit>:refs/heads/ci-run/<shortsha>
+gh workflow run "CI Pipeline" --ref ci-run/<shortsha> -f expected_sha=<commit> -f strict_sha=true
 ```
 
 Notes:
-- The script creates a temporary `ci-run/<shortsha>` branch and dispatches the workflow on it.
-- Use `-CleanupRemote` to delete the temporary branch after dispatch.
+- Delete the temporary branch after dispatch when no longer needed: `git push origin --delete ci-run/<shortsha>`.
 
 
 <a name="example-developer-workflow"></a>
 ### 5. Example Developer Workflow
 
 1. **Enable Development Mode**: if you plan to actively modify the Icon Editor code inside LabVIEW.  
-2. **Code & Test**: Make changes, run the **CI Pipeline (Composite)** workflow (its **test** job runs unit tests) to confirm stability.
+2. **Code & Test**: Make changes, run the **CI Pipeline** workflow (its **test** job runs unit tests) to confirm stability.
 3. **Open a Pull Request**:  
    - Assign a version bump label if you want `major`, `minor`, or `patch`.  
    - The workflow checks this label upon merging.  
 4. **Merge**:
-   - The **CI Pipeline (Composite)** workflow triggers, with the **version** job computing the version and the **Build VI Package** job using that version to package and upload the `.vip`.
+   - The **CI Pipeline** workflow triggers, with the **version** job computing the version and the **Build VI Package** job using that version to package and upload the `.vip`.
+   - Use merge commits for prerelease-driving PRs: `gh pr merge <pr-number> --merge --delete-branch`.
+   - Direction: a merge-commit merge to `develop` should result in a GitHub pre-release that includes the `.vip` and release notes.
+   - Manual backfill is deterministic only when pinned to the merged SHA:
+     ```powershell
+     gh workflow run ci.yml --repo <owner/repo> `
+       -f publish_prerelease=true `
+       -f expected_sha=<merged-develop-sha> `
+       -f strict_sha=true
+     ```
+   - Publish status is reported by the `publish-prerelease` job and the `prerelease-publish-status` artifact.
    - **Metadata** (such as company/repo) is already integrated into the final `.vip`, so each build is easily identified.
 5. **Disable Dev Mode**: Return to a normal LabVIEW environment.  
 6. **Install & Verify**: Download the `.vip` artifact for final validations.
+
+#### Develop Pre-Release Direction
+
+- Use `develop` merges as the default pre-release publication event.
+- Use merge commits (`--merge`) for prerelease-driving merges into `develop`.
+- Use strict manual backfill inputs (`publish_prerelease=true`, `expected_sha`, `strict_sha=true`) only when replaying publication for an already-merged `develop` SHA.
+- Keep `main` focused on stable/final release handling.
+- Treat alpha/beta/rc channel branches as optional legacy behavior unless your repository explicitly enables that model.
 
 ---
 
@@ -235,3 +296,5 @@ Notes:
 - **Troubleshoot**: If manual environment edits are needed, consult `ManualSetup.md` or the original documentation for advanced configuration steps.  
 
 **Happy Building!** By integrating these workflows, you’ll maintain a **robust, automated CI/CD** pipeline for the LabVIEW Icon Editor—complete with **semantic versioning**, **build artifact uploads**, and **metadata branding** (company/repo).
+
+

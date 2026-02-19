@@ -98,7 +98,7 @@ if (-not [string]::IsNullOrWhiteSpace($primaryRunnerLabel)) {
 if (-not [string]::IsNullOrWhiteSpace($canonicalRunnerLabel)) {
     $runnerLabelsResolved += $canonicalRunnerLabel
 }
-$runnerLabelsResolved = $runnerLabelsResolved | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Unique
+$runnerLabelsResolved = [string[]]@($runnerLabelsResolved | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Unique)
 
 $canonicalRunnerLabel = if ([string]::IsNullOrWhiteSpace($CanonicalRunnerLabel)) {
     'self-hosted-windows-lv'
@@ -123,7 +123,7 @@ if (-not [string]::IsNullOrWhiteSpace($primaryRunnerLabel)) {
 if (-not [string]::IsNullOrWhiteSpace($canonicalRunnerLabel)) {
     $runnerLabelsResolved += $canonicalRunnerLabel
 }
-$runnerLabelsResolved = $runnerLabelsResolved | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Unique
+$runnerLabelsResolved = [string[]]@($runnerLabelsResolved | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Unique)
 
 New-Item -Path $worktreeRootResolved -ItemType Directory -Force | Out-Null
 New-Item -Path $artifactRootResolved -ItemType Directory -Force | Out-Null
