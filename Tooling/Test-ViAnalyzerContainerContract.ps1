@@ -54,17 +54,27 @@ if ($ciContent) {
     if ($ciContent -match '(?ms)^\s*container-contract:\s*$') {
         Add-ContractViolation -Type 'duplicate-container-contract-job' -Message 'ci.yml must not define a container-contract job after parity ownership cutover.'
     }
-    if ($ciContent -match '(?ms)^\s*vi-analyzer:\s*$') {
-        Add-ContractViolation -Type 'duplicate-vi-analyzer-job' -Message 'ci.yml must not define a vi-analyzer job after parity ownership cutover.'
+
+    if ($ciContent -notmatch '(?ms)^  vi-analyzer:\s*$') {
+        Add-ContractViolation -Type 'missing-vi-analyzer-job' -Message 'ci.yml must define a vi-analyzer job for self-hosted Windows lanes.'
     }
-    if ($ciContent -match '(?ms)publish-gate:\s*.*?needs:\s*.*?\n\s*-\s*vi-analyzer\s*$') {
-        Add-ContractViolation -Type 'duplicate-vi-analyzer-publish-gate' -Message 'publish-gate needs list must not include vi-analyzer.'
+    if ($ciContent -notmatch '(?ms)^  vi-analyzer:\s*.*?name:\s*vi-analyzer-\$\{\{\s*matrix\.bitness\s*\}\}-bit') {
+        Add-ContractViolation -Type 'missing-vi-analyzer-lane-name' -Message 'ci.yml vi-analyzer job name must use the per-bitness contract vi-analyzer-${{ matrix.bitness }}-bit.'
     }
-    if ($ciContent -match '(?ms)pipeline-contract:\s*.*?needs:\s*.*?\n\s*-\s*vi-analyzer\s*$') {
-        Add-ContractViolation -Type 'duplicate-vi-analyzer-pipeline-contract' -Message 'pipeline-contract needs list must not include vi-analyzer.'
+    if ($ciContent -notmatch '(?ms)^  vi-analyzer:\s*.*?needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-64,\s*apply-deps-32\s*\]') {
+        Add-ContractViolation -Type 'missing-vi-analyzer-needs' -Message 'ci.yml vi-analyzer job must depend on run-metadata, prerelease-context, version-gate, apply-deps-64, and apply-deps-32.'
     }
-    if ($ciContent -match "(?ms)\$requiredCommon\s*=\s*@\(\s*.*?'vi-analyzer'") {
-        Add-ContractViolation -Type 'duplicate-vi-analyzer-required-common' -Message 'profile requiredCommon list in ci.yml must not include vi-analyzer.'
+    if ($ciContent -notmatch '(?ms)^  vi-analyzer:\s*.*?Tooling/Run-ViAnalyzer\.ps1') {
+        Add-ContractViolation -Type 'missing-vi-analyzer-runner' -Message 'ci.yml vi-analyzer job must run Tooling/Run-ViAnalyzer.ps1.'
+    }
+    if ($ciContent -notmatch '(?ms)^  publish-gate:\s*.*?\n\s*-\s*vi-analyzer\s*$') {
+        Add-ContractViolation -Type 'missing-vi-analyzer-publish-gate' -Message 'publish-gate needs list must include vi-analyzer.'
+    }
+    if ($ciContent -notmatch '(?ms)^  pipeline-contract:\s*.*?\n\s*-\s*vi-analyzer\s*$') {
+        Add-ContractViolation -Type 'missing-vi-analyzer-pipeline-contract' -Message 'pipeline-contract needs list must include vi-analyzer.'
+    }
+    if ($ciContent -notmatch '(?ms)\$requiredFullValidation\s*=\s*@\(\s*.*?''vi-analyzer''') {
+        Add-ContractViolation -Type 'missing-vi-analyzer-required-full' -Message 'profile requiredFullValidation list in ci.yml must include vi-analyzer.'
     }
 }
 
@@ -176,6 +186,76 @@ if ($parityContent) {
             }
         }
     }
+
+    $parityWindowsMatch = [regex]::Match(
+        $parityContent,
+        '(?ms)^\s*parity-windows:\s*$.*?(?=^\s{2}[A-Za-z0-9_-]+:\s*$|\z)'
+    )
+
+    if (-not $parityWindowsMatch.Success) {
+        Add-ContractViolation -Type 'missing-parity-windows-job' -Message 'labview-parity.yml must define parity-windows job block.'
+    } else {
+        $parityWindowsBlock = $parityWindowsMatch.Value
+
+        $requiredWindowsPatterns = @(
+            @{
+                Type    = 'parity-windows-dynamic-name'
+                Pattern = 'name:\s*Parity \(Windows Container \${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_windows_tag\s*}}\)'
+                Message = 'parity-windows job name must derive from resolve-parity-context.outputs.lvcontainer_windows_tag.'
+            },
+            @{
+                Type    = 'parity-windows-needs-resolve'
+                Pattern = 'needs:\s*\[\s*resolve-parity-context\s*\]'
+                Message = 'parity-windows needs list must include resolve-parity-context.'
+            },
+            @{
+                Type    = 'parity-windows-vi-analyzer-step'
+                Pattern = 'Run merged VI Analyzer tasks \(Windows container\)'
+                Message = 'parity-windows must run merged VI Analyzer tasks in the Windows container lane.'
+            },
+            @{
+                Type    = 'parity-windows-vi-analyzer-worker'
+                Pattern = 'run-vi-analyzer-windows\.ps1'
+                Message = 'parity-windows merged vi-analyzer step must invoke Tooling/container-parity/run-vi-analyzer-windows.ps1.'
+            },
+            @{
+                Type    = 'parity-windows-vi-analyzer-tasks-env'
+                Pattern = 'LVIE_VI_ANALYZER_TASKS_PATH:\s*Tooling\\vi-analyzer\\tasks\.json'
+                Message = 'parity-windows job env must define LVIE_VI_ANALYZER_TASKS_PATH to Tooling\\vi-analyzer\\tasks.json.'
+            },
+            @{
+                Type    = 'parity-windows-vi-analyzer-reports-env'
+                Pattern = 'LVIE_VI_ANALYZER_REPORTS_ROOT:\s*builds\\vi-analyzer\\windows-container'
+                Message = 'parity-windows job env must define LVIE_VI_ANALYZER_REPORTS_ROOT to builds\\vi-analyzer\\windows-container.'
+            },
+            @{
+                Type    = 'parity-windows-vi-analyzer-status-env'
+                Pattern = 'LVIE_VI_ANALYZER_STATUS_PATH:\s*builds\\status\\vi-analyzer-summary\.parity\.windows\.json'
+                Message = 'parity-windows job env must define LVIE_VI_ANALYZER_STATUS_PATH to builds\\status\\vi-analyzer-summary.parity.windows.json.'
+            },
+            @{
+                Type    = 'parity-windows-vi-analyzer-logs-artifact'
+                Pattern = 'vi-analyzer-windows-logs-parity'
+                Message = 'parity-windows must upload vi-analyzer-windows-logs-parity artifact.'
+            },
+            @{
+                Type    = 'parity-windows-vi-analyzer-reports-artifact'
+                Pattern = 'vi-analyzer-reports-parity-windows'
+                Message = 'parity-windows must upload vi-analyzer-reports-parity-windows artifact.'
+            },
+            @{
+                Type    = 'parity-windows-vi-analyzer-status-artifact'
+                Pattern = 'vi-analyzer-status-parity-windows'
+                Message = 'parity-windows must upload vi-analyzer-status-parity-windows artifact.'
+            }
+        )
+
+        foreach ($check in $requiredWindowsPatterns) {
+            if ($parityWindowsBlock -notmatch $check.Pattern) {
+                Add-ContractViolation -Type $check.Type -Message $check.Message
+            }
+        }
+    }
 }
 
 if ($WriteSummary -and -not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY)) {
@@ -183,7 +263,7 @@ if ($WriteSummary -and -not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMAR
         @(
             '### VI Analyzer Container Contract Guard'
             '- Status: pass'
-            '- Result: CI duplicate lane removed and parity vi-analyzer wiring is valid.'
+            '- Result: Self-hosted CI vi-analyzer and parity merged container vi-analyzer wiring are valid for both Linux and Windows lanes.'
         ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
     } else {
         @(

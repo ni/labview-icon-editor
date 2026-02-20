@@ -13,7 +13,9 @@ This repository includes a hosted parity workflow at `.github/workflows/labview-
 
 - Linux container image: `nationalinstruments/labview:<release>-linux`
 - Windows container image: `nationalinstruments/labview:<release>-windows`
-- VI Analyzer Linux-container responsibilities are merged into `Parity (Linux Container <.lvcontainer>)`.
+- VI Analyzer container responsibilities are merged into parity container lanes:
+  - Linux: `Parity (Linux Container <.lvcontainer>)`
+  - Windows: `Parity (Windows Container <resolved windows tag>)`
 - Always-on operation: `LabVIEWCLI MassCompile` on `Test/Templates`
 - Default exclusion: `Polymorphic Template.vi` is excluded from parity MassCompile via `CONTAINER_PARITY_EXCLUDE_FILES` because it is a known headless bad VI in container runs.
 
@@ -29,7 +31,7 @@ Build-spec parity is mandatory and is a blocking check.
 - Container lanes:
   - `Parity (Linux Container <.lvcontainer>)`
   - `Parity (Windows Container <resolved windows tag>)`
-  `Parity (Linux Container <.lvcontainer>)` also owns the Linux VI Analyzer responsibilities.
+  Linux and Windows parity container lanes own their corresponding merged VI Analyzer responsibilities.
   These lanes always run in every parity mode.
 
 - Self-hosted lanes:
@@ -94,10 +96,13 @@ LabVIEWCLI operation logs are captured and uploaded per OS as diagnostics:
 - `labview-container-logs-windows`
 - `labview-container-logs-linux`
 
-VI Analyzer artifacts from parity (emitted by `Parity (Linux Container <.lvcontainer>)`):
+VI Analyzer artifacts from parity:
 - `vi-analyzer-linux-logs-parity`
 - `vi-analyzer-reports-parity`
 - `vi-analyzer-status-parity`
+- `vi-analyzer-windows-logs-parity`
+- `vi-analyzer-reports-parity-windows`
+- `vi-analyzer-status-parity-windows`
 
 Workflow summary:
 - `Parity Summary` writes mode, self-hosted capacity, effective lane toggles, and lane results to the job summary.
@@ -119,7 +124,7 @@ PR run:
 
 - Triggered automatically when parity workflow/script files, `.lvversion`, `lv_icon_editor.lvproj`, or `Test/Templates` change.
 - PR runs default to `parity_mode=auto`:
-  - container lanes always run (`Parity (Linux Container <.lvcontainer>)` includes Linux VI Analyzer responsibilities)
+  - container lanes always run (both container lanes include merged VI Analyzer responsibilities)
   - self-hosted lanes run only if a matching runner is online
 
 ## Local Deterministic Preflight

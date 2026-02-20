@@ -12,6 +12,7 @@ Describe 'VI Analyzer contract' {
         $script:ciPath = Join-Path $script:repoRoot '.github\workflows\ci.yml'
         $script:parityPath = Join-Path $script:repoRoot '.github\workflows\labview-parity.yml'
         $script:runViAnalyzerPath = Join-Path $script:repoRoot 'Tooling\Run-ViAnalyzer.ps1'
+        $script:runViAnalyzerWindowsPath = Join-Path $script:repoRoot 'Tooling\container-parity\run-vi-analyzer-windows.ps1'
     }
 
     It 'defines exactly three deterministic VI Analyzer tasks' {
@@ -56,7 +57,7 @@ Describe 'VI Analyzer contract' {
         }
     }
 
-    It 'wires vi-analyzer into CI self-hosted execution and parity Linux container ownership' {
+    It 'wires vi-analyzer into CI self-hosted execution and parity container ownership' {
         (Test-Path -LiteralPath $script:ciPath -PathType Leaf) | Should -BeTrue
         (Test-Path -LiteralPath $script:parityPath -PathType Leaf) | Should -BeTrue
 
@@ -80,6 +81,15 @@ Describe 'VI Analyzer contract' {
         $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?run-vi-analyzer-linux\.sh'
         $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?vi-analyzer-reports-parity'
         $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?vi-analyzer-status-parity'
+
+        $parityContent | Should -Match '(?ms)^  parity-windows:\s*$'
+        $parityContent | Should -Match '(?ms)^  parity-windows:\s*.*?name:\s*Parity \(Windows Container \${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_windows_tag\s*}}\)'
+        $parityContent | Should -Match '(?ms)^  parity-windows:\s*.*?LVIE_VI_ANALYZER_TASKS_PATH:\s*Tooling\\vi-analyzer\\tasks\.json'
+        $parityContent | Should -Match '(?ms)^  parity-windows:\s*.*?run-vi-analyzer-windows\.ps1'
+        $parityContent | Should -Match '(?ms)^  parity-windows:\s*.*?vi-analyzer-windows-logs-parity'
+        $parityContent | Should -Match '(?ms)^  parity-windows:\s*.*?vi-analyzer-reports-parity-windows'
+        $parityContent | Should -Match '(?ms)^  parity-windows:\s*.*?vi-analyzer-status-parity-windows'
+        (Test-Path -LiteralPath $script:runViAnalyzerWindowsPath -PathType Leaf) | Should -BeTrue
     }
 
     It 'enforces non-zero analyzed tests and file-level failure extraction in Run-ViAnalyzer' {

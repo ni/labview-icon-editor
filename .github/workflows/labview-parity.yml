@@ -1406,6 +1406,10 @@ jobs:
     needs: [resolve-parity-context]
     runs-on: windows-latest
     timeout-minutes: 60
+    env:
+      LVIE_VI_ANALYZER_TASKS_PATH: Tooling\vi-analyzer\tasks.json
+      LVIE_VI_ANALYZER_REPORTS_ROOT: builds\vi-analyzer\windows-container
+      LVIE_VI_ANALYZER_STATUS_PATH: builds\status\vi-analyzer-summary.parity.windows.json
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -1485,6 +1489,68 @@ jobs:
           path: TestResults/container-parity/windows/logs
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Run merged VI Analyzer tasks (Windows container)
+        shell: pwsh
+        env:
+          LVIE_CONTAINER_CONTRACT_RAW: ${{ needs.resolve-parity-context.outputs.lvcontainer_raw }}
+          LVIE_CONTAINER_CONTRACT_TAG: ${{ needs.resolve-parity-context.outputs.lvcontainer_windows_tag }}
+          LVIE_CONTAINER_CONTRACT_IMAGE: nationalinstruments/labview:${{ needs.resolve-parity-context.outputs.lvcontainer_windows_tag }}
+          LVIE_CONTAINER_CONTRACT_OS: windows
+          LVIE_CONTAINER_CONTRACT_RELEASE_TAG: ${{ needs.resolve-parity-context.outputs.lv_release_windows }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $image = "nationalinstruments/labview:${{ needs.resolve-parity-context.outputs.lvcontainer_windows_tag }}"
+          $releaseTag = '${{ needs.resolve-parity-context.outputs.lv_release_windows }}'
+          $labviewYear = ''
+          if ($releaseTag -match '^(?<year>\d{4})q[1-4]') {
+            $labviewYear = $Matches['year']
+          }
+          if ([string]::IsNullOrWhiteSpace($labviewYear)) {
+            throw "Unable to resolve Windows container LabVIEW year from lv_release_windows '$releaseTag'."
+          }
+
+          docker pull $image
+
+          docker run --rm `
+            -v "${env:GITHUB_WORKSPACE}:C:\workspace" `
+            -e LVIE_REPO_ROOT='C:\workspace' `
+            -e WORKSPACE_ROOT='C:\workspace' `
+            -e REPO_ROOT='C:\workspace' `
+            -e CONTAINER_PARITY_LABVIEW_VERSION="$labviewYear" `
+            -e CONTAINER_PARITY_LABVIEW_BITNESS='64' `
+            -e LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT='1' `
+            -e LVIE_CONTAINER_CONTRACT_RAW="${env:LVIE_CONTAINER_CONTRACT_RAW}" `
+            -e LVIE_CONTAINER_CONTRACT_TAG="${env:LVIE_CONTAINER_CONTRACT_TAG}" `
+            -e LVIE_CONTAINER_CONTRACT_IMAGE="${env:LVIE_CONTAINER_CONTRACT_IMAGE}" `
+            -e LVIE_CONTAINER_CONTRACT_OS="${env:LVIE_CONTAINER_CONTRACT_OS}" `
+            -e LVIE_CONTAINER_CONTRACT_RELEASE_TAG="${env:LVIE_CONTAINER_CONTRACT_RELEASE_TAG}" `
+            "$image" `
+            powershell -NoProfile -Command "& 'C:\workspace\Tooling\container-parity\run-vi-analyzer-windows.ps1' -WorkspaceRoot 'C:\workspace' -LabVIEWVersion '$labviewYear' -LabVIEWBitness '64' -TasksPath '${{ env.LVIE_VI_ANALYZER_TASKS_PATH }}' -ReportsRoot '${{ env.LVIE_VI_ANALYZER_REPORTS_ROOT }}' -StatusPath '${{ env.LVIE_VI_ANALYZER_STATUS_PATH }}'"
+
+      - name: Upload merged VI Analyzer logs (Windows container)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-analyzer-windows-logs-parity
+          path: TestResults/container-parity/windows/vi-analyzer/logs
+          if-no-files-found: warn
+
+      - name: Upload merged VI Analyzer reports (Windows container)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-analyzer-reports-parity-windows
+          path: builds/vi-analyzer/windows-container
+          if-no-files-found: warn
+
+      - name: Upload merged VI Analyzer status (Windows container)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-analyzer-status-parity-windows
+          path: builds/status/vi-analyzer-summary.parity.windows.json
+          if-no-files-found: error
 
   parity-summary:
     name: Parity Summary
@@ -1570,7 +1636,7 @@ jobs:
               ''
               ('- self-hosted-policy-gate: `{0}`' -f $env:LVIE_POLICY_GATE_RESULT)
               ('- parity-linux (includes vi-analyzer-linux responsibilities): `{0}`' -f $env:LVIE_PARITY_LINUX_RESULT)
-              ('- parity-windows: `{0}`' -f $env:LVIE_PARITY_WINDOWS_RESULT)
+              ('- parity-windows (includes vi-analyzer-windows responsibilities): `{0}`' -f $env:LVIE_PARITY_WINDOWS_RESULT)
               ('- parity-self-hosted-64: `{0}`' -f $env:LVIE_SELF_HOSTED_64_RESULT)
               ('- parity-self-hosted-32: `{0}`' -f $env:LVIE_SELF_HOSTED_32_RESULT)
             ) | Add-Content -Path $env:GITHUB_STEP_SUMMARY

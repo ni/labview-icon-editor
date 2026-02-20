@@ -1115,9 +1115,37 @@ jobs:
         uses: ./.github/actions/lvie-job-setup
         with:
           checkout: 'false'
+          acquire_lock: 'true'
           bitness: ${{ matrix.bitness }}
           create_worktree: 'true'
           worktree_root_mode: runner_temp
+
+      - name: Close stale LabVIEW before verify-iepaths
+        if: ${{ always() && steps.job_setup.outcome == 'success' }}
+        continue-on-error: ${{ env.LVIE_VERIFY_IEPATHS_ENFORCE != '1' && env.LVIE_VERIFY_IEPATHS_ENFORCE != 'true' && env.LVIE_VERIFY_IEPATHS_ENFORCE != 'True' }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $repoRoot = if (-not [string]::IsNullOrWhiteSpace($env:REPO_ROOT) -and (Test-Path -LiteralPath $env:REPO_ROOT -PathType Container)) {
+            (Resolve-Path -Path $env:REPO_ROOT -ErrorAction Stop).Path
+          } else {
+            (Resolve-Path -Path $env:GITHUB_WORKSPACE -ErrorAction Stop).Path
+          }
+
+          $closeScriptPath = Join-Path $repoRoot '.github\actions\close-labview\Close_LabVIEW.ps1'
+          if (-not (Test-Path -LiteralPath $closeScriptPath -PathType Leaf)) {
+            throw "Close_LabVIEW.ps1 not found at $closeScriptPath"
+          }
+
+          & $closeScriptPath `
+            -LabVIEWVersion $env:LVIE_REQUIRED_LABVIEW_VERSION `
+            -SupportedBitness '${{ matrix.bitness }}' `
+            -TimeoutSeconds 180
+
+          if ($LASTEXITCODE -ne 0) {
+            throw ("Close_LabVIEW.ps1 failed with exit code {0}." -f $LASTEXITCODE)
+          }
 
       - id: verify_iepaths
         name: Run verify-iepaths canary

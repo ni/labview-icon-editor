@@ -105,7 +105,9 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
    - Includes `unit-tests`, `version`, and `build-vip` jobs, plus container packed-library and prerelease publication jobs.
    - VI Analyzer execution is split by responsibility:
      - `ci.yml` runs self-hosted Windows VI Analyzer after VIPC apply using `Tooling/Run-ViAnalyzer.ps1`.
-     - `labview-parity.yml` keeps Linux-container VI Analyzer merged into `Parity (Linux Container <.lvcontainer>)` on `ubuntu-latest` using `Tooling/vi-analyzer/tasks.linux.json`.
+     - `labview-parity.yml` keeps container VI Analyzer merged in parity lanes:
+       - Linux container in `Parity (Linux Container <.lvcontainer>)` on `ubuntu-latest` using `Tooling/vi-analyzer/tasks.linux.json`.
+       - Windows container in `Parity (Windows Container <resolved windows tag>)` on `windows-latest` using `Tooling/vi-analyzer/tasks.json`.
    - Execution profile is computed as `ci_profile`:
      - `release-priority` = `workflow_dispatch` + `force_gcli_lunit=true` (target <= 25 minutes).
      - `pr-fast` = `pull_request` (target <= 35 minutes).

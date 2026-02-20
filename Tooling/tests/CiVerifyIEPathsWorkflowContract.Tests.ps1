@@ -35,9 +35,17 @@ Describe 'CI workflow verify-iepaths contract' {
     It 'uses lvie-job-setup with worktree short-path mode' {
         $script:verifyIePathsSection | Should -Match 'uses:\s*\./\.github/actions/lvie-job-setup'
         $script:verifyIePathsSection | Should -Match 'checkout:\s*''false'''
+        $script:verifyIePathsSection | Should -Match 'acquire_lock:\s*''true'''
         $script:verifyIePathsSection | Should -Match 'bitness:\s*\$\{\{\s*matrix\.bitness\s*\}\}'
         $script:verifyIePathsSection | Should -Match 'create_worktree:\s*''true'''
         $script:verifyIePathsSection | Should -Match 'worktree_root_mode:\s*runner_temp'
+    }
+
+    It 'closes stale LabVIEW sessions before verify-iepaths execution' {
+        $script:verifyIePathsSection | Should -Match 'Close stale LabVIEW before verify-iepaths'
+        $script:verifyIePathsSection | Should -Match 'Close_LabVIEW\.ps1'
+        $script:verifyIePathsSection | Should -Match '-LabVIEWVersion\s+\$env:LVIE_REQUIRED_LABVIEW_VERSION'
+        $script:verifyIePathsSection | Should -Match '-SupportedBitness\s+''\$\{\{\s*matrix\.bitness\s*\}\}'''
     }
 
     It 'invokes Verify IE Paths script with required arguments and fallback behavior' {
