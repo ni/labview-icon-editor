@@ -1,0 +1,43 @@
+{
+  "run": {
+    "databaseId": 22211208268,
+    "workflowName": "CI Pipeline",
+    "name": "CI 81dbbeb5d40235036ae72e5560a09aad3a9f1ee5 (#22211208268.1)",
+    "url": "https://github.com/svelderrainruiz/labview-icon-editor/actions/runs/22211208268",
+    "status": "completed",
+    "conclusion": "failure",
+    "event": "workflow_dispatch",
+    "headBranch": "wip/iteration1",
+    "headSha": "81dbbeb5d40235036ae72e5560a09aad3a9f1ee5"
+  },
+  "jobs": [
+    {
+      "databaseId": 64246429944,
+      "name": "VI Analyzer LabVIEW 20.0 x86",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "LabVIEWCLI port contract mismatch for year 2020 bitness 32: expected 3365 from contract, got 3363 from C:\\Program Files\\National Instruments\\LabVIEW 2020\\LabVIEW.ini. Process completed with exit code 1."
+    },
+    {
+      "databaseId": 64246429946,
+      "name": "VI Analyzer LabVIEW 20.0 x64",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "LabVIEWCLI port contract mismatch for year 2020 bitness 64: expected 3366 from contract, got 3363 from C:\\Program Files\\National Instruments\\LabVIEW 2020\\LabVIEW.ini. Process completed with exit code 1."
+    },
+    {
+      "databaseId": 64247099885,
+      "name": "Pipeline Contract",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "Write-Error (\"Pipeline contract failed: vi-analyzer:failure\")"
+    },
+    {
+      "databaseId": 64247121556,
+      "name": "CI Required / Lint+Contract",
+      "status": "completed",
+      "conclusion": "failure",
+      "log": "CI required context failed because prerequisite checks were not successful: pipeline-contract:failure. Process completed with exit code 1."
+    }
+  ]
+}

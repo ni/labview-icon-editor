@@ -1,8 +1,8 @@
 {
   "repo": "svelderrainruiz/lvie-codex-skills",
-  "tag": "v1.0.0",
+  "tag": "v1.0.1",
   "asset_name": "lvie-codex-skill-layer-installer.exe",
-  "sha256": "04b8e6f1c295b00adc84bc6cef44c2ebc83884cda5e5e1ccf30165b661fe8dd8",
+  "sha256": "6630ddaffe8eb790f3412e0671d76e474ed2fa6bc3c5ae6c1a99f54080ec59f6",
   "distribution": {
     "type": "nsis-installer",
     "silent_args": [
@@ -16,6 +16,7 @@
     "ci-debt/signatures.json",
     "ci-debt/playbook.md",
     "ci-debt/fixtures/run-21840801109.json",
+    "ci-debt/fixtures/run-22211208268.json",
     "lunit-contract/README.md",
     "lunit-contract/contract.json",
     "lunit-contract/fixtures/report-pass.xml",

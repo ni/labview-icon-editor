@@ -5,6 +5,7 @@ BeforeAll {
     $Script:ToolingRoot = Split-Path -Parent $PSScriptRoot
     $Script:AnalysisScript = Join-Path $Script:ToolingRoot 'Invoke-CiDebtAnalysis.ps1'
     $Script:FixturePath = Join-Path $Script:ToolingRoot 'tests/fixtures/ci-debt/run-21840801109.json'
+    $Script:FixturePath22211208268 = Join-Path $Script:ToolingRoot 'tests/fixtures/ci-debt/run-22211208268.json'
     $Script:LayerRoot = Join-Path $Script:ToolingRoot 'tests/fixtures/codex-skill-layer'
     $Script:OriginalLayerRoot = $env:LVIE_CODEX_SKILL_LAYER_ROOT
     $env:LVIE_CODEX_SKILL_LAYER_ROOT = $Script:LayerRoot
@@ -42,6 +43,30 @@ Describe 'Invoke-CiDebtAnalysis' {
         $incidentIds | Should -Contain 'powershell-lint.git-missing'
         $incidentIds | Should -Contain 'verify-iepaths.setup-failed'
         $incidentIds | Should -Contain 'pipeline-contract.cascade-failure'
+        $analysis.unknown_incident_count | Should -Be 0
+    }
+
+    It 'maps fixture run 22211208268 to known signatures' {
+        $outJson = Join-Path $TestDrive 'analysis-22211208268.json'
+        $outMarkdown = Join-Path $TestDrive 'analysis-22211208268.md'
+
+        $result = Invoke-CiDebtAnalysis `
+            -Repo 'example/labview-icon-editor' `
+            -RunId 22211208268 `
+            -FixturePath $Script:FixturePath22211208268 `
+            -OutJson $outJson `
+            -OutMarkdown $outMarkdown
+
+        $result.IncidentCount | Should -Be 4
+        $result.UnknownIncidentCount | Should -Be 0
+        $outJson | Should -Exist
+        $outMarkdown | Should -Exist
+
+        $analysis = Get-Content -Path $outJson -Raw | ConvertFrom-Json
+        $incidentIds = @($analysis.incidents | ForEach-Object { $_.id })
+        $incidentIds | Should -Contain 'vi-analyzer.labviewcli-port-contract-mismatch'
+        $incidentIds | Should -Contain 'pipeline-contract.cascade-failure'
+        $incidentIds | Should -Contain 'ci-required.prerequisite-checks-failed'
         $analysis.unknown_incident_count | Should -Be 0
     }
 

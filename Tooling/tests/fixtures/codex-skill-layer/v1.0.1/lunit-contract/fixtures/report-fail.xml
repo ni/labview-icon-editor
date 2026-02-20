@@ -1,0 +1,5 @@
+<testsuite name="suite">
+  <testcase name="fails" classname="MySuite" status="Failed" time="0.1" assertions="1">
+    <failure message="assertion failed">assertion failed</failure>
+  </testcase>
+</testsuite>
