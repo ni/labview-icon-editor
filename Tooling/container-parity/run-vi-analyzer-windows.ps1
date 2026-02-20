@@ -471,7 +471,7 @@ function Get-CountFromText {
     return [int]$match.Groups['n'].Value
 }
 
-function Get-ViAnalyzerCounts {
+function Get-ViAnalyzerCountSummary {
     param(
         [AllowNull()]
         [string]$ReportText
@@ -590,7 +590,7 @@ foreach ($task in $tasks) {
     } else {
         ''
     }
-    $counts = Get-ViAnalyzerCounts -ReportText $reportText
+    $counts = Get-ViAnalyzerCountSummary -ReportText $reportText
 
     $failureReasons = New-Object System.Collections.Generic.List[string]
     if ($runResult.ExitCode -ne 0) {

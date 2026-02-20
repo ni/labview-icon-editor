@@ -39,7 +39,7 @@ function Test-IsOneDrivePath {
     try {
         $resolvedPath = (Resolve-Path -LiteralPath $Path).Path
     } catch {
-        # Keep original path when resolution fails.
+        Write-Verbose ("Resolve-Path failed for '{0}': {1}" -f $Path, $_.Exception.Message)
     }
 
     foreach ($root in $KnownOneDriveRoots) {
@@ -55,7 +55,7 @@ function Test-IsOneDrivePath {
     return ($resolvedPath -match '(?i)\\OneDrive(\\|$)')
 }
 
-function Get-KnownOneDriveRoots {
+function Get-KnownOneDriveRoot {
     [CmdletBinding()]
     param()
 
@@ -146,7 +146,7 @@ function Import-RepoPester {
     )
 
     if ($localCandidates.Count -eq 0) {
-        $knownOneDriveRoots = Get-KnownOneDriveRoots
+        $knownOneDriveRoots = Get-KnownOneDriveRoot
         $allCandidates = @(
             Get-Module -ListAvailable -Name Pester |
                 Where-Object { $_.Version -ge $MinimumVersion } |
