@@ -28,8 +28,8 @@ Describe 'CI workflow verify-iepaths contract' {
         $script:verifyIePathsSection | Should -Match 'max-parallel:\s*2'
         $script:verifyIePathsSection | Should -Match 'bitness:\s*''64'''
         $script:verifyIePathsSection | Should -Match 'bitness:\s*''32'''
-        $script:verifyIePathsSection | Should -Match 'runner_label:\s*\$\{\{\s*vars\.LVIE_RUNNER_LABEL_64 \|\| vars\.LVIE_RUNNER_LABEL \|\| ''self-hosted-windows-lv''\s*\}\}'
-        $script:verifyIePathsSection | Should -Match 'runner_label:\s*\$\{\{\s*vars\.LVIE_RUNNER_LABEL_32 \|\| vars\.LVIE_RUNNER_LABEL \|\| ''self-hosted-windows-lv''\s*\}\}'
+        $script:verifyIePathsSection | Should -Match 'runner_label:\s*\$\{\{\s*vars\.LVIE_RUNNER_LABEL_64 \|\| format\(''self-hosted-windows-lv\{0\}x64'', needs\.version-gate\.outputs\.year\)\s*\}\}'
+        $script:verifyIePathsSection | Should -Match 'runner_label:\s*\$\{\{\s*vars\.LVIE_RUNNER_LABEL_32 \|\| format\(''self-hosted-windows-lv\{0\}x86'', needs\.version-gate\.outputs\.year\)\s*\}\}'
     }
 
     It 'uses lvie-job-setup with worktree short-path mode' {

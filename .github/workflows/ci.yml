@@ -1029,9 +1029,9 @@ jobs:
       matrix:
         include:
           - bitness: '64'
-            runner_label: ${{ vars.LVIE_RUNNER_LABEL_64 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+            runner_label: ${{ vars.LVIE_RUNNER_LABEL_64 || format('self-hosted-windows-lv{0}x64', needs.version-gate.outputs.year) }}
           - bitness: '32'
-            runner_label: ${{ vars.LVIE_RUNNER_LABEL_32 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+            runner_label: ${{ vars.LVIE_RUNNER_LABEL_32 || format('self-hosted-windows-lv{0}x86', needs.version-gate.outputs.year) }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
