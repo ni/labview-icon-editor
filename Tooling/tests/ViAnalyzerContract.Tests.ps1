@@ -90,19 +90,31 @@ Describe 'VI Analyzer contract' {
         $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?name:\s*Parity \(Linux Container \${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_raw\s*}}\)'
         $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?LVIE_CONTAINER_CONTRACT_TAG:\s*\${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_tag\s*}}'
         $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?LVIE_VI_ANALYZER_TASKS_PATH:\s*Tooling/vi-analyzer/tasks\.linux\.json'
+        $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH:\s*builds/status/source-sync-manifest-vi-analyzer-linux\.json'
         $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?LVIE_VI_ANALYZER_LABVIEW_YEAR:\s*\${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_year\s*}}'
         $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?run-vi-analyzer-linux\.sh'
+        $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?LVIE_SOURCE_SYNC_MANIFEST_PATH="\$\{source_sync_manifest_container\}"'
         $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?vi-analyzer-reports-parity'
         $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?vi-analyzer-status-parity'
+        $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?vi-analyzer-source-sync-manifest-parity-linux'
 
         $parityContent | Should -Match '(?ms)^  parity-windows:\s*$'
         $parityContent | Should -Match '(?ms)^  parity-windows:\s*.*?name:\s*Parity \(Windows Container \${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_windows_tag\s*}}\)'
         $parityContent | Should -Match '(?ms)^  parity-windows:\s*.*?LVIE_VI_ANALYZER_TASKS_PATH:\s*Tooling\\vi-analyzer\\tasks\.json'
+        $parityContent | Should -Match '(?ms)^  parity-windows:\s*.*?LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH:\s*builds\\status\\source-sync-manifest-vi-analyzer-windows\.json'
         $parityContent | Should -Match '(?ms)^  parity-windows:\s*.*?run-vi-analyzer-windows\.ps1'
+        $parityContent | Should -Match '(?ms)^  parity-windows:\s*.*?-SourceSyncManifestPath ''\${{\s*env\.LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH\s*}}'''
         $parityContent | Should -Match '(?ms)^  parity-windows:\s*.*?vi-analyzer-windows-logs-parity'
         $parityContent | Should -Match '(?ms)^  parity-windows:\s*.*?vi-analyzer-reports-parity-windows'
         $parityContent | Should -Match '(?ms)^  parity-windows:\s*.*?vi-analyzer-status-parity-windows'
+        $parityContent | Should -Match '(?ms)^  parity-windows:\s*.*?vi-analyzer-source-sync-manifest-parity-windows'
         (Test-Path -LiteralPath $script:runViAnalyzerWindowsPath -PathType Leaf) | Should -BeTrue
+
+        $runViAnalyzerWindowsContent = Get-Content -Raw -Path $script:runViAnalyzerWindowsPath
+        $runViAnalyzerWindowsContent | Should -Match 'Synchronizing workspace Icon Editor sources into LabVIEW install before VI Analyzer\.'
+        $runViAnalyzerWindowsContent | Should -Match 'source-sync-manifest-vi-analyzer-windows\.json'
+        $runViAnalyzerWindowsContent | Should -Match 'source_sync_manifest_path'
+        $runViAnalyzerWindowsContent | Should -Match 'source_sync'
     }
 
     It 'enforces non-zero analyzed tests and file-level failure extraction in Run-ViAnalyzer' {

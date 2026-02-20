@@ -8,6 +8,7 @@ Describe 'Source sync manifest contract' {
         $script:repoRoot = (Resolve-Path -Path (Join-Path $PSScriptRoot '..\..')).Path
         $script:helperPath = Join-Path $script:repoRoot 'Tooling\container-parity\source-sync-manifest.sh'
         $script:runViAnalyzerLinuxPath = Join-Path $script:repoRoot 'Tooling\container-parity\run-vi-analyzer-linux.sh'
+        $script:runViAnalyzerWindowsPath = Join-Path $script:repoRoot 'Tooling\container-parity\run-vi-analyzer-windows.ps1'
         $script:runLabviewLinuxPath = Join-Path $script:repoRoot 'Tooling\container-parity\runlabview-linux.sh'
         $script:workflowPath = Join-Path $script:repoRoot '.github\workflows\labview-parity.yml'
     }
@@ -31,6 +32,16 @@ Describe 'Source sync manifest contract' {
         $content | Should -Match 'sync_manifest_write'
     }
 
+    It 'wires source-sync manifest generation into vi-analyzer windows sync path' {
+        (Test-Path -LiteralPath $script:runViAnalyzerWindowsPath -PathType Leaf) | Should -BeTrue
+        $content = Get-Content -Raw -Path $script:runViAnalyzerWindowsPath
+        $content | Should -Match 'Synchronizing workspace Icon Editor sources into LabVIEW install before VI Analyzer\.'
+        $content | Should -Match 'source-sync-manifest-vi-analyzer-windows\.json'
+        $content | Should -Match 'Write-SourceSyncManifest'
+        $content | Should -Match 'source_sync_manifest_path'
+        $content | Should -Match 'source_sync'
+    }
+
     It 'wires source-sync manifest generation into linux build-spec parity path' {
         (Test-Path -LiteralPath $script:runLabviewLinuxPath -PathType Leaf) | Should -BeTrue
         $content = Get-Content -Raw -Path $script:runLabviewLinuxPath
@@ -41,11 +52,15 @@ Describe 'Source sync manifest contract' {
         $content | Should -Match 'sync_manifest_write'
     }
 
-    It 'uploads Linux source-sync manifest artifact in parity workflow' {
+    It 'uploads source-sync manifest artifacts in parity workflow' {
         (Test-Path -LiteralPath $script:workflowPath -PathType Leaf) | Should -BeTrue
         $content = Get-Content -Raw -Path $script:workflowPath
         $content | Should -Match 'Upload source sync manifest \(Linux container\)'
         $content | Should -Match 'labview-container-source-sync-manifest-linux'
         $content | Should -Match 'builds/status/source-sync-manifest-parity-linux\.json'
+        $content | Should -Match 'vi-analyzer-source-sync-manifest-parity-linux'
+        $content | Should -Match 'builds/status/source-sync-manifest-vi-analyzer-linux\.json'
+        $content | Should -Match 'vi-analyzer-source-sync-manifest-parity-windows'
+        $content | Should -Match 'builds/status/source-sync-manifest-vi-analyzer-windows\.json'
     }
 }

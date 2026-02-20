@@ -16,6 +16,7 @@ This repository includes a hosted parity workflow at `.github/workflows/labview-
 - VI Analyzer container responsibilities are merged into parity container lanes:
   - Linux: `Parity (Linux Container <.lvcontainer>)`
   - Windows: `Parity (Windows Container <resolved windows tag>)`
+- Source sync before VI Analyzer: both container workers synchronize workspace Icon Editor sources (`resource/plugins` and `vi.lib/LabVIEW Icon API`) into the container LabVIEW install before running merged VI Analyzer tasks.
 - Always-on operation: `LabVIEWCLI MassCompile` on `Test/Templates`
 - Default exclusion: `Polymorphic Template.vi` is excluded from parity MassCompile via `CONTAINER_PARITY_EXCLUDE_FILES` because it is a known headless bad VI in container runs.
 
@@ -100,9 +101,11 @@ VI Analyzer artifacts from parity:
 - `vi-analyzer-linux-logs-parity`
 - `vi-analyzer-reports-parity`
 - `vi-analyzer-status-parity`
+- `vi-analyzer-source-sync-manifest-parity-linux`
 - `vi-analyzer-windows-logs-parity`
 - `vi-analyzer-reports-parity-windows`
 - `vi-analyzer-status-parity-windows`
+- `vi-analyzer-source-sync-manifest-parity-windows`
 
 Workflow summary:
 - `Parity Summary` writes mode, self-hosted capacity, effective lane toggles, and lane results to the job summary.

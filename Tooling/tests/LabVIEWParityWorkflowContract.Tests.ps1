@@ -137,10 +137,13 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $parityLinuxBlock | Should -Match 'LVIE_CONTAINER_CONTRACT_TAG:\s*\$\{\{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_tag\s*\}\}'
         $parityLinuxBlock | Should -Match 'LVIE_CONTAINER_CONTRACT_LINUX_IMAGE:\s*nationalinstruments/labview:\$\{\{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_tag\s*\}\}'
         $parityLinuxBlock | Should -Match 'LVIE_VI_ANALYZER_TASKS_PATH:\s*Tooling/vi-analyzer/tasks\.linux\.json'
+        $parityLinuxBlock | Should -Match 'LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH:\s*builds/status/source-sync-manifest-vi-analyzer-linux\.json'
         $parityLinuxBlock | Should -Match 'LVIE_VI_ANALYZER_LABVIEW_YEAR:\s*\$\{\{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_year\s*\}\}'
         $parityLinuxBlock | Should -Match 'run-vi-analyzer-linux\.sh'
+        $parityLinuxBlock | Should -Match 'LVIE_SOURCE_SYNC_MANIFEST_PATH="\$\{source_sync_manifest_container\}"'
         $parityLinuxBlock | Should -Match 'vi-analyzer-reports-parity'
         $parityLinuxBlock | Should -Match 'vi-analyzer-status-parity'
+        $parityLinuxBlock | Should -Match 'vi-analyzer-source-sync-manifest-parity-linux'
 
         $parityWindowsMatch = [regex]::Match(
             $workflowContent,
@@ -152,10 +155,13 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $parityWindowsBlock | Should -Match '(?m)^\s*name:\s*Parity \(Windows Container \$\{\{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_windows_tag\s*\}\}\)'
         $parityWindowsBlock | Should -Match 'Run merged VI Analyzer tasks \(Windows container\)'
         $parityWindowsBlock | Should -Match 'LVIE_VI_ANALYZER_TASKS_PATH:\s*Tooling\\vi-analyzer\\tasks\.json'
+        $parityWindowsBlock | Should -Match 'LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH:\s*builds\\status\\source-sync-manifest-vi-analyzer-windows\.json'
         $parityWindowsBlock | Should -Match 'run-vi-analyzer-windows\.ps1'
+        $parityWindowsBlock | Should -Match '-SourceSyncManifestPath ''\$\{\{\s*env\.LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH\s*\}\}'''
         $parityWindowsBlock | Should -Match 'vi-analyzer-windows-logs-parity'
         $parityWindowsBlock | Should -Match 'vi-analyzer-reports-parity-windows'
         $parityWindowsBlock | Should -Match 'vi-analyzer-status-parity-windows'
+        $parityWindowsBlock | Should -Match 'vi-analyzer-source-sync-manifest-parity-windows'
     }
 
     It 'defines mandatory dual-bitness self-hosted lanes with runner-cli one-shot execution and cleanup' {

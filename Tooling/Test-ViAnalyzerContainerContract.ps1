@@ -152,6 +152,11 @@ if ($parityContent) {
                 Message = 'parity-linux job env must define LVIE_VI_ANALYZER_TASKS_PATH to Tooling/vi-analyzer/tasks.linux.json.'
             },
             @{
+                Type    = 'parity-linux-vi-analyzer-source-sync-manifest-env'
+                Pattern = 'LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH:\s*builds/status/source-sync-manifest-vi-analyzer-linux\.json'
+                Message = 'parity-linux job env must define LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH to builds/status/source-sync-manifest-vi-analyzer-linux.json.'
+            },
+            @{
                 Type    = 'parity-linux-vi-analyzer-os-guard'
                 Pattern = '(?s)Validate merged vi-analyzer container selection.*?LVIE_CONTAINER_CONTRACT_OS.*?requires a linux container tag'
                 Message = 'parity-linux merged vi-analyzer path must fail fast when a non-linux container tag is selected.'
@@ -172,6 +177,11 @@ if ($parityContent) {
                 Message = 'parity-linux must run Tooling/container-parity/run-vi-analyzer-linux.sh for merged VI Analyzer responsibilities.'
             },
             @{
+                Type    = 'parity-linux-vi-analyzer-source-sync-manifest-pass-through'
+                Pattern = 'LVIE_SOURCE_SYNC_MANIFEST_PATH="\$\{source_sync_manifest_container\}"'
+                Message = 'parity-linux merged vi-analyzer step must pass LVIE_SOURCE_SYNC_MANIFEST_PATH into the Linux container.'
+            },
+            @{
                 Type    = 'parity-linux-vi-analyzer-artifacts'
                 Pattern = 'vi-analyzer-reports-parity'
                 Message = 'parity-linux must upload vi-analyzer-reports-parity artifact.'
@@ -180,6 +190,11 @@ if ($parityContent) {
                 Type    = 'parity-linux-vi-analyzer-status-artifact'
                 Pattern = 'vi-analyzer-status-parity'
                 Message = 'parity-linux must upload vi-analyzer-status-parity artifact.'
+            },
+            @{
+                Type    = 'parity-linux-vi-analyzer-source-sync-manifest-artifact'
+                Pattern = 'vi-analyzer-source-sync-manifest-parity-linux'
+                Message = 'parity-linux must upload vi-analyzer-source-sync-manifest-parity-linux artifact.'
             }
         )
 
@@ -256,6 +271,16 @@ if ($parityContent) {
                 Message = 'parity-windows job env must define LVIE_VI_ANALYZER_STATUS_PATH to builds\\status\\vi-analyzer-summary.parity.windows.json.'
             },
             @{
+                Type    = 'parity-windows-vi-analyzer-source-sync-manifest-env'
+                Pattern = 'LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH:\s*builds\\status\\source-sync-manifest-vi-analyzer-windows\.json'
+                Message = 'parity-windows job env must define LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH to builds\\status\\source-sync-manifest-vi-analyzer-windows.json.'
+            },
+            @{
+                Type    = 'parity-windows-vi-analyzer-source-sync-manifest-argument'
+                Pattern = '-SourceSyncManifestPath ''\${{\s*env\.LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH\s*}}'''
+                Message = 'parity-windows merged vi-analyzer step must pass -SourceSyncManifestPath from LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH.'
+            },
+            @{
                 Type    = 'parity-windows-vi-analyzer-logs-artifact'
                 Pattern = 'vi-analyzer-windows-logs-parity'
                 Message = 'parity-windows must upload vi-analyzer-windows-logs-parity artifact.'
@@ -269,6 +294,11 @@ if ($parityContent) {
                 Type    = 'parity-windows-vi-analyzer-status-artifact'
                 Pattern = 'vi-analyzer-status-parity-windows'
                 Message = 'parity-windows must upload vi-analyzer-status-parity-windows artifact.'
+            },
+            @{
+                Type    = 'parity-windows-vi-analyzer-source-sync-manifest-artifact'
+                Pattern = 'vi-analyzer-source-sync-manifest-parity-windows'
+                Message = 'parity-windows must upload vi-analyzer-source-sync-manifest-parity-windows artifact.'
             }
         )
 

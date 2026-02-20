@@ -5,7 +5,8 @@ param(
     [string]$LabVIEWBitness = '64',
     [string]$TasksPath = 'Tooling\vi-analyzer\tasks.json',
     [string]$ReportsRoot = 'builds\vi-analyzer\windows-container',
-    [string]$StatusPath = 'builds\status\vi-analyzer-summary.parity.windows.json'
+    [string]$StatusPath = 'builds\status\vi-analyzer-summary.parity.windows.json',
+    [string]$SourceSyncManifestPath = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -369,6 +370,322 @@ function Resolve-PathFromWorkspace {
     return [System.IO.Path]::GetFullPath((Join-Path $WorkspaceRootPath $CandidatePath))
 }
 
+function Get-FileSha256Hex {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+}
+
+function Get-NormalizedRelativePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RootPath,
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $rootFull = [System.IO.Path]::GetFullPath($RootPath).TrimEnd('\', '/')
+    $pathFull = [System.IO.Path]::GetFullPath($Path)
+    if (-not $pathFull.StartsWith($rootFull, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw ("Path '{0}' is not under root '{1}'." -f $pathFull, $rootFull)
+    }
+
+    $relative = $pathFull.Substring($rootFull.Length).TrimStart('\', '/')
+    return ($relative -replace '\\', '/')
+}
+
+function New-SourceSyncSnapshotEntries {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourceRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$DestinationRoot
+    )
+
+    $entries = New-Object 'System.Collections.Generic.List[object]'
+    if (-not (Test-Path -LiteralPath $SourceRoot -PathType Container)) {
+        return $entries.ToArray()
+    }
+
+    $sourceFiles = @(
+        Get-ChildItem -LiteralPath $SourceRoot -File -Recurse -Force -ErrorAction Stop |
+            Sort-Object FullName
+    )
+
+    foreach ($sourceFile in $sourceFiles) {
+        $relativePath = Get-NormalizedRelativePath -RootPath $SourceRoot -Path $sourceFile.FullName
+        $relativeFsPath = $relativePath -replace '/', '\'
+        $destinationPath = Join-Path $DestinationRoot $relativeFsPath
+        $destinationExists = Test-Path -LiteralPath $destinationPath -PathType Leaf
+        $beforeHash = if ($destinationExists) { Get-FileSha256Hex -Path $destinationPath } else { '' }
+        $entries.Add([pscustomobject]@{
+                relative_path  = $relativePath
+                existed_before = $destinationExists
+                before_hash    = $beforeHash
+            }) | Out-Null
+    }
+
+    return $entries.ToArray()
+}
+
+function New-SourceSyncGroup {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$GroupId,
+        [Parameter(Mandatory = $true)]
+        [string]$SourceRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$DestinationRoot,
+        [object[]]$SnapshotEntries
+    )
+
+    $files = New-Object 'System.Collections.Generic.List[object]'
+    $fileCount = 0
+    $addedCount = 0
+    $updatedCount = 0
+    $unchangedCount = 0
+    $missingAfterCount = 0
+    $hashMismatchCount = 0
+
+    foreach ($entry in @($SnapshotEntries)) {
+        $relativePath = [string]$entry.relative_path
+        if ([string]::IsNullOrWhiteSpace($relativePath)) {
+            continue
+        }
+
+        $relativeFsPath = $relativePath -replace '/', '\'
+        $sourcePath = Join-Path $SourceRoot $relativeFsPath
+        if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+            continue
+        }
+
+        $destinationPath = Join-Path $DestinationRoot $relativeFsPath
+        $sourceHash = Get-FileSha256Hex -Path $sourcePath
+        $destinationExists = Test-Path -LiteralPath $destinationPath -PathType Leaf
+        $destinationHash = if ($destinationExists) { Get-FileSha256Hex -Path $destinationPath } else { '' }
+        $destinationSize = if ($destinationExists) { [int64](Get-Item -LiteralPath $destinationPath -ErrorAction Stop).Length } else { 0L }
+
+        $classification = ''
+        if (-not $destinationExists) {
+            $classification = 'missing_after'
+            $missingAfterCount++
+        } elseif (-not [bool]$entry.existed_before) {
+            $classification = 'added'
+            $addedCount++
+        } elseif ([string]$entry.before_hash -eq $sourceHash) {
+            $classification = 'unchanged'
+            $unchangedCount++
+        } else {
+            $classification = 'updated'
+            $updatedCount++
+        }
+
+        $hashMatches = $destinationExists -and $destinationHash -eq $sourceHash
+        if (-not $hashMatches) {
+            $hashMismatchCount++
+        }
+
+        $fileCount++
+        $files.Add([pscustomobject]@{
+                relative_path      = $relativePath
+                source_path        = $sourcePath
+                destination_path   = $destinationPath
+                classification     = $classification
+                source_sha256      = $sourceHash
+                destination_sha256 = $destinationHash
+                source_size        = [int64](Get-Item -LiteralPath $sourcePath -ErrorAction Stop).Length
+                destination_size   = $destinationSize
+                hash_matches       = [bool]$hashMatches
+            }) | Out-Null
+    }
+
+    return [pscustomobject]@{
+        id                 = $GroupId
+        source_root        = $SourceRoot
+        destination_root   = $DestinationRoot
+        file_count         = $fileCount
+        added_count        = $addedCount
+        updated_count      = $updatedCount
+        unchanged_count    = $unchangedCount
+        missing_after_count = $missingAfterCount
+        hash_mismatch_count = $hashMismatchCount
+        files              = $files.ToArray()
+    }
+}
+
+function Write-SourceSyncManifest {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestPath,
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$LabVIEWRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$Context,
+        [Parameter(Mandatory = $true)]
+        [object[]]$Groups
+    )
+
+    $gitSha = 'unknown'
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+        $resolvedSha = (& git -C $RepoRoot rev-parse HEAD 2>$null)
+        if (-not [string]::IsNullOrWhiteSpace($resolvedSha)) {
+            $gitSha = $resolvedSha.Trim()
+        }
+    }
+
+    $summary = [ordered]@{
+        file_count          = (@($Groups) | Measure-Object -Property file_count -Sum).Sum
+        added_count         = (@($Groups) | Measure-Object -Property added_count -Sum).Sum
+        updated_count       = (@($Groups) | Measure-Object -Property updated_count -Sum).Sum
+        unchanged_count     = (@($Groups) | Measure-Object -Property unchanged_count -Sum).Sum
+        missing_after_count = (@($Groups) | Measure-Object -Property missing_after_count -Sum).Sum
+        hash_mismatch_count = (@($Groups) | Measure-Object -Property hash_mismatch_count -Sum).Sum
+    }
+
+    foreach ($summaryKey in @('file_count', 'added_count', 'updated_count', 'unchanged_count', 'missing_after_count', 'hash_mismatch_count')) {
+        if ($null -eq $summary[$summaryKey]) {
+            $summary[$summaryKey] = 0
+        }
+    }
+
+    $manifest = [ordered]@{
+        schema_version = '1.0'
+        manifest_kind  = 'source-sync'
+        generated_utc  = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        git_sha        = $gitSha
+        context        = $Context
+        repo_root      = $RepoRoot
+        labview_root   = $LabVIEWRoot
+        groups         = @($Groups)
+        summary        = [pscustomobject]$summary
+    }
+
+    $manifestParent = Split-Path -Path $ManifestPath -Parent
+    if (-not [string]::IsNullOrWhiteSpace($manifestParent)) {
+        New-Item -Path $manifestParent -ItemType Directory -Force | Out-Null
+    }
+
+    $manifest | ConvertTo-Json -Depth 12 | Set-Content -Path $ManifestPath -Encoding utf8
+    return [pscustomobject]$manifest
+}
+
+function Sync-IconEditorSourcesForViAnalyzer {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$WorkspaceRootPath,
+        [Parameter(Mandatory = $true)]
+        [string]$LabVIEWExecutablePath,
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestPath
+    )
+
+    if (-not (Test-Path -LiteralPath $WorkspaceRootPath -PathType Container)) {
+        throw "Workspace root does not exist: $WorkspaceRootPath"
+    }
+
+    $labviewRoot = Split-Path -Path $LabVIEWExecutablePath -Parent
+    if ([string]::IsNullOrWhiteSpace($labviewRoot) -or -not (Test-Path -LiteralPath $labviewRoot -PathType Container)) {
+        throw "Unable to resolve LabVIEW install root from LabVIEW path: $LabVIEWExecutablePath"
+    }
+
+    $repoPlugins = Join-Path $WorkspaceRootPath 'resource\plugins'
+    $repoIconApi = Join-Path $WorkspaceRootPath 'vi.lib\LabVIEW Icon API'
+    $installPlugins = Join-Path $labviewRoot 'resource\plugins'
+    $installIconApi = Join-Path $labviewRoot 'vi.lib\LabVIEW Icon API'
+    $requiredPaths = @(
+        (Join-Path $repoPlugins 'NIIconEditor'),
+        (Join-Path $repoPlugins 'lv_IconEditor.lvlib'),
+        (Join-Path $repoPlugins 'lv_icon.vi'),
+        $repoIconApi
+    )
+
+    foreach ($path in $requiredPaths) {
+        if (-not (Test-Path -LiteralPath $path)) {
+            throw "Required Icon Editor source path is missing: $path"
+        }
+    }
+
+    $pluginRootFiles = @('lv_IconEditor.lvlib', 'lv_icon.vi', 'lv_icon.vit', 'SAMPLE_lv_icon.vi')
+    $pluginRootStage = Join-Path ([System.IO.Path]::GetTempPath()) ("lvie-source-sync-{0}" -f [Guid]::NewGuid().ToString('N'))
+    New-Item -Path $pluginRootStage -ItemType Directory -Force | Out-Null
+
+    try {
+        foreach ($fileName in $pluginRootFiles) {
+            $sourcePath = Join-Path $repoPlugins $fileName
+            if (Test-Path -LiteralPath $sourcePath -PathType Leaf) {
+                Copy-Item -LiteralPath $sourcePath -Destination $pluginRootStage -Force
+            }
+        }
+
+        $snapshotPluginsDir = New-SourceSyncSnapshotEntries `
+            -SourceRoot (Join-Path $repoPlugins 'NIIconEditor') `
+            -DestinationRoot (Join-Path $installPlugins 'NIIconEditor')
+        $snapshotPluginsRootFiles = New-SourceSyncSnapshotEntries `
+            -SourceRoot $pluginRootStage `
+            -DestinationRoot $installPlugins
+        $snapshotIconApi = New-SourceSyncSnapshotEntries `
+            -SourceRoot $repoIconApi `
+            -DestinationRoot $installIconApi
+
+        New-Item -Path $installPlugins -ItemType Directory -Force | Out-Null
+        New-Item -Path $installIconApi -ItemType Directory -Force | Out-Null
+
+        Copy-Item -LiteralPath (Join-Path $repoPlugins 'NIIconEditor') -Destination $installPlugins -Recurse -Force
+        foreach ($fileName in $pluginRootFiles) {
+            $sourcePath = Join-Path $repoPlugins $fileName
+            if (Test-Path -LiteralPath $sourcePath -PathType Leaf) {
+                Copy-Item -LiteralPath $sourcePath -Destination $installPlugins -Force
+            }
+        }
+        Get-ChildItem -LiteralPath $repoIconApi -Force | Copy-Item -Destination $installIconApi -Recurse -Force
+
+        $probe = Join-Path $installPlugins 'NIIconEditor\Miscellaneous\Classes Initialization.vi'
+        if (-not (Test-Path -LiteralPath $probe -PathType Leaf)) {
+            throw "Icon Editor source synchronization failed. Missing probe file: $probe"
+        }
+
+        $groups = @(
+            (New-SourceSyncGroup `
+                -GroupId 'resource-plugins-niiconeditor' `
+                -SourceRoot (Join-Path $repoPlugins 'NIIconEditor') `
+                -DestinationRoot (Join-Path $installPlugins 'NIIconEditor') `
+                -SnapshotEntries $snapshotPluginsDir),
+            (New-SourceSyncGroup `
+                -GroupId 'resource-plugins-root-files' `
+                -SourceRoot $pluginRootStage `
+                -DestinationRoot $installPlugins `
+                -SnapshotEntries $snapshotPluginsRootFiles),
+            (New-SourceSyncGroup `
+                -GroupId 'labview-icon-api' `
+                -SourceRoot $repoIconApi `
+                -DestinationRoot $installIconApi `
+                -SnapshotEntries $snapshotIconApi)
+        )
+
+        $manifest = Write-SourceSyncManifest `
+            -ManifestPath $ManifestPath `
+            -RepoRoot $WorkspaceRootPath `
+            -LabVIEWRoot $labviewRoot `
+            -Context 'vi-analyzer-windows' `
+            -Groups $groups
+
+        Write-Output "Synchronized Icon Editor sources into LabVIEW install:"
+        Write-Output "  resource\plugins -> $installPlugins"
+        Write-Output "  vi.lib\LabVIEW Icon API -> $installIconApi"
+        Write-Output "  source sync manifest -> $ManifestPath"
+        return $manifest
+    } finally {
+        if (Test-Path -LiteralPath $pluginRootStage -PathType Container) {
+            Remove-Item -LiteralPath $pluginRootStage -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 function Get-LabVIEWCliTempLogPath {
     param(
         [string]$TempRoot = ([System.IO.Path]::GetTempPath())
@@ -610,6 +927,14 @@ $WorkspaceRoot = $repoRootResolution.Path
 $tasksPathResolved = Resolve-PathFromWorkspace -WorkspaceRootPath $WorkspaceRoot -CandidatePath $TasksPath
 $reportsRootResolved = Resolve-PathFromWorkspace -WorkspaceRootPath $WorkspaceRoot -CandidatePath $ReportsRoot
 $statusPathResolved = Resolve-PathFromWorkspace -WorkspaceRootPath $WorkspaceRoot -CandidatePath $StatusPath
+$sourceSyncManifestPathRaw = if (-not [string]::IsNullOrWhiteSpace($SourceSyncManifestPath)) {
+    $SourceSyncManifestPath
+} elseif (-not [string]::IsNullOrWhiteSpace($env:LVIE_SOURCE_SYNC_MANIFEST_PATH)) {
+    $env:LVIE_SOURCE_SYNC_MANIFEST_PATH
+} else {
+    'builds\status\source-sync-manifest-vi-analyzer-windows.json'
+}
+$sourceSyncManifestPathResolved = Resolve-PathFromWorkspace -WorkspaceRootPath $WorkspaceRoot -CandidatePath $sourceSyncManifestPathRaw
 $logRoot = Join-Path $WorkspaceRoot 'TestResults\container-parity\windows\vi-analyzer\logs'
 
 New-Item -Path $reportsRootResolved -ItemType Directory -Force | Out-Null
@@ -638,6 +963,7 @@ Write-Host ("Resolved repo root: {0} (source: {1})" -f $WorkspaceRoot, $repoRoot
 Write-Host ("Resolved VI Analyzer tasks path: {0}" -f $tasksPathResolved)
 Write-Host ("Resolved VI Analyzer reports root: {0}" -f $reportsRootResolved)
 Write-Host ("Resolved VI Analyzer status path: {0}" -f $statusPathResolved)
+Write-Host ("Resolved VI Analyzer source sync manifest path: {0}" -f $sourceSyncManifestPathResolved)
 Write-Host ("Using LabVIEW path: {0}" -f $LabVIEWPath)
 Write-Host ("Using LabVIEWCLI port: {0}" -f $portResolution.PortNumber)
 
@@ -646,6 +972,13 @@ $tasks = @($tasksDoc.tasks)
 if ($tasks.Count -eq 0) {
     throw "VI Analyzer tasks file contains no tasks: $tasksPathResolved"
 }
+
+$sourceSyncManifest = $null
+Write-Host "Synchronizing workspace Icon Editor sources into LabVIEW install before VI Analyzer."
+$sourceSyncManifest = Sync-IconEditorSourcesForViAnalyzer `
+    -WorkspaceRootPath $WorkspaceRoot `
+    -LabVIEWExecutablePath $LabVIEWPath `
+    -ManifestPath $sourceSyncManifestPathResolved
 
 $taskResults = New-Object System.Collections.Generic.List[object]
 $overallSuccess = $true
@@ -745,6 +1078,7 @@ $status = [ordered]@{
     repo_root       = $WorkspaceRoot
     tasks_path      = $tasksPathResolved
     reports_root    = $reportsRootResolved
+    source_sync_manifest_path = $sourceSyncManifestPathResolved
     overall_success = $overallSuccess
     task_count      = $taskResults.Count
     labview         = [ordered]@{
@@ -765,6 +1099,18 @@ $status = [ordered]@{
         image       = $env:LVIE_CONTAINER_CONTRACT_IMAGE
         os          = $env:LVIE_CONTAINER_CONTRACT_OS
         release_tag = $env:LVIE_CONTAINER_CONTRACT_RELEASE_TAG
+    }
+    source_sync     = [ordered]@{
+        context = if ($null -ne $sourceSyncManifest -and $sourceSyncManifest.PSObject.Properties.Name -contains 'context') {
+            [string]$sourceSyncManifest.context
+        } else {
+            'vi-analyzer-windows'
+        }
+        summary = if ($null -ne $sourceSyncManifest -and $sourceSyncManifest.PSObject.Properties.Name -contains 'summary') {
+            $sourceSyncManifest.summary
+        } else {
+            $null
+        }
     }
     task_results    = $taskResults
 }

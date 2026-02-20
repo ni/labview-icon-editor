@@ -852,6 +852,7 @@ jobs:
     timeout-minutes: 60
     env:
       LVIE_VI_ANALYZER_TASKS_PATH: Tooling/vi-analyzer/tasks.linux.json
+      LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH: builds/status/source-sync-manifest-vi-analyzer-linux.json
       LVIE_CONTAINER_CONTRACT_RAW: ${{ needs.resolve-parity-context.outputs.lvcontainer_raw }}
       LVIE_CONTAINER_CONTRACT_TAG: ${{ needs.resolve-parity-context.outputs.lvcontainer_linux_tag }}
       LVIE_CONTAINER_CONTRACT_IMAGE: nationalinstruments/labview:${{ needs.resolve-parity-context.outputs.lvcontainer_linux_tag }}
@@ -972,6 +973,8 @@ jobs:
           tasks_path_rel="${LVIE_VI_ANALYZER_TASKS_PATH:-Tooling/vi-analyzer/tasks.linux.json}"
           tasks_path_host="${GITHUB_WORKSPACE}/${tasks_path_rel}"
           tasks_path_container="/workspace/${tasks_path_rel}"
+          source_sync_manifest_rel="${LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH:-builds/status/source-sync-manifest-vi-analyzer-linux.json}"
+          source_sync_manifest_container="/workspace/${source_sync_manifest_rel}"
           if [[ ! -f "$script_path" ]]; then
             echo "VI Analyzer Linux worker script not found: $script_path" >&2
             exit 1
@@ -988,6 +991,7 @@ jobs:
             -e REPO_ROOT=/workspace \
             -e LVIE_VI_ANALYZER_LABVIEW_YEAR="${LVIE_VI_ANALYZER_LABVIEW_YEAR}" \
             -e LVIE_VI_ANALYZER_TASKS_PATH="${tasks_path_container}" \
+            -e LVIE_SOURCE_SYNC_MANIFEST_PATH="${source_sync_manifest_container}" \
             "${LABVIEW_LINUX_IMAGE}" \
             bash -lc "chmod +x /workspace/Tooling/container-parity/run-vi-analyzer-linux.sh && /workspace/Tooling/container-parity/run-vi-analyzer-linux.sh"
 
@@ -1112,6 +1116,14 @@ jobs:
           name: vi-analyzer-status-parity
           path: ${{ github.workspace }}/builds/status/vi-analyzer-summary.parity.json
           if-no-files-found: error
+
+      - name: Upload merged VI Analyzer source sync manifest (Linux container)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-analyzer-source-sync-manifest-parity-linux
+          path: ${{ github.workspace }}/builds/status/source-sync-manifest-vi-analyzer-linux.json
+          if-no-files-found: warn
 
   parity-self-hosted-64:
     name: Parity (Self-Hosted Windows LabVIEW 64-bit) (${{ needs.resolve-parity-context.outputs.labview_major_minor }})
@@ -1410,6 +1422,7 @@ jobs:
       LVIE_VI_ANALYZER_TASKS_PATH: Tooling\vi-analyzer\tasks.json
       LVIE_VI_ANALYZER_REPORTS_ROOT: builds\vi-analyzer\windows-container
       LVIE_VI_ANALYZER_STATUS_PATH: builds\status\vi-analyzer-summary.parity.windows.json
+      LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH: builds\status\source-sync-manifest-vi-analyzer-windows.json
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -1526,7 +1539,7 @@ jobs:
             -e LVIE_CONTAINER_CONTRACT_OS="${env:LVIE_CONTAINER_CONTRACT_OS}" `
             -e LVIE_CONTAINER_CONTRACT_RELEASE_TAG="${env:LVIE_CONTAINER_CONTRACT_RELEASE_TAG}" `
             "$image" `
-            powershell -NoProfile -Command "& 'C:\workspace\Tooling\container-parity\run-vi-analyzer-windows.ps1' -WorkspaceRoot 'C:\workspace' -LabVIEWVersion '$labviewYear' -LabVIEWBitness '64' -TasksPath '${{ env.LVIE_VI_ANALYZER_TASKS_PATH }}' -ReportsRoot '${{ env.LVIE_VI_ANALYZER_REPORTS_ROOT }}' -StatusPath '${{ env.LVIE_VI_ANALYZER_STATUS_PATH }}'"
+            powershell -NoProfile -Command "& 'C:\workspace\Tooling\container-parity\run-vi-analyzer-windows.ps1' -WorkspaceRoot 'C:\workspace' -LabVIEWVersion '$labviewYear' -LabVIEWBitness '64' -TasksPath '${{ env.LVIE_VI_ANALYZER_TASKS_PATH }}' -ReportsRoot '${{ env.LVIE_VI_ANALYZER_REPORTS_ROOT }}' -StatusPath '${{ env.LVIE_VI_ANALYZER_STATUS_PATH }}' -SourceSyncManifestPath '${{ env.LVIE_VI_ANALYZER_SOURCE_SYNC_MANIFEST_PATH }}'"
 
       - name: Upload merged VI Analyzer logs (Windows container)
         if: always()
@@ -1551,6 +1564,14 @@ jobs:
           name: vi-analyzer-status-parity-windows
           path: builds/status/vi-analyzer-summary.parity.windows.json
           if-no-files-found: error
+
+      - name: Upload merged VI Analyzer source sync manifest (Windows container)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-analyzer-source-sync-manifest-parity-windows
+          path: builds/status/source-sync-manifest-vi-analyzer-windows.json
+          if-no-files-found: warn
 
   parity-summary:
     name: Parity Summary
