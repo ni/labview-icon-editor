@@ -498,11 +498,14 @@ function Get-ViAnalyzerCounts {
     return $counts
 }
 
+$defaultDrive = if ([string]::IsNullOrWhiteSpace($env:SystemDrive)) { 'C:' } else { $env:SystemDrive }
+$defaultRepoRoot = Join-Path -Path ("{0}\" -f $defaultDrive.TrimEnd('\')) -ChildPath 'workspace'
+
 $repoRootResolution = Resolve-LvieRepoRoot `
     -LvieRepoRoot $env:LVIE_REPO_ROOT `
     -WorkspaceRoot $WorkspaceRoot `
     -RepoRoot $env:REPO_ROOT `
-    -DefaultRepoRoot 'C:\workspace'
+    -DefaultRepoRoot $defaultRepoRoot
 $WorkspaceRoot = $repoRootResolution.Path
 
 $tasksPathResolved = Resolve-PathFromWorkspace -WorkspaceRootPath $WorkspaceRoot -CandidatePath $TasksPath
