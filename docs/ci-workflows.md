@@ -1,6 +1,6 @@
 # Local CI/CD Workflows
 
-**Last updated:** 2026-02-19
+**Last updated:** 2026-02-20
 
 Quick link: `.github/workflows/runner-cli.yml` (Runner CLI consolidated workflow).
 
@@ -98,6 +98,7 @@ This document is the canonical source for release/publication policy.
   - `release-priority`: `workflow_dispatch` with `force_gcli_lunit=true`; skips most self-hosted heavy jobs (`Verify IE Paths`, smoke, unit-tests, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) and targets <= 25 minutes.
   - `pr-fast`: `pull_request`; keeps validation coverage but uses 64-bit-only matrices for smoke/unit-tests, targeting <= 35 minutes.
   - `full`: default for `push` and `workflow_dispatch` without `force_gcli_lunit=true`; preserves full publish-eligible flow.
+- Verify IE Paths rollout toggle: `LVIE_VERIFY_IEPATHS_ENFORCE` defaults to `0` (canary/non-blocking). Set to `1` to enforce failures.
 - Profile routing note: `force_gcli_lunit=true` is now used only to select the `release-priority` profile; unit-test execution is standardized on direct `g-cli lunit` in workflows that run tests.
 - Release-priority guardrail: `workflow_dispatch` publish intent in `release-priority` requires a successful `full` profile run on `develop` completed within the previous 24 hours.
 - Asset contract: published prereleases in `full`/`pr-fast` attach `.vip`, release notes, `labviewcli-logs`, `vip-build-status`, Linux and Windows container packed libraries, and `codex-skill-layer`; `release-priority` publishes Linux and Windows container packed libraries plus `codex-skill-layer`.
@@ -199,6 +200,7 @@ The [`ci.yml`](../.github/workflows/ci.yml) pipeline breaks the build into sever
 - **prerelease-context** – computes prerelease publish eligibility, reason, merged-PR bump override context, and the execution profile (`ci_profile`: `release-priority`, `pr-fast`, `full`).
 - **changes** – checks out the repository and detects `.vipc` file changes for diagnostics/reporting in downstream jobs.
 - **apply-deps-64 / apply-deps-32** – run VIPC audit (`Assert-VipcApplied`) per bitness lane on bitness-addressable runner labels (`LVIE_RUNNER_LABEL_64` / `LVIE_RUNNER_LABEL_32`, with fallback to `LVIE_RUNNER_LABEL`), then optionally run informational VIPC apply diagnostics when manually dispatched with `vipc_apply_info=true`.
+- **verify-iepaths** – runs Verify IE Paths on self-hosted 64-bit and 32-bit lanes before source tests for `full`/`pr-fast`; emits status/evidence artifacts and supports canary vs enforcing mode through `LVIE_VERIFY_IEPATHS_ENFORCE`.
 - **version** – computes the semantic version and build number using commit count and PR labels.
 - **unit-tests** – runs LabVIEW unit tests on Windows for the `.lvversion` target (currently `20.0` in this repository) after dependency application. Canonical execution is `runner-cli lunit run` (g-cli backend); parse/summary validation is parse-only via `runner-cli lunit validate` (`RunUnitTests.ps1 -SkipGcli`). Runs both 64-bit and 32-bit in `full` and `pr-fast`, and is skipped in `release-priority`.
   - Runtime compatibility mapping is execution-year only: source `.lvversion` year `2020` executes tests on year `2026`, while `.lvversion` remains the source contract.

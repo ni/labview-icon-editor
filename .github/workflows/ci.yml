@@ -17,6 +17,7 @@ env:
   LVIE_RUNNER_ACL_AUTOFIX: 0
   LVIE_RUNNER_ACL_WARN_ONLY: 1
   LVIE_REQUIRE_RUNNER_CLI: ${{ vars.LVIE_REQUIRE_RUNNER_CLI || '0' }}
+  LVIE_VERIFY_IEPATHS_ENFORCE: ${{ vars.LVIE_VERIFY_IEPATHS_ENFORCE || '0' }}
   LVIE_PYLAVI_BASELINE_PATH: ${{ vars.LVIE_PYLAVI_BASELINE_PATH || '' }}
   LVIE_PYLAVI_BASELINE_REQUIRED: ${{ vars.LVIE_PYLAVI_BASELINE_REQUIRED || '0' }}
   LVIE_PYLAVI_FAIL_ON_DELTA: ${{ vars.LVIE_PYLAVI_FAIL_ON_DELTA || '0' }}
@@ -1012,6 +1013,239 @@ jobs:
         if: always()
         uses: ./.github/actions/lvie-job-teardown
 
+  verify-iepaths:
+    name: Verify IE Paths Gate (LV ${{ matrix.bitness }}-bit)
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+    needs: [run-metadata, prerelease-context, version-gate, apply-deps-64, apply-deps-32]
+    runs-on: ${{ matrix.runner_label }}
+    env:
+      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
+      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
+      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
+      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - bitness: '64'
+            runner_label: ${{ vars.LVIE_RUNNER_LABEL_64 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+          - bitness: '32'
+            runner_label: ${{ vars.LVIE_RUNNER_LABEL_32 || vars.LVIE_RUNNER_LABEL || 'self-hosted-windows-lv' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: job_setup
+        name: Job setup
+        continue-on-error: ${{ env.LVIE_VERIFY_IEPATHS_ENFORCE != '1' && env.LVIE_VERIFY_IEPATHS_ENFORCE != 'true' && env.LVIE_VERIFY_IEPATHS_ENFORCE != 'True' }}
+        uses: ./.github/actions/lvie-job-setup
+        with:
+          checkout: 'false'
+          bitness: ${{ matrix.bitness }}
+          create_worktree: 'true'
+          worktree_root_mode: runner_temp
+
+      - id: verify_iepaths
+        name: Run verify-iepaths canary
+        if: ${{ always() }}
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          function Convert-ToBool {
+            param(
+              [Parameter(Mandatory = $true)]
+              [string]$Value
+            )
+
+            return $Value.Trim().ToLowerInvariant() -in @('1', 'true', 'yes', 'on')
+          }
+
+          $enforceRaw = if ([string]::IsNullOrWhiteSpace($env:LVIE_VERIFY_IEPATHS_ENFORCE)) {
+            '0'
+          } else {
+            $env:LVIE_VERIFY_IEPATHS_ENFORCE
+          }
+          $enforceMode = Convert-ToBool -Value $enforceRaw
+          $setupOutcome = '${{ steps.job_setup.outcome }}'
+          if ([string]::IsNullOrWhiteSpace($setupOutcome)) {
+            $setupOutcome = 'unknown'
+          }
+
+          $resolvedRepoRoot = if (-not [string]::IsNullOrWhiteSpace($env:REPO_ROOT) -and (Test-Path -LiteralPath $env:REPO_ROOT -PathType Container)) {
+            (Resolve-Path -Path $env:REPO_ROOT).Path
+          } else {
+            (Resolve-Path -Path $env:GITHUB_WORKSPACE).Path
+          }
+
+          $runnerOs = if ([string]::IsNullOrWhiteSpace($env:RUNNER_OS)) { 'Unknown' } else { $env:RUNNER_OS }
+          $bitness = '${{ matrix.bitness }}'
+          $statusArchiveDir = Join-Path $resolvedRepoRoot ("builds\status\verify-iepaths\{0}-{1}" -f $runnerOs, $bitness)
+          $evidencePath = Join-Path $resolvedRepoRoot ("builds\status\verify-iepaths-evidence-{0}-{1}.json" -f $runnerOs, $bitness)
+          $statusArchiveParent = Split-Path -Path $statusArchiveDir -Parent
+          $evidenceParent = Split-Path -Path $evidencePath -Parent
+          if (-not (Test-Path -Path $statusArchiveParent -PathType Container)) {
+            New-Item -Path $statusArchiveParent -ItemType Directory -Force | Out-Null
+          }
+          if (-not (Test-Path -Path $statusArchiveDir -PathType Container)) {
+            New-Item -Path $statusArchiveDir -ItemType Directory -Force | Out-Null
+          }
+          if (-not (Test-Path -Path $evidenceParent -PathType Container)) {
+            New-Item -Path $evidenceParent -ItemType Directory -Force | Out-Null
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_ENV)) {
+            "VERIFY_IEPATHS_REPO_ROOT=$resolvedRepoRoot" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            "VERIFY_IEPATHS_STATUS_DIR=$statusArchiveDir" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+            "VERIFY_IEPATHS_EVIDENCE_PATH=$evidencePath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          }
+
+          $classification = New-Object System.Collections.Generic.List[string]
+          if ($setupOutcome -ne 'success') {
+            $classification.Add('setup_failed') | Out-Null
+          }
+
+          $scriptExitCode = $null
+          $errorMessage = ''
+          $verdict = 'pass'
+
+          try {
+            $verifyScriptPath = Join-Path $resolvedRepoRoot 'Tooling\Invoke-MissingIEFilesFromLVInstall.ps1'
+            if (-not (Test-Path -Path $verifyScriptPath -PathType Leaf)) {
+              throw "verify-iepaths script not found at $verifyScriptPath"
+            }
+
+            if ([string]::IsNullOrWhiteSpace($env:LVIE_REQUIRED_LABVIEW_VERSION)) {
+              throw 'LVIE_REQUIRED_LABVIEW_VERSION was empty; version-gate output is required.'
+            }
+
+            $verifyArgs = @(
+              '-NoProfile',
+              '-File', $verifyScriptPath,
+              '-RepoRoot', $resolvedRepoRoot,
+              '-LabVIEWVersion', $env:LVIE_REQUIRED_LABVIEW_VERSION,
+              '-SupportedBitness', $bitness,
+              '-StatusFileArchiveDirectory', $statusArchiveDir,
+              '-IgnoreGcliExitCode',
+              '-IgnoreStatusFailure'
+            )
+
+            $verifyOutput = & pwsh @verifyArgs 2>&1
+            $scriptExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+            foreach ($line in @($verifyOutput | ForEach-Object { $_.ToString() })) {
+              Write-Host $line
+            }
+          } catch {
+            $errorMessage = $_.Exception.Message
+            $scriptExitCode = 1
+          } finally {
+            if ($null -eq $scriptExitCode) {
+              $scriptExitCode = 1
+            }
+          }
+
+          if ($scriptExitCode -ne 0) {
+            $classification.Add('verify_script_nonzero') | Out-Null
+            $verdict = 'fail'
+          }
+
+          $statusFilePaths = @()
+          $missingPathSet = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+          if (Test-Path -Path $statusArchiveDir -PathType Container) {
+            $statusFiles = @(Get-ChildItem -Path $statusArchiveDir -Filter '*.txt' -File -ErrorAction SilentlyContinue | Sort-Object -Property FullName)
+            foreach ($statusFile in $statusFiles) {
+              $statusFilePaths += $statusFile.FullName
+              $statusRaw = (Get-Content -Path $statusFile.FullName -Raw -ErrorAction SilentlyContinue).Trim()
+              if (-not [string]::IsNullOrWhiteSpace($statusRaw)) {
+                foreach ($entry in ($statusRaw -split '\s*,\s*')) {
+                  if (-not [string]::IsNullOrWhiteSpace($entry)) {
+                    [void]$missingPathSet.Add($entry.Trim())
+                  }
+                }
+              }
+            }
+          }
+
+          $missingPaths = @($missingPathSet)
+          if ($missingPaths.Count -gt 0) {
+            $classification.Add('missing_paths_detected') | Out-Null
+            $verdict = 'fail'
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($errorMessage)) {
+            $classification.Add('verify_script_exception') | Out-Null
+            $verdict = 'fail'
+          }
+
+          $classificationValues = @($classification | Select-Object -Unique)
+          if ($classificationValues.Count -eq 0) {
+            $classificationValues = @('none')
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY)) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ("- Verify IE Paths (LV {0}-bit): enforce={1}; setup={2}; verdict={3}; classifications={4}; missing_paths={5}" -f $bitness, $enforceMode, $setupOutcome, $verdict, ($classificationValues -join ','), $missingPaths.Count)
+          }
+
+          $evidence = [ordered]@{
+            timestamp_utc = (Get-Date).ToUniversalTime().ToString('o')
+            bitness = $bitness
+            repo_root = $resolvedRepoRoot
+            lvversion_raw = $env:LVIE_REQUIRED_LABVIEW_VERSION
+            enforce_mode = $enforceMode
+            setup_outcome = $setupOutcome
+            script_exit_code = $scriptExitCode
+            verdict = $verdict
+            classification = $classificationValues -join ','
+            status_archive_dir = $statusArchiveDir
+            status_files = @($statusFilePaths)
+            missing_paths = @($missingPaths)
+            error = $errorMessage
+          }
+          $evidence | ConvertTo-Json -Depth 8 | Set-Content -Path $evidencePath -Encoding utf8
+          Write-Host ("verify-iepaths evidence written: {0}" -f $evidencePath)
+
+          if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_OUTPUT)) {
+            "verify_iepaths_verdict=$verdict" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+            "verify_iepaths_classification=$($classificationValues -join ',')" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+
+          if ($verdict -eq 'fail') {
+            $message = "verify-iepaths detected issues (setup=$setupOutcome; classifications=$($classificationValues -join ','))."
+            if ($enforceMode) {
+              throw $message
+            }
+            Write-Warning ("{0} Canary mode active; continuing with warning." -f $message)
+          }
+
+      - name: Upload verify-iepaths status archive (LV ${{ matrix.bitness }}-bit)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-iepaths-status-${{ runner.os }}-${{ matrix.bitness }}-bit
+          path: ${{ env.VERIFY_IEPATHS_STATUS_DIR }}
+          if-no-files-found: warn
+
+      - name: Upload verify-iepaths evidence (LV ${{ matrix.bitness }}-bit)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-iepaths-evidence-${{ runner.os }}-${{ matrix.bitness }}-bit
+          path: ${{ env.VERIFY_IEPATHS_EVIDENCE_PATH }}
+          if-no-files-found: warn
+
+      - name: Job teardown
+        if: always()
+        uses: ./.github/actions/lvie-job-teardown
+        with:
+          repo_root: ${{ env.VERIFY_IEPATHS_REPO_ROOT }}
+          revert_bitness: ${{ matrix.bitness }}
+          close_labview: 'true'
+          close_bitness: ${{ matrix.bitness }}
+          cleanup_worktree: 'true'
+
   version:
     name: Compute Version
     needs: [run-metadata, version-gate, prerelease-context]
@@ -1063,7 +1297,7 @@ jobs:
   unit-tests:
     name: Test Source Using LV ${{ matrix.bitness }}-bit
     if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
-    needs: [run-metadata, prerelease-context, version-gate, apply-deps-64, apply-deps-32]
+    needs: [run-metadata, prerelease-context, version-gate, apply-deps-64, apply-deps-32, verify-iepaths]
     runs-on: ${{ matrix.runner_label }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
@@ -2585,6 +2819,7 @@ jobs:
       - changes
       - apply-deps-64
       - apply-deps-32
+      - verify-iepaths
       - unit-tests
       - build-ppl-x64
       - build-ppl-x86
@@ -2636,6 +2871,7 @@ jobs:
             'changes',
             'apply-deps-64',
             'apply-deps-32',
+            'verify-iepaths',
             'unit-tests',
             'build-ppl-x64',
             'build-ppl-x86',
@@ -3048,6 +3284,7 @@ jobs:
       - changes
       - apply-deps-64
       - apply-deps-32
+      - verify-iepaths
       - unit-tests
       - build-ppl-x64
       - build-ppl-x86
@@ -3095,6 +3332,7 @@ jobs:
             'changes',
             'apply-deps-64',
             'apply-deps-32',
+            'verify-iepaths',
             'unit-tests',
             'build-ppl-x64',
             'build-ppl-x86',
