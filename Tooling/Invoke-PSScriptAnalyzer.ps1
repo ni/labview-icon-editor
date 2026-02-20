@@ -21,7 +21,8 @@
     Regenerate the baseline from current analyzer results.
 
 .PARAMETER FailOnIssues
-    Fail when new issues are detected.
+    Fail when new issues are detected. Accepts booleans, 1/0, and
+    case-insensitive string values (true/false, yes/no, on/off).
 
 .PARAMETER WriteSummary
     Write a summary to the GitHub Step Summary file.
@@ -44,7 +45,7 @@ param(
     [switch]$UpdateBaseline,
 
     [Parameter(Mandatory = $false)]
-    [bool]$FailOnIssues = $true,
+    [object]$FailOnIssues = $true,
 
     [switch]$WriteSummary,
 
@@ -88,6 +89,50 @@ function Resolve-DefaultPath {
     }
 
     return (Join-Path $Root $RelativePath)
+}
+
+function Convert-ToBooleanValue {
+    param(
+        [AllowNull()]
+        [object]$Value,
+
+        [string]$ParameterName = 'value'
+    )
+
+    if ($Value -is [bool]) {
+        return [bool]$Value
+    }
+
+    if ($Value -is [byte] -or $Value -is [sbyte] -or $Value -is [int16] -or $Value -is [uint16] -or $Value -is [int32] -or $Value -is [uint32] -or $Value -is [int64] -or $Value -is [uint64]) {
+        if ([int64]$Value -eq 1) {
+            return $true
+        }
+
+        if ([int64]$Value -eq 0) {
+            return $false
+        }
+
+        throw ("Parameter '{0}' expects a Boolean value (`$true/`$false, 1/0, true/false)." -f $ParameterName)
+    }
+
+    if ($Value -is [string]) {
+        $normalized = $Value.Trim().ToLowerInvariant()
+        switch ($normalized) {
+            'true' { return $true }
+            'false' { return $false }
+            '1' { return $true }
+            '0' { return $false }
+            'yes' { return $true }
+            'no' { return $false }
+            'on' { return $true }
+            'off' { return $false }
+        }
+
+        throw ("Parameter '{0}' expects a Boolean value (`$true/`$false, 1/0, true/false)." -f $ParameterName)
+    }
+
+    $actualType = if ($null -eq $Value) { 'null' } else { $Value.GetType().FullName }
+    throw ("Parameter '{0}' expects a Boolean-like value, but received type '{1}'." -f $ParameterName, $actualType)
 }
 
 function Get-AnalyzerFileList {
@@ -231,6 +276,7 @@ function Write-Summary {
     $lines | Out-File -FilePath $Path -Append -Encoding utf8
 }
 
+$failOnIssuesEnabled = Convert-ToBooleanValue -Value $FailOnIssues -ParameterName 'FailOnIssues'
 $repoRoot = Resolve-RepoRoot -PathOverride $RepoRoot
 $settingsPath = Resolve-DefaultPath -Root $repoRoot -RelativePath 'Tooling/PSScriptAnalyzerSettings.psd1' -Override $SettingsPath
 $baselinePath = Resolve-DefaultPath -Root $repoRoot -RelativePath 'Tooling/PSScriptAnalyzerBaseline.json' -Override $BaselinePath
@@ -300,7 +346,7 @@ if ($newIssues.Count -gt 0) {
     $newIssues | ForEach-Object {
         Write-Host (" - {0}:{1} [{2}] {3}" -f $_.Path, $_.Line, $_.RuleName, $_.Message)
     }
-    if ($FailOnIssues) {
+    if ($failOnIssuesEnabled) {
         throw "PSScriptAnalyzer detected new issues. Update baseline or fix the findings."
     }
 } else {

@@ -21,7 +21,7 @@ This document provides a collection of common **troubleshooting** scenarios (wit
    12. [No. 12: JSON Fields Overwritten Incorrectly](#no-12-json-fields-overwritten-incorrectly)
    13. [No. 13: Repository Forks Not Displaying Correct Metadata](#no-13-repository-forks-not-displaying-correct-metadata)
    14. [No. 14: Dev Mode Failure Missing Paths](#no-14-dev-mode-failure-missing-paths)
-   15. [No. 15: Verify IE Paths Gate Fails in CI](#no-15-verify-ie-paths-gate-fails-in-ci)
+   15. [No. 15: Verify IE Paths Check Fails (Local/Manual Runs)](#no-15-verify-ie-paths-check-fails-localmanual-runs)
    16. [No. 16: Expected Job Is Skipped (Profile-Based Behavior)](#no-16-expected-job-is-skipped-profile-based-behavior)
    17. [No. 17: PR Merge Blocked Despite Green Required Checks](#no-17-pr-merge-blocked-despite-green-required-checks)
 
@@ -287,20 +287,20 @@ pwsh -NoProfile -File .\Tooling\Invoke-DeterministicPrereleasePublish.ps1 `
 
 ---
 
-### No. 15: Verify IE Paths Gate Fails in CI
+### No. 15: Verify IE Paths Check Fails (Local/Manual Runs)
 
 **Symptoms**:
-- The first CI gate fails with “Verify IE Paths Gate” or “VerifyIEPaths” errors.
-- The job logs show missing paths or an archived `missing_IE_paths.txt` file.
+- A local parity/manual check reports `VerifyIEPaths` errors.
+- Logs show missing paths or an archived `missing_IE_paths.txt` file.
 
 **Possible Causes**:
 - One or more LabVIEW Icon API files are missing in the required `.lvversion`-compatible LabVIEW install.
 - The runner is in development mode (missing `LabVIEW Icon API` or `lv_icon.lvlibp`).
 
 **Solution**:
-1. Open the failed `Verify IE Paths Gate (LV ... x86/x64)` job and download the `verify-iepaths-32-bit` or `verify-iepaths-64-bit` artifact.
-2. Check the comma-separated list of missing paths in `missing_IE_paths.txt`.
-3. Restore the missing files (or revert dev mode) and re-run the workflow.
+1. Run `Tooling/Invoke-MissingIEFilesFromLVInstall.ps1` (or local CI parity) for the affected bitness and inspect the generated `missing_IE_paths.txt`.
+2. Check the comma-separated list of missing paths.
+3. Restore missing files (or revert dev mode), then rerun the local/manual check.
 
 ---
 
@@ -312,7 +312,7 @@ pwsh -NoProfile -File .\Tooling\Invoke-DeterministicPrereleasePublish.ps1 `
 
 **Possible Causes**:
 - The run used a different `ci_profile`:
-  - `release-priority` (`workflow_dispatch` + `force_gcli_lunit=true`) intentionally skips selected heavy self-hosted jobs (for example `verify-iepaths`, smoke, unit-tests, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) while keeping `vi-analyzer` required/blocking.
+  - `release-priority` (`workflow_dispatch` + `force_gcli_lunit=true`) intentionally skips selected heavy self-hosted jobs (for example smoke, unit-tests, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) while keeping `vi-analyzer` required/blocking.
   - `pr-fast` (`pull_request`) keeps the jobs but uses 64-bit-only matrices for smoke/unit tests.
   - `full` runs the full matrix and full self-hosted flow.
 - You are looking at `CI Pipeline` (`ci.yml`), which is publish-capable only on eligible paths defined by `prerelease-context` and `publish-gate`.
