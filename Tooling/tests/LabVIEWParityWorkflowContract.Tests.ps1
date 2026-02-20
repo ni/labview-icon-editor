@@ -148,6 +148,7 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $workflowContent | Should -Match '(?ms)^\s*workflow_call:\s*.*?\n\s*lv_release_self_hosted:\s*'
         $workflowContent | Should -Match '(?ms)^\s*resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*parity_mode_effective:\s*\$\{\{\s*steps\.resolve\.outputs\.parity_mode_effective\s*\}\}'
         $workflowContent | Should -Match '(?ms)^\s*resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*lv_release_self_hosted:\s*\$\{\{\s*steps\.resolve\.outputs\.lv_release_self_hosted\s*\}\}'
+        $workflowContent | Should -Match '(?ms)^\s*resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*labview_major_minor:\s*\$\{\{\s*steps\.resolve\.outputs\.labview_major_minor\s*\}\}'
         $workflowContent | Should -Match '(?ms)^\s*resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*run_self_hosted_64:\s*\$\{\{\s*steps\.resolve\.outputs\.run_self_hosted_64\s*\}\}'
         $workflowContent | Should -Match '(?ms)^\s*resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*run_self_hosted_32:\s*\$\{\{\s*steps\.resolve\.outputs\.run_self_hosted_32\s*\}\}'
         $workflowContent | Should -Match '(?ms)^\s*resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*run_self_hosted_64_effective:\s*\$\{\{\s*steps\.resolve\.outputs\.run_self_hosted_64_effective\s*\}\}'
@@ -204,7 +205,7 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $paritySelfHosted64Match.Success | Should -BeTrue
         $paritySelfHosted64Block = $paritySelfHosted64Match.Value
 
-        $paritySelfHosted64Block | Should -Match '(?m)^\s*name:\s*Parity \(Self-Hosted Windows LabVIEW 64-bit\)'
+        $paritySelfHosted64Block | Should -Match '(?m)^\s*name:\s*Parity \(Self-Hosted Windows LabVIEW 64-bit\) \(\$\{\{\s*needs\.resolve-parity-context\.outputs\.labview_major_minor\s*\}\}\)'
         $paritySelfHosted64Block | Should -Match 'needs:\s*\[\s*resolve-parity-context,\s*runner-cli-build-win,\s*self-hosted-policy-gate\s*\]'
         $paritySelfHosted64Block | Should -Match 'outputs\.run_self_hosted_64_effective'
         $paritySelfHosted64Block | Should -Match 'needs\.runner-cli-build-win\.outputs\.artifact_name'
@@ -226,7 +227,7 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $paritySelfHosted32Match.Success | Should -BeTrue
         $paritySelfHosted32Block = $paritySelfHosted32Match.Value
 
-        $paritySelfHosted32Block | Should -Match '(?m)^\s*name:\s*Parity \(Self-Hosted Windows LabVIEW 32-bit\)'
+        $paritySelfHosted32Block | Should -Match '(?m)^\s*name:\s*Parity \(Self-Hosted Windows LabVIEW 32-bit\) \(\$\{\{\s*needs\.resolve-parity-context\.outputs\.labview_major_minor\s*\}\}\)'
         $paritySelfHosted32Block | Should -Match 'needs:\s*\[\s*resolve-parity-context,\s*runner-cli-build-win,\s*self-hosted-policy-gate\s*\]'
         $paritySelfHosted32Block | Should -Match 'outputs\.run_self_hosted_32_effective'
         $paritySelfHosted32Block | Should -Match 'needs\.runner-cli-build-win\.outputs\.artifact_name'

@@ -258,6 +258,7 @@ jobs:
       lv_release_linux: ${{ steps.resolve.outputs.lv_release_linux }}
       lv_release_windows: ${{ steps.resolve.outputs.lv_release_windows }}
       lv_release_self_hosted: ${{ steps.resolve.outputs.lv_release_self_hosted }}
+      labview_major_minor: ${{ steps.resolve.outputs.labview_major_minor }}
       lvcontainer_linux_year: ${{ steps.resolve.outputs.lvcontainer_linux_year }}
       lvcontainer_raw: ${{ steps.resolve.outputs.lvcontainer_raw }}
       lvcontainer_linux_tag: ${{ steps.resolve.outputs.lvcontainer_linux_tag }}
@@ -444,6 +445,10 @@ jobs:
           if (-not [string]::IsNullOrWhiteSpace($lvReleaseSelfHostedInput) -and $lvReleaseSelfHostedInput -notmatch '^\d{4}q[1-4]$') {
             throw ("Invalid self-hosted lv_release override '{0}'. Expected format 'YYYYqN' (for example, 2026q1)." -f $lvReleaseSelfHostedInput)
           }
+
+          . "$env:GITHUB_WORKSPACE/Tooling/support/LabVIEWVersion.ps1"
+          $labviewVersionInfo = Get-LabVIEWVersionInfo -RepoRoot $env:GITHUB_WORKSPACE
+          $labviewMajorMinor = [string]$labviewVersionInfo.NumericVersion
 
           . "$env:GITHUB_WORKSPACE/Tooling/support/LabVIEWContainerRelease.ps1"
           $catalogSnapshotPath = Join-Path $env:GITHUB_WORKSPACE 'Tooling/container-parity/labview-container-tags.snapshot.json'
@@ -669,6 +674,7 @@ jobs:
           "lv_release_linux=$lvReleaseLinux" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "lv_release_windows=$lvReleaseWindows" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "lv_release_self_hosted=$lvReleaseSelfHostedInput" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          "labview_major_minor=$labviewMajorMinor" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "lvcontainer_linux_year=$lvContainerLinuxYear" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "lvcontainer_raw=$lvContainerRaw" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "lvcontainer_linux_tag=$lvContainerLinuxTag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
@@ -1108,7 +1114,7 @@ jobs:
           if-no-files-found: error
 
   parity-self-hosted-64:
-    name: Parity (Self-Hosted Windows LabVIEW 64-bit)
+    name: Parity (Self-Hosted Windows LabVIEW 64-bit) (${{ needs.resolve-parity-context.outputs.labview_major_minor }})
     needs: [resolve-parity-context, runner-cli-build-win, self-hosted-policy-gate]
     if: ${{ needs.resolve-parity-context.outputs.run_self_hosted_64_effective == 'true' }}
     runs-on: ${{ needs.resolve-parity-context.outputs.self_hosted_runner_label_64 }}
@@ -1252,7 +1258,7 @@ jobs:
           release_lock: 'true'
 
   parity-self-hosted-32:
-    name: Parity (Self-Hosted Windows LabVIEW 32-bit)
+    name: Parity (Self-Hosted Windows LabVIEW 32-bit) (${{ needs.resolve-parity-context.outputs.labview_major_minor }})
     needs: [resolve-parity-context, runner-cli-build-win, self-hosted-policy-gate]
     if: ${{ needs.resolve-parity-context.outputs.run_self_hosted_32_effective == 'true' }}
     runs-on: ${{ needs.resolve-parity-context.outputs.self_hosted_runner_label_32 }}

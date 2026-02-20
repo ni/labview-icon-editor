@@ -33,8 +33,8 @@ Build-spec parity is mandatory and is a blocking check.
   These lanes always run in every parity mode.
 
 - Self-hosted lanes:
-  - `Parity (Self-Hosted Windows LabVIEW 64-bit)`
-  - `Parity (Self-Hosted Windows LabVIEW 32-bit)`
+  - `Parity (Self-Hosted Windows LabVIEW 64-bit) (<major.minor from .lvversion>)`
+  - `Parity (Self-Hosted Windows LabVIEW 32-bit) (<major.minor from .lvversion>)`
   These lanes are controlled by parity mode, compatibility toggles, and capacity detection.
 
 - Mode defaults:
