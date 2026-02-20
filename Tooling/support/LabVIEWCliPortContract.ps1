@@ -122,6 +122,45 @@ function Get-LabVIEWIniValueStrict {
     return $null
 }
 
+function Set-LabVIEWIniValueStrict {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$IniPath,
+        [Parameter(Mandatory = $true)]
+        [string]$Key,
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    $lines = @(Get-Content -Path $IniPath -ErrorAction Stop)
+    $updated = $false
+    for ($index = 0; $index -lt $lines.Count; $index++) {
+        $line = [string]$lines[$index]
+        $trimmed = $line.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith(';') -or $trimmed.StartsWith('#')) {
+            continue
+        }
+
+        $separator = $trimmed.IndexOf('=')
+        if ($separator -lt 0) {
+            continue
+        }
+
+        $lineKey = $trimmed.Substring(0, $separator).Trim()
+        if ($lineKey.Equals($Key, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $lines[$index] = ('{0}={1}' -f $Key, $Value)
+            $updated = $true
+            break
+        }
+    }
+
+    if (-not $updated) {
+        $lines += ('{0}={1}' -f $Key, $Value)
+    }
+
+    Set-Content -Path $IniPath -Value $lines -Encoding ascii
+}
+
 function Get-LabVIEWCliPortContract {
     param(
         [Parameter(Mandatory = $true)]
@@ -159,7 +198,8 @@ function Resolve-LabVIEWCliPortFromContract {
         [string]$Bitness,
         [Parameter(Mandatory = $true)]
         [string]$LabVIEWExecutablePath,
-        [string]$ContractPath = 'Tooling/labviewcli-port-contract.json'
+        [string]$ContractPath = 'Tooling/labviewcli-port-contract.json',
+        [switch]$EnableRemediation
     )
 
     $resolvedRepoRoot = Resolve-LabVIEWCliPortContractRepoRoot -RepoRoot $RepoRoot
@@ -190,7 +230,19 @@ function Resolve-LabVIEWCliPortFromContract {
         throw ("LabVIEW.ini is required for strict port validation but was not found: {0}" -f $iniPath)
     }
 
+    $remediationEnabled = $EnableRemediation.IsPresent
+    if ($remediationEnabled) {
+        Write-Warning ("LabVIEWCLI port contract remediation enabled. Ini path: {0}" -f $iniPath)
+    }
+
+    $settingsAdjusted = $false
     $enabledRaw = Get-LabVIEWIniValueStrict -IniPath $iniPath -Key 'server.tcp.enabled'
+    if ([string]::IsNullOrWhiteSpace($enabledRaw) -and $remediationEnabled) {
+        Set-LabVIEWIniValueStrict -IniPath $iniPath -Key 'server.tcp.enabled' -Value 'true'
+        $enabledRaw = 'true'
+        $settingsAdjusted = $true
+        Write-Warning ("LabVIEW.ini was missing server.tcp.enabled; remediated to true in {0}" -f $iniPath)
+    }
     if ([string]::IsNullOrWhiteSpace($enabledRaw)) {
         throw ("LabVIEW.ini is missing server.tcp.enabled in {0}" -f $iniPath)
     }
@@ -198,32 +250,66 @@ function Resolve-LabVIEWCliPortFromContract {
     $enabledNormalized = $enabledRaw.Trim().ToLowerInvariant()
     if (@('true', 't', '1', 'yes', 'y') -contains $enabledNormalized) {
         # valid enabled state
+    } elseif (@('false', 'f', '0', 'no', 'n') -contains $enabledNormalized -and $remediationEnabled) {
+        $previousEnabledRaw = $enabledRaw
+        Set-LabVIEWIniValueStrict -IniPath $iniPath -Key 'server.tcp.enabled' -Value 'true'
+        $settingsAdjusted = $true
+        $enabledRaw = 'true'
+        Write-Warning ("LabVIEW.ini had server.tcp.enabled={0}; remediated to true in {1}" -f $previousEnabledRaw, $iniPath)
     } elseif (@('false', 'f', '0', 'no', 'n') -contains $enabledNormalized) {
         throw ("LabVIEW.ini has server.tcp.enabled={0} in {1}; strict contract requires enabled." -f $enabledRaw, $iniPath)
+    } elseif ($remediationEnabled) {
+        $previousEnabledRaw = $enabledRaw
+        Set-LabVIEWIniValueStrict -IniPath $iniPath -Key 'server.tcp.enabled' -Value 'true'
+        $settingsAdjusted = $true
+        $enabledRaw = 'true'
+        Write-Warning ("LabVIEW.ini had invalid server.tcp.enabled='{0}'; remediated to true in {1}" -f $previousEnabledRaw, $iniPath)
     } else {
         throw ("LabVIEW.ini has invalid server.tcp.enabled='{0}' in {1}" -f $enabledRaw, $iniPath)
     }
 
     $portRaw = Get-LabVIEWIniValueStrict -IniPath $iniPath -Key 'server.tcp.port'
+    if ([string]::IsNullOrWhiteSpace($portRaw) -and $remediationEnabled) {
+        Set-LabVIEWIniValueStrict -IniPath $iniPath -Key 'server.tcp.port' -Value $expectedPort.ToString()
+        $portRaw = $expectedPort.ToString()
+        $settingsAdjusted = $true
+        Write-Warning ("LabVIEW.ini was missing server.tcp.port; remediated to {0} in {1}" -f $expectedPort, $iniPath)
+    }
     if ([string]::IsNullOrWhiteSpace($portRaw)) {
         throw ("LabVIEW.ini is missing server.tcp.port in {0}" -f $iniPath)
     }
 
     $actualPort = 0
-    if (-not [int]::TryParse($portRaw.Trim(), [ref]$actualPort) -or $actualPort -lt 1 -or $actualPort -gt 65535) {
+    if ((-not [int]::TryParse($portRaw.Trim(), [ref]$actualPort) -or $actualPort -lt 1 -or $actualPort -gt 65535) -and $remediationEnabled) {
+        Set-LabVIEWIniValueStrict -IniPath $iniPath -Key 'server.tcp.port' -Value $expectedPort.ToString()
+        $actualPort = $expectedPort
+        $settingsAdjusted = $true
+        Write-Warning ("LabVIEW.ini had invalid server.tcp.port='{0}'; remediated to {1} in {2}" -f $portRaw, $expectedPort, $iniPath)
+    } elseif (-not [int]::TryParse($portRaw.Trim(), [ref]$actualPort) -or $actualPort -lt 1 -or $actualPort -gt 65535) {
         throw ("LabVIEW.ini has invalid server.tcp.port='{0}' in {1}" -f $portRaw, $iniPath)
     }
 
-    if ($actualPort -ne $expectedPort) {
+    if ($actualPort -ne $expectedPort -and $remediationEnabled) {
+        Set-LabVIEWIniValueStrict -IniPath $iniPath -Key 'server.tcp.port' -Value $expectedPort.ToString()
+        $actualPort = $expectedPort
+        $settingsAdjusted = $true
+        Write-Warning ("LabVIEWCLI port contract mismatch for year {0} bitness {1}; remediated server.tcp.port to {2} in {3}" -f $year, $Bitness, $expectedPort, $iniPath)
+    } elseif ($actualPort -ne $expectedPort) {
         throw ("LabVIEWCLI port contract mismatch for year {0} bitness {1}: expected {2} from {3}, found {4} in {5}" -f $year, $Bitness, $expectedPort, $contractInfo.ContractPath, $actualPort, $iniPath)
     }
 
+    if ($settingsAdjusted) {
+        Write-Host ("LabVIEWCLI contract remediation applied for year={0} bitness={1} in {2}" -f $year, $Bitness, $iniPath)
+    }
+
     return [pscustomobject]@{
-        PortNumber    = $expectedPort
-        Source        = ('contract:{0} year:{1} bitness:{2}' -f $contractInfo.ContractPath, $year, $Bitness)
-        ContractPath  = $contractInfo.ContractPath
-        IniPath       = $iniPath
-        LabVIEWYear   = $year
-        Bitness       = $Bitness
+        PortNumber          = $expectedPort
+        Source              = ('contract:{0} year:{1} bitness:{2}' -f $contractInfo.ContractPath, $year, $Bitness)
+        ContractPath        = $contractInfo.ContractPath
+        IniPath             = $iniPath
+        LabVIEWYear         = $year
+        Bitness             = $Bitness
+        RemediationEnabled  = $remediationEnabled
+        RemediationApplied  = $settingsAdjusted
     }
 }

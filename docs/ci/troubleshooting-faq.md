@@ -298,7 +298,7 @@ pwsh -NoProfile -File .\Tooling\Invoke-DeterministicPrereleasePublish.ps1 `
 - The runner is in development mode (missing `LabVIEW Icon API` or `lv_icon.lvlibp`).
 
 **Solution**:
-1. Open the “verify-iepaths-32-bit” or “verify-iepaths-64-bit” artifact attached to the failed job.
+1. Open the failed `Verify IE Paths Gate (LV ... x86/x64)` job and download the `verify-iepaths-32-bit` or `verify-iepaths-64-bit` artifact.
 2. Check the comma-separated list of missing paths in `missing_IE_paths.txt`.
 3. Restore the missing files (or revert dev mode) and re-run the workflow.
 

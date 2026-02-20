@@ -691,6 +691,10 @@ jobs:
         shell: pwsh
         run: |
           pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-ViAnalyzerContainerContract.ps1" -WriteSummary
+      - name: Validate solution contract
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Test-SolutionContract.ps1" -WriteSummary
       - name: Validate solo-maintainer workflow contract
         shell: pwsh
         run: |
@@ -1014,7 +1018,7 @@ jobs:
         uses: ./.github/actions/lvie-job-teardown
 
   vi-analyzer:
-    name: VI Analyzer LabVIEW ${{ needs.version-gate.outputs.raw }} ${{ matrix.bitness_label }}
+    name: VI Analyzer Gate (LV ${{ needs.version-gate.outputs.raw }} ${{ matrix.bitness_label }})
     needs: [run-metadata, prerelease-context, version-gate, apply-deps-64, apply-deps-32]
     runs-on: ${{ matrix.runner_label }}
     env:
@@ -1022,6 +1026,7 @@ jobs:
       LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
       LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
       LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
+      LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT: ${{ vars.LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT || '1' }}
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -1086,9 +1091,9 @@ jobs:
         uses: ./.github/actions/lvie-job-teardown
 
   verify-iepaths:
-    name: verify-iepaths-${{ matrix.bitness }}-bit
+    name: Verify IE Paths Gate (LV ${{ needs.version-gate.outputs.raw }} ${{ matrix.bitness_label }})
     if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
-    needs: [run-metadata, prerelease-context, version-gate, apply-deps-64, apply-deps-32]
+    needs: [run-metadata, prerelease-context, version-gate, apply-deps-64, apply-deps-32, vi-analyzer]
     runs-on: ${{ matrix.runner_label }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
@@ -1101,8 +1106,10 @@ jobs:
       matrix:
         include:
           - bitness: '64'
+            bitness_label: x64
             runner_label: ${{ vars.LVIE_RUNNER_LABEL_64 || format('self-hosted-windows-lv{0}x64', needs.version-gate.outputs.year) }}
           - bitness: '32'
+            bitness_label: x86
             runner_label: ${{ vars.LVIE_RUNNER_LABEL_32 || format('self-hosted-windows-lv{0}x86', needs.version-gate.outputs.year) }}
     steps:
       - name: Checkout code

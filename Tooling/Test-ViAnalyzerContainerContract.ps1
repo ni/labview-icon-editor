@@ -66,11 +66,14 @@ if ($ciContent) {
         Add-ContractViolation -Type 'missing-vi-analyzer-block' -Message 'ci.yml must include a resolvable vi-analyzer job block.'
     } else {
         $viAnalyzerBlock = $viAnalyzerBlockMatch.Value
-        if ($viAnalyzerBlock -notmatch 'name:\s*VI Analyzer LabVIEW \${{\s*needs\.version-gate\.outputs\.raw\s*}} \${{\s*matrix\.bitness_label\s*}}') {
-            Add-ContractViolation -Type 'missing-vi-analyzer-lane-name' -Message 'ci.yml vi-analyzer job name must use the descriptive contract VI Analyzer LabVIEW ${{ needs.version-gate.outputs.raw }} ${{ matrix.bitness_label }}.'
+        if ($viAnalyzerBlock -notmatch 'name:\s*VI Analyzer Gate \(LV \${{\s*needs\.version-gate\.outputs\.raw\s*}} \${{\s*matrix\.bitness_label\s*}}\)') {
+            Add-ContractViolation -Type 'missing-vi-analyzer-lane-name' -Message 'ci.yml vi-analyzer job name must use the descriptive contract VI Analyzer Gate (LV ${{ needs.version-gate.outputs.raw }} ${{ matrix.bitness_label }}).'
         }
         if ($viAnalyzerBlock -notmatch 'needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-64,\s*apply-deps-32\s*\]') {
             Add-ContractViolation -Type 'missing-vi-analyzer-needs' -Message 'ci.yml vi-analyzer job must depend on run-metadata, prerelease-context, version-gate, apply-deps-64, and apply-deps-32.'
+        }
+        if ($viAnalyzerBlock -notmatch 'LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT:\s*\${{\s*vars\.LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT\s*\|\|\s*''1''\s*}}') {
+            Add-ContractViolation -Type 'missing-vi-analyzer-port-remediation-env' -Message 'ci.yml vi-analyzer job must set LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT with default ''1''.'
         }
         if ($viAnalyzerBlock -notmatch 'Tooling/Run-ViAnalyzer\.ps1') {
             Add-ContractViolation -Type 'missing-vi-analyzer-runner' -Message 'ci.yml vi-analyzer job must run Tooling/Run-ViAnalyzer.ps1.'

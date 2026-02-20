@@ -508,6 +508,95 @@ function Get-ViAnalyzerCountSummary {
     return $counts
 }
 
+function Get-ViAnalyzerFailureItemList {
+    param(
+        [AllowNull()]
+        [string]$ReportText
+    )
+
+    $items = New-Object 'System.Collections.Generic.List[object]'
+    if ([string]::IsNullOrWhiteSpace($ReportText)) {
+        return $items.ToArray()
+    }
+
+    $section = ''
+    $currentDisplayName = ''
+    $currentFilePath = ''
+    $lines = $ReportText -split "`r?`n"
+    foreach ($line in $lines) {
+        $trimmed = $line.Trim()
+        if ($trimmed -match '^\s*Failed Tests \(sorted by VI\)\s*$') {
+            $section = 'failed_tests'
+            $currentDisplayName = ''
+            $currentFilePath = ''
+            continue
+        }
+
+        if ($trimmed -match '^\s*Testing Errors\s*$') {
+            $section = 'testing_errors'
+            $currentDisplayName = ''
+            $currentFilePath = ''
+            continue
+        }
+
+        if ([string]::IsNullOrWhiteSpace($section)) {
+            continue
+        }
+
+        if ([string]::IsNullOrWhiteSpace($trimmed)) {
+            continue
+        }
+
+        if ($trimmed -eq '(none)') {
+            continue
+        }
+
+        $viHeaderMatch = [regex]::Match($trimmed, '^(?<display>.+?)\s+\((?<path>.+)\)\s*$')
+        if ($viHeaderMatch.Success -and $trimmed.IndexOf("`t") -lt 0) {
+            $currentDisplayName = $viHeaderMatch.Groups['display'].Value.Trim()
+            $currentFilePath = $viHeaderMatch.Groups['path'].Value.Trim()
+            continue
+        }
+
+        $parts = $line -split "`t", 2
+        if ($parts.Count -eq 2 -and -not [string]::IsNullOrWhiteSpace($parts[0]) -and -not [string]::IsNullOrWhiteSpace($parts[1])) {
+            $items.Add([pscustomobject]@{
+                    section         = $section
+                    vi_display_name = $currentDisplayName
+                    file_path       = $currentFilePath
+                    check_name      = $parts[0].Trim()
+                    message         = $parts[1].Trim()
+                    raw_line        = $line.Trim()
+                }) | Out-Null
+        }
+    }
+
+    return $items.ToArray()
+}
+
+function Get-OrderedUniqueFilePathList {
+    param([object[]]$Items)
+
+    $ordered = New-Object 'System.Collections.Generic.List[string]'
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]'
+    foreach ($item in @($Items)) {
+        $path = ''
+        if ($null -ne $item -and $item.PSObject.Properties.Name -contains 'file_path') {
+            $path = [string]$item.file_path
+        }
+
+        if ([string]::IsNullOrWhiteSpace($path)) {
+            continue
+        }
+
+        if ($seen.Add($path)) {
+            $ordered.Add($path) | Out-Null
+        }
+    }
+
+    return $ordered.ToArray()
+}
+
 $defaultDrive = if ([string]::IsNullOrWhiteSpace($env:SystemDrive)) { 'C:' } else { $env:SystemDrive }
 $defaultRepoRoot = Join-Path -Path ("{0}\" -f $defaultDrive.TrimEnd('\')) -ChildPath 'workspace'
 
@@ -601,6 +690,8 @@ foreach ($task in $tasks) {
         ''
     }
     $counts = Get-ViAnalyzerCountSummary -ReportText $reportText
+    $failureItems = @(Get-ViAnalyzerFailureItemList -ReportText $reportText)
+    $failureFilePaths = @(Get-OrderedUniqueFilePathList -Items $failureItems)
 
     $failureReasons = New-Object System.Collections.Generic.List[string]
     if ($runResult.ExitCode -ne 0) {
@@ -622,6 +713,18 @@ foreach ($task in $tasks) {
     $taskSucceeded = $failureReasons.Count -eq 0
     if (-not $taskSucceeded) {
         $overallSuccess = $false
+        Write-Host ("Task '{0}' failed with reason(s): {1}" -f $taskId, (@($failureReasons) -join '; '))
+        if ($failureFilePaths.Count -gt 0) {
+            Write-Host ("Task '{0}' failed file path(s): {1}" -f $taskId, ($failureFilePaths -join '; '))
+            foreach ($filePath in $failureFilePaths) {
+                Write-Host ("- File: {0}" -f $filePath)
+                foreach ($item in @($failureItems | Where-Object { $_.file_path -eq $filePath })) {
+                    Write-Host ("  - [{0}] {1}: {2}" -f $item.section, $item.check_name, $item.message)
+                }
+            }
+        } else {
+            Write-Host ("Task '{0}' produced no parsable file-level failure entries; see raw report: {1}" -f $taskId, $reportPath)
+        }
     }
 
     $taskResults.Add([pscustomobject]@{
@@ -632,6 +735,8 @@ foreach ($task in $tasks) {
             succeeded       = $taskSucceeded
             counts          = [pscustomobject]$counts
             failure_reasons = @($failureReasons)
+            failure_items   = @($failureItems)
+            failure_file_paths = @($failureFilePaths)
         }) | Out-Null
 }
 
@@ -668,7 +773,13 @@ $status | ConvertTo-Json -Depth 8 | Set-Content -Path $statusPathResolved -Encod
 Write-Host ("VI Analyzer status written: {0}" -f $statusPathResolved)
 
 if (-not $overallSuccess) {
-    throw "Windows-container VI Analyzer detected one or more task failures."
+    $failedTasks = @($taskResults | Where-Object { -not $_.succeeded })
+    $failedTaskIds = if ($failedTasks.Count -gt 0) {
+        @($failedTasks | ForEach-Object { $_.id }) -join ', '
+    } else {
+        'unknown'
+    }
+    throw ("Windows-container VI Analyzer detected one or more task failures. Failed tasks: {0}. Status path: {1}" -f $failedTaskIds, $statusPathResolved)
 }
 
 Write-Host 'Windows-container VI Analyzer completed with no failures.'

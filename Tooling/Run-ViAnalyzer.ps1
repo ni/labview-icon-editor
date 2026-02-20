@@ -5,8 +5,8 @@
 
 .DESCRIPTION
     Executes each VI Analyzer task listed in Tooling/vi-analyzer/tasks.json
-    using LabVIEWCLI RunVIAnalyzer with strict LabVIEWCLI port-contract
-    resolution.
+    using LabVIEWCLI RunVIAnalyzer with LabVIEWCLI port-contract
+    resolution (strict by default, with optional remediation).
 #>
 
 [CmdletBinding()]
@@ -76,6 +76,21 @@ function Initialize-Directory {
     if (-not (Test-Path -Path $Path -PathType Container)) {
         New-Item -Path $Path -ItemType Directory -Force | Out-Null
     }
+}
+
+function Test-EnabledValue {
+    param(
+        [AllowNull()]
+        [string]$Value
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $false
+    }
+
+    return $Value.Equals('1', [System.StringComparison]::OrdinalIgnoreCase) `
+        -or $Value.Equals('true', [System.StringComparison]::OrdinalIgnoreCase) `
+        -or $Value.Equals('yes', [System.StringComparison]::OrdinalIgnoreCase)
 }
 
 function Get-CountFromText {
@@ -372,11 +387,17 @@ if ([string]::IsNullOrWhiteSpace($resolvedLabVIEWYear)) {
 }
 
 $labviewExecutablePath = Resolve-LabVIEWExecutablePath -VersionYear $resolvedLabVIEWYear -Bitness $SupportedBitness
+$portRemediationEnabled = Test-EnabledValue -Value $env:LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT
+if ($portRemediationEnabled) {
+    Write-Warning 'LabVIEWCLI port contract remediation is enabled via LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT.'
+}
+
 $portResolution = Resolve-LabVIEWCliPortFromContract `
     -RepoRoot $resolvedRepoRoot `
     -LabVIEWVersion $resolvedLabVIEWVersionRaw `
     -Bitness $SupportedBitness `
-    -LabVIEWExecutablePath $labviewExecutablePath
+    -LabVIEWExecutablePath $labviewExecutablePath `
+    -EnableRemediation:$portRemediationEnabled
 
 $labviewCliCommand = Get-Command LabVIEWCLI -ErrorAction SilentlyContinue
 if (-not $labviewCliCommand) {
@@ -386,6 +407,11 @@ if (-not $labviewCliCommand) {
 Write-Host ("Resolved LabVIEW: raw={0}, year={1}, bitness={2}" -f $resolvedLabVIEWVersionRaw, $resolvedLabVIEWYear, $SupportedBitness)
 Write-Host ("LabVIEW executable: {0}" -f $labviewExecutablePath)
 Write-Host ("Using LabVIEWCLI port {0} (source: {1})" -f $portResolution.PortNumber, $portResolution.Source)
+if ($portResolution.RemediationEnabled -and $portResolution.RemediationApplied) {
+    Write-Warning ("LabVIEWCLI port contract remediation modified LabVIEW.ini at {0}" -f $portResolution.IniPath)
+} elseif ($portResolution.RemediationEnabled) {
+    Write-Host "LabVIEWCLI port contract remediation was enabled, but no ini updates were required."
+}
 Write-Host ("Running VI Analyzer tasks from: {0}" -f $tasksPathResolved)
 
 $taskResults = New-Object 'System.Collections.Generic.List[object]'
@@ -525,6 +551,8 @@ $status = [ordered]@{
         source        = [string]$portResolution.Source
         contract_path = [string]$portResolution.ContractPath
         ini_path      = [string]$portResolution.IniPath
+        remediation_enabled = [bool]$portResolution.RemediationEnabled
+        remediation_applied = [bool]$portResolution.RemediationApplied
     }
     task_results     = $taskResults
 }

@@ -17,17 +17,19 @@ Describe 'CI workflow verify-iepaths contract' {
     It 'defines verify-iepaths job with expected name and profile gating' {
         $script:workflowContent | Should -Match '(?ms)^  verify-iepaths:\s*$'
         $script:verifyIePathsSection | Should -Not -BeNullOrEmpty
-        $script:verifyIePathsSection | Should -Match 'name:\s*verify-iepaths-\$\{\{\s*matrix\.bitness\s*\}\}-bit'
+        $script:verifyIePathsSection | Should -Match 'name:\s*Verify IE Paths Gate \(LV \${{\s*needs\.version-gate\.outputs\.raw\s*}} \${{\s*matrix\.bitness_label\s*}}\)'
         $script:verifyIePathsSection | Should -Match 'if:\s*\$\{\{\s*needs\.prerelease-context\.outputs\.ci_profile != ''release-priority''\s*\}\}'
     }
 
     It 'wires verify-iepaths dependencies and bitness runner matrix' {
-        $script:verifyIePathsSection | Should -Match 'needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-64,\s*apply-deps-32\s*\]'
+        $script:verifyIePathsSection | Should -Match 'needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-64,\s*apply-deps-32,\s*vi-analyzer\s*\]'
         $script:verifyIePathsSection | Should -Match 'runs-on:\s*\$\{\{\s*matrix\.runner_label\s*\}\}'
         $script:verifyIePathsSection | Should -Match 'fail-fast:\s*false'
         $script:verifyIePathsSection | Should -Match 'max-parallel:\s*2'
         $script:verifyIePathsSection | Should -Match 'bitness:\s*''64'''
         $script:verifyIePathsSection | Should -Match 'bitness:\s*''32'''
+        $script:verifyIePathsSection | Should -Match 'bitness_label:\s*x64'
+        $script:verifyIePathsSection | Should -Match 'bitness_label:\s*x86'
         $script:verifyIePathsSection | Should -Match 'runner_label:\s*\$\{\{\s*vars\.LVIE_RUNNER_LABEL_64 \|\| format\(''self-hosted-windows-lv\{0\}x64'', needs\.version-gate\.outputs\.year\)\s*\}\}'
         $script:verifyIePathsSection | Should -Match 'runner_label:\s*\$\{\{\s*vars\.LVIE_RUNNER_LABEL_32 \|\| format\(''self-hosted-windows-lv\{0\}x86'', needs\.version-gate\.outputs\.year\)\s*\}\}'
     }

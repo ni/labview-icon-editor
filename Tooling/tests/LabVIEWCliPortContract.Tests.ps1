@@ -8,6 +8,8 @@ Describe 'LabVIEW CLI port contract' {
         $script:repoRoot = (Resolve-Path -Path (Join-Path $PSScriptRoot '..\..')).Path
         $script:contractPath = Join-Path $script:repoRoot 'Tooling\labviewcli-port-contract.json'
         $script:contract = Get-Content -LiteralPath $script:contractPath -Raw | ConvertFrom-Json -ErrorAction Stop
+        $script:helperPath = Join-Path $script:repoRoot 'Tooling\support\LabVIEWCliPortContract.ps1'
+        . $script:helperPath
     }
 
     It 'has schema_version 1.0 and labview_cli_ports node' {
@@ -37,6 +39,79 @@ Describe 'LabVIEW CLI port contract' {
                 $port | Should -BeLessThan 65536
             }
         }
+    }
+
+    It 'keeps strict mode as default when remediation is not requested' {
+        $tempRepo = Join-Path $TestDrive 'repo-strict'
+        $toolingRoot = Join-Path $tempRepo 'Tooling'
+        $labviewDir = Join-Path $tempRepo 'LabVIEW'
+        New-Item -Path $toolingRoot -ItemType Directory -Force | Out-Null
+        New-Item -Path $labviewDir -ItemType Directory -Force | Out-Null
+
+        @(
+            '{'
+            '  "schema_version": "1.0",'
+            '  "labview_cli_ports": {'
+            '    "2020": {'
+            '      "64": 3366'
+            '    }'
+            '  }'
+            '}'
+        ) | Set-Content -LiteralPath (Join-Path $toolingRoot 'labviewcli-port-contract.json') -Encoding utf8
+
+        Set-Content -LiteralPath (Join-Path $labviewDir 'LabVIEW.exe') -Value '' -Encoding ascii
+        @(
+            'server.tcp.enabled=true'
+            'server.tcp.port=1234'
+        ) | Set-Content -LiteralPath (Join-Path $labviewDir 'LabVIEW.ini') -Encoding ascii
+
+        {
+            Resolve-LabVIEWCliPortFromContract `
+                -RepoRoot $tempRepo `
+                -LabVIEWVersion '20.0' `
+                -Bitness '64' `
+                -LabVIEWExecutablePath (Join-Path $labviewDir 'LabVIEW.exe')
+        } | Should -Throw '*mismatch*'
+    }
+
+    It 'remediates server.tcp.enabled and server.tcp.port when explicitly enabled' {
+        $tempRepo = Join-Path $TestDrive 'repo-remediate'
+        $toolingRoot = Join-Path $tempRepo 'Tooling'
+        $labviewDir = Join-Path $tempRepo 'LabVIEW'
+        New-Item -Path $toolingRoot -ItemType Directory -Force | Out-Null
+        New-Item -Path $labviewDir -ItemType Directory -Force | Out-Null
+
+        @(
+            '{'
+            '  "schema_version": "1.0",'
+            '  "labview_cli_ports": {'
+            '    "2020": {'
+            '      "64": 3366'
+            '    }'
+            '  }'
+            '}'
+        ) | Set-Content -LiteralPath (Join-Path $toolingRoot 'labviewcli-port-contract.json') -Encoding utf8
+
+        Set-Content -LiteralPath (Join-Path $labviewDir 'LabVIEW.exe') -Value '' -Encoding ascii
+        @(
+            'server.tcp.enabled=false'
+            'server.tcp.port=1234'
+        ) | Set-Content -LiteralPath (Join-Path $labviewDir 'LabVIEW.ini') -Encoding ascii
+
+        $result = Resolve-LabVIEWCliPortFromContract `
+            -RepoRoot $tempRepo `
+            -LabVIEWVersion '20.0' `
+            -Bitness '64' `
+            -LabVIEWExecutablePath (Join-Path $labviewDir 'LabVIEW.exe') `
+            -EnableRemediation
+
+        $result.PortNumber | Should -Be 3366
+        $result.RemediationEnabled | Should -BeTrue
+        $result.RemediationApplied | Should -BeTrue
+
+        $iniContent = Get-Content -LiteralPath (Join-Path $labviewDir 'LabVIEW.ini') -Raw
+        $iniContent | Should -Match 'server\.tcp\.enabled=true'
+        $iniContent | Should -Match 'server\.tcp\.port=3366'
     }
 }
 

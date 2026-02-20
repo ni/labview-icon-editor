@@ -70,8 +70,9 @@ Describe 'VI Analyzer contract' {
         )
         $viAnalyzerBlockMatch.Success | Should -BeTrue
         $viAnalyzerBlock = $viAnalyzerBlockMatch.Value
-        $viAnalyzerBlock | Should -Match 'name:\s*VI Analyzer LabVIEW \${{\s*needs\.version-gate\.outputs\.raw\s*}} \${{\s*matrix\.bitness_label\s*}}'
+        $viAnalyzerBlock | Should -Match 'name:\s*VI Analyzer Gate \(LV \${{\s*needs\.version-gate\.outputs\.raw\s*}} \${{\s*matrix\.bitness_label\s*}}\)'
         $viAnalyzerBlock | Should -Match 'needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-64,\s*apply-deps-32\s*\]'
+        $viAnalyzerBlock | Should -Match 'LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT:\s*\${{\s*vars\.LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT\s*\|\|\s*''1''\s*}}'
         $viAnalyzerBlock | Should -Match 'Tooling/Run-ViAnalyzer\.ps1'
         $viAnalyzerBlock | Should -Not -Match "(?m)^\s*if:\s*\$\{\{\s*needs\.prerelease-context\.outputs\.ci_profile != 'release-priority'\s*\}\}"
         $ciContent | Should -Match '(?ms)^  publish-gate:\s*.*?\n\s*-\s*vi-analyzer\s*$'
@@ -109,6 +110,8 @@ Describe 'VI Analyzer contract' {
 
         $content = Get-Content -Raw -Path $script:runViAnalyzerPath
         $content | Should -Match 'Resolve-LabVIEWCliPortFromContract'
+        $content | Should -Match 'LVIE_REMEDIATE_LABVIEWCLI_PORT_CONTRACT'
+        $content | Should -Match '-EnableRemediation:\$portRemediationEnabled'
         $content | Should -Match 'RunVIAnalyzer'
         $content | Should -Match 'analyzed_total'
         $content | Should -Match 'No tests were analyzed'
