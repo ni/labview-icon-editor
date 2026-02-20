@@ -1013,8 +1013,79 @@ jobs:
         if: always()
         uses: ./.github/actions/lvie-job-teardown
 
+  vi-analyzer:
+    name: vi-analyzer-${{ matrix.bitness }}-bit
+    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+    needs: [run-metadata, prerelease-context, version-gate, apply-deps-64, apply-deps-32]
+    runs-on: ${{ matrix.runner_label }}
+    env:
+      LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
+      LVIE_REQUIRED_LABVIEW_VERSION: ${{ needs.version-gate.outputs.raw }}
+      LVIE_REQUIRED_LABVIEW_VERSION_YEAR: ${{ needs.version-gate.outputs.year }}
+      LVIE_REQUIRED_LABVIEW_MINOR_REVISION: ${{ needs.version-gate.outputs.minor }}
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - bitness: '64'
+            runner_label: ${{ vars.LVIE_RUNNER_LABEL_64 || format('self-hosted-windows-lv{0}x64', needs.version-gate.outputs.year) }}
+          - bitness: '32'
+            runner_label: ${{ vars.LVIE_RUNNER_LABEL_32 || format('self-hosted-windows-lv{0}x86', needs.version-gate.outputs.year) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Job setup
+        uses: ./.github/actions/lvie-job-setup
+        with:
+          checkout: 'false'
+          bitness: ${{ matrix.bitness }}
+          create_worktree: 'true'
+          worktree_root_mode: runner_temp
+
+      - name: Run VI Analyzer (LV ${{ matrix.bitness }}-bit)
+        shell: pwsh
+        working-directory: ${{ env.REPO_ROOT }}
+        run: |
+          $reportsRoot = "builds/vi-analyzer/$env:RUNNER_OS-${{ matrix.bitness }}"
+          $statusPath = "builds/status/vi-analyzer-summary-$env:RUNNER_OS-${{ matrix.bitness }}.json"
+          $runnerCliProject = Join-Path $env:REPO_ROOT 'Tooling/runner-cli/RunnerCli/RunnerCli.csproj'
+          if (-not (Test-Path -Path $runnerCliProject -PathType Leaf)) {
+            throw "runner-cli project not found at $runnerCliProject"
+          }
+
+          & pwsh -NoProfile -File "$env:REPO_ROOT/Tooling/Run-ViAnalyzer.ps1" `
+            -RepoRoot $env:REPO_ROOT `
+            -LabVIEWVersion $env:LVIE_REQUIRED_LABVIEW_VERSION `
+            -SupportedBitness '${{ matrix.bitness }}' `
+            -ReportsRoot $reportsRoot `
+            -StatusPath $statusPath
+
+      - name: Upload VI Analyzer reports (LV ${{ matrix.bitness }}-bit)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-analyzer-reports-${{ runner.os }}-${{ matrix.bitness }}-bit
+          path: ${{ env.REPO_ROOT }}/builds/vi-analyzer/${{ runner.os }}-${{ matrix.bitness }}
+          if-no-files-found: warn
+
+      - name: Upload VI Analyzer status (LV ${{ matrix.bitness }}-bit)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-analyzer-status-${{ runner.os }}-${{ matrix.bitness }}-bit
+          path: ${{ env.REPO_ROOT }}/builds/status/vi-analyzer-summary-${{ runner.os }}-${{ matrix.bitness }}.json
+          if-no-files-found: warn
+
+      - name: Job teardown
+        if: always()
+        uses: ./.github/actions/lvie-job-teardown
+
   verify-iepaths:
-    name: Verify IE Paths Gate (LV ${{ matrix.bitness }}-bit)
+    name: verify-iepaths-${{ matrix.bitness }}-bit
     if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
     needs: [run-metadata, prerelease-context, version-gate, apply-deps-64, apply-deps-32]
     runs-on: ${{ matrix.runner_label }}
@@ -1302,7 +1373,7 @@ jobs:
   unit-tests:
     name: Test Source Using LV ${{ matrix.bitness }}-bit
     if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
-    needs: [run-metadata, prerelease-context, version-gate, apply-deps-64, apply-deps-32, verify-iepaths]
+    needs: [run-metadata, prerelease-context, version-gate, apply-deps-64, apply-deps-32, verify-iepaths, vi-analyzer]
     runs-on: ${{ matrix.runner_label }}
     env:
       LVIE_WORKTREE_ROOT: '${{ github.workspace }}\..\..\lvie\w'
@@ -2825,6 +2896,7 @@ jobs:
       - apply-deps-64
       - apply-deps-32
       - verify-iepaths
+      - vi-analyzer
       - unit-tests
       - build-ppl-x64
       - build-ppl-x86
@@ -2877,6 +2949,7 @@ jobs:
             'apply-deps-64',
             'apply-deps-32',
             'verify-iepaths',
+            'vi-analyzer',
             'unit-tests',
             'build-ppl-x64',
             'build-ppl-x86',
@@ -3290,6 +3363,7 @@ jobs:
       - apply-deps-64
       - apply-deps-32
       - verify-iepaths
+      - vi-analyzer
       - unit-tests
       - build-ppl-x64
       - build-ppl-x86
@@ -3338,6 +3412,7 @@ jobs:
             'apply-deps-64',
             'apply-deps-32',
             'verify-iepaths',
+            'vi-analyzer',
             'unit-tests',
             'build-ppl-x64',
             'build-ppl-x86',

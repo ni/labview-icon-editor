@@ -95,19 +95,23 @@ Describe 'CI workflow unit-test bitness contract' {
         $script:workflowContent | Should -Match '(?ms)^  apply-deps-64:\s*$'
         $script:workflowContent | Should -Match '(?ms)^  apply-deps-32:\s*$'
         $script:workflowContent | Should -Match '(?ms)^  verify-iepaths:\s*$'
-        $script:unitTestsSection | Should -Match 'needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-64,\s*apply-deps-32,\s*verify-iepaths\s*\]'
+        $script:workflowContent | Should -Match '(?ms)^  vi-analyzer:\s*$'
+        $script:unitTestsSection | Should -Match 'needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-64,\s*apply-deps-32,\s*verify-iepaths,\s*vi-analyzer\s*\]'
         $script:workflowContent | Should -Match '(?ms)^  publish-gate:\s*.*?\n\s*-\s*docs-lint\s*$'
         $script:workflowContent | Should -Match '(?ms)^  publish-gate:\s*.*?\n\s*-\s*apply-deps-64\s*$'
         $script:workflowContent | Should -Match '(?ms)^  publish-gate:\s*.*?\n\s*-\s*apply-deps-32\s*$'
         $script:workflowContent | Should -Match '(?ms)^  publish-gate:\s*.*?\n\s*-\s*verify-iepaths\s*$'
+        $script:workflowContent | Should -Match '(?ms)^  publish-gate:\s*.*?\n\s*-\s*vi-analyzer\s*$'
         $script:workflowContent | Should -Match '(?ms)^  pipeline-contract:\s*.*?\n\s*-\s*docs-lint\s*$'
         $script:workflowContent | Should -Match '(?ms)^  pipeline-contract:\s*.*?\n\s*-\s*apply-deps-64\s*$'
         $script:workflowContent | Should -Match '(?ms)^  pipeline-contract:\s*.*?\n\s*-\s*apply-deps-32\s*$'
         $script:workflowContent | Should -Match '(?ms)^  pipeline-contract:\s*.*?\n\s*-\s*verify-iepaths\s*$'
+        $script:workflowContent | Should -Match '(?ms)^  pipeline-contract:\s*.*?\n\s*-\s*vi-analyzer\s*$'
         $script:workflowContent | Should -Match "'docs-lint'"
         $script:workflowContent | Should -Match "'apply-deps-64'"
         $script:workflowContent | Should -Match "'apply-deps-32'"
         $script:workflowContent | Should -Match "'verify-iepaths'"
+        $script:workflowContent | Should -Match "'vi-analyzer'"
     }
 
     It 'emits a stable canonical required check context job' {

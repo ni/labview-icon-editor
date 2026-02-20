@@ -56,16 +56,19 @@ Describe 'VI Analyzer contract' {
         }
     }
 
-    It 'wires vi-analyzer into parity ownership only (no duplicate CI lane)' {
+    It 'wires vi-analyzer into CI self-hosted execution and parity Linux container ownership' {
         (Test-Path -LiteralPath $script:ciPath -PathType Leaf) | Should -BeTrue
         (Test-Path -LiteralPath $script:parityPath -PathType Leaf) | Should -BeTrue
 
         $ciContent = Get-Content -Raw -Path $script:ciPath
         $ciContent | Should -Not -Match '(?ms)^\s*container-contract:\s*$'
-        $ciContent | Should -Not -Match '(?ms)^  vi-analyzer:\s*$'
-        $ciContent | Should -Not -Match '(?ms)publish-gate:\s*.*?needs:\s*.*?\n\s*-\s*vi-analyzer\s*$'
-        $ciContent | Should -Not -Match '(?ms)pipeline-contract:\s*.*?needs:\s*.*?\n\s*-\s*vi-analyzer\s*$'
-        $ciContent | Should -Not -Match '(?ms)\$requiredCommon\s*=\s*@\(\s*.*?''vi-analyzer'''
+        $ciContent | Should -Match '(?ms)^  vi-analyzer:\s*$'
+        $ciContent | Should -Match '(?ms)^  vi-analyzer:\s*.*?name:\s*vi-analyzer-\$\{\{\s*matrix\.bitness\s*\}\}-bit'
+        $ciContent | Should -Match '(?ms)^  vi-analyzer:\s*.*?needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-64,\s*apply-deps-32\s*\]'
+        $ciContent | Should -Match '(?ms)^  vi-analyzer:\s*.*?Tooling/Run-ViAnalyzer\.ps1'
+        $ciContent | Should -Match '(?ms)^  publish-gate:\s*.*?\n\s*-\s*vi-analyzer\s*$'
+        $ciContent | Should -Match '(?ms)^  pipeline-contract:\s*.*?\n\s*-\s*vi-analyzer\s*$'
+        $ciContent | Should -Match '(?ms)\$requiredFullValidation\s*=\s*@\(\s*.*?''vi-analyzer'''
 
         $parityContent = Get-Content -Raw -Path $script:parityPath
         $parityContent | Should -Not -Match '(?ms)^  vi-analyzer-linux:\s*$'

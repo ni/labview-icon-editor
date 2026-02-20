@@ -55,6 +55,7 @@ Describe 'CI docs source-of-truth contract' {
             'apply-deps-64',
             'apply-deps-32',
             'verify-iepaths',
+            'vi-analyzer',
             'version',
             'unit-tests',
             'build-ppl-x86',

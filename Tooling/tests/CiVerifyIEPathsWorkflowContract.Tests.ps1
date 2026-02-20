@@ -17,7 +17,7 @@ Describe 'CI workflow verify-iepaths contract' {
     It 'defines verify-iepaths job with expected name and profile gating' {
         $script:workflowContent | Should -Match '(?ms)^  verify-iepaths:\s*$'
         $script:verifyIePathsSection | Should -Not -BeNullOrEmpty
-        $script:verifyIePathsSection | Should -Match 'name:\s*Verify IE Paths Gate \(LV \$\{\{ matrix\.bitness \}\}-bit\)'
+        $script:verifyIePathsSection | Should -Match 'name:\s*verify-iepaths-\$\{\{\s*matrix\.bitness\s*\}\}-bit'
         $script:verifyIePathsSection | Should -Match 'if:\s*\$\{\{\s*needs\.prerelease-context\.outputs\.ci_profile != ''release-priority''\s*\}\}'
     }
 

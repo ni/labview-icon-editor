@@ -60,7 +60,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
     - Run tests using **CI Pipeline**.
     - `pull_request` runs use the `pr-fast` profile (64-bit smoke/missing/unit).
     - `workflow_dispatch` with `force_gcli_lunit=true` uses `release-priority` and skips heavy self-hosted validation jobs.
-    - VI Analyzer ownership is in `labview-parity.yml` and is merged into `Parity (Linux Container <.lvcontainer>)`; `ci.yml` no longer hosts a duplicate VI Analyzer lane.
+    - VI Analyzer runs in both workflows by responsibility: Windows/self-hosted VI Analyzer runs in `ci.yml` after VIPC apply, and Linux-container VI Analyzer remains merged into `Parity (Linux Container <.lvcontainer>)` in `labview-parity.yml`.
     - **CI Pipeline** (`.github/workflows/ci.yml`) runs on `push` (`main`, `develop`, `release/*`), `pull_request`, and `workflow_dispatch`; feature/hotfix branch pushes are intentionally excluded so PR synchronization is the single CI path for those branches.
 
 1. **Build VI Package**
@@ -103,7 +103,9 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 
 2. **CI Pipeline**
    - Includes `unit-tests`, `version`, and `build-vip` jobs, plus container packed-library and prerelease publication jobs.
-   - VI Analyzer execution is owned by `labview-parity.yml` through `Parity (Linux Container <.lvcontainer>)` on `ubuntu-latest`, using `Tooling/Run-ViAnalyzer.ps1` (Dockerized Linux worker) against `Tooling/vi-analyzer/tasks.linux.json`.
+   - VI Analyzer execution is split by responsibility:
+     - `ci.yml` runs self-hosted Windows VI Analyzer after VIPC apply using `Tooling/Run-ViAnalyzer.ps1`.
+     - `labview-parity.yml` keeps Linux-container VI Analyzer merged into `Parity (Linux Container <.lvcontainer>)` on `ubuntu-latest` using `Tooling/vi-analyzer/tasks.linux.json`.
    - Execution profile is computed as `ci_profile`:
      - `release-priority` = `workflow_dispatch` + `force_gcli_lunit=true` (target <= 25 minutes).
      - `pr-fast` = `pull_request` (target <= 35 minutes).
