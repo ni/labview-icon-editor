@@ -1220,6 +1220,11 @@ jobs:
             Write-Warning ("{0} Canary mode active; continuing with warning." -f $message)
           }
 
+          # Prevent nested pwsh non-zero exit codes from failing canary mode.
+          if (-not $enforceMode) {
+            $global:LASTEXITCODE = 0
+          }
+
       - name: Upload verify-iepaths status archive (LV ${{ matrix.bitness }}-bit)
         if: always()
         uses: actions/upload-artifact@v4
