@@ -68,11 +68,15 @@ Describe 'VI Analyzer contract' {
         $ciContent | Should -Not -Match '(?ms)\$requiredCommon\s*=\s*@\(\s*.*?''vi-analyzer'''
 
         $parityContent = Get-Content -Raw -Path $script:parityPath
-        $parityContent | Should -Match '(?ms)^  vi-analyzer-linux:\s*$'
-        $parityContent | Should -Match '(?ms)^  vi-analyzer-linux:\s*.*?name:\s*VI Analyzer Linux container \${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_raw\s*}}'
-        $parityContent | Should -Match '(?ms)^  vi-analyzer-linux:\s*.*?LVIE_CONTAINER_CONTRACT_TAG:\s*\${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_tag\s*}}'
-        $parityContent | Should -Match '(?ms)^  vi-analyzer-linux:\s*.*?LVIE_VI_ANALYZER_LABVIEW_YEAR:\s*\${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_year\s*}}'
-        $parityContent | Should -Match '(?ms)^  vi-analyzer-linux:\s*.*?run-vi-analyzer-linux\.sh'
+        $parityContent | Should -Not -Match '(?ms)^  vi-analyzer-linux:\s*$'
+        $parityContent | Should -Match '(?ms)^  parity-linux:\s*$'
+        $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?name:\s*Parity \(Linux Container \${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_raw\s*}}\)'
+        $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?LVIE_CONTAINER_CONTRACT_TAG:\s*\${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_tag\s*}}'
+        $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?LVIE_VI_ANALYZER_TASKS_PATH:\s*Tooling/vi-analyzer/tasks\.linux\.json'
+        $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?LVIE_VI_ANALYZER_LABVIEW_YEAR:\s*\${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_year\s*}}'
+        $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?run-vi-analyzer-linux\.sh'
+        $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?vi-analyzer-reports-parity'
+        $parityContent | Should -Match '(?ms)^  parity-linux:\s*.*?vi-analyzer-status-parity'
     }
 
     It 'enforces non-zero analyzed tests and file-level failure extraction in Run-ViAnalyzer' {

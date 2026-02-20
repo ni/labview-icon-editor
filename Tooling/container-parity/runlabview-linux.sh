@@ -45,6 +45,9 @@ BUILD_OUTPUT_PATH="$(join_lvie_repo_path "$LVIE_REPO_ROOT" "$BUILD_OUTPUT_RELATI
 LOG_ROOT="$(join_lvie_repo_path "$LVIE_REPO_ROOT" "TestResults/container-parity/linux/logs")"
 SOURCE_SYNC_MANIFEST_PATH="${LVIE_SOURCE_SYNC_MANIFEST_PATH:-$(join_lvie_repo_path "$LVIE_REPO_ROOT" "builds/status/source-sync-manifest-parity-linux.json")}"
 LABVIEW_ROOT="$(dirname "$LABVIEW_PATH")"
+SUPPRESS_OPTIONAL_DOTNET_INTEROP_WARNING_RAW="${LVIE_SUPPRESS_OPTIONAL_DOTNET_INTEROP_WARNING:-true}"
+OPTIONAL_DOTNET_INTEROP_WARNING_REGEX="^(Can't load library libniDotNETCoreInterop\\.so|libniDotNETCoreInterop\\.so: cannot open shared object file: No such file or directory|Can't find library libniDotNETCoreInterop\\.so|Make sure this library is installed in your LD_LIBRARY_PATH|search path, or in /usr/lib64)$"
+SUPPRESS_OPTIONAL_DOTNET_INTEROP_WARNING=false
 
 export LVIE_REPO_ROOT
 export LVIE_PROJECT_PATH
@@ -67,6 +70,58 @@ is_enabled_value() {
   fi
   shopt -u nocasematch
   return 1
+}
+
+append_ld_library_path() {
+  local candidate="$1"
+  if [[ -z "$candidate" || ! -d "$candidate" ]]; then
+    return
+  fi
+
+  if [[ -z "${LD_LIBRARY_PATH:-}" ]]; then
+    export LD_LIBRARY_PATH="$candidate"
+    return
+  fi
+
+  case ":$LD_LIBRARY_PATH:" in
+    *":$candidate:"*) ;;
+    *) export LD_LIBRARY_PATH="$candidate:$LD_LIBRARY_PATH" ;;
+  esac
+}
+
+configure_optional_dotnet_interop() {
+  append_ld_library_path "$LABVIEW_ROOT"
+  append_ld_library_path "$LABVIEW_ROOT/linux"
+
+  local interop_file=""
+  interop_file="$(find "$LABVIEW_ROOT" /usr/local/natinst -name 'libniDotNETCoreInterop.so' -print -quit 2>/dev/null || true)"
+  if [[ -n "$interop_file" ]]; then
+    local interop_dir
+    interop_dir="$(dirname "$interop_file")"
+    append_ld_library_path "$interop_dir"
+    echo "Configured LD_LIBRARY_PATH for optional libniDotNETCoreInterop.so: $interop_dir"
+  else
+    echo "Optional libniDotNETCoreInterop.so not found in container image; continuing."
+  fi
+
+  echo "Effective LD_LIBRARY_PATH: ${LD_LIBRARY_PATH:-<unset>}"
+}
+
+emit_labviewcli_output() {
+  local output_file="$1"
+  local suppress_optional_warning="$2"
+
+  if [[ "$suppress_optional_warning" == "true" ]]; then
+    local suppressed_count
+    suppressed_count="$(grep -Ec "$OPTIONAL_DOTNET_INTEROP_WARNING_REGEX" "$output_file" || true)"
+    if [[ "$suppressed_count" -gt 0 ]]; then
+      grep -Ev "$OPTIONAL_DOTNET_INTEROP_WARNING_REGEX" "$output_file" || true
+      echo "Suppressed $suppressed_count known optional libniDotNETCoreInterop.so warning line(s)."
+      return
+    fi
+  fi
+
+  cat "$output_file"
 }
 
 sync_icon_editor_sources_for_build_spec() {
@@ -164,11 +219,15 @@ invoke_labviewcli() {
   before_logs_file="$(mktemp)"
   list_labviewcli_temp_logs > "$before_logs_file"
 
+  local output_file
+  output_file="$(mktemp)"
   local status
   set +e
-  LabVIEWCLI "$@"
+  LabVIEWCLI "$@" >"$output_file" 2>&1
   status=$?
   set -e
+  emit_labviewcli_output "$output_file" "$SUPPRESS_OPTIONAL_DOTNET_INTEROP_WARNING"
+  rm -f "$output_file"
 
   local timestamp
   timestamp="$(date +%Y%m%d-%H%M%S)"
@@ -206,6 +265,12 @@ if ! command -v LabVIEWCLI >/dev/null 2>&1; then
   echo "ERROR: LabVIEWCLI is not available on PATH inside the container." >&2
   exit 1
 fi
+
+if is_enabled_value "$SUPPRESS_OPTIONAL_DOTNET_INTEROP_WARNING_RAW"; then
+  SUPPRESS_OPTIONAL_DOTNET_INTEROP_WARNING=true
+fi
+echo "Suppress optional libniDotNETCoreInterop.so warning output: $SUPPRESS_OPTIONAL_DOTNET_INTEROP_WARNING"
+configure_optional_dotnet_interop
 
 if [[ -n "${CONTAINER_PARITY_BUILD_SPEC:-}" ]] && ! is_enabled_value "${CONTAINER_PARITY_BUILD_SPEC}"; then
   echo "ERROR: CONTAINER_PARITY_BUILD_SPEC disable is unsupported. Build-spec execution is mandatory; unset CONTAINER_PARITY_BUILD_SPEC or set it to true." >&2

@@ -39,6 +39,9 @@ XVFB_BIN="${LVIE_XVFB_BIN:-$(command -v Xvfb || true)}"
 XVFB_DISPLAY="${LVIE_XVFB_DISPLAY:-:99}"
 XVFB_PID=""
 LABVIEWCLI_HEARTBEAT_SECONDS="${LVIE_LABVIEWCLI_HEARTBEAT_SECONDS:-30}"
+SUPPRESS_OPTIONAL_DOTNET_INTEROP_WARNING_RAW="${LVIE_SUPPRESS_OPTIONAL_DOTNET_INTEROP_WARNING:-true}"
+OPTIONAL_DOTNET_INTEROP_WARNING_REGEX="^(Can't load library libniDotNETCoreInterop\\.so|libniDotNETCoreInterop\\.so: cannot open shared object file: No such file or directory|Can't find library libniDotNETCoreInterop\\.so|Make sure this library is installed in your LD_LIBRARY_PATH|search path, or in /usr/lib64)$"
+SUPPRESS_OPTIONAL_DOTNET_INTEROP_WARNING=false
 
 echo "Resolved repo root: $LVIE_REPO_ROOT (source: $LVIE_REPO_ROOT_SOURCE)"
 echo "Resolved tasks path: $TASKS_PATH"
@@ -92,6 +95,64 @@ is_enabled_value() {
   shopt -u nocasematch
   return 1
 }
+
+append_ld_library_path() {
+  local candidate="$1"
+  if [[ -z "$candidate" || ! -d "$candidate" ]]; then
+    return
+  fi
+
+  if [[ -z "${LD_LIBRARY_PATH:-}" ]]; then
+    export LD_LIBRARY_PATH="$candidate"
+    return
+  fi
+
+  case ":$LD_LIBRARY_PATH:" in
+    *":$candidate:"*) ;;
+    *) export LD_LIBRARY_PATH="$candidate:$LD_LIBRARY_PATH" ;;
+  esac
+}
+
+configure_optional_dotnet_interop() {
+  append_ld_library_path "$LABVIEW_ROOT"
+  append_ld_library_path "$LABVIEW_ROOT/linux"
+
+  local interop_file=""
+  interop_file="$(find "$LABVIEW_ROOT" /usr/local/natinst -name 'libniDotNETCoreInterop.so' -print -quit 2>/dev/null || true)"
+  if [[ -n "$interop_file" ]]; then
+    local interop_dir
+    interop_dir="$(dirname "$interop_file")"
+    append_ld_library_path "$interop_dir"
+    echo "Configured LD_LIBRARY_PATH for optional libniDotNETCoreInterop.so: $interop_dir"
+  else
+    echo "Optional libniDotNETCoreInterop.so not found in container image; continuing."
+  fi
+
+  echo "Effective LD_LIBRARY_PATH: ${LD_LIBRARY_PATH:-<unset>}"
+}
+
+emit_labviewcli_output() {
+  local output_file="$1"
+  local suppress_optional_warning="$2"
+
+  if [[ "$suppress_optional_warning" == "true" ]]; then
+    local suppressed_count
+    suppressed_count="$(grep -Ec "$OPTIONAL_DOTNET_INTEROP_WARNING_REGEX" "$output_file" || true)"
+    if [[ "$suppressed_count" -gt 0 ]]; then
+      grep -Ev "$OPTIONAL_DOTNET_INTEROP_WARNING_REGEX" "$output_file" || true
+      echo "Suppressed $suppressed_count known optional libniDotNETCoreInterop.so warning line(s)."
+      return
+    fi
+  fi
+
+  cat "$output_file"
+}
+
+if is_enabled_value "$SUPPRESS_OPTIONAL_DOTNET_INTEROP_WARNING_RAW"; then
+  SUPPRESS_OPTIONAL_DOTNET_INTEROP_WARNING=true
+fi
+echo "Suppress optional libniDotNETCoreInterop.so warning output: $SUPPRESS_OPTIONAL_DOTNET_INTEROP_WARNING"
+configure_optional_dotnet_interop
 
 if [[ ! -f "$TASKS_PATH" ]]; then
   echo "ERROR: VI Analyzer task registry was not found: $TASKS_PATH" >&2
@@ -230,7 +291,7 @@ invoke_labviewcli() {
   status=$?
   set -e
 
-  cat "$output_file"
+  emit_labviewcli_output "$output_file" "$SUPPRESS_OPTIONAL_DOTNET_INTEROP_WARNING"
   rm -f "$output_file"
 
   local timestamp

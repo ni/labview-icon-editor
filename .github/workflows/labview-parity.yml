@@ -844,6 +844,15 @@ jobs:
     needs: [resolve-parity-context]
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      LVIE_VI_ANALYZER_TASKS_PATH: Tooling/vi-analyzer/tasks.linux.json
+      LVIE_CONTAINER_CONTRACT_RAW: ${{ needs.resolve-parity-context.outputs.lvcontainer_raw }}
+      LVIE_CONTAINER_CONTRACT_TAG: ${{ needs.resolve-parity-context.outputs.lvcontainer_linux_tag }}
+      LVIE_CONTAINER_CONTRACT_IMAGE: nationalinstruments/labview:${{ needs.resolve-parity-context.outputs.lvcontainer_linux_tag }}
+      LVIE_CONTAINER_CONTRACT_OS: linux
+      LVIE_CONTAINER_CONTRACT_YEAR: ${{ needs.resolve-parity-context.outputs.lvcontainer_linux_year }}
+      LVIE_CONTAINER_CONTRACT_RELEASE_TAG: ${{ needs.resolve-parity-context.outputs.lv_release_linux }}
+      LVIE_CONTAINER_CONTRACT_LINUX_IMAGE: nationalinstruments/labview:${{ needs.resolve-parity-context.outputs.lvcontainer_linux_tag }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -925,24 +934,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-  vi-analyzer-linux:
-    name: VI Analyzer Linux container ${{ needs.resolve-parity-context.outputs.lvcontainer_raw }}
-    needs: [resolve-parity-context]
-    runs-on: ubuntu-latest
-    env:
-      LVIE_VI_ANALYZER_TASKS_PATH: Tooling/vi-analyzer/tasks.linux.json
-      LVIE_CONTAINER_CONTRACT_RAW: ${{ needs.resolve-parity-context.outputs.lvcontainer_raw }}
-      LVIE_CONTAINER_CONTRACT_TAG: ${{ needs.resolve-parity-context.outputs.lvcontainer_linux_tag }}
-      LVIE_CONTAINER_CONTRACT_IMAGE: nationalinstruments/labview:${{ needs.resolve-parity-context.outputs.lvcontainer_linux_tag }}
-      LVIE_CONTAINER_CONTRACT_OS: linux
-      LVIE_CONTAINER_CONTRACT_YEAR: ${{ needs.resolve-parity-context.outputs.lvcontainer_linux_year }}
-      LVIE_CONTAINER_CONTRACT_RELEASE_TAG: ${{ needs.resolve-parity-context.outputs.lv_release_linux }}
-      LVIE_CONTAINER_CONTRACT_LINUX_IMAGE: nationalinstruments/labview:${{ needs.resolve-parity-context.outputs.lvcontainer_linux_tag }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Validate vi-analyzer container selection
+      - name: Validate merged vi-analyzer container selection
         shell: bash
         run: |
           set -euo pipefail
@@ -955,7 +947,7 @@ jobs:
             exit 1
           fi
 
-      - name: Pull LabVIEW Linux image
+      - name: Pull LabVIEW Linux image for merged vi-analyzer
         shell: bash
         run: |
           set -euo pipefail
@@ -964,7 +956,7 @@ jobs:
           docker pull "${image}"
           echo "LABVIEW_LINUX_IMAGE=${image}" >> "$GITHUB_ENV"
 
-      - name: Run VI Analyzer tasks (Linux container)
+      - name: Run merged VI Analyzer tasks (Linux container)
         shell: bash
         env:
           LVIE_VI_ANALYZER_LABVIEW_YEAR: ${{ needs.resolve-parity-context.outputs.lvcontainer_linux_year }}
@@ -993,7 +985,7 @@ jobs:
             "${LABVIEW_LINUX_IMAGE}" \
             bash -lc "chmod +x /workspace/Tooling/container-parity/run-vi-analyzer-linux.sh && /workspace/Tooling/container-parity/run-vi-analyzer-linux.sh"
 
-      - name: Normalize Linux container output ownership
+      - name: Normalize merged Linux container output ownership
         if: always()
         shell: bash
         run: |
@@ -1008,7 +1000,7 @@ jobs:
             fi
           done
 
-      - name: Write VI Analyzer status summary (Linux container)
+      - name: Write merged VI Analyzer status summary (Linux container)
         if: always()
         shell: pwsh
         run: |
@@ -1091,7 +1083,7 @@ jobs:
 
           $status | ConvertTo-Json -Depth 8 | Out-File -FilePath $statusPath -Encoding utf8
 
-      - name: Upload VI Analyzer logs (Linux container)
+      - name: Upload merged VI Analyzer logs (Linux container)
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -1099,7 +1091,7 @@ jobs:
           path: ${{ github.workspace }}/TestResults/container-parity/linux/vi-analyzer/logs
           if-no-files-found: warn
 
-      - name: Upload VI Analyzer reports
+      - name: Upload merged VI Analyzer reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -1107,7 +1099,7 @@ jobs:
           path: ${{ github.workspace }}/builds/vi-analyzer
           if-no-files-found: warn
 
-      - name: Upload VI Analyzer status
+      - name: Upload merged VI Analyzer status
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -1495,7 +1487,6 @@ jobs:
       - resolve-parity-context
       - self-hosted-policy-gate
       - parity-linux
-      - vi-analyzer-linux
       - parity-windows
       - parity-self-hosted-64
       - parity-self-hosted-32
@@ -1506,7 +1497,6 @@ jobs:
         env:
           LVIE_POLICY_GATE_RESULT: ${{ needs['self-hosted-policy-gate'].result }}
           LVIE_PARITY_LINUX_RESULT: ${{ needs['parity-linux'].result }}
-          LVIE_VI_ANALYZER_RESULT: ${{ needs['vi-analyzer-linux'].result }}
           LVIE_PARITY_WINDOWS_RESULT: ${{ needs['parity-windows'].result }}
           LVIE_SELF_HOSTED_64_RESULT: ${{ needs['parity-self-hosted-64'].result }}
           LVIE_SELF_HOSTED_32_RESULT: ${{ needs['parity-self-hosted-32'].result }}
@@ -1573,8 +1563,7 @@ jobs:
               '### Job Results'
               ''
               ('- self-hosted-policy-gate: `{0}`' -f $env:LVIE_POLICY_GATE_RESULT)
-              ('- parity-linux: `{0}`' -f $env:LVIE_PARITY_LINUX_RESULT)
-              ('- vi-analyzer-linux: `{0}`' -f $env:LVIE_VI_ANALYZER_RESULT)
+              ('- parity-linux (includes vi-analyzer-linux responsibilities): `{0}`' -f $env:LVIE_PARITY_LINUX_RESULT)
               ('- parity-windows: `{0}`' -f $env:LVIE_PARITY_WINDOWS_RESULT)
               ('- parity-self-hosted-64: `{0}`' -f $env:LVIE_SELF_HOSTED_64_RESULT)
               ('- parity-self-hosted-32: `{0}`' -f $env:LVIE_SELF_HOSTED_32_RESULT)

@@ -118,24 +118,28 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $parityWindowsBlock | Should -Not -Match 'github\.event_name\s*=='
     }
 
-    It 'runs VI Analyzer in parity from the resolved .lvcontainer linux contract' {
+    It 'runs VI Analyzer in parity from the resolved .lvcontainer linux contract inside parity-linux job' {
         $workflowContent | Should -Match '(?ms)^\s*resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*lvcontainer_linux_tag:\s*\$\{\{\s*steps\.resolve\.outputs\.lvcontainer_linux_tag\s*\}\}'
         $workflowContent | Should -Match '(?ms)^\s*resolve-parity-context:\s*.*?outputs:\s*.*?\n\s*lvcontainer_linux_year:\s*\$\{\{\s*steps\.resolve\.outputs\.lvcontainer_linux_year\s*\}\}'
+        $workflowContent | Should -Not -Match '(?ms)^  vi-analyzer-linux:\s*$'
 
-        $viAnalyzerMatch = [regex]::Match(
+        $parityLinuxMatch = [regex]::Match(
             $workflowContent,
-            '(?ms)^  vi-analyzer-linux:\s*$.*?(?=^  [A-Za-z0-9_-]+:\s*$|\z)'
+            '(?ms)^  parity-linux:\s*$.*?(?=^  [A-Za-z0-9_-]+:\s*$|\z)'
         )
-        $viAnalyzerMatch.Success | Should -BeTrue
-        $viAnalyzerBlock = $viAnalyzerMatch.Value
+        $parityLinuxMatch.Success | Should -BeTrue
+        $parityLinuxBlock = $parityLinuxMatch.Value
 
-        $viAnalyzerBlock | Should -Match '(?m)^\s*name:\s*VI Analyzer Linux container \$\{\{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_raw\s*\}\}'
-        $viAnalyzerBlock | Should -Match '(?m)^\s*needs:\s*\[\s*resolve-parity-context\s*\]'
-        $viAnalyzerBlock | Should -Match '(?m)^\s*runs-on:\s*ubuntu-latest'
-        $viAnalyzerBlock | Should -Match 'LVIE_CONTAINER_CONTRACT_TAG:\s*\$\{\{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_tag\s*\}\}'
-        $viAnalyzerBlock | Should -Match 'LVIE_CONTAINER_CONTRACT_LINUX_IMAGE:\s*nationalinstruments/labview:\$\{\{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_tag\s*\}\}'
-        $viAnalyzerBlock | Should -Match 'LVIE_VI_ANALYZER_LABVIEW_YEAR:\s*\$\{\{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_year\s*\}\}'
-        $viAnalyzerBlock | Should -Match 'run-vi-analyzer-linux\.sh'
+        $parityLinuxBlock | Should -Match '(?m)^\s*name:\s*Parity \(Linux Container \$\{\{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_raw\s*\}\}\)'
+        $parityLinuxBlock | Should -Match '(?m)^\s*needs:\s*\[\s*resolve-parity-context\s*\]'
+        $parityLinuxBlock | Should -Match '(?m)^\s*runs-on:\s*ubuntu-latest'
+        $parityLinuxBlock | Should -Match 'LVIE_CONTAINER_CONTRACT_TAG:\s*\$\{\{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_tag\s*\}\}'
+        $parityLinuxBlock | Should -Match 'LVIE_CONTAINER_CONTRACT_LINUX_IMAGE:\s*nationalinstruments/labview:\$\{\{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_tag\s*\}\}'
+        $parityLinuxBlock | Should -Match 'LVIE_VI_ANALYZER_TASKS_PATH:\s*Tooling/vi-analyzer/tasks\.linux\.json'
+        $parityLinuxBlock | Should -Match 'LVIE_VI_ANALYZER_LABVIEW_YEAR:\s*\$\{\{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_year\s*\}\}'
+        $parityLinuxBlock | Should -Match 'run-vi-analyzer-linux\.sh'
+        $parityLinuxBlock | Should -Match 'vi-analyzer-reports-parity'
+        $parityLinuxBlock | Should -Match 'vi-analyzer-status-parity'
     }
 
     It 'defines mandatory dual-bitness self-hosted lanes with runner-cli one-shot execution and cleanup' {
@@ -259,6 +263,7 @@ Describe 'LabVIEW parity workflow build-spec contract' {
         $summaryBlock | Should -Match 'self_hosted_64_online_count/runners:'
         $summaryBlock | Should -Match 'self_hosted_32_online_count/runners:'
         $summaryBlock | Should -Match "self-hosted-policy-gate"
-        $summaryBlock | Should -Match "vi-analyzer-linux"
+        $summaryBlock | Should -Match 'parity-linux \(includes vi-analyzer-linux responsibilities\)'
+        $summaryBlock | Should -Not -Match 'needs\[''vi-analyzer-linux''\]'
     }
 }

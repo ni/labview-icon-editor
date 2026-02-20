@@ -13,7 +13,7 @@ This repository includes a hosted parity workflow at `.github/workflows/labview-
 
 - Linux container image: `nationalinstruments/labview:<release>-linux`
 - Windows container image: `nationalinstruments/labview:<release>-windows`
-- VI Analyzer Linux container lane, resolved from `.lvcontainer` through parity context.
+- VI Analyzer Linux-container responsibilities are merged into `Parity (Linux Container <.lvcontainer>)`.
 - Always-on operation: `LabVIEWCLI MassCompile` on `Test/Templates`
 - Default exclusion: `Polymorphic Template.vi` is excluded from parity MassCompile via `CONTAINER_PARITY_EXCLUDE_FILES` because it is a known headless bad VI in container runs.
 
@@ -29,7 +29,7 @@ Build-spec parity is mandatory and is a blocking check.
 - Container lanes:
   - `Parity (Linux Container <.lvcontainer>)`
   - `Parity (Windows Container <resolved windows tag>)`
-  - `VI Analyzer Linux container <.lvcontainer>`
+  `Parity (Linux Container <.lvcontainer>)` also owns the Linux VI Analyzer responsibilities.
   These lanes always run in every parity mode.
 
 - Self-hosted lanes:
@@ -94,7 +94,7 @@ LabVIEWCLI operation logs are captured and uploaded per OS as diagnostics:
 - `labview-container-logs-windows`
 - `labview-container-logs-linux`
 
-VI Analyzer artifacts from parity:
+VI Analyzer artifacts from parity (emitted by `Parity (Linux Container <.lvcontainer>)`):
 - `vi-analyzer-linux-logs-parity`
 - `vi-analyzer-reports-parity`
 - `vi-analyzer-status-parity`
@@ -119,7 +119,7 @@ PR run:
 
 - Triggered automatically when parity workflow/script files, `.lvversion`, `lv_icon_editor.lvproj`, or `Test/Templates` change.
 - PR runs default to `parity_mode=auto`:
-  - container lanes (including VI Analyzer) always run
+  - container lanes always run (`Parity (Linux Container <.lvcontainer>)` includes Linux VI Analyzer responsibilities)
   - self-hosted lanes run only if a matching runner is online
 
 ## Local Deterministic Preflight
@@ -139,7 +139,7 @@ pwsh -NoProfile -File .\Tooling\Invoke-LinuxContainerPreflight.ps1 -RepoRoot . -
 Behavior contract:
 - Resolves `.lvcontainer` via `Get-LabVIEWContainerReleaseInfo`.
 - Uses resolved `ReleaseTag` for `runner-cli parity context --lv-release <releaseTag>`.
-- Uses resolved `LinuxImage` for Docker image inspect/pull and VI Analyzer worker.
+- Uses resolved `LinuxImage` for Docker image inspect/pull and Linux parity execution, including merged VI Analyzer responsibilities.
 - Fails fast when `.lvcontainer` resolves to a non-linux tag.
 
 Outputs:

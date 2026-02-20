@@ -262,42 +262,19 @@ function ConvertTo-SmokePesterResult {
 function Import-DevModeSmokePester {
     [CmdletBinding()]
     param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+
         [version]$MinimumVersion = [version]'5.0.0'
     )
 
-    $loadedPester = Get-Module -Name Pester
-    if ($loadedPester -and $loadedPester.Version -lt $MinimumVersion) {
-        Remove-Module -Name Pester -Force -ErrorAction SilentlyContinue
+    $bootstrapPath = Join-Path $RepoRoot 'Tooling\support\PesterBootstrap.ps1'
+    if (-not (Test-Path -LiteralPath $bootstrapPath -PathType Leaf)) {
+        throw "Pester bootstrap helper not found: $bootstrapPath"
     }
 
-    $available = @(Get-Module -ListAvailable -Name Pester | Sort-Object Version -Descending)
-    $candidate = @($available | Where-Object { $_.Version -ge $MinimumVersion } | Select-Object -First 1)
-
-    if (-not $candidate -or $candidate.Count -eq 0) {
-        Write-Host ("Pester >= {0} not found. Attempting install in CurrentUser scope..." -f $MinimumVersion)
-        try {
-            $repo = Get-PSRepository -Name PSGallery -ErrorAction SilentlyContinue
-            if ($repo -and $repo.InstallationPolicy -ne 'Trusted') {
-                Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-            }
-            Install-Module -Name Pester -MinimumVersion $MinimumVersion -Scope CurrentUser -Force -AllowClobber -SkipPublisherCheck
-        } catch {
-            throw ("Unable to install Pester >= {0}. Install it manually (Install-Module Pester -Scope CurrentUser). Error: {1}" -f $MinimumVersion, $_.Exception.Message)
-        }
-
-        $available = @(Get-Module -ListAvailable -Name Pester | Sort-Object Version -Descending)
-        $candidate = @($available | Where-Object { $_.Version -ge $MinimumVersion } | Select-Object -First 1)
-        if (-not $candidate -or $candidate.Count -eq 0) {
-            throw ("Pester >= {0} is required for DevMode.NoLabVIEW smoke tests." -f $MinimumVersion)
-        }
-    }
-
-    Import-Module -Name $candidate[0].Path -Force -ErrorAction Stop | Out-Null
-    if (-not (Get-Command -Name New-PesterConfiguration -ErrorAction SilentlyContinue)) {
-        throw ("Loaded Pester {0} but New-PesterConfiguration is unavailable. Ensure Pester >= {1}." -f $candidate[0].Version, $MinimumVersion)
-    }
-
-    return $candidate[0].Version.ToString()
+    . $bootstrapPath
+    return (Import-RepoPester -RepoRoot $RepoRoot -MinimumVersion $MinimumVersion -AllowInstallFromGallery)
 }
 
 function Invoke-DevModeNoLabVIEWSmokePester {
@@ -368,8 +345,9 @@ if ([string]::IsNullOrWhiteSpace($LabVIEWVersion)) {
 
 Assert-DevModeNoLabVIEWProjectFileClean -RepoRoot $repoRoot -ProjectRelativePath 'lv_icon_editor.lvproj'
 
-$pesterVersion = Import-DevModeSmokePester
-Write-Host ("Using Pester {0} for DevMode.NoLabVIEW smoke." -f $pesterVersion)
+$pesterInfo = Import-DevModeSmokePester -RepoRoot $repoRoot
+$pesterVersion = $pesterInfo.Version
+Write-Host ("Using Pester {0} from {1} for DevMode.NoLabVIEW smoke." -f $pesterInfo.Version, $pesterInfo.ModuleBase)
 
 $requestedSuite = Get-DevModeNoLabVIEWSmokeSuite -Depth $DevModeNoLabVIEWSmokeDepth
 $requestedSuiteTests = @($requestedSuite.Tests)
@@ -380,7 +358,8 @@ if (-not $requestedSuiteTests -or $requestedSuiteTests.Count -eq 0) {
 $resultsRoot = Join-Path $repoRoot 'TestResults\devmode-no-labview-smoke'
 New-Item -Path $resultsRoot -ItemType Directory -Force | Out-Null
 
-$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$timestamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
+$runToken = '{0}-{1}' -f $timestamp, $PID
 $bitnesses = Resolve-SmokeBitnessList -Bitness $LabVIEWBitness
 $failures = New-Object System.Collections.Generic.List[string]
 $runSummaries = @()
@@ -441,8 +420,8 @@ try {
         Write-Host ("Running DevMode.NoLabVIEW smoke ({0}-bit, requested depth={1}, effective depth={2})..." -f $bitness, $DevModeNoLabVIEWSmokeDepth, $effectiveDepth)
         $env:LABVIEW_BITNESS = $bitness
 
-        $xmlPath = Join-Path $resultsRoot ("pester-devmode-no-labview-smoke-{0}-{1}-bit-{2}.xml" -f $LabVIEWVersion, $bitness, $timestamp)
-        $summaryPath = Join-Path $resultsRoot ("summary-{0}-bit-{1}.txt" -f $bitness, $timestamp)
+        $xmlPath = Join-Path $resultsRoot ("pester-devmode-no-labview-smoke-{0}-{1}-bit-{2}.xml" -f $LabVIEWVersion, $bitness, $runToken)
+        $summaryPath = Join-Path $resultsRoot ("summary-{0}-bit-{1}.txt" -f $bitness, $runToken)
 
         $result = Invoke-DevModeNoLabVIEWSmokePester -SuitePaths $suitePaths -XmlPath $xmlPath
         $coverage = Test-DevModeNoLabVIEWSmokeCoverage -PesterResult $result -Suite $effectiveSuite

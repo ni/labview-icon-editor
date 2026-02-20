@@ -195,7 +195,7 @@ Below are the **key GitHub Actions** provided in this repository:
 The [`ci.yml`](../.github/workflows/ci.yml) pipeline breaks the build into several jobs:
 
 - **pylavi-validate** – report-only LabVIEW file validation using `vi_validate` (strict + legacy profiles) with `.lvversion`-synced version gating and optional baseline/delta reporting.
-- **VI Analyzer ownership note** – the blocking Linux container VI Analyzer lane now lives in [`labview-parity.yml`](../.github/workflows/labview-parity.yml) (`vi-analyzer-linux`) and uploads `vi-analyzer-reports-parity` plus `vi-analyzer-status-parity` (`builds/status/vi-analyzer-summary.parity.json`).
+- **VI Analyzer ownership note** – blocking Linux container VI Analyzer responsibilities are merged into `Parity (Linux Container <.lvcontainer>)` in [`labview-parity.yml`](../.github/workflows/labview-parity.yml), including `vi-analyzer-reports-parity` and `vi-analyzer-status-parity` (`builds/status/vi-analyzer-summary.parity.json`).
 - **prerelease-context** – computes prerelease publish eligibility, reason, merged-PR bump override context, and the execution profile (`ci_profile`: `release-priority`, `pr-fast`, `full`).
 - **changes** – checks out the repository and detects `.vipc` file changes for diagnostics/reporting in downstream jobs.
 - **apply-deps-64 / apply-deps-32** – run VIPC audit (`Assert-VipcApplied`) per bitness lane on bitness-addressable runner labels (`LVIE_RUNNER_LABEL_64` / `LVIE_RUNNER_LABEL_32`, with fallback to `LVIE_RUNNER_LABEL`), then optionally run informational VIPC apply diagnostics when manually dispatched with `vipc_apply_info=true`.

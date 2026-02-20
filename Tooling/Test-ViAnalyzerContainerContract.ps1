@@ -69,66 +69,90 @@ if ($ciContent) {
 }
 
 if ($parityContent) {
-    $viAnalyzerMatch = [regex]::Match(
+    if ($parityContent -match '(?ms)^\s*vi-analyzer-linux:\s*$') {
+        Add-ContractViolation -Type 'legacy-vi-analyzer-job-present' -Message 'labview-parity.yml must not define a standalone vi-analyzer-linux job; merge responsibilities into parity-linux.'
+    }
+
+    $parityLinuxMatch = [regex]::Match(
         $parityContent,
-        '(?ms)^\s*vi-analyzer-linux:\s*$.*?(?=^\s{2}[A-Za-z0-9_-]+:\s*$|\z)'
+        '(?ms)^\s*parity-linux:\s*$.*?(?=^\s{2}[A-Za-z0-9_-]+:\s*$|\z)'
     )
 
-    if (-not $viAnalyzerMatch.Success) {
-        Add-ContractViolation -Type 'missing-parity-vi-analyzer-job' -Message 'labview-parity.yml must define vi-analyzer-linux job block.'
+    if (-not $parityLinuxMatch.Success) {
+        Add-ContractViolation -Type 'missing-parity-linux-job' -Message 'labview-parity.yml must define parity-linux job block.'
     } else {
-        $viAnalyzerBlock = $viAnalyzerMatch.Value
+        $parityLinuxBlock = $parityLinuxMatch.Value
 
         $requiredPatterns = @(
             @{
-                Type    = 'parity-vi-analyzer-dynamic-name'
-                Pattern = 'name:\s*VI Analyzer Linux container \${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_raw\s*}}'
-                Message = 'vi-analyzer-linux job name must derive from resolve-parity-context.outputs.lvcontainer_raw.'
+                Type    = 'parity-linux-dynamic-name'
+                Pattern = 'name:\s*Parity \(Linux Container \${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_raw\s*}}\)'
+                Message = 'parity-linux job name must derive from resolve-parity-context.outputs.lvcontainer_raw.'
             },
             @{
-                Type    = 'parity-vi-analyzer-needs-resolve'
+                Type    = 'parity-linux-needs-resolve'
                 Pattern = 'needs:\s*\[\s*resolve-parity-context\s*\]'
-                Message = 'vi-analyzer-linux needs list must include resolve-parity-context.'
+                Message = 'parity-linux needs list must include resolve-parity-context.'
             },
             @{
-                Type    = 'parity-vi-analyzer-image-env'
+                Type    = 'parity-linux-vi-analyzer-image-env'
                 Pattern = 'LVIE_CONTAINER_CONTRACT_LINUX_IMAGE:\s*nationalinstruments/labview:\${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_tag\s*}}'
-                Message = 'vi-analyzer-linux job env must map LVIE_CONTAINER_CONTRACT_LINUX_IMAGE from resolve-parity-context linux tag output.'
+                Message = 'parity-linux job env must map LVIE_CONTAINER_CONTRACT_LINUX_IMAGE from resolve-parity-context linux tag output.'
             },
             @{
-                Type    = 'parity-vi-analyzer-tag-env'
+                Type    = 'parity-linux-vi-analyzer-tag-env'
                 Pattern = 'LVIE_CONTAINER_CONTRACT_TAG:\s*\${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_tag\s*}}'
-                Message = 'vi-analyzer-linux job env must map LVIE_CONTAINER_CONTRACT_TAG from resolve-parity-context outputs.'
+                Message = 'parity-linux job env must map LVIE_CONTAINER_CONTRACT_TAG from resolve-parity-context outputs.'
             },
             @{
-                Type    = 'parity-vi-analyzer-image-tag-env'
+                Type    = 'parity-linux-vi-analyzer-image-tag-env'
                 Pattern = 'LVIE_CONTAINER_CONTRACT_IMAGE:\s*nationalinstruments/labview:\${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_tag\s*}}'
-                Message = 'vi-analyzer-linux job env must map LVIE_CONTAINER_CONTRACT_IMAGE from resolve-parity-context outputs.'
+                Message = 'parity-linux job env must map LVIE_CONTAINER_CONTRACT_IMAGE from resolve-parity-context outputs.'
             },
             @{
-                Type    = 'parity-vi-analyzer-os-env'
+                Type    = 'parity-linux-vi-analyzer-os-env'
                 Pattern = 'LVIE_CONTAINER_CONTRACT_OS:\s*linux'
-                Message = 'vi-analyzer-linux job env must map LVIE_CONTAINER_CONTRACT_OS to linux.'
+                Message = 'parity-linux job env must map LVIE_CONTAINER_CONTRACT_OS to linux.'
             },
             @{
-                Type    = 'parity-vi-analyzer-os-guard'
-                Pattern = '(?s)Validate vi-analyzer container selection.*?LVIE_CONTAINER_CONTRACT_OS.*?requires a linux container tag'
-                Message = 'vi-analyzer-linux must fail fast when a non-linux container tag is selected.'
+                Type    = 'parity-linux-vi-analyzer-tasks-env'
+                Pattern = 'LVIE_VI_ANALYZER_TASKS_PATH:\s*Tooling/vi-analyzer/tasks\.linux\.json'
+                Message = 'parity-linux job env must define LVIE_VI_ANALYZER_TASKS_PATH to Tooling/vi-analyzer/tasks.linux.json.'
             },
             @{
-                Type    = 'parity-vi-analyzer-pull-image'
+                Type    = 'parity-linux-vi-analyzer-os-guard'
+                Pattern = '(?s)Validate merged vi-analyzer container selection.*?LVIE_CONTAINER_CONTRACT_OS.*?requires a linux container tag'
+                Message = 'parity-linux merged vi-analyzer path must fail fast when a non-linux container tag is selected.'
+            },
+            @{
+                Type    = 'parity-linux-vi-analyzer-pull-image'
                 Pattern = 'image="\$\{LVIE_CONTAINER_CONTRACT_LINUX_IMAGE\}"'
-                Message = 'vi-analyzer-linux pull step must use LVIE_CONTAINER_CONTRACT_LINUX_IMAGE.'
+                Message = 'parity-linux merged vi-analyzer pull step must use LVIE_CONTAINER_CONTRACT_LINUX_IMAGE.'
             },
             @{
-                Type    = 'parity-vi-analyzer-runtime-year'
+                Type    = 'parity-linux-vi-analyzer-runtime-year'
                 Pattern = 'LVIE_VI_ANALYZER_LABVIEW_YEAR:\s*\${{\s*needs\.resolve-parity-context\.outputs\.lvcontainer_linux_year\s*}}'
-                Message = 'vi-analyzer-linux runtime year must come from resolve-parity-context linux year output.'
+                Message = 'parity-linux merged vi-analyzer runtime year must come from resolve-parity-context linux year output.'
+            },
+            @{
+                Type    = 'parity-linux-vi-analyzer-worker'
+                Pattern = 'run-vi-analyzer-linux\.sh'
+                Message = 'parity-linux must run Tooling/container-parity/run-vi-analyzer-linux.sh for merged VI Analyzer responsibilities.'
+            },
+            @{
+                Type    = 'parity-linux-vi-analyzer-artifacts'
+                Pattern = 'vi-analyzer-reports-parity'
+                Message = 'parity-linux must upload vi-analyzer-reports-parity artifact.'
+            },
+            @{
+                Type    = 'parity-linux-vi-analyzer-status-artifact'
+                Pattern = 'vi-analyzer-status-parity'
+                Message = 'parity-linux must upload vi-analyzer-status-parity artifact.'
             }
         )
 
         foreach ($check in $requiredPatterns) {
-            if ($viAnalyzerBlock -notmatch $check.Pattern) {
+            if ($parityLinuxBlock -notmatch $check.Pattern) {
                 Add-ContractViolation -Type $check.Type -Message $check.Message
             }
         }
@@ -137,17 +161,17 @@ if ($parityContent) {
             @{
                 Type    = 'legacy-lv-release-format'
                 Pattern = 'LV_RELEASE:\s*\${{\s*format\(''\{0\}q1'',\s*needs\.version-gate\.outputs\.year\)\s*}}'
-                Message = 'vi-analyzer-linux pull step must not derive LV_RELEASE from needs.version-gate.outputs.year.'
+                Message = 'merged parity-linux vi-analyzer pull step must not derive LV_RELEASE from needs.version-gate.outputs.year.'
             },
             @{
                 Type    = 'legacy-linux-image-template'
                 Pattern = 'image="nationalinstruments/labview:\$\{LV_RELEASE\}-linux"'
-                Message = 'vi-analyzer-linux pull step must not build image from LV_RELEASE template.'
+                Message = 'merged parity-linux vi-analyzer pull step must not build image from LV_RELEASE template.'
             }
         )
 
         foreach ($check in $bannedPatterns) {
-            if ($viAnalyzerBlock -match $check.Pattern) {
+            if ($parityLinuxBlock -match $check.Pattern) {
                 Add-ContractViolation -Type $check.Type -Message $check.Message
             }
         }
