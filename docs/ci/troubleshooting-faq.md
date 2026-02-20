@@ -312,7 +312,7 @@ pwsh -NoProfile -File .\Tooling\Invoke-DeterministicPrereleasePublish.ps1 `
 
 **Possible Causes**:
 - The run used a different `ci_profile`:
-  - `release-priority` (`workflow_dispatch` + `force_gcli_lunit=true`) intentionally skips heavy self-hosted validation/build jobs.
+  - `release-priority` (`workflow_dispatch` + `force_gcli_lunit=true`) intentionally skips selected heavy self-hosted jobs (for example `verify-iepaths`, smoke, unit-tests, `build-ppl-x64`, `build-ppl-x86`, `build-vip`) while keeping `vi-analyzer` required/blocking.
   - `pr-fast` (`pull_request`) keeps the jobs but uses 64-bit-only matrices for smoke/unit tests.
   - `full` runs the full matrix and full self-hosted flow.
 - You are looking at `CI Pipeline` (`ci.yml`), which is publish-capable only on eligible paths defined by `prerelease-context` and `publish-gate`.

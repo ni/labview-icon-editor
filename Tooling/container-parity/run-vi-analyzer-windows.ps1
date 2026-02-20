@@ -433,8 +433,18 @@ function Invoke-LabVIEWCliOperation {
     )
 
     $beforeLogPaths = @(Get-LabVIEWCliTempLogPath)
-    $outputLines = & LabVIEWCLI @Arguments 2>&1
-    $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+    $outputLines = $null
+    $exitCode = 0
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        # LabVIEWCLI writes progress and operation details to stderr; keep collecting output
+        # and rely on explicit exit-code/report checks instead of PowerShell error promotion.
+        $ErrorActionPreference = 'Continue'
+        $outputLines = & LabVIEWCLI @Arguments 2>&1
+        $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
     $outputText = if ($null -eq $outputLines) {
         ''
     } else {

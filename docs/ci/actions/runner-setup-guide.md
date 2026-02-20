@@ -59,7 +59,7 @@ Additionally, **you can pass metadata fields** (like **organization** or **repos
 1. **Run Tests**
     - Run tests using **CI Pipeline**.
     - `pull_request` runs use the `pr-fast` profile (64-bit smoke/missing/unit).
-    - `workflow_dispatch` with `force_gcli_lunit=true` uses `release-priority` and skips heavy self-hosted validation jobs.
+    - `workflow_dispatch` with `force_gcli_lunit=true` uses `release-priority`, skips selected heavy self-hosted jobs, and keeps self-hosted `vi-analyzer` required/blocking.
     - VI Analyzer runs in both workflows by responsibility: Windows/self-hosted VI Analyzer runs in `ci.yml` after VIPC apply, and Linux-container VI Analyzer remains merged into `Parity (Linux Container <.lvcontainer>)` in `labview-parity.yml`.
     - **CI Pipeline** (`.github/workflows/ci.yml`) runs on `push` (`main`, `develop`, `release/*`), `pull_request`, and `workflow_dispatch`; feature/hotfix branch pushes are intentionally excluded so PR synchronization is the single CI path for those branches.
 

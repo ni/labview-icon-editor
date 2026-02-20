@@ -1014,8 +1014,7 @@ jobs:
         uses: ./.github/actions/lvie-job-teardown
 
   vi-analyzer:
-    name: vi-analyzer-${{ matrix.bitness }}-bit
-    if: ${{ needs.prerelease-context.outputs.ci_profile != 'release-priority' }}
+    name: VI Analyzer LabVIEW ${{ needs.version-gate.outputs.raw }} ${{ matrix.bitness_label }}
     needs: [run-metadata, prerelease-context, version-gate, apply-deps-64, apply-deps-32]
     runs-on: ${{ matrix.runner_label }}
     env:
@@ -1029,8 +1028,10 @@ jobs:
       matrix:
         include:
           - bitness: '64'
+            bitness_label: x64
             runner_label: ${{ vars.LVIE_RUNNER_LABEL_64 || format('self-hosted-windows-lv{0}x64', needs.version-gate.outputs.year) }}
           - bitness: '32'
+            bitness_label: x86
             runner_label: ${{ vars.LVIE_RUNNER_LABEL_32 || format('self-hosted-windows-lv{0}x86', needs.version-gate.outputs.year) }}
     steps:
       - name: Checkout code
@@ -2986,7 +2987,7 @@ jobs:
           $requiredByProfile = @{
             'full' = @($requiredCommon + $requiredFullValidation)
             'pr-fast' = @($requiredCommon + $requiredFullValidation)
-            'release-priority' = @($requiredCommon)
+            'release-priority' = @($requiredCommon + @('vi-analyzer'))
           }
           if (-not $requiredByProfile.ContainsKey($ciProfile)) {
             Write-Warning ("Unknown ci_profile '{0}'; defaulting to full prepublish contract." -f $ciProfile)
@@ -3449,7 +3450,7 @@ jobs:
           $requiredByProfile = @{
             'full' = @($requiredCommon + $requiredFullValidation)
             'pr-fast' = @($requiredCommon + $requiredFullValidation)
-            'release-priority' = @($requiredCommon)
+            'release-priority' = @($requiredCommon + @('vi-analyzer'))
           }
 
           $ciProfile = '${{ needs.prerelease-context.outputs.ci_profile }}'

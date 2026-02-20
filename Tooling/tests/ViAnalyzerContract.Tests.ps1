@@ -64,12 +64,24 @@ Describe 'VI Analyzer contract' {
         $ciContent = Get-Content -Raw -Path $script:ciPath
         $ciContent | Should -Not -Match '(?ms)^\s*container-contract:\s*$'
         $ciContent | Should -Match '(?ms)^  vi-analyzer:\s*$'
-        $ciContent | Should -Match '(?ms)^  vi-analyzer:\s*.*?name:\s*vi-analyzer-\$\{\{\s*matrix\.bitness\s*\}\}-bit'
-        $ciContent | Should -Match '(?ms)^  vi-analyzer:\s*.*?needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-64,\s*apply-deps-32\s*\]'
-        $ciContent | Should -Match '(?ms)^  vi-analyzer:\s*.*?Tooling/Run-ViAnalyzer\.ps1'
+        $viAnalyzerBlockMatch = [regex]::Match(
+            $ciContent,
+            '(?ms)^\s{2}vi-analyzer:\s*$.*?(?=^\s{2}[A-Za-z0-9_-]+:\s*$|\z)'
+        )
+        $viAnalyzerBlockMatch.Success | Should -BeTrue
+        $viAnalyzerBlock = $viAnalyzerBlockMatch.Value
+        $viAnalyzerBlock | Should -Match 'name:\s*VI Analyzer LabVIEW \${{\s*needs\.version-gate\.outputs\.raw\s*}} \${{\s*matrix\.bitness_label\s*}}'
+        $viAnalyzerBlock | Should -Match 'needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-64,\s*apply-deps-32\s*\]'
+        $viAnalyzerBlock | Should -Match 'Tooling/Run-ViAnalyzer\.ps1'
+        $viAnalyzerBlock | Should -Not -Match "(?m)^\s*if:\s*\$\{\{\s*needs\.prerelease-context\.outputs\.ci_profile != 'release-priority'\s*\}\}"
         $ciContent | Should -Match '(?ms)^  publish-gate:\s*.*?\n\s*-\s*vi-analyzer\s*$'
         $ciContent | Should -Match '(?ms)^  pipeline-contract:\s*.*?\n\s*-\s*vi-analyzer\s*$'
         $ciContent | Should -Match '(?ms)\$requiredFullValidation\s*=\s*@\(\s*.*?''vi-analyzer'''
+        $releasePriorityViAnalyzerRequiredCount = [regex]::Matches(
+            $ciContent,
+            '(?ms)''release-priority''\s*=\s*@\(\$requiredCommon\s*\+\s*@\(''vi-analyzer''\)\)'
+        ).Count
+        $releasePriorityViAnalyzerRequiredCount | Should -BeGreaterOrEqual 2
 
         $parityContent = Get-Content -Raw -Path $script:parityPath
         $parityContent | Should -Not -Match '(?ms)^  vi-analyzer-linux:\s*$'

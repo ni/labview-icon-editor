@@ -58,14 +58,26 @@ if ($ciContent) {
     if ($ciContent -notmatch '(?ms)^  vi-analyzer:\s*$') {
         Add-ContractViolation -Type 'missing-vi-analyzer-job' -Message 'ci.yml must define a vi-analyzer job for self-hosted Windows lanes.'
     }
-    if ($ciContent -notmatch '(?ms)^  vi-analyzer:\s*.*?name:\s*vi-analyzer-\$\{\{\s*matrix\.bitness\s*\}\}-bit') {
-        Add-ContractViolation -Type 'missing-vi-analyzer-lane-name' -Message 'ci.yml vi-analyzer job name must use the per-bitness contract vi-analyzer-${{ matrix.bitness }}-bit.'
-    }
-    if ($ciContent -notmatch '(?ms)^  vi-analyzer:\s*.*?needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-64,\s*apply-deps-32\s*\]') {
-        Add-ContractViolation -Type 'missing-vi-analyzer-needs' -Message 'ci.yml vi-analyzer job must depend on run-metadata, prerelease-context, version-gate, apply-deps-64, and apply-deps-32.'
-    }
-    if ($ciContent -notmatch '(?ms)^  vi-analyzer:\s*.*?Tooling/Run-ViAnalyzer\.ps1') {
-        Add-ContractViolation -Type 'missing-vi-analyzer-runner' -Message 'ci.yml vi-analyzer job must run Tooling/Run-ViAnalyzer.ps1.'
+    $viAnalyzerBlockMatch = [regex]::Match(
+        $ciContent,
+        '(?ms)^\s{2}vi-analyzer:\s*$.*?(?=^\s{2}[A-Za-z0-9_-]+:\s*$|\z)'
+    )
+    if (-not $viAnalyzerBlockMatch.Success) {
+        Add-ContractViolation -Type 'missing-vi-analyzer-block' -Message 'ci.yml must include a resolvable vi-analyzer job block.'
+    } else {
+        $viAnalyzerBlock = $viAnalyzerBlockMatch.Value
+        if ($viAnalyzerBlock -notmatch 'name:\s*VI Analyzer LabVIEW \${{\s*needs\.version-gate\.outputs\.raw\s*}} \${{\s*matrix\.bitness_label\s*}}') {
+            Add-ContractViolation -Type 'missing-vi-analyzer-lane-name' -Message 'ci.yml vi-analyzer job name must use the descriptive contract VI Analyzer LabVIEW ${{ needs.version-gate.outputs.raw }} ${{ matrix.bitness_label }}.'
+        }
+        if ($viAnalyzerBlock -notmatch 'needs:\s*\[\s*run-metadata,\s*prerelease-context,\s*version-gate,\s*apply-deps-64,\s*apply-deps-32\s*\]') {
+            Add-ContractViolation -Type 'missing-vi-analyzer-needs' -Message 'ci.yml vi-analyzer job must depend on run-metadata, prerelease-context, version-gate, apply-deps-64, and apply-deps-32.'
+        }
+        if ($viAnalyzerBlock -notmatch 'Tooling/Run-ViAnalyzer\.ps1') {
+            Add-ContractViolation -Type 'missing-vi-analyzer-runner' -Message 'ci.yml vi-analyzer job must run Tooling/Run-ViAnalyzer.ps1.'
+        }
+        if ($viAnalyzerBlock -match "(?m)^\s*if:\s*\$\{\{\s*needs\.prerelease-context\.outputs\.ci_profile != 'release-priority'\s*\}\}") {
+            Add-ContractViolation -Type 'vi-analyzer-release-priority-gated' -Message 'ci.yml vi-analyzer job must remain enabled for release-priority; do not gate it out by ci_profile.'
+        }
     }
     if ($ciContent -notmatch '(?ms)^  publish-gate:\s*.*?\n\s*-\s*vi-analyzer\s*$') {
         Add-ContractViolation -Type 'missing-vi-analyzer-publish-gate' -Message 'publish-gate needs list must include vi-analyzer.'
@@ -75,6 +87,13 @@ if ($ciContent) {
     }
     if ($ciContent -notmatch '(?ms)\$requiredFullValidation\s*=\s*@\(\s*.*?''vi-analyzer''') {
         Add-ContractViolation -Type 'missing-vi-analyzer-required-full' -Message 'profile requiredFullValidation list in ci.yml must include vi-analyzer.'
+    }
+    $releasePriorityViAnalyzerRequiredCount = [regex]::Matches(
+        $ciContent,
+        '(?ms)''release-priority''\s*=\s*@\(\$requiredCommon\s*\+\s*@\(''vi-analyzer''\)\)'
+    ).Count
+    if ($releasePriorityViAnalyzerRequiredCount -lt 2) {
+        Add-ContractViolation -Type 'missing-vi-analyzer-required-release-priority' -Message 'profile requiredByProfile release-priority list in ci.yml must include vi-analyzer for both publish-gate and pipeline-contract checks.'
     }
 }
 
