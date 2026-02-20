@@ -397,7 +397,7 @@ function Get-NormalizedRelativePath {
     return ($relative -replace '\\', '/')
 }
 
-function New-SourceSyncSnapshotEntries {
+function New-SourceSyncSnapshotEntry {
     param(
         [Parameter(Mandatory = $true)]
         [string]$SourceRoot,
@@ -622,13 +622,13 @@ function Sync-IconEditorSourcesForViAnalyzer {
             }
         }
 
-        $snapshotPluginsDir = New-SourceSyncSnapshotEntries `
+        $snapshotPluginsDir = New-SourceSyncSnapshotEntry `
             -SourceRoot (Join-Path $repoPlugins 'NIIconEditor') `
             -DestinationRoot (Join-Path $installPlugins 'NIIconEditor')
-        $snapshotPluginsRootFiles = New-SourceSyncSnapshotEntries `
+        $snapshotPluginsRootFiles = New-SourceSyncSnapshotEntry `
             -SourceRoot $pluginRootStage `
             -DestinationRoot $installPlugins
-        $snapshotIconApi = New-SourceSyncSnapshotEntries `
+        $snapshotIconApi = New-SourceSyncSnapshotEntry `
             -SourceRoot $repoIconApi `
             -DestinationRoot $installIconApi
 

@@ -638,6 +638,7 @@ jobs:
     name: PowerShell Lint
     needs: run-metadata
     runs-on: ubuntu-latest
+    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
         with:
@@ -707,7 +708,7 @@ jobs:
       - name: Run PSScriptAnalyzer
         shell: pwsh
         run: |
-          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Invoke-PSScriptAnalyzer.ps1" -WriteSummary
+          pwsh -NoProfile -File "$env:GITHUB_WORKSPACE/Tooling/Invoke-PSScriptAnalyzer.ps1" -FailOnIssues $true -WriteSummary
 
   vip-prerelease-requirements-lint:
     name: VIP Prerelease Requirements Lint
