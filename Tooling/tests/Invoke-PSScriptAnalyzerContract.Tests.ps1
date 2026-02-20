@@ -28,6 +28,8 @@ Describe 'Invoke-PSScriptAnalyzer FailOnIssues contract' {
                 [string]$Settings
             )
 
+            $null = $Settings
+
             return @(
                 [pscustomobject]@{
                     RuleName   = 'PSAvoidUsingWriteHost'
