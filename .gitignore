@@ -10,14 +10,13 @@
 # Metadata
 *.aliases
 *.lvlps
+*.UserState
 .cache/
 .vs/
 
 # Build output
-/resource/plugins/lv_icon.lvlibp
+*.lvlibp
 *.xml
-/resource/plugins/lv_icon_x64.lvlibp
-/resource/plugins/lv_icon_x86.lvlibp
 builds/
 TestResults/
 .worktrees/

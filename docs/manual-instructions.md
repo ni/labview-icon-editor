@@ -9,16 +9,15 @@ This document provides **manual** steps to configure, edit, and distribute the L
 1. [Compatible LabVIEW Versions](#compatible-labview-versions)
 2. [Editing Guide (Manual)](#editing-guide-manual)
 3. [Distribution Guide (Manual)](#distribution-guide-manual)
-4. [Restore LabVIEW Environment](#restore-environment)
 
 ---
 
 <a name="compatible-labview-versions"></a>
 ## 1. Compatible LabVIEW Versions
 
-- Source is saved in **LabVIEW 2021 (21.0)** format.  
-- Both **LabVIEW 2021 (21.0), 32-bit and 64-bit** are typically required if you plan to build or distribute for both architectures.
-- Editing can be done on any LabVIEW version that can preserve the **2021** file format.
+- Source is saved in **LabVIEW 2020 (20.0)** format.  
+- Both **LabVIEW 2020 (20.0), 32-bit and 64-bit** are typically required if you plan to build or distribute for both architectures.
+- Editing can be done on any LabVIEW version that can preserve the **2020** file format. It is recommended to use LabVIEW 2025 (25.0) or newer.
 
 ---
 
@@ -31,24 +30,13 @@ This document provides **manual** steps to configure, edit, and distribute the L
    C:\labview-icon-editor
    ```
 
-2. **Run** the following VI to prepare your environment:
-
-   ```
-   Tooling\Prepare LV to Use Icon Editor Source.vi
-   ```
-
-   This VI will:
-   - Remove `<LabVIEW>\resource\plugins\lv_icon.lvlibp`
-   - Remove `<LabVIEW>\vi.lib\LabVIEW Icon API`
-   - Update `LocalHost.LibraryPaths` in your **LabVIEW.ini** so the custom VIs are recognized
-
-3. **Open** the project file:
+2. **Open** the project file:
 
    ```
    lv_icon_editor.lvproj
    ```
 
-4. **Locate** the top-level VI inside the project:
+3. **Locate** the top-level VI inside the project:
 
    ```
    My Computer » resource/plugins » lv_icon.lvlib » lv_icon.vi
@@ -58,8 +46,32 @@ This document provides **manual** steps to configure, edit, and distribute the L
 
 ---
 
+<a name="Testing"></a>
+## 3. Testing Guide
+
+There are four ways to test the GUI.
+
+1. Run the lv_icon.vi directly.
+   - There will be no data in the icon, but you can still build up an icon using the full functionality.
+2. Configure LabVIEW to use the source code for the Icon Editor
+ 
+   **NOTE:** The API is not tested using this method. It is only for the editor GUI.
+   - Run Tools\Set Run Icon Editor from Source.vi.  This VI will create a launcher VI that points to the lv_icon.vi in the project.
+   - This allows testing using the launching paths from the LabVIEW IDE.
+   - Run Tools\Unset Run Icon Editor from Source.vi to restore the default editor.
+3. Build the PPL and install in the lvaddons directory.
+
+   **NOTE:** This does require administrative rights
+   **NOTE:** This is only valid for LabVIEW 2023 or newer
+   - Run the Editor Packed Library build specification from the project. This will create a PPL for the editor.
+   - Run Tools\Install to LVAddons.vi. This VI will copy the built lv_icon.lvlibp and all of the VIs in the vi.lib\LabVIEW Icon API folder to the proper locations in C:\Program Files\NI\LVAddons\labview-icon-editor as well as the infrastructure required for an LVAddon.
+4. Manually copy the files into the <LabVIEW 20xx> installation folders.
+   - See [Distribution Guide (Manual)](#distribution-guide-manual) for instructions on building and copying the files.
+
+---
+
 <a name="distribution-guide-manual"></a>
-## 3. Distribution Guide (Manual)
+## 4. Distribution Guide (Manual)
 
 To **manually distribute** your custom Icon Editor:
 
@@ -83,15 +95,3 @@ To **manually distribute** your custom Icon Editor:
    - **Copy** your newly built `lv_icon.lvlibp` and `vi.lib\LabVIEW Icon API\*` into the corresponding LabVIEW folders on the target machine.
 
    You now have a custom, manually distributed Icon Editor that can support any LabVIEW version available up until the creation of this document.
-
----
-
-<a name="restore-environment"></a>
-## 4. Restore LabVIEW Environment
-
-When you're finished developing or distributing, you can return LabVIEW to its default state:
-
-1. **Restore the Packed Library:** Rename your backup `lv_icon.lvlibp.ship` back to `lv_icon.lvlibp` (or reinstall the original file).
-2. **Restore the Icon API:** Replace the `<LabVIEW>\vi.lib\LabVIEW Icon API` folder with the original copy you archived or from a LabVIEW installation source.
-3. **Revert `LabVIEW.ini` Changes:** Open `<LabVIEW>\LabVIEW.ini` and remove any `LocalHost.LibraryPaths` entries that reference the repository.
-4. **Restart LabVIEW** to confirm the built-in Icon Editor loads correctly.

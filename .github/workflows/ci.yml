@@ -1,0 +1,217 @@
+name: CI Pipeline
+run-name: "CI ${{ github.sha }} (#${{ github.run_id }}.${{ github.run_attempt }})"
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  LVIE_RUN_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+
+concurrency:
+  group: ci-pipeline-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - release/*
+      - feature/*
+      - hotfix/*
+  pull_request:
+    branches:
+      - main
+      - develop
+      - release/*
+      - feature/*
+      - hotfix/*
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  workflow_dispatch:
+
+jobs:
+  run-metadata:
+    name: Run Metadata
+    runs-on: ubuntu-latest
+    outputs:
+      run_uid: ${{ steps.meta.outputs.run_uid }}
+      sha: ${{ steps.meta.outputs.sha }}
+    steps:
+      - id: meta
+        name: Generate run manifest
+        shell: pwsh
+        run: |
+          $runUid = "${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}"
+          $manifest = [ordered]@{
+            run_id        = '${{ github.run_id }}'
+            run_attempt   = '${{ github.run_attempt }}'
+            run_uid       = $runUid
+            sha           = '${{ github.sha }}'
+            ref           = '${{ github.ref }}'
+            event         = '${{ github.event_name }}'
+            repository    = '${{ github.repository }}'
+            workflow      = '${{ github.workflow }}'
+            timestamp_utc = (Get-Date).ToUniversalTime().ToString('o')
+          }
+
+          $manifestPath = Join-Path $env:RUNNER_TEMP 'run-manifest.json'
+          $manifest | ConvertTo-Json -Depth 8 | Set-Content -Path $manifestPath -Encoding utf8
+          "run_uid=$runUid" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "sha=${{ github.sha }}" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "manifest_path=$manifestPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Upload run manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: run-manifest
+          path: ${{ steps.meta.outputs.manifest_path }}
+
+  version-gate:
+    name: LabVIEW Version Gate
+    needs: run-metadata
+    runs-on: ubuntu-latest
+    outputs:
+      raw: ${{ steps.lv.outputs.raw }}
+      year: ${{ steps.lv.outputs.year }}
+      minor: ${{ steps.lv.outputs.minor }}
+      numeric: ${{ steps.lv.outputs.numeric }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: lv
+        name: Assert .lvversion
+        shell: pwsh
+        run: |
+          $info = & "$env:GITHUB_WORKSPACE/Tooling/Assert-LabVIEWVersion.ps1" -RepoRoot $env:GITHUB_WORKSPACE -Context 'ci-version-gate' -WriteSummary
+          "raw=$($info.Raw)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "year=$($info.Year)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "minor=$($info.MinorRevision)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "numeric=$($info.NumericVersion)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+  pylavi-linux:
+    name: Pylavi Linux Container
+    needs: [run-metadata, version-gate]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: pylavi
+        name: Run pylavi
+        uses: ./.github/actions/pylavi-ci
+        with:
+          validate_args: --gt 19 --lt 21 --no-suspend-on-run --breakpoints --no-code --no-absolute-path
+          label: linux-container
+          report_only: 'false'
+          absolute_roots: ${{ vars.LVIE_PYLAVI_ABSOLUTE_PATH_ROOTS }}
+
+      - name: Upload pylavi artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pylavi-linux
+          path: |
+            ${{ steps.pylavi.outputs.log_path }}
+            ${{ steps.pylavi.outputs.offenders_path }}
+            ${{ steps.pylavi.outputs.summary_path }}
+          if-no-files-found: warn
+
+  vi-analyzer-linux:
+    name: VI Analyzer Linux Container
+    needs: [run-metadata]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: vi
+        name: Run VI Analyzer in Linux container
+        uses: ./.github/actions/vi-analyzer-ci
+        with:
+          container_tag: 2026q1-linux
+          image_repository: nationalinstruments/labview
+          tasks_path: Tooling/vi-analyzer/tasks.linux.json
+          labview_year: '2026'
+          reports_root: builds/vi-analyzer
+          logs_root: TestResults/container-parity/linux/vi-analyzer/logs
+          status_path: builds/status/vi-analyzer-summary.parity.json
+
+      - name: Upload VI Analyzer logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-analyzer-linux-logs
+          path: ${{ steps.vi.outputs.logs_root }}
+          if-no-files-found: warn
+
+      - name: Upload VI Analyzer reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-analyzer-reports
+          path: ${{ steps.vi.outputs.reports_root }}
+          if-no-files-found: warn
+
+      - name: Upload VI Analyzer status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vi-analyzer-status
+          path: ${{ steps.vi.outputs.status_path }}
+          if-no-files-found: error
+
+  pipeline-contract:
+    name: Pipeline Contract
+    if: always()
+    needs: [run-metadata, version-gate, pylavi-linux, vi-analyzer-linux]
+    runs-on: ubuntu-latest
+    env:
+      RUN_METADATA_RESULT: ${{ needs.run-metadata.result }}
+      VERSION_GATE_RESULT: ${{ needs.version-gate.result }}
+      PYLAVI_RESULT: ${{ needs.pylavi-linux.result }}
+      VI_ANALYZER_RESULT: ${{ needs.vi-analyzer-linux.result }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify required jobs succeeded
+        shell: pwsh
+        run: |
+          $results = [ordered]@{
+            'run-metadata' = $env:RUN_METADATA_RESULT
+            'version-gate' = $env:VERSION_GATE_RESULT
+            'pylavi-linux' = $env:PYLAVI_RESULT
+            'vi-analyzer'  = $env:VI_ANALYZER_RESULT
+          }
+
+          $failed = @($results.GetEnumerator() | Where-Object { [string]$_.Value -ne 'success' })
+          if ($failed.Count -gt 0) {
+            $detail = ($failed | ForEach-Object { "{0}={1}" -f $_.Key, $_.Value }) -join ', '
+            throw "Required jobs did not succeed: $detail"
+          }
+
+      - name: Install Pester
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -Scope CurrentUser -Force -SkipPublisherCheck
+
+      - name: Run composite contract tests
+        shell: pwsh
+        run: |
+          $testFiles = @(
+            'Tooling/tests/CiPipelineCompositeContract.Tests.ps1',
+            'Tooling/tests/PylaviCompositeContract.Tests.ps1',
+            'Tooling/tests/ViAnalyzerCompositeContract.Tests.ps1'
+          )
+          Invoke-Pester -Path $testFiles -CI
