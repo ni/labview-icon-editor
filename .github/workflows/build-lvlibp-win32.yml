@@ -1,0 +1,56 @@
+name: Build LVLIBP with Docker (Windows x86)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-lvlibp-win32:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup NI Package Manager
+        uses: KSharma-NI/open-source/setup-nipm@users/krishsha/run-unit-tests-action
+        with:
+          log_level: 'DEBUG'
+      
+      - name: Setup LabVIEW
+        uses: KSharma-NI/open-source/setup-labview@users/krishsha/run-unit-tests-action
+        with:
+          labview_iso_url: 'https://download.ni.com/support/softlib/labview/labview_development_system/2025_Q3/ni-labview-2025-community-x86_25.3.3_offline.iso'
+          timeout_seconds: 1800
+          serial_number: ${{ secrets.LABVIEW_SERIAL_NUMBER }}
+          package_id: 'LabVIEW_COM_PKG 25.0300'
+          log_level: 'DEBUG'
+
+      - name: Build PPL
+        uses: KSharma-NI/open-source/build-lvlibp-win32@users/krishsha/run-unit-tests-action
+        with:
+          minimum_supported_lv_version: '2025'
+          supported_bitness: '32'
+          project_path: 'lv_icon_editor.lvproj'
+          target_name: 'My Computer'
+          build_spec_name: 'Editor Packed Library'
+          major: 1
+          minor: 0
+          patch: 0
+          build: ${{ github.run_number }}
+          commit: ${{ github.sha }}
+          log_level: 'INFO'
+
+      - name: Upload Built PPL
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: lv_icon_x86_v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}.${{ github.run_number }}+g${{ github.sha }}
+          path: builds/*.lvlibp
+          retention-days: 7
+
+      - name: Upload Build Logs
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-logs
+          path: build-logs/*.log
+          retention-days: 3
