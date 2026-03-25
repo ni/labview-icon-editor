@@ -8,70 +8,70 @@
 
 </Property>
 	<Item Name="Friends List" Type="Friends List">
-		<Item Name="lv_IconEditor.lvlib" Type="Friended Library" URL="../../../../resource/plugins/lv_IconEditor.lvlib"/>
+		<Item Name="lv_IconEditor.lvlib" Type="Friended Library" URL="../lv_IconEditor.lvlib"/>
 	</Item>
 	<Item Name="Editor Position" Type="Folder">
-		<Item Name="Read Editor Position from INI.vi" Type="VI" URL="../../../../resource/plugins/NIIconEditor/Editor Position/Read Editor Position from INI.vi"/>
-		<Item Name="Save Editor Position to INI.vi" Type="VI" URL="../../../../resource/plugins/NIIconEditor/Editor Position/Save Editor Position to INI.vi"/>
-		<Item Name="Set Editor Position.vi" Type="VI" URL="../../../../resource/plugins/NIIconEditor/Editor Position/Set Editor Position.vi"/>
+		<Item Name="Read Editor Position from INI.vi" Type="VI" URL="../NIIconEditor/Editor Position/Read Editor Position from INI.vi"/>
+		<Item Name="Save Editor Position to INI.vi" Type="VI" URL="../NIIconEditor/Editor Position/Save Editor Position to INI.vi"/>
+		<Item Name="Set Editor Position.vi" Type="VI" URL="../NIIconEditor/Editor Position/Set Editor Position.vi"/>
 	</Item>
 	<Item Name="INI" Type="Folder">
-		<Item Name="INI Data.ctl" Type="VI" URL="../../../../resource/plugins/NIIconEditor/INI/INI Data.ctl"/>
-		<Item Name="Read Data From LabVIEW INI.vi" Type="VI" URL="../../../../resource/plugins/NIIconEditor/INI/Read Data From LabVIEW INI.vi"/>
-		<Item Name="Write Data to LabVIEW INI.vi" Type="VI" URL="../../../../resource/plugins/NIIconEditor/INI/Write Data to LabVIEW INI.vi"/>
+		<Item Name="INI Data.ctl" Type="VI" URL="../NIIconEditor/INI/INI Data.ctl"/>
+		<Item Name="Read Data From LabVIEW INI.vi" Type="VI" URL="../NIIconEditor/INI/Read Data From LabVIEW INI.vi"/>
+		<Item Name="Write Data to LabVIEW INI.vi" Type="VI" URL="../NIIconEditor/INI/Write Data to LabVIEW INI.vi"/>
 	</Item>
 	<Item Name="Other" Type="Folder">
-		<Item Name="Adjust temporary rotate and flip rectangle.vi" Type="VI" URL="../Support/Adjust temporary rotate and flip rectangle.vi"/>
-		<Item Name="Apply Opacity.vi" Type="VI" URL="../Support/Apply Opacity.vi"/>
-		<Item Name="Apply Transparency.vi" Type="VI" URL="../Support/Apply Transparency.vi"/>
-		<Item Name="ApplyLVClassIconOverlayToVIIcon.vi" Type="VI" URL="../Support/ApplyLVClassIconOverlayToVIIcon.vi"/>
-		<Item Name="Average Grayscale of Line.vi" Type="VI" URL="../Support/Average Grayscale of Line.vi"/>
-		<Item Name="Calculate Body Text Position.vi" Type="VI" URL="../Support/Calculate Body Text Position.vi"/>
-		<Item Name="Check Color.vi" Type="VI" URL="../Support/Check Color.vi"/>
-		<Item Name="Create Color Array.vi" Type="VI" URL="../Support/Create Color Array.vi"/>
-		<Item Name="Create default Layer.vi" Type="VI" URL="../Support/Create default Layer.vi"/>
-		<Item Name="Create default LV Icon Data.vi" Type="VI" URL="../Support/Create default LV Icon Data.vi"/>
-		<Item Name="Create Layer from Image.vi" Type="VI" URL="../Support/Create Layer from Image.vi"/>
-		<Item Name="Deserialize Picture Control Data.vi" Type="VI" URL="../Support/Deserialize Picture Control Data.vi"/>
-		<Item Name="Draw Layers.vi" Type="VI" URL="../Support/Draw Layers.vi"/>
-		<Item Name="Draw Picture based on Origin.vi" Type="VI" URL="../Support/Draw Picture based on Origin.vi"/>
-		<Item Name="Extract Data.vi" Type="VI" URL="../Support/Extract Data.vi"/>
-		<Item Name="Fill.vi" Type="VI" URL="../Support/Fill.vi"/>
-		<Item Name="FilterEmptyLayerIcons.vi" Type="VI" URL="../Support/FilterEmptyLayerIcons.vi"/>
-		<Item Name="Find BG Color Peak.vi" Type="VI" URL="../Support/Find BG Color Peak.vi"/>
-		<Item Name="Find Neighbours.vi" Type="VI" URL="../Support/Find Neighbours.vi"/>
-		<Item Name="Find Start and Endpoint Body Text.vi" Type="VI" URL="../Support/Find Start and Endpoint Body Text.vi"/>
-		<Item Name="Flatten Load &amp; Unload.vi" Type="VI" URL="../Support/Flatten Load &amp; Unload.vi"/>
-		<Item Name="Flood Glyph.vi" Type="VI" URL="../Support/Flood Glyph.vi"/>
-		<Item Name="Get Grayscale Value.vi" Type="VI" URL="../Support/Get Grayscale Value.vi"/>
-		<Item Name="Get Image Data.vi" Type="VI" URL="../Support/Get Image Data.vi"/>
-		<Item Name="Get LV Glyph Path.vi" Type="VI" URL="../Support/Get LV Glyph Path.vi"/>
-		<Item Name="Get SubPicture Coordinate.vi" Type="VI" URL="../Support/Get SubPicture Coordinate.vi"/>
-		<Item Name="Get SubPicture Coordinates.vi" Type="VI" URL="../Support/Get SubPicture Coordinates.vi"/>
-		<Item Name="Get_VI_Icon.vi" Type="VI" URL="../Support/Get_VI_Icon.vi"/>
-		<Item Name="Join Layers.vi" Type="VI" URL="../Support/Join Layers.vi"/>
-		<Item Name="LabVIEW Fonts.vi" Type="VI" URL="../Support/LabVIEW Fonts.vi"/>
-		<Item Name="Magic Transparent Color Constant.vi" Type="VI" URL="../Support/Magic Transparent Color Constant.vi"/>
-		<Item Name="Remove Duplicates from Color Array.vi" Type="VI" URL="../Support/Remove Duplicates from Color Array.vi"/>
-		<Item Name="Replace Color.vi" Type="VI" URL="../Support/Replace Color.vi"/>
-		<Item Name="Restore original Coordinates.vi" Type="VI" URL="../Support/Restore original Coordinates.vi"/>
-		<Item Name="Return MutationCode Folder.vi" Type="VI" URL="../Support/Return MutationCode Folder.vi"/>
-		<Item Name="Rotate Flip Image.vi" Type="VI" URL="../Support/Rotate Flip Image.vi"/>
-		<Item Name="Serialize Icon Data.vi" Type="VI" URL="../Support/Serialize Icon Data.vi"/>
-		<Item Name="Text.vi" Type="VI" URL="../Support/Text.vi"/>
-		<Item Name="Unflatten Load &amp; Unload.vi" Type="VI" URL="../Support/Unflatten Load &amp; Unload.vi"/>
-		<Item Name="Verify Cancel.vi" Type="VI" URL="../../../../resource/plugins/NIIconEditor/User Dialogs/Verify Cancel.vi"/>
+		<Item Name="Adjust temporary rotate and flip rectangle.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Adjust temporary rotate and flip rectangle.vi"/>
+		<Item Name="Apply Opacity.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Apply Opacity.vi"/>
+		<Item Name="Apply Transparency.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Apply Transparency.vi"/>
+		<Item Name="ApplyLVClassIconOverlayToVIIcon.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/ApplyLVClassIconOverlayToVIIcon.vi"/>
+		<Item Name="Average Grayscale of Line.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Average Grayscale of Line.vi"/>
+		<Item Name="Calculate Body Text Position.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Calculate Body Text Position.vi"/>
+		<Item Name="Check Color.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Check Color.vi"/>
+		<Item Name="Create Color Array.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Create Color Array.vi"/>
+		<Item Name="Create default Layer.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Create default Layer.vi"/>
+		<Item Name="Create default LV Icon Data.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Create default LV Icon Data.vi"/>
+		<Item Name="Create Layer from Image.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Create Layer from Image.vi"/>
+		<Item Name="Deserialize Picture Control Data.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Deserialize Picture Control Data.vi"/>
+		<Item Name="Draw Layers.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Draw Layers.vi"/>
+		<Item Name="Draw Picture based on Origin.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Draw Picture based on Origin.vi"/>
+		<Item Name="Extract Data.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Extract Data.vi"/>
+		<Item Name="Fill.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Fill.vi"/>
+		<Item Name="FilterEmptyLayerIcons.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/FilterEmptyLayerIcons.vi"/>
+		<Item Name="Find BG Color Peak.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Find BG Color Peak.vi"/>
+		<Item Name="Find Neighbours.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Find Neighbours.vi"/>
+		<Item Name="Find Start and Endpoint Body Text.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Find Start and Endpoint Body Text.vi"/>
+		<Item Name="Flatten Load &amp; Unload.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Flatten Load &amp; Unload.vi"/>
+		<Item Name="Flood Glyph.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Flood Glyph.vi"/>
+		<Item Name="Get Grayscale Value.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Get Grayscale Value.vi"/>
+		<Item Name="Get Image Data.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Get Image Data.vi"/>
+		<Item Name="Get LV Glyph Path.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Get LV Glyph Path.vi"/>
+		<Item Name="Get SubPicture Coordinate.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Get SubPicture Coordinate.vi"/>
+		<Item Name="Get SubPicture Coordinates.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Get SubPicture Coordinates.vi"/>
+		<Item Name="Get_VI_Icon.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Get_VI_Icon.vi"/>
+		<Item Name="Join Layers.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Join Layers.vi"/>
+		<Item Name="LabVIEW Fonts.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/LabVIEW Fonts.vi"/>
+		<Item Name="Magic Transparent Color Constant.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Magic Transparent Color Constant.vi"/>
+		<Item Name="Remove Duplicates from Color Array.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Remove Duplicates from Color Array.vi"/>
+		<Item Name="Replace Color.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Replace Color.vi"/>
+		<Item Name="Restore original Coordinates.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Restore original Coordinates.vi"/>
+		<Item Name="Return MutationCode Folder.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Return MutationCode Folder.vi"/>
+		<Item Name="Rotate Flip Image.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Rotate Flip Image.vi"/>
+		<Item Name="Serialize Icon Data.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Serialize Icon Data.vi"/>
+		<Item Name="Text.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Text.vi"/>
+		<Item Name="Unflatten Load &amp; Unload.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Unflatten Load &amp; Unload.vi"/>
+		<Item Name="Verify Cancel.vi" Type="VI" URL="../NIIconEditor/User Dialogs/Verify Cancel.vi"/>
 	</Item>
 	<Item Name="Read and Write Icon Data" Type="Folder">
-		<Item Name="Read Icon Data from Library.vi" Type="VI" URL="../Support/Read Icon Data from Library.vi"/>
-		<Item Name="Read Icon Data from VI.vi" Type="VI" URL="../Support/Read Icon Data from VI.vi"/>
-		<Item Name="Remove Icon Data from VI.vi" Type="VI" URL="../Support/Remove Icon Data from VI.vi"/>
-		<Item Name="Write Icon Data to Library.vi" Type="VI" URL="../Support/Write Icon Data to Library.vi"/>
-		<Item Name="Write Icon Data to VI.vi" Type="VI" URL="../Support/Write Icon Data to VI.vi"/>
+		<Item Name="Read Icon Data from Library.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Read Icon Data from Library.vi"/>
+		<Item Name="Read Icon Data from VI.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Read Icon Data from VI.vi"/>
+		<Item Name="Remove Icon Data from VI.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Remove Icon Data from VI.vi"/>
+		<Item Name="Write Icon Data to Library.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Write Icon Data to Library.vi"/>
+		<Item Name="Write Icon Data to VI.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Write Icon Data to VI.vi"/>
 	</Item>
 	<Item Name="Type Defs" Type="Folder">
-		<Item Name="Global Data.ctl" Type="VI" URL="../../../../resource/plugins/NIIconEditor/Controls/Global Data.ctl"/>
-		<Item Name="References Cluster.ctl" Type="VI" URL="../../../../resource/plugins/NIIconEditor/Controls/References Cluster.ctl"/>
+		<Item Name="Global Data.ctl" Type="VI" URL="../NIIconEditor/Controls/Global Data.ctl"/>
+		<Item Name="References Cluster.ctl" Type="VI" URL="../NIIconEditor/Controls/References Cluster.ctl"/>
 	</Item>
-	<Item Name="lv_icon.vi" Type="VI" URL="../../../../resource/plugins/lv_icon.vi"/>
+	<Item Name="lv_icon.vi" Type="VI" URL="../lv_icon.vi"/>
 </Library>
