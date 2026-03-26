@@ -266,11 +266,7 @@
 							<Item Name="VisibleTextMarker.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Tools/VisibleTextMarker.vi"/>
 							<Item Name="WriteText.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Tools/WriteText.vi"/>
 						</Item>
-						<Item Name="Undo Redo" Type="Folder">
-							<Item Name="Add Data to History.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Undo Redo/Add Data to History.vi"/>
-							<Item Name="FGV_Undo Redo.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Undo Redo/FGV_Undo Redo.vi"/>
-							<Item Name="Replay Data from History.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Undo Redo/Replay Data from History.vi"/>
-						</Item>
+						<Item Name="Undo Redo" Type="Folder"/>
 						<Item Name="User Events" Type="Folder">
 							<Item Name="Initialization_UserEvents.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/User Events/Initialization_UserEvents.vi"/>
 						</Item>

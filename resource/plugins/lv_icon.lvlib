@@ -73,5 +73,6 @@
 		<Item Name="Global Data.ctl" Type="VI" URL="../NIIconEditor/Controls/Global Data.ctl"/>
 		<Item Name="References Cluster.ctl" Type="VI" URL="../NIIconEditor/Controls/References Cluster.ctl"/>
 	</Item>
+	<Item Name="History.lvclass" Type="LVClass" URL="../NIIconEditor/History/History.lvclass"/>
 	<Item Name="lv_icon.vi" Type="VI" URL="../lv_icon.vi"/>
 </Library>
