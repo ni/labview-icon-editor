@@ -183,7 +183,6 @@
 							<Item Name="Clear User Layers.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Clear User Layers.vi"/>
 							<Item Name="Delete Selected Layers.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Delete Selected Layers.vi"/>
 							<Item Name="Escape.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Escape.vi"/>
-							<Item Name="Fire Body Text Change event.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Fire Body Text Change event.vi"/>
 							<Item Name="Icon Editor Help.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Icon Editor Help.vi"/>
 							<Item Name="Icon Editor Init Refs.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Icon Editor Init Refs.vi"/>
 							<Item Name="Icon Editor Properties Help.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Icon Editor Properties Help.vi"/>
@@ -208,7 +207,6 @@
 							<Item Name="Template_MouseDown.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Template_MouseDown.vi"/>
 							<Item Name="Update glyph path string.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Update glyph path string.vi"/>
 							<Item Name="UpdateLayerView_ScrollbarChanged.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/UpdateLayerView_ScrollbarChanged.vi"/>
-							<Item Name="Value Change_Body Text.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Value Change_Body Text.vi"/>
 							<Item Name="Value Change_Top or Bottom Layer.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Icon Editor/Value Change_Top or Bottom Layer.vi"/>
 						</Item>
 						<Item Name="Key Down Up" Type="Folder">
@@ -266,7 +264,6 @@
 							<Item Name="VisibleTextMarker.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Tools/VisibleTextMarker.vi"/>
 							<Item Name="WriteText.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/Tools/WriteText.vi"/>
 						</Item>
-						<Item Name="Undo Redo" Type="Folder"/>
 						<Item Name="User Events" Type="Folder">
 							<Item Name="Initialization_UserEvents.vi" Type="VI" URL="../resource/plugins/NIIconEditor/Miscellaneous/User Events/Initialization_UserEvents.vi"/>
 						</Item>

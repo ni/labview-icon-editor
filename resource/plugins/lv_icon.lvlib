@@ -10,6 +10,9 @@
 	<Item Name="Friends List" Type="Friends List">
 		<Item Name="lv_IconEditor.lvlib" Type="Friended Library" URL="../lv_IconEditor.lvlib"/>
 	</Item>
+	<Item Name="Body Text" Type="Folder">
+		<Item Name="Apply Body Text.vi" Type="VI" URL="../NIIconEditor/Body Text/Apply Body Text.vi"/>
+	</Item>
 	<Item Name="Editor Position" Type="Folder">
 		<Item Name="Read Editor Position from INI.vi" Type="VI" URL="../NIIconEditor/Editor Position/Read Editor Position from INI.vi"/>
 		<Item Name="Save Editor Position to INI.vi" Type="VI" URL="../NIIconEditor/Editor Position/Save Editor Position to INI.vi"/>
