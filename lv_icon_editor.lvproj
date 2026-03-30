@@ -124,9 +124,6 @@
 						<Item Name="TextMarker.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/TextMarker.ctl"/>
 						<Item Name="ToMoreSpecific_Faked2DArray.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/ToMoreSpecific_Faked2DArray.ctl"/>
 						<Item Name="Tools.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/Tools.ctl"/>
-						<Item Name="Undo Redo Action.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/Undo Redo Action.ctl"/>
-						<Item Name="Undo Redo Type.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/Undo Redo Type.ctl"/>
-						<Item Name="Undo.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/Undo.ctl"/>
 						<Item Name="User Event Communication Enum.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/User Event Communication Enum.ctl"/>
 						<Item Name="User Event Communication.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/User Event Communication.ctl"/>
 						<Item Name="XMLDataStructureIconLibrary.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/XMLDataStructureIconLibrary.ctl"/>
