@@ -12,5 +12,6 @@
 	<Item Name="Build State.vi" Type="VI" URL="../Build State.vi"/>
 	<Item Name="History.lvclass" Type="LVClass" URL="../History/History.lvclass"/>
 	<Item Name="Replay Data from History.vi" Type="VI" URL="../Replay Data from History.vi"/>
+	<Item Name="Set Undo Flag.vi" Type="VI" URL="../Set Undo Flag.vi"/>
 	<Item Name="State.ctl" Type="VI" URL="../State.ctl"/>
 </Library>
