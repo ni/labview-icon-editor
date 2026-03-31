@@ -98,7 +98,6 @@
 						<Item Name="FRect.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/FRect.ctl"/>
 						<Item Name="IconFilename.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/IconFilename.ctl"/>
 						<Item Name="IconLibraryList.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/IconLibraryList.ctl"/>
-						<Item Name="IE Classes.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/IE Classes.ctl"/>
 						<Item Name="IE Symbols.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/IE Symbols.ctl"/>
 						<Item Name="IERect.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/IERect.ctl"/>
 						<Item Name="LayerList.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/LayerList.ctl"/>
@@ -117,7 +116,6 @@
 						<Item Name="SaveLayer.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/SaveLayer.ctl"/>
 						<Item Name="Selection.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/Selection.ctl"/>
 						<Item Name="Settings.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/Settings.ctl"/>
-						<Item Name="SupportClass.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/SupportClass.ctl"/>
 						<Item Name="SupportClass_Action.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/SupportClass_Action.ctl"/>
 						<Item Name="Text.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/Text.ctl"/>
 						<Item Name="Text_Specification.ctl" Type="VI" URL="../resource/plugins/NIIconEditor/Controls/Text_Specification.ctl"/>

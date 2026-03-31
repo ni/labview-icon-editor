@@ -18,6 +18,9 @@
 		<Item Name="Save Editor Position to INI.vi" Type="VI" URL="../NIIconEditor/Editor Position/Save Editor Position to INI.vi"/>
 		<Item Name="Set Editor Position.vi" Type="VI" URL="../NIIconEditor/Editor Position/Set Editor Position.vi"/>
 	</Item>
+	<Item Name="History" Type="Folder">
+		<Property Name="NI.SortType" Type="Int">1</Property>
+	</Item>
 	<Item Name="INI" Type="Folder">
 		<Item Name="INI Data.ctl" Type="VI" URL="../NIIconEditor/INI/INI Data.ctl"/>
 		<Item Name="Read Data From LabVIEW INI.vi" Type="VI" URL="../NIIconEditor/INI/Read Data From LabVIEW INI.vi"/>
@@ -74,8 +77,10 @@
 	</Item>
 	<Item Name="Type Defs" Type="Folder">
 		<Item Name="Global Data.ctl" Type="VI" URL="../NIIconEditor/Controls/Global Data.ctl"/>
+		<Item Name="IE Classes.ctl" Type="VI" URL="../NIIconEditor/Controls/IE Classes.ctl"/>
 		<Item Name="References Cluster.ctl" Type="VI" URL="../NIIconEditor/Controls/References Cluster.ctl"/>
+		<Item Name="Support Cluster.ctl" Type="VI" URL="../NIIconEditor/Controls/Support Cluster.ctl"/>
 	</Item>
-	<Item Name="History.lvclass" Type="LVClass" URL="../NIIconEditor/History/History.lvclass"/>
+	<Item Name="History.lvlib" Type="Library" URL="../NIIconEditor/History/History.lvlib"/>
 	<Item Name="lv_icon.vi" Type="VI" URL="../lv_icon.vi"/>
 </Library>
