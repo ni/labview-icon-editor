@@ -18,9 +18,6 @@
 		<Item Name="Save Editor Position to INI.vi" Type="VI" URL="../NIIconEditor/Editor Position/Save Editor Position to INI.vi"/>
 		<Item Name="Set Editor Position.vi" Type="VI" URL="../NIIconEditor/Editor Position/Set Editor Position.vi"/>
 	</Item>
-	<Item Name="History" Type="Folder">
-		<Property Name="NI.SortType" Type="Int">1</Property>
-	</Item>
 	<Item Name="INI" Type="Folder">
 		<Item Name="INI Data.ctl" Type="VI" URL="../NIIconEditor/INI/INI Data.ctl"/>
 		<Item Name="Read Data From LabVIEW INI.vi" Type="VI" URL="../NIIconEditor/INI/Read Data From LabVIEW INI.vi"/>
