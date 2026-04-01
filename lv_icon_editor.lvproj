@@ -40,9 +40,9 @@
 		<Item Name="Unit tests" Type="Folder">
 			<Property Name="NI.SortType" Type="Int">1</Property>
 			<Item Name="Editor Position.lvclass" Type="LVClass" URL="../Test/Unit Tests/Editor Position/Editor Position.lvclass"/>
+			<Item Name="History Tests.lvclass" Type="LVClass" URL="../Test/Unit Tests/History Tests/History Tests.lvclass"/>
 			<Item Name="INI Settings.lvclass" Type="LVClass" URL="../Test/Unit Tests/INI Settings/INI Settings.lvclass"/>
 			<Item Name="Text-Based VI Icon Tests.lvclass" Type="LVClass" URL="../Test/Unit Tests/Text-Based VI Icon Tests/Text-Based VI Icon Tests.lvclass"/>
-			<Item Name="Undo Redo Core.lvclass" Type="LVClass" URL="../Test/Unit Tests/Undo Redo Core/Undo Redo Core.lvclass"/>
 		</Item>
 		<Item Name="Test Templates" Type="Folder">
 			<Property Name="NI.SortType" Type="Int">1</Property>
