@@ -23,6 +23,10 @@
 		<Item Name="Read Data From LabVIEW INI.vi" Type="VI" URL="../NIIconEditor/INI/Read Data From LabVIEW INI.vi"/>
 		<Item Name="Write Data to LabVIEW INI.vi" Type="VI" URL="../NIIconEditor/INI/Write Data to LabVIEW INI.vi"/>
 	</Item>
+	<Item Name="ni.com Icon Library" Type="Folder">
+		<Item Name="Download iconlibrary files.vi" Type="VI" URL="../NIIconEditor/Miscellaneous/ni.com_iconlibrary/Download iconlibrary files.vi"/>
+		<Item Name="GET HTTP.vi" Type="VI" URL="../NIIconEditor/Miscellaneous/ni.com_iconlibrary/GET HTTP.vi"/>
+	</Item>
 	<Item Name="Other" Type="Folder">
 		<Item Name="Adjust temporary rotate and flip rectangle.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Adjust temporary rotate and flip rectangle.vi"/>
 		<Item Name="Apply Opacity.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Apply Opacity.vi"/>
