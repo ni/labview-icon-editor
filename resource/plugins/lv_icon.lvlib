@@ -41,7 +41,6 @@
 		<Item Name="Create Layer from Image.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Create Layer from Image.vi"/>
 		<Item Name="Deserialize Picture Control Data.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Deserialize Picture Control Data.vi"/>
 		<Item Name="Draw Layers.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Draw Layers.vi"/>
-		<Item Name="Draw Picture based on Origin.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Draw Picture based on Origin.vi"/>
 		<Item Name="Extract Data.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Extract Data.vi"/>
 		<Item Name="Fill.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Fill.vi"/>
 		<Item Name="FilterEmptyLayerIcons.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/FilterEmptyLayerIcons.vi"/>

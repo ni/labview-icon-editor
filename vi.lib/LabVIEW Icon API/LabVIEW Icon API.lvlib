@@ -31,6 +31,7 @@
 		<Property Name="NI.LibItem.Scope" Type="Int">1</Property>
 		<Item Name="Create Icon Framework.vi" Type="VI" URL="../Support/Create Icon Framework.vi"/>
 		<Item Name="Create Icon Layer.vi" Type="VI" URL="../lv_icon/Support/Create Icon Layer.vi"/>
+		<Item Name="Draw Picture based on Origin.vi" Type="VI" URL="../lv_icon/Support/Draw Picture based on Origin.vi"/>
 		<Item Name="Draw Template Glyph.vi" Type="VI" URL="../Support/Draw Template Glyph.vi"/>
 		<Item Name="Extract Default Icon Data.vi" Type="VI" URL="../lv_icon/Support/Extract Default Icon Data.vi"/>
 		<Item Name="Extract Icon Data.vi" Type="VI" URL="../lv_icon/Support/Extract Icon Data.vi"/>
