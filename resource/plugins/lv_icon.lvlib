@@ -23,6 +23,10 @@
 		<Item Name="Read Data From LabVIEW INI.vi" Type="VI" URL="../NIIconEditor/INI/Read Data From LabVIEW INI.vi"/>
 		<Item Name="Write Data to LabVIEW INI.vi" Type="VI" URL="../NIIconEditor/INI/Write Data to LabVIEW INI.vi"/>
 	</Item>
+	<Item Name="ni.com Icon Library" Type="Folder">
+		<Item Name="Download iconlibrary files.vi" Type="VI" URL="../NIIconEditor/Miscellaneous/ni.com_iconlibrary/Download iconlibrary files.vi"/>
+		<Item Name="GET HTTP.vi" Type="VI" URL="../NIIconEditor/Miscellaneous/ni.com_iconlibrary/GET HTTP.vi"/>
+	</Item>
 	<Item Name="Other" Type="Folder">
 		<Item Name="Adjust temporary rotate and flip rectangle.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Adjust temporary rotate and flip rectangle.vi"/>
 		<Item Name="Apply Opacity.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Apply Opacity.vi"/>
@@ -37,7 +41,6 @@
 		<Item Name="Create Layer from Image.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Create Layer from Image.vi"/>
 		<Item Name="Deserialize Picture Control Data.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Deserialize Picture Control Data.vi"/>
 		<Item Name="Draw Layers.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Draw Layers.vi"/>
-		<Item Name="Draw Picture based on Origin.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Draw Picture based on Origin.vi"/>
 		<Item Name="Extract Data.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Extract Data.vi"/>
 		<Item Name="Fill.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/Fill.vi"/>
 		<Item Name="FilterEmptyLayerIcons.vi" Type="VI" URL="../../../vi.lib/LabVIEW Icon API/lv_icon/Support/FilterEmptyLayerIcons.vi"/>
