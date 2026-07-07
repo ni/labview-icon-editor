@@ -6,13 +6,13 @@ This revised guide focuses on the **release workflow**, specifically how we hand
 ## **Table of Contents**
 
 1. [Overview & Purpose](#overview--purpose)  
-2. [Requirements & Environment](#requirements--environment)  
-3. [Configuration & Branch Patterns](#configuration--branch-patterns)  
-4. [Workflow Steps](#workflow-steps)  
-   - [Disable GPG on Forks](#disable-gpg-on-forks)  
-   - [Fetch & Determine Version](#fetch--determine-version)  
-   - [Build & Artifact Handling](#build--artifact-handling)  
-   - [Tag & Release Creation](#tag--release-creation)  
+2. [Requirements & Environment](#requirements--environment)
+3. [Configuration & Branch Patterns](#configuration--branch-patterns)
+   - [Issue-Status Gate](#issue-status-gate)
+4. [Workflow Steps](#workflow-steps)
+   - [Fetch & Determine Version](#fetch--determine-version)
+   - [Build & Artifact Handling](#build--artifact-handling)
+   - [Artifact Upload Only](#artifact-upload-only)
 5. [Multiple Pre-Release Channels Explained](#multiple-pre-release-channels-explained)  
    - [Branch Name Conventions](#branch-name-conventions)  
    - [Alpha / Beta / RC Logic](#alpha--beta--rc-logic)  
@@ -26,12 +26,11 @@ This revised guide focuses on the **release workflow**, specifically how we hand
 <a name="overview--purpose"></a>
 ## **1. Overview & Purpose**
 
-This **Multi-Channel Release Workflow** automates the packaging and releasing of LabVIEW `.vip` files. It:
+This **Multi-Channel Release Workflow** automates packaging LabVIEW `.vip` files for multiple pre-release channels. It uploads artifacts but does not create Git tags or GitHub releases. It:
 
 - Uses **label-based** semantic version increments for major/minor/patch.
 - Maintains a **commit-based build number**, so every new commit yields a unique suffix (`-buildNN`).
-- Extends pre-release logic to **Alpha**, **Beta**, and **RC** channels, not just a single `release/*` for RC.
-- Optionally **disables GPG** signing if the repository is a fork.
+- Extends pre-release logic to **Alpha**, **Beta**, and **RC** channels, not just a single `release/*` for RC. The pre-release number uses the same commit count as the build number, so both values are identical.
 
 By adopting these patterns, maintainers can run alpha, beta, and RC pipelines in parallel or sequentially, each channel generating distinct pre-release versions.
 
@@ -43,49 +42,71 @@ By adopting these patterns, maintainers can run alpha, beta, and RC pipelines in
    - LabVIEW installed to build `.vip` files.  
    - PowerShell 7+ recommended.
 
-2. **Repository Permissions**  
-   - The GitHub Actions token (`GITHUB_TOKEN`) needs `contents: write` to push tags & create releases.  
-   - If you have branch protection on tags, allow actions to create them.
+2. **Repository Permissions**
+   - The GitHub Actions token (`GITHUB_TOKEN`) needs `contents: read` to upload artifacts.
+   - Creating tags or GitHub releases would require additional permissions and a separate workflow.
 
-3. **Labels**  
-   - Pull requests must use `major`, `minor`, or `patch` to increment those fields. If no label, only the build number increments.
-
-4. **Fork Considerations**  
-   - If `DISABLE_GPG_ON_FORKS == true`, the workflow sets `commit.gpgsign` and `tag.gpgsign` to `false` for forks (i.e., if the `github.repository` is not your official name).
+3. **Labels**
+  - Pull requests may include at most one of `major`, `minor`, or `patch` to increment those fields. If none is provided, the workflow defaults to a patch bump. Multiple release labels cause the workflow to fail. See [`compute-version`](../../../.github/actions/compute-version/action.yml) for the label-handling logic.
 
 
 <a name="configuration--branch-patterns"></a>
 ## **3. Configuration & Branch Patterns**
 
-1. **Alpha**  
-   - Branch pattern: `release-alpha/*`.  
-   - Produces versions like `vX.Y.Z-alpha.<N>-build<commitCount>`.  
-2. **Beta**  
-   - Branch pattern: `release-beta/*`.  
-   - Produces `vX.Y.Z-beta.<N>-build<commitCount>`.  
-3. **RC**  
-   - Branch pattern: `release-rc/*`.  
-   - Produces `vX.Y.Z-rc.<N>-build<commitCount>`.  
-4. **Other Branches**  
-   - `main`, `develop`, `hotfix/*` produce final releases with no alpha/beta/rc suffix.  
-   - No label => major/minor/patch remain unchanged; build increments only.
+1. **Alpha**
+   - Branch pattern: `release-alpha/*`.
+   - Produces versions like `vX.Y.Z-alpha.<commitCount>-build<commitCount>`.
+2. **Beta**
+   - Branch pattern: `release-beta/*`.
+   - Produces `vX.Y.Z-beta.<commitCount>-build<commitCount>`.
+3. **RC**
+  - Branch pattern: `release-rc/*`.
+  - Produces `vX.Y.Z-rc.<commitCount>-build<commitCount>`.
+4. **Other Branches**
+  - `main`, `develop`, `hotfix/*` produce final releases with no alpha/beta/rc suffix.
+  - No label => major/minor/patch remain unchanged; build increments only.
+
+The accompanying GitHub Actions workflow (`ci-composite.yml`) lists `release-alpha/*`, `release-beta/*`, and `release-rc/*` in its trigger patterns so commits or pull requests to these branches automatically run this pipeline.
+
+To enable these pre-release branches, ensure the workflow's `on.push.branches` and `on.pull_request.branches` sections include the patterns:
+
+```yaml
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - release-alpha/*
+      - release-beta/*
+      - release-rc/*
+      - feature/*
+      - hotfix/*
+      - issue-*
+  pull_request:
+    branches:
+      - main
+      - develop
+      - release-alpha/*
+      - release-beta/*
+      - release-rc/*
+      - feature/*
+      - hotfix/*
+      - issue-*
+```
 
 Use whichever patterns best fit your project’s branching model. If you prefer subdirectories (`release/alpha/*` vs. `release-alpha/*`), adapt the snippet accordingly.
+
+
+<a name="issue-status-gate"></a>
+### **Issue-Status Gate**
+
+The composite CI workflow only runs full jobs when the `issue-status` check succeeds. That job requires the source branch name to contain `issue-<number>` (for example, `release-alpha/issue-123` or `issue-456`) and the linked GitHub issue’s Status to be **In Progress**. Branches without this prefix—such as `release-alpha/2.0`—trigger the workflow but skip all subsequent jobs. See the `issue-status` job in [ci-composite.yml](../../../.github/workflows/ci-composite.yml) for details and its downstream gate.
 
 
 <a name="workflow-steps"></a>
 ## **4. Workflow Steps**
 
-Below is a **high-level** breakdown. In your `.github/workflows/build-vi-package.yml`, these steps typically appear in order:
-
-<a name="disable-gpg-on-forks"></a>
-### **Disable GPG on Forks**
-- If `DISABLE_GPG_ON_FORKS == true` and the repo name doesn’t match your official repository, sets:
-  ```powershell
-  git config --global commit.gpgsign false
-  git config --global tag.gpgsign false
-  ```
-- Captures the old values to restore them later.
+Below is a **high-level** breakdown. In your `.github/workflows/ci-composite.yml`, these steps typically appear in order:
 
 <a name="fetch--determine-version"></a>
 ### **Fetch & Determine Version**
@@ -95,21 +116,17 @@ Below is a **high-level** breakdown. In your `.github/workflows/build-vi-package
 4. **Compute final version**:  
    - Parse the last stable tag (or default to `v0.0.0`).  
    - Apply major/minor/patch if needed.  
-   - If branch matches `release-alpha/*`, `release-beta/*`, or `release-rc/*`, append `-alpha.<N>`, `-beta.<N>`, or `-rc.<N>`.  
-   - Finally append `-build<commitCount>`.
+   - If branch matches `release-alpha/*`, `release-beta/*`, or `release-rc/*`, append `-alpha.<commitCount>`, `-beta.<commitCount>`, or `-rc.<commitCount>`. The `<N>` value equals the commit count.
+   - Finally append `-build<commitCount>`. Because both suffixes use the commit count, the pre-release number and build number are identical.
 
 <a name="build--artifact-handling"></a>
 ### **Build & Artifact Handling**
-- Calls a `Build.ps1` script that compiles LabVIEW code and outputs `.vip` to `builds/VI Package/*.vip`.
-- Uploads the `.vip` as an ephemeral artifact with `actions/upload-artifact@v4`.
+- Uses the `build-lvlibp` and `build-vi-package` actions to compile code and produce the `.vip` package.
 
-<a name="tag--release-creation"></a>
-### **Tag & Release Creation**
-- If event is *not* `pull_request`, we:
-  1. Create an annotated tag → `vX.Y.Z-etc.`
-  2. Push the tag to origin.
-  3. Create a GitHub release. If the version is alpha/beta/rc, set `prerelease: true`.  
-  4. If `ATTACH_ARTIFACTS_TO_RELEASE == true`, attach the `.vip` to the release using `Invoke-RestMethod`.
+<a name="artifact-upload-only"></a>
+### **Artifact Upload Only**
+- Uploads the `.vip` as an ephemeral artifact with `actions/upload-artifact@v4`.
+- The workflow does not create tags or GitHub releases; use a separate workflow if publishing is required.
 
 
 <a name="multiple-pre-release-channels-explained"></a>
@@ -140,8 +157,8 @@ Any commit to these branches triggers an alpha/beta/rc suffix. Merging to `main`
      $preSuffix = ""
    }
    ```
-2. If `$preSuffix` is non-empty, `isPrerelease = true`.  
-3. Final version: `v<major>.<minor>.<patch>-<preSuffix>-build<commitCount>`.
+2. If `$preSuffix` is non-empty, `isPrerelease = true`.
+3. Final version: `v<major>.<minor>.<patch>-<preSuffix>-build<commitCount>`. Since `<preSuffix>` incorporates `$commitsCount`, the pre-release number and build number are the same.
 
 <a name="final-release-flow"></a>
 ### **5.3 Final Release Flow**
@@ -152,17 +169,17 @@ Any commit to these branches triggers an alpha/beta/rc suffix. Merging to `main`
 <a name="usage-examples"></a>
 ## **6. Usage Examples**
 
-1. **Alpha Channel Testing**  
-   - You want an early test for version 2.0: create `release-alpha/2.0`.  
-   - Each commit produces something like `v2.0.0-alpha.2-build41`.  
+1. **Alpha Channel Testing**
+   - You want an early test for version 2.0: create `release-alpha/2.0`.
+   - Each commit produces something like `v2.0.0-alpha.41-build41`.
    - Merging alpha → beta or main finalizes or transitions the channel.
 
-2. **Beta Channel**  
-   - `release-beta/2.0`. Now each commit yields `v2.0.0-beta.3-build45`.  
+2. **Beta Channel**
+   - `release-beta/2.0`. Now each commit yields `v2.0.0-beta.45-build45`.
    - Merging back to `main` yields a stable `v2.0.0-build46`.
 
-3. **RC Branch**  
-   - `release-rc/2.1`. The workflow sets `-rc.<N>` so your testers see it’s near final.  
+3. **RC Branch**
+   - `release-rc/2.1`. The workflow sets `-rc.<commitCount>` so your testers see it’s near final, e.g. `v2.1.0-rc.50-build50`.
    - Merging to main ends the RC, resulting in `v2.1.0-buildXX`.
 
 4. **No Pre-Release**  
@@ -184,8 +201,8 @@ Any commit to these branches triggers an alpha/beta/rc suffix. Merging to `main`
 4. **Final Merge**  
    - Typically, you merge alpha → beta → rc → main in sequence, each step dropping the old suffix for the new. If you do “hotfix” merges or skip channels, ensure you keep version consistency.
 
-5. **Same Bump Type**  
-   - The label-based bump is orthogonal to alpha/beta/rc. If no label is set, major/minor/patch remain the same, but you might still produce `-alpha.<N>-buildXX`.
+5. **Same Bump Type**
+   - The label-based bump is orthogonal to alpha/beta/rc. If multiple release labels are applied, the workflow fails; with none, it defaults to a patch bump.
 
 
 <a name="faq"></a>
@@ -207,4 +224,4 @@ Any commit to these branches triggers an alpha/beta/rc suffix. Merging to `main`
 <a name="conclusion"></a>
 ## **9. Conclusion**
 
-By supporting **multiple pre-release channels** (Alpha, Beta, RC), this updated release workflow offers greater flexibility for iterative testing stages. Each branch pattern yields a distinct suffix (`-alpha.<N>`, `-beta.<N>`, or `-rc.<N>`). Merging into a final branch (e.g., `main`) produces a stable release with no suffix, but still uses **commit-based** build numbering. Combined with label-based major/minor/patch increments, you have a **robust**, **fork-friendly**, and **multi-stage** CI/CD pipeline for LabVIEW. 
+By supporting **multiple pre-release channels** (Alpha, Beta, RC), this updated release workflow offers greater flexibility for iterative testing stages. Each branch pattern yields a distinct suffix (`-alpha.<commitCount>`, `-beta.<commitCount>`, or `-rc.<commitCount>`). Merging into a final branch (e.g., `main`) produces a stable release with no suffix, but still uses **commit-based** build numbering—so the pre-release number and build number are always identical. Combined with label-based major/minor/patch increments, you have a **robust**, **fork-friendly**, and **multi-stage** CI/CD pipeline for LabVIEW.

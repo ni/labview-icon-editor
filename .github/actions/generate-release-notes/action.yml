@@ -1,0 +1,21 @@
+name: "Generate Release Notes"
+description: "Creates a markdown release notes file from git history."
+inputs:
+  output_path:
+    description: 'Path for the release notes file (relative to workspace).'
+    required: false
+    default: 'Tooling/deployment/release_notes.md'
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        clean: false
+    - name: Generate release notes
+      shell: pwsh
+      run: |
+        & "${{ github.action_path }}/GenerateReleaseNotes.ps1" -OutputPath "${{ inputs.output_path }}"
+
+

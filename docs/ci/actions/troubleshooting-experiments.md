@@ -1,10 +1,10 @@
 # Troubleshooting experimental branches
 
-Welcome to the **Troubleshooting Guide** for experimental branches. This document aims to help you quickly identify common pitfalls and resolve issues that may arise when working with **long-lived experiment branches** in our GitFlow-like model. Below, you will find **20 typical scenarios** grouped into subsections—each with a **symptom**, a **cause**, and a **solution** (including commands where relevant).  
+Welcome to the **Troubleshooting Guide** for experimental branches. This document aims to help you quickly identify common pitfalls and resolve issues that may arise when working with **long-lived experiment branches** in our GitFlow-like model. Below, you will find **10 typical scenarios** grouped into subsections—each with a **symptom**, a **cause**, and a **solution** (including commands where relevant).
 
 ---
 
-## Subsection A: Setup & Approval
+## Subsection A: Setup and Approval
 
 ### 1. Experiment Branch Not Created After Steering Committee Approval
 
@@ -12,269 +12,132 @@ Welcome to the **Troubleshooting Guide** for experimental branches. This documen
 You’ve received approval from the Steering Committee, but you don’t see `experiment/<shortName>` in the repository.
 
 **Cause**  
-NI maintainers or an admin is responsible for actually creating the experiment branch. They might not have completed this step yet.
+An NI maintainer or admin is responsible for actually creating the experiment branch. They might not have completed this step yet.
 
 **Solution (One Paragraph)**  
-Reach out to the maintainer or Open Source Program Manager and confirm they have time to create `experiment/<shortName>` from `develop`. You can provide them with your shortName if needed (e.g., “experiment/async-rework”). Once the branch is created, refresh your repository page or pull the latest remote branches locally. If it still doesn’t show, verify you have the correct permissions and that the branch was indeed pushed to origin.
+Reach out to the maintainer or Open-Source Program Manager to confirm they have time to create `experiment/<shortName>` from `develop`. Provide them the agreed short name (e.g., “experiment/async-rework”). Once the branch is created, refresh your repository page or pull the latest remote branches locally. If it still doesn’t show up, verify you have the correct repository access and that the branch was indeed pushed to origin.
 
 ---
 
 ### 2. “approve-experiment” Dispatch Missing from Actions
 
 **Symptom**  
-You’re attempting to enable official artifact distribution for your experiment, but you cannot find the “approve-experiment” workflow under GitHub Actions.
+You’re trying to enable official artifact distribution for your experiment, but you cannot find the “approve-experiment” workflow in the Actions tab.
 
 **Cause**  
-Either the repository’s CI config does not include the “approve-experiment” workflow, or it was inadvertently commented out or renamed.
+Either the repository’s CI configuration does not include an “approve-experiment” workflow, or it was inadvertently commented out or renamed.
 
 **Solution (One Paragraph)**  
-Check the `.github/workflows` folder in the main repo for a file that defines the “approve-experiment” job. If missing, ask a maintainer to add it or confirm the correct name. Sometimes the workflow might be called “Approve Experiment.” If the workflow does exist, verify that the file is not disabled in repository settings and that you have admin or maintainer privileges to see manual workflows. Once confirmed, you should see a **“Run workflow”** button in the Actions tab where you select your experiment branch.
+Check the `.github/workflows` folder in the main repo for a workflow file related to experiments approval. It might be named slightly differently (e.g., `approve-experiment.yml`). If missing, ask a maintainer about the intended approval process. Sometimes the workflow exists but requires admin permissions to view or run. Ensure you have maintainer access, and then check under “All workflows” in the Actions tab for any experiment-related manual workflows. Once located, an admin can trigger **“Run workflow”** on your experiment branch to approve artifact publishing.
 
 ---
 
 ### 3. Code Scanning Warnings Blocking Approval
 
 **Symptom**  
-You want NI to approve artifact distribution, but they refuse because the scanning tool warns of potential issues in your experiment branch.
+NI maintainers won’t approve artifact distribution for your experiment because the security scan (VI Analyzer or CodeQL) reports warnings or issues.
 
 **Cause**  
-Your commits contain patterns that the scanning tool interprets as security or quality risks. Maintainers want them resolved before enabling distribution.
+Your experiment’s commits include patterns that the scanning tools flag as potential bugs or security risks. Maintainers require these to be resolved (or justified as false positives) before proceeding.
 
 **Solution (One Paragraph)**  
-Review the scanning report in the Action logs. Fix each flagged issue or comment on why it’s a false positive. Then push new commits to your experiment branch. Once scans are clean or acceptable, maintainers should recheck the logs. With the warnings addressed, they can safely run the “approve-experiment” dispatch and allow artifact publication.
+Review the scan results in the GitHub Actions logs for your experiment branch. Identify each warning and address it: fix the code if it’s a legitimate issue, or discuss with a maintainer if you believe it’s a false positive. After pushing fixes, ensure the scans run clean. Once the scans show no critical warnings, notify the Steering Committee or maintainer. With a clean bill of health, they can confidently run the “approve-experiment” workflow to allow VIP artifact publication.
 
 ---
 
 ### 4. “NoCI” Label Remains Even After Manual Approval
 
 **Symptom**  
-You see a “NoCI” label on your experiment branch in GitHub, even though an admin triggered the “approve-experiment” event.
+Your experiment branch still has a “NoCI” label after an admin ran the “approve-experiment” action, and CI jobs aren’t triggering automatically.
 
-**Cause**  
-The specialized GitFlow Action might not automatically remove the “NoCI” label, or the admin’s manual event did not successfully update the branch’s labels.
+**Cause**
+The “approve-experiment” process might not automatically remove the “NoCI” label from the branch, or the label was added manually and not cleared. The `ci-composite` workflow skips all jobs when this label is present.
 
-**Solution (One Paragraph)**  
-Check the workflow logs to ensure the “approve-experiment” step completed. If the label persists, an admin can manually remove “NoCI” from the branch or PR. Confirm that the environment variable or config toggling “ApprovedCI” is set to `true`. If the action depends on label removal to start builds, you can remove it in the GitHub UI under “Labels.”
+**Solution (One Paragraph)**
+First, verify in the Actions log that the approve step completed successfully. If CI is still skipped due to the “NoCI” label, remove that label from the experiment branch via the GitHub UI (you need maintainer permissions to edit labels). Once the label is cleared, the `issue-status` job will permit subsequent jobs to run. Going forward, ensure that the experiment branch has an “ApprovedCI” indicator (if used) or simply no “NoCI” label. This will allow normal CI workflows (like build/test) to run on pushes to that branch.
 
 ---
 
 ### 5. Unsure How to Name the Experiment Branch
 
 **Symptom**  
-You want to start an experiment but are uncertain which name to use or how long it can be.
+You want to start an experiment but aren’t sure what branch name to use or what format is acceptable.
 
 **Cause**  
-There’s no strict naming enforcement aside from the recommended `experiment/<shortName>` pattern, leading to confusion.
+There’s no strict enforcement beyond the recommended `experiment/<shortName>` pattern, which might leave some room for confusion.
 
 **Solution (One Paragraph)**  
-Follow the recommended naming: `experiment/` prefix plus a concise identifier (e.g., `experiment/ui-overhaul`). Avoid spaces or punctuation that might break scripts. If your feature involves something bigger, be sure to keep it short but descriptive—like `experiment/performance-refactor`. Keeping a consistent naming scheme helps everyone quickly identify the branch as an experiment.
+Use the convention: prefix with `experiment/` followed by a concise, descriptive name (the “shortName”). For example, `experiment/ui-overhaul` or `experiment/refactor-async`. Avoid spaces or special characters to prevent issues in scripts. If in doubt, check past experiment branches in the repo for examples. Consistent naming helps everyone recognize experiment branches at a glance.
 
 ---
 
-## Subsection B: Merging & Sub-Branches
+## Subsection B: Merging and Sub-Branches
 
 ### 6. Merge Conflicts When Pulling from `develop` into Experiment
 
 **Symptom**  
-Frequent conflicts occur whenever you merge updated `develop` changes into your experiment branch.
+You encounter frequent merge conflicts whenever you merge updates from `develop` into your experiment branch.
 
 **Cause**  
-Your experiment has diverged significantly from `develop`; the code scanning or action logs might also indicate repeated merges.
+Your experiment has diverged significantly from `develop`; features on `develop` and your experiment may be touching the same areas of code.
 
 **Solution (One Paragraph)**  
-Merge or rebase from `develop` **regularly**, at least once every few weeks, to reduce large conflict sets. If the conflicts are already massive, break them down by merging `develop` in smaller increments or isolate file sets. Also ensure your local environment is fully updated before pulling. Once resolved locally, push the updated experiment branch so your collaboration stays in sync.
+Merge (or rebase) from `develop` into your experiment branch regularly—aim for at least once every couple of weeks. Smaller, more frequent merges are easier to handle than one large merge. If conflicts are complex, break them down: merge `develop` in segments or resolve file-by-file to isolate problem areas. Ensure your local environment is up-to-date with both `develop` and your experiment before merging, and run tests after each sync. Regular integration reduces the pain of a big bang merge at the end.
 
 ---
 
 ### 7. alpha → beta → rc Sub-Branches Not Merging Properly
 
 **Symptom**  
-You’ve created `experiment/<shortName>/alpha`, then `beta`, but merges from alpha to beta produce unexpected code changes or partial merges missing.
+You’ve set up sub-branches (`alpha`, `beta`, `rc`) under your experiment, but merging changes from alpha to beta (or beta to rc) is causing strange diffs or missing commits.
 
 **Cause**  
-Team members are working in multiple sub-branches without a clear merge order, or you’re skipping essential merges between them.
+Team members might be committing to multiple sub-branches in parallel, or merges aren’t happening in the strict alpha → beta → rc order, causing inconsistencies.
 
 **Solution (One Paragraph)**  
-Establish a clear pipeline: alpha → beta → rc. Finish changes in alpha, merge them fully into beta, then into rc. Communicate the merge order to all collaborators so no one merges rc changes backward into alpha. Use a consistent naming approach and confirm each branch merges cleanly before moving to the next. If needed, use PRs for each stage so the specialized Action logs the merges systematically.
+Adopt a strict discipline: treat the `alpha` branch as the source of truth during early development. Merge `alpha` into `beta` only when alpha is stable for a cycle, and similarly merge `beta` into `rc` in order. Instruct collaborators to **not** commit directly to `beta` or `rc` unless absolutely necessary (and if so, ensure those commits also flow back down to alpha). If things get out of sync, you may need to manually cherry-pick missing commits or do a fresh merge from the lower branch. Clear communication among team members about the merge order is key.
 
 ---
 
 ### 8. Accidental Direct Commits to `rc` Instead of `beta`
 
 **Symptom**  
-A collaborator commits code directly onto your `experiment/<shortName>/rc` branch, bypassing the alpha or beta stage.
+A contributor accidentally pushed commits directly to the `experiment/<shortName>/rc` branch instead of going through `beta`, bypassing the intended workflow.
 
 **Cause**  
-Lack of clarity on the sub-branch flow; the collaborator had push access and accidentally targeted the rc branch.
+Miscommunication or misunderstanding of the branching strategy; the contributor might not have realized `rc` should only contain changes already vetted in `beta`.
 
 **Solution (One Paragraph)**  
-Explain the sub-branch staging approach: alpha is for early changes, beta is for stabilizing, and rc is for near-final. Revert or cherry-pick those commits onto the correct sub-branch if necessary. Update branch protection rules to disallow direct commits to `rc` or require a PR with lead approval.
+If the commits in `rc` are needed, cherry-pick or merge them back into `beta` (and `alpha` if relevant) to realign the branches. Then reset the `rc` branch to match `beta` or perform a merge from `beta` into `rc` so that `rc` is again ahead of `beta` only by the intended changes. Set branch protection rules to prevent direct pushes to `rc` (and `beta` if desired), requiring PRs instead. Remind the team of the proper flow: work goes into alpha, then beta, then rc, then main.
 
 ---
 
 ### 9. Attempting Partial Merge from Sub-Branch into `develop`
 
 **Symptom**  
-A user tries to bypass the main experiment trunk and do a partial merge from `beta` or `rc` directly into `develop`.
+Someone wants to merge only a specific feature from the experiment’s `beta` or `rc` branch into `develop` before the experiment is fully done.
 
 **Cause**  
-They only want certain improvements from the experiment to land early in `develop`, or they misunderstand the final big-bang approach.
+They might have an urgent need for part of the experiment’s functionality in `develop` sooner (e.g., a subset of changes is stable and valuable independently).
 
 **Solution (One Paragraph)**  
-It’s acceptable to do partial merges if the code is stable, but coordinate with the experiment lead. Typically, you create a new branch from `beta` or `rc` with the relevant commits and open a PR to `develop`. This ensures the experiment’s main line remains consistent while letting you deliver urgent features or fixes earlier.
+This can be done carefully: create a new branch off `develop`, then manually cherry-pick the desired commits from the experiment sub-branch into it. Open a PR to merge that into `develop` as a standalone feature. Mark the original experiment commits (e.g., via notes or labels) to avoid duplicating work when the full experiment merges later. Coordinate with maintainers to ensure that merging part of the experiment early won’t cause integration problems. This approach should be the exception, not the norm, and used only with Steering Committee awareness.
 
 ---
 
 ### 10. Steering Committee Forgets to Approve Final Merge
 
 **Symptom**  
-The final PR from `experiment/<shortName>` to `develop` is open, but no one merges it because the Steering Committee hasn’t labeled it “major,” “minor,” or “patch.”
+The final PR from `experiment/<shortName>` to `develop` is ready to merge, but it’s stalled because no one has applied a version label or formally approved it.
 
 **Cause**  
-They might have overlooked the PR or expected more clarifications.
+The Steering Committee may be busy or may have assumed maintainers would handle the merge. Alternatively, the necessary version bump label (“major”, “minor”, or “patch”) wasn’t added, so CI might not allow the merge.
 
 **Solution (One Paragraph)**  
-Politely ping the Steering Committee members or reference them in a comment: “@SteeringCommittee, can we finalize the labeling for this PR?” Remind them the specialized action needs that label to do the mainline version bump. If it’s time-sensitive, also note that the BDFL override is possible if they need an immediate merge.
-
----
-
-## Subsection C: Collaboration & Scanning
-
-### 11. Conflicting Scans from Two Contributors
-
-**Symptom**  
-Two collaborators push changes that trigger code scanning with contradictory or overlapping warnings. The logs become messy or contradictory.
-
-**Cause**  
-Multiple commits in short succession can cause the scanning steps to produce separate sets of warnings.
-
-**Solution (One Paragraph)**  
-Coordinate commits so that one contributor merges or rebases after the other’s scanning results are addressed. If both scanning logs are relevant, unify them by merging whichever commit came first. Re-run the scanning steps or push a new commit that addresses all flagged items. Encourage communication to avoid overlapping partial fixes.
-
----
-
-### 12. Mysterious “No Artifact Generated” for a PR
-
-**Symptom**  
-When a collaborator opens a pull request into `experiment/<shortName>`, the build step completes but no final artifact is attached.
-
-**Cause**  
-If the push is from a **fork** or a branch that’s not recognized by the specialized action’s conditions, the packaging might be set to skip. Alternatively, the scanning tool might fail before packaging.
-
-**Solution (One Paragraph)**  
-Check the logs carefully. If scanning fails, packaging is typically aborted. Also confirm that your GitHub Action includes `pull_request` triggers for experiment branches. If it’s from a fork, the collaborator might need a PR from the fork’s branch into `experiment/<shortName>`, ensuring they have “Allow actions from external PRs” or a manual approval from a maintainer.
-
----
-
-### 13. Code Scanning Always Times Out
-
-**Symptom**  
-Every commit to your experiment takes forever or times out in the scanning stage.
-
-**Cause**  
-The code scanning tool might be analyzing a large codebase or unoptimized scanning rules. Possibly a slow or busy runner environment.
-
-**Solution (One Paragraph)**  
-Break your commits or code changes into smaller chunks. Revisit the scanning rules to exclude non-critical areas. If your environment is overburdened, ask a maintainer about scheduling scans or using more powerful runners. If partial scanning is acceptable, temporarily disable scanning on minor files until final integration.
-
----
-
-### 14. Approve-Experiment Workflow Succeeds but “NoCI” Stays in Logs
-
-**Symptom**  
-The final step in the “approve-experiment” workflow claims success, but the logs still mention “NoCI” being active on subsequent commits.
-
-**Cause**  
-It could be a caching or environment variable issue. Possibly the specialized Action never wrote the updated “ApprovedCI” state to the correct config.
-
-**Solution (One Paragraph)**  
-Open the Approve-Experiment workflow logs. Look for lines saying “Successfully toggled from NoCI to ApprovedCI.” If absent, re-run the event. If the config file or environment variable is in a separate branch, ensure it merges into `experiment/<shortName>`. Once verified, the next push should show logs referencing “ApprovedCI.”
-
----
-
-### 15. Another Repo’s Changes Not Flowing Down to the Experiment
-
-**Symptom**  
-The specialized action or scanning updates made on `main` repo aren’t reflected in your experiment-based repo or a collaborator’s fork.
-
-**Cause**  
-The changes in the action or scanning config are not automatically pulled into every existing branch or fork. They require a manual pull or rebase from upstream.
-
-**Solution (One Paragraph)**  
-Explain to collaborators that, if they’re on an older version of the specialized Action or scanning config, they must merge from the upstream `main` or `develop` to incorporate those updates. For forks, they can open a PR from upstream. Once merged, the new pipeline changes will appear in their experiment branch or fork.
-
----
-
-## Subsection D: Final Integration & Advanced Issues
-
-### 16. One-Year Experiment Overwhelms the Final Merge
-
-**Symptom**  
-An experiment that lasted ~1 year has massive changes, making the final PR extremely large and difficult to review.
-
-**Cause**  
-No incremental merges were done, so develop and the experiment diverged significantly.
-
-**Solution (One Paragraph)**  
-Encourage partial merges or chunk-based merges well before the 1-year mark. If you’re already at a big-bang PR, break it into smaller merges if feasible (like a “phase1” sub-branch). Conduct thorough reviews in stages or rely on thorough testing. Also check the scanning logs carefully for each phase to ensure no hidden regressions.
-
----
-
-### 17. Lost “rc” Branch Before Merging to develop
-
-**Symptom**  
-The `experiment/<shortName>/rc` sub-branch was accidentally deleted or overwritten, losing final release candidate changes.
-
-**Cause**  
-A mistaken force-push or deletion by a collaborator who misunderstood the branch’s purpose.
-
-**Solution (One Paragraph)**  
-Check your Git history or any open pull requests that might reference the `rc` commits. You can restore the branch from the relevant commit hash if found in logs or merges. Communicate the importance of not force-pushing without lead approval. If you cannot restore it, revert to `beta` or older commits and rebuild the rc changes from memory or PR diffs.
-
----
-
-### 18. Steering Committee Sets Wrong Label (Major/Minor/Patch)
-
-**Symptom**  
-They labeled the final PR “minor,” but you suspect it’s actually a “major” release. The specialized Action merges it as “minor.”
-
-**Cause**  
-Possibly a committee oversight or misunderstanding of the changes’ scope.
-
-**Solution (One Paragraph)**  
-Discuss it in the PR or mention the BDFL for a final call. If the merge already happened, the version is set. You can do an immediate follow-up PR to correct the version label or do a new “major” label if it’s truly that big. Document the reason for re-labeling so future references are consistent.
-
----
-
-### 19. Conflict Between Two Simultaneous Experiments
-
-**Symptom**  
-Two experiment branches overlap in scope, and maintainers are unsure how merges from each experiment eventually unify in `develop`.
-
-**Cause**  
-Large or overlapping changes in distinct branches create uncertain interactions. No cross-communication between leads.
-
-**Solution (One Paragraph)**  
-Encourage the leads to share progress and possibly do a “sync branch” that merges both experiments. If they remain separate, each experiment merges into `develop` in sequence, with the second lead reconciling conflicts. Steering Committee can help schedule which merges first to minimize chaos. Keep scanning each experiment individually until both finalize.
-
----
-
-### 20. Approve-Experiment Trigger Overused
-
-**Symptom**  
-An admin is re-running “approve-experiment” every few commits for no apparent reason, causing confusion about the actual “NoCI” vs. “ApprovedCI” state.
-
-**Cause**  
-A misunderstanding that “approve-experiment” must be repeated after each scanning pass or that the experiment lead wants incremental approvals.
-
-**Solution (One Paragraph)**  
-Clarify that typically one approval suffices to switch from “NoCI” → “ApprovedCI,” letting you build artifacts indefinitely. The only time you might re-run is if the scope drastically changed or if you intentionally toggled it off due to scanning issues. Maintain consistent logs to avoid accidental repeated toggling. Document or have a policy limiting how many times “approve-experiment” is run for a single branch.
-
+Politely remind the Steering Committee in the PR comments that the experiment is ready to merge. Highlight any last scan results and that all tests pass. Ask for a final review and a decision on the version label for the merge. Maintainers can help by pinging the committee through the appropriate channels (GitHub mentions or a Discord/meeting reminder). Once the Steering Committee adds the label and approves, proceed with the merge into `develop`. If the committee is unavailable, the Open-Source Program Manager can step in to ensure the process concludes.
+  
 ---
 
 ## See Also
-- [EXPERIMENTS.md](../EXPERIMENTS.md) – How to propose & manage experimental branches.  
-- [MAINTAINERS_GUIDE.md](docs/ci/actions/maintainers-guide.md) – Admin tasks & final merges.  
-- [GOVERNANCE.md](./GOVERNANCE.md) – Steering Committee roles, BDFL structure.
-
----
+- [**`maintainers-guide.md`**](maintainers-guide.md) – Admin tasks and final merge processes.
+- [**`GOVERNANCE.md`**](../../../GOVERNANCE.md) – Steering Committee roles, BDFL structure.

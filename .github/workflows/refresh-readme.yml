@@ -1,0 +1,44 @@
+name: Refresh README contributor hours
+
+# Fire only when Coding‑hours report completes successfully
+on:
+  workflow_run:
+    workflows: ["Coding‑hours report"]
+    types: [completed]
+
+permissions:
+  contents: write            # allow bot commits, nothing more
+
+jobs:
+  update-readme:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      REF_BRANCH: >-
+        ${{ github.event.workflow_run.head_branch ||
+            github.event.repository.default_branch }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ env.REF_BRANCH }}
+
+      # Grab the helper
+      - name: Run table refresh
+        run: |
+          python scripts/update_readme_hours.py
+
+      - name: Commit & push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name  "hours‑bot"
+          git config --global user.email "bot@users.noreply.github.com"
+          git add README.md
+          if git diff --cached --quiet; then
+            echo "README already up‑to‑date"
+          else
+            git commit -m "docs(readme): refresh coding hours [skip ci]"
+            git push
+          fi

@@ -1,0 +1,278 @@
+name: "Build VI Package"
+description: "Runs build_vip.ps1 to update a VIPB file and build the VI package."
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        clean: false
+
+    - name: Pre-flight LabVIEW availability check
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $lvVersion = "${{ inputs.labview_version }}"
+        if ([string]::IsNullOrWhiteSpace($lvVersion)) {
+          throw "labview_version is required."
+        }
+        $logDir = Join-Path -Path "${{ inputs.repo_root }}" -ChildPath "builds/logs"
+        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+        $logFile = Join-Path -Path $logDir -ChildPath "gcli-preflight.log"
+
+        $gcliArgs = @(
+          "--lv-ver", $lvVersion,
+          "--arch", "${{ inputs.supported_bitness }}",
+          "--connect-timeout", "60000",
+          "--kill",
+          "--kill-timeout", "5000",
+          "--verbose",
+          "QuitLabVIEW"
+        )
+
+        Write-Host "Pre-flight command: g-cli $($gcliArgs -join ' ')"
+        & g-cli @gcliArgs 2>&1 | Tee-Object -FilePath $logFile | Out-Null
+
+        if ($LASTEXITCODE -ne 0) {
+          if (Test-Path $logFile) {
+            Write-Host "---- g-cli preflight log ($logFile) ----"
+            Get-Content -Path $logFile | ForEach-Object { Write-Host $_ }
+            Write-Host "---- end g-cli preflight log ----"
+          } else {
+            Write-Host "Pre-flight log file not found at $logFile."
+          }
+          Write-Error "Pre-flight g-cli check failed. Inspect $logFile for details."
+          exit $LASTEXITCODE
+        }
+
+    - name: Clean previous VI packages
+      id: clean-vip
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        function Remove-ExistingVip {
+          param([string]$Dir)
+
+          if (-not (Test-Path $Dir)) {
+            Write-Host "No existing VI Package directory at '$Dir'. Creating it..."
+            New-Item -ItemType Directory -Path $Dir -Force | Out-Null
+            return $Dir
+          }
+
+          $existingVip = Get-ChildItem -Path $Dir -Filter *.vip -File -Recurse
+          if (-not $existingVip) {
+            Write-Host "No preexisting .vip files found at '$Dir'."
+            return $Dir
+          }
+
+          Write-Host "Found existing .vip files before build:"
+          $existingVip | ForEach-Object { Write-Host " - $($_.FullName)" }
+          Write-Host "Deleting existing .vip files prior to build..."
+
+          $failed = $false
+          foreach ($file in $existingVip) {
+            try {
+              Remove-Item -LiteralPath $file.FullName -Force -ErrorAction Stop
+            }
+            catch {
+              $failed = $true
+              Write-Warning ("Failed to delete {0}: {1}" -f $file.FullName, $_.Exception.Message)
+            }
+          }
+
+          if ($failed) {
+            throw "One or more old .vip files could not be removed; aborting before build."
+          }
+
+          Write-Host ("Deleted {0} .vip file(s) prior to build." -f $existingVip.Count)
+          return $Dir
+        }
+
+        $vipDir = Join-Path -Path "${{ inputs.repo_root }}" -ChildPath "builds/VI Package"
+        $vipDir = Remove-ExistingVip -Dir $vipDir
+
+        "vip_dir=$vipDir" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+    - name: Run build_vip.ps1
+      shell: pwsh
+      env:
+        DISPLAY_INFORMATION_JSON: |
+          ${{ inputs.display_information_json }}
+      run: |
+        $lvVersion = "${{ inputs.labview_version }}"
+        if ([string]::IsNullOrWhiteSpace($lvVersion)) {
+          throw "labview_version is required."
+        }
+        $displayInformationJson = $Env:DISPLAY_INFORMATION_JSON
+
+        & "${{ github.action_path }}/build_vip.ps1" `
+          -SupportedBitness ${{ inputs.supported_bitness }} `
+          -RepoRoot "${{ inputs.repo_root }}" `
+          -VIPBPath "${{ inputs.vipb_path }}" `
+          -MinimumSupportedLVVersion $lvVersion `
+          -LabVIEWMinorRevision ${{ inputs.labview_minor_revision }} `
+          -Major ${{ inputs.major }} `
+          -Minor ${{ inputs.minor }} `
+          -Patch ${{ inputs.patch }} `
+          -Build ${{ inputs.build }} `
+          -Commit "${{ inputs.commit }}" `
+          -ReleaseNotesFile "${{ inputs.release_notes_file }}" `
+          -DisplayInformationJSON $displayInformationJson
+
+    - name: Dump g-cli build logs on failure
+      if: failure()
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $logDir = Join-Path -Path "${{ inputs.repo_root }}" -ChildPath "builds/logs"
+        if (-not (Test-Path $logDir)) {
+          Write-Host "No log directory found at $logDir."
+          exit 0
+        }
+
+        $logs = Get-ChildItem -Path $logDir -Filter "gcli-build-attempt-*.log" -File | Sort-Object Name
+        if (-not $logs) {
+          Write-Host "No g-cli build attempt logs found under $logDir."
+          exit 0
+        }
+
+        foreach ($log in $logs) {
+          Write-Host ("---- g-cli build log ({0}) ----" -f $log.FullName)
+          Get-Content -Path $log.FullName | ForEach-Object { Write-Host $_ }
+          Write-Host ("---- end g-cli build log ({0}) ----" -f $log.FullName)
+        }
+    
+    - name: Prepare release notes artifact
+      id: release-notes
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $source = "${{ inputs.release_notes_file }}"
+        if (-not (Test-Path $source)) {
+          Write-Error "Release notes file not found at $source."
+          exit 1
+        }
+
+        $dir = Split-Path -Parent $source
+        $version = "{0}.{1}.{2}.{3}" -f "${{ inputs.major }}", "${{ inputs.minor }}", "${{ inputs.patch }}", "${{ inputs.build }}"
+        $destName = "release_notes_{0}.md" -f $version
+        $artifactName = "release_notes_{0}" -f $version
+        $destPath = Join-Path -Path $dir -ChildPath $destName
+
+        Copy-Item -LiteralPath $source -Destination $destPath -Force
+        Write-Host ("Release notes artifact prepared at {0}" -f $destPath)
+
+        "artifact_path=$destPath" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+        "artifact_name=$artifactName" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+    - name: Locate built VI package
+      id: locate-vip
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $searchRoot = "${{ steps.clean-vip.outputs.vip_dir }}"
+        $vipFiles = Get-ChildItem -Path $searchRoot -Filter *.vip -File -Recurse | Sort-Object LastWriteTime -Descending
+
+        if (-not $vipFiles) {
+          Write-Error "No .vip file found under '$searchRoot'."
+          exit 1
+        }
+
+        if ($vipFiles.Count -gt 1) {
+          Write-Warning ("Multiple .vip files found; selecting most recent (by LastWriteTime). Files:`n{0}" -f ($vipFiles | ForEach-Object { " - $($_.FullName)" } | Out-String))
+          if ("${{ inputs.fail_on_multiple_vips }}" -eq "true") {
+            Write-Error "More than one .vip was produced after cleanup."
+            exit 1
+          }
+        }
+
+        $vip = $vipFiles[0]
+        Write-Host ("Selected .vip: {0}" -f $vip.FullName)
+
+        "vip_path=$($vip.FullName)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+        "vip_name=$($vip.Name)"     | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+        "vip_artifact=$([System.IO.Path]::GetFileNameWithoutExtension($vip.Name))" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+    - name: Upload release notes
+      id: upload-release-notes
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.release-notes.outputs.artifact_name }}
+        path: ${{ steps.release-notes.outputs.artifact_path }}
+        compression-level: 0
+        if-no-files-found: ignore
+
+    - name: Upload VI Package
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.locate-vip.outputs.vip_artifact }}
+        path: ${{ steps.locate-vip.outputs.vip_path }}
+        if-no-files-found: ignore
+
+    - name: Upload g-cli logs (if present)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gcli-logs
+        path: ${{ inputs.repo_root }}/builds/logs
+        if-no-files-found: ignore
+
+    - name: Print release notes
+      if: always()
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $path = "${{ steps.release-notes.outputs.artifact_path }}"
+        if (-not (Test-Path $path)) {
+          Write-Host "Release notes file not found at $path."
+          exit 0
+        }
+        Write-Host "---- Release notes (${path}) ----"
+        Get-Content -Path $path | ForEach-Object { Write-Host $_ }
+        Write-Host "---- end release notes ----"
+inputs:
+  labview_version:
+    description: 'LabVIEW version to target (year or numeric).'
+    required: true
+  supported_bitness:
+    description: '32 or 64'
+    required: true
+  repo_root:
+    description: 'Workspace root path'
+    required: true
+  vipb_path:
+    description: 'Path to the VIPB file (relative to workspace)'
+    required: true
+  labview_minor_revision:
+    description: 'LabVIEW minor revision (e.g., 0 for 21.0)'
+    required: false
+    default: '0'
+  major:
+    description: 'Major version component'
+    required: true
+  minor:
+    description: 'Minor version component'
+    required: true
+  patch:
+    description: 'Patch version component'
+    required: true
+  build:
+    description: 'Build number'
+    required: true
+  commit:
+    description: 'Commit identifier'
+    required: true
+  release_notes_file:
+    description: 'Path to release notes file'
+    required: true
+  display_information_json:
+    description: 'DisplayInformation JSON string'
+    required: true
+  fail_on_multiple_vips:
+    description: 'If true, fail when multiple .vip files exist after the build step'
+    required: false
+    default: 'true'
+
+

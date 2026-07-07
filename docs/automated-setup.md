@@ -1,11 +1,11 @@
 
-# Automated Setup & Editing Instructions
+# Automated Setup and Editing Instructions
 
-This document describes how to **build, test, and distribute** the **LabVIEW Icon Editor** using **PowerShell**. You can run these scripts locally on your development or self-hosted runner, or within **GitHub Actions**. By making this process open source, we enable community collaboration, easier troubleshooting, and a more transparent build pipeline for the Icon Editor that ships with LabVIEW.
+This document describes how to **build, test, and distribute** the **LabVIEW Icon Editor** using **PowerShell**. You can run these scripts locally on your development or self-hosted runner, or within **GitHub Actions**. By making this process open-source, we enable community collaboration, easier troubleshooting, and a more transparent build pipeline for the Icon Editor that ships with LabVIEW.
 
 ## Table of Contents
 
-1. [Overview & Prerequisites](#overview--prerequisites)  
+1. [Overview and Prerequisites](#overview-and-prerequisites)
 2. [Editing Guide (PowerShell)](#editing-guide-powershell)  
 3. [Distribution Guide (VI Package via PowerShell)](#distribution-guide-vi-package-via-powershell)  
 4. [Integrating with GitHub Actions](#integrating-with-github-actions)  
@@ -15,8 +15,8 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 
 ---
 
-<a name="overview--prerequisites"></a>
-## 1. Overview & Prerequisites
+<a name="overview-and-prerequisites"></a>
+## 1. Overview and Prerequisites
 
 - **Purpose**: Provide a **PowerShell-centric** approach to build, test, and package the Icon Editor—either locally or via GitHub Actions.  
 - **Why PowerShell?**:  
@@ -24,9 +24,9 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
   - Debug locally the same steps used in CI, ensuring consistent results.
 
 - **Prerequisites**:
-  1. **LabVIEW 2021 SP1 (both 32-bit & 64-bit)**.  
+  1. **LabVIEW 2020 (20.0), both 32-bit and 64-bit**.
   2. **PowerShell 7+** and **Git**.  
-  3. **Apply** `tooling\deployment\runner_dependencies.vipc` **(to both 32-bit & 64-bit)**.
+  3. **Apply** `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2020 (20.0), 32-bit & 64-bit**—matching the `apply-deps` matrix in [`../.github/workflows/ci-composite.yml`](../.github/workflows/ci-composite.yml).
 
 ---
 
@@ -40,14 +40,14 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 2. **Clone** the [Icon Editor](https://github.com/ni/labview-icon-editor.git) to your development location.
 
 3. **Apply** dependencies:  
-   `Tooling\deployment\runner_dependencies.vipc` to **LabVIEW 2021 (32-bit) & LabVIEW 2021 (64-bit)**.
+   `.github\actions\apply-vipc\runner_dependencies.vipc` to **LabVIEW 2020 (20.0), 32-bit & 64-bit**.
 
-4. **Open** PowerShell (Admin):  
-   Navigate to your working directory `pipeline\scripts`
+4. **Open** PowerShell (Admin):
+   Navigate to `.github\actions\set-development-mode`
 
 5. **Enable Dev Mode**:
    ```powershell
-   .\Set_Development_Mode.ps1 -RelativePath "C:\labview-icon-editor"
+   .\Set_Development_Mode.ps1 -LabVIEWVersion 2021
    ```
 
    Removes the default `lv_icon.lvlibp` and points LabVIEW to your local Icon Editor code.
@@ -62,32 +62,33 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 ## 3. Distribution Guide (VI Package via PowerShell)
 
 1. **Apply Dependencies** in VIPM:
-   - Set LabVIEW to 2021 (32-bit), apply `Tooling\deployment\runner_dependencies.vipc`.
-   - Repeat for 64-bit if necessary.
+   - Set LabVIEW to 2021 (32-bit) and apply `.github\actions\apply-vipc\runner_dependencies.vipc`.
+   - Repeat for **2021 (64-bit)** so both bitnesses are covered.
 
 2. **Disable LabVIEW Security Warnings** *(to prevent popups from "run when opened" VIs)*:
    - **Tools → Options → Security** → **Run VI Without Warnings**.
 
 3. **Open** PowerShell (Admin), go to:
    ```powershell
-   cd pipeline\scripts
+   cd .github\actions\build
    ```
 
 4. **Run** `Build.ps1`:
    ```powershell
    .\Build.ps1 `
-       -RelativePath "C:\labview-icon-editor" `
-       -AbsolutePathScripts "C:\labview-icon-editor\pipeline\scripts" `
+       -RepoRoot "C:\labview-icon-editor" `
        -Major 1 -Minor 2 -Patch 3 -Build 45 `
-       -Commit "my-commit-sha" `
-       -LabVIEWMinorRevision 3 `
-       -Verbose
-   ```
-   This generates a `.vip` in `builds\VI Package`.
+    -Commit "my-commit-sha" `
+    -LabVIEWMinorRevision 0 `
+    -Verbose
+    ```
+    This generates a `.vip` in `builds\VI Package`.
+
+   *Branding tip:* Add optional metadata fields such as `-CompanyName` and `-AuthorName` to the command above to embed your organization or repository name in the package. These values appear in the final VI Package metadata, helping identify builds from different forks.
 
 5. **Revert Dev Mode (optional)**:
    ```powershell
-   .\RevertDevelopmentMode.ps1 -RelativePath "C:\labview-icon-editor"
+   ..\revert-development-mode\RevertDevelopmentMode.ps1 -LabVIEWVersion 2021
    ```
 
 6. **Install** the `.vip` in VIPM (as Admin). Validate your custom Icon Editor changes.
@@ -99,9 +100,10 @@ This document describes how to **build, test, and distribute** the **LabVIEW Ico
 
 We provide **GitHub Actions** that wrap these same PowerShell scripts for building the Icon Editor:
 
-- **Development Mode Toggle**: Uses `Set_Development_Mode.ps1` or `RevertDevelopmentMode.ps1`.  
-- **Run Unit Tests**: Calls `unit_tests.ps1`.  
-- **Build VI Package & Release**: Internally calls `Build.ps1` to produce a `.vip` and create a GitHub Release.  
+- **Development Mode Toggle**: Uses `Set_Development_Mode.ps1` or `RevertDevelopmentMode.ps1`.
+- **Build VI Package**: Internally calls `Build.ps1` to produce a `.vip` artifact (and can draft a release if configured).
+
+Unit tests run within the `test` job of the composite CI workflow defined in `.github/workflows/ci-composite.yml`.
 
 ### Injecting Organization/Repo for Unique Builds
 
@@ -115,14 +117,13 @@ An example step in a GitHub Actions file might look like:
 ```yaml
 - name: Build Icon Editor
   run: |
-    pwsh .\Build.ps1 `
-      -RelativePath "$env:GITHUB_WORKSPACE" `
-      -AbsolutePathScripts "$env:GITHUB_WORKSPACE\pipeline\scripts" `
+    pwsh .\.github\actions\build\Build.ps1 `
+      -RepoRoot "$env:GITHUB_WORKSPACE" `
       -Major 1 -Minor 2 -Patch 0 -Build 10 `
       -Commit "${{ github.sha }}" `
       # You can pass metadata fields to brand the package:
       -CompanyName "${{ github.repository_owner }}" `
-      -AuthorName "${{ github.repository }}" `
+      -AuthorName "${{ github.event.repository.name }}" `
       -Verbose
 ```
 
@@ -131,7 +132,7 @@ Passing these metadata fields ensures the final `.vip` clearly identifies **whic
 **Key Points**:
 - The scripts you run locally are **exactly** what the GitHub Actions will call.  
 - Makes debugging/troubleshooting simpler since you can mirror CI steps locally.  
-- The build process is **open source**, letting contributors collaborate on the same scripts that ship the official LabVIEW Icon Editor.
+- The build process is **open-source**, letting contributors collaborate on the same scripts that ship the official LabVIEW Icon Editor.
 
 ---
 
@@ -141,7 +142,7 @@ Passing these metadata fields ensures the final `.vip` clearly identifies **whic
 `Build.ps1` orchestrates the entire build pipeline for the Icon Editor:
 
 1. **Cleans up** old `.lvlibp` files in `resource\plugins`.  
-2. **Applies** VIPC for both 32-bit & 64-bit LabVIEW.  
+2. **Applies** VIPC for both 32-bit and 64-bit LabVIEW.  
 3. **Builds** each bitness of the library (passing version info: `-Major`, `-Minor`, `-Patch`, `-Build`, `-Commit`).  
 4. **Renames** results (`lv_icon_x86.lvlibp`, `lv_icon_x64.lvlibp`).  
 5. **Constructs** JSON data (including optional fields for organization, repo name, etc.).  
@@ -176,19 +177,20 @@ Passing these metadata fields ensures the final `.vip` clearly identifies **whic
 <a name="example-developer-workflow"></a>
 ## 7. Example Developer Workflow
 
-1. **Enable Dev Mode**  
-   - `Set_Development_Mode.ps1` or a “Development Mode Toggle” workflow run.  
-2. **Develop & Test**  
-   - Locally or via “Run Unit Tests” to confirm changes.  
-3. **Open PR**  
-   - Label (`major`, `minor`, `patch`) for semver bump.  
-   - Actions use `Build.ps1` to produce `.vip` on merges.  
-4. **Merge**  
-   - Creates a GitHub Release, attaches the `.vip`.  
-5. **Disable Dev Mode**  
-   - Revert environment.  
-6. **Install**  
-   - Use VIPM to install the `.vip` and confirm final functionality.  
+1. **Enable Dev Mode**
+   - `Set_Development_Mode.ps1` or a “Development Mode Toggle” workflow run.
+2. **Develop and Test**
+   - Run tests locally or through the composite CI workflow's `test` job to confirm changes.
+3. **Open PR**
+   - Label (`major`, `minor`, `patch`) for semver bump.
+   - Actions use `Build.ps1` to produce `.vip` on merges.
+4. **Merge**
+   - The [`.github/workflows/ci-composite.yml`](../.github/workflows/ci-composite.yml) workflow uploads the built `.vip` as an artifact in its "Upload VI Package" step.
+   - It does not automatically create a GitHub Release; draft one manually and attach the artifact if desired.
+5. **Disable Dev Mode**
+   - Revert environment.
+6. **Install**
+   - Use VIPM to install the `.vip` and confirm final functionality.
 
-All scripts are fully open source—**collaborators** can debug or extend them locally with minimal friction. By passing organization/repo data in either local builds or GitHub Actions, you ensure your **unique** version of the Icon Editor is **clearly labeled** and **easily traced** to its source.
+All scripts are fully open-source—**collaborators** can debug or extend them locally with minimal friction. By passing organization/repo data in either local builds or GitHub Actions, you ensure your **unique** version of the Icon Editor is **clearly labeled** and **easily traced** to its source.
 

@@ -1,175 +1,72 @@
-# Validated Experiment Maintainers’ Guide
+# Maintainers Technical Guide
 
-Below is a fully validated version of your markdown document, with corrected anchors so that each Table of Contents link will jump to the correct subsection on GitHub. You can copy/paste this as-is into a `.md` file.
+This guide is a technical reference for maintainers working in the LabVIEW Icon
+Editor repository. It outlines the workflows and GitHub Actions used to manage
+branches, run continuous integration (CI), and finalize releases. In addition to
+the steps below, maintainers are expected to triage issues, keep dependencies up
+to date, and ensure that published guidance across the repository remains
+current.
 
----
+## Maintainer Responsibilities
 
-## Introduction
-This document is written for maintainers of experimental branches and experiment leads in order to guide them throughout the lifecycle of the experiment. It covers:
+- **Issue Triage** – Label new issues, confirm reproduction steps, and mark
+  items that are ready for community contribution.
+- **Branch Hygiene** – Delete merged branches, keep `develop` rebased on
+  `main`, and close stale pull requests after consultation with the author.
+- **CI Upkeep** – Periodically review workflow runs and update GitHub Actions
+  versions or build scripts when they go out of support.
+- **Community Support** – Respond to discussion threads and provide direction
+  to contributors in pull requests and issues.
 
-- **How** to create and manage experimental branches,  
-- **When** and **how** to manually approve `.vip` artifact distribution,  
-- **Working** with the Steering Committee for final merges,  
-- **Handling** partial merges, alpha/beta/rc sub-branches, and BDFL overrides.
+## Feature Branch Workflow
 
-**Context**: Our project supports a **GitFlow-like model** for core development (`main`, `develop`, `release-*`, `hotfix/*`) plus **long-lived experimental branches** (`experiment/<shortName>`). This doc focuses on the extra tasks maintainers handle for experiments.
+1. Confirm the related GitHub issue is approved for work.
+2. Create a branch from `develop` named `issue-<number>-<short-description>`
+   (for example, `issue-123-fix-toolbar`). Branch names **must** include
+   `issue-<number>`.
+3. Set the linked issue's **Status** field to **In Progress**. The
+   [`issue-status` job](../../../.github/workflows/ci-composite.yml)
+   enforces the branch naming and status requirements, skipping most jobs when
+   either condition is not met.
+4. Push the branch to the main repository and open a pull request targeting
+   `develop` (or another appropriate branch).
+5. Run unit tests or scripted checks locally whenever possible.
+6. Ensure CI passes and obtain at least one maintainer approval before merging.
+7. After merging, delete the source branch to keep the repository tidy.
 
-> **Note**: For a broader overview of experiment lifecycle, see [EXPERIMENTS.md](../experiments.md). For governance details (Steering Committee roles, BDFL approach), see [GOVERNANCE.md](./GOVERNANCE.md). For common pitfalls in experiments, see [TROUBLESHOOTING_EXPERIMENTS.md](./troubleshooting-experiments.md).
+## Workflow Administration
 
----
+- **Approve experiment branches** – When an experiment branch should publish
+  artifacts (VIPs), run the `approve-experiment` workflow in GitHub Actions.
+  Coordinate with the NI Open-Source Program Manager (OSPM) before execution.
+- **Finalize experiment merges** – Prior to merging an experiment branch into
+  `develop`, apply an appropriate version label (major/minor/patch) and remove
+  any temporary settings or `NoCI` labels. A `NoCI` label causes the CI
+  workflow to skip all jobs, so clear it before running final tests. The OSPM
+  or designated NI staff typically gives the final approval.
+- **Hotfix branches** – For critical fixes on an official release, create or
+  approve a `hotfix/*` branch targeting `main`. After merging into `main`, merge
+  the changes back into `develop` to keep branches synchronized.
+- **Documentation updates** – When workflows change, update related
+  documentation in the `/docs` directory as part of the same pull request.
 
-## Table of Contents
-1. [Roles & Responsibilities](#roles--responsibilities)  
-2. [Creating an Experiment Branch](#creating-an-experiment-branch)  
-3. [Approving Official Artifact Distribution](#approving-official-artifact-distribution)  
-4. [Alpha/Beta/RC Management](#alpha-beta-rc-management)  
-5. [Code Scanning & Security Checks](#code-scanning--security-checks)  
-6. [BDFL Overrides](#bdfl-overrides)  
-7. [Labels & Final Merges](#labels--final-merges)  
-8. [Partial Merges](#partial-merges)  
-9. [Archiving or Deleting an Experiment](#archiving-or-deleting-an-experiment)  
-10. [Best Practices & Tips](#best-practices--tips)  
-11. [See Also](#see-also)
+## Pull Request Review Checklist
 
----
+- The pull request references a tracked issue and targets the correct branch.
+- Commit messages are clear and follow repository conventions.
+- CI jobs complete successfully and any failures are explained.
+- Documentation and tests are added or updated as needed.
 
-## Roles & Responsibilities
-Maintainers serve as **administrators** and **trusted gatekeepers**. You:
+## Release Preparation
 
-- **Facilitate** the creation of `experiment/<shortName>` branches once the Steering Committee approves a new experiment.
-- **Oversee** day-to-day merges in the experiment if you’re also designated as the “experiment lead,” or support the lead if they’re external.
-- **Enforce** scanning and manual approval before distributing `.vip` artifacts from experimental branches.
-- **Coordinate** final merges into `develop` (and eventually `main`) for big features.
+Maintainers ensure that `develop` remains in a releasable state:
 
-The **Open Source Program Manager** (OSPM) or designated NI staff typically handle BDFL decisions and can override specific steps on a case-by-case basis (see [BDFL Overrides](#bdfl-overrides)).
+1. Verify version labels and changelog entries reflect upcoming changes.
+2. Confirm that CI is green on `develop` and `main`.
+3. Coordinate with release engineers or the OSPM to merge into `main` and
+   publish packages when a release is planned.
 
----
+## Additional Resources
 
-## Creating an Experiment Branch
-1. **Steering Committee Approval**  
-   - A collaborator or lead opens a GitHub Issue proposing the experiment. The Steering Committee, chaired by the OSPM, decides if it’s viable.
-2. **Branch Creation**  
-   - You (an NI maintainer) create `experiment/<shortName>` from `develop`.  
-   - By default, this branch has “NoCI” for `.vip` distribution to **prevent** automatic artifact sharing until code scanning is done.
-3. **Documenting**  
-   - Add a short summary on the new branch in the GitHub Issue so watchers know it’s live.  
-   - If alpha/beta/rc sub-branches are planned, note that too.
-
-**Pro Tip**: If the experiment lead is external but has repo write access, you can coordinate with them to create the branch. The key is ensuring official distribution remains blocked initially until approval.
-
----
-
-## Approving Official Artifact Distribution
-Until you **manually** approve the experiment, the specialized CI or GitHub Action **won’t** publish `.vip` artifacts.
-
-### How to Approve
-1. **Workflow Dispatch**  
-   - Go to the **Actions** tab on GitHub, locate the “approve-experiment” workflow (or similarly named).  
-   - Click **“Run workflow”**, specifying the `experiment/<shortName>` branch if needed.  
-   - This sets an environment variable or label (e.g., “ApprovedCI”) that flips the build steps from “NoCI” → “ApprovedCI.”
-2. **Verification**  
-   - Confirm the logs show “ApprovedCI” is now active. Subsequent commits or merges in the experiment will produce `.vip` artifacts for testers.
-
-### When to Approve
-- Typically **after** Docker VI Analyzer + CodeQL show no critical warnings.  
-- The experiment lead (or Steering Committee) may nudge you once they feel the code is stable enough to share widely.
-
-**Note**: If the experiment changes drastically or code scanning flags new issues, you can revert to “NoCI” or temporarily stop artifact distribution.
-
----
-
-## Alpha Beta RC Management
-Some experiments use **sub-branches** to stage progress:
-
-1. **Alpha**  
-   - For early prototypes, possibly unstable.  
-   - Merges from alpha → main experiment branch once it’s somewhat stable.
-2. **Beta**  
-   - After alpha is proven, create a `experiment/<shortName>/beta` for broader internal testing.  
-   - PR merges from beta → the main experiment branch bring more maturity to the code.
-3. **RC (Release Candidate)**  
-   - Near-final code. Merging rc → the main experiment branch typically signals readiness for integration into `develop`.
-
-**Maintainer Role**  
-- You ensure sub-branches are protected or open for the right collaborators.  
-- Provide guidance on labeling merges (“merge alpha → main experiment,” etc.) using the specialized GitHub Action that logs recommended commands.
-
----
-
-## Code Scanning & Security Checks
-**Docker VI Analyzer** and **CodeQL** run automatically:
-
-1. **Check Logs**  
-   - Each PR or push will display results. If issues are flagged, ask the experiment lead to address them before approving `.vip` builds.
-2. **Failure Cases**  
-   - If repeated critical warnings appear, you might keep the experiment in “NoCI” until resolved.  
-   - The BDFL or OSPM can override if it’s a priority.
-
-> **Note**: This scanning approach is still being experimented with by LabVIEW R&D, so occasional false positives or integration quirks may occur. See `TROUBLESHOOTING_EXPERIMENTS.md` for more info.
-
----
-
-## BDFL Overrides
-Although we want a consistent approach, the BDFL (via the OSPM or designated NI staff) may **skip** certain steps in **rare** circumstances:
-
-- **Forcing** a `.vip` artifact distribution even if scanning isn’t fully complete.  
-- **Ignoring** normal labeling or merging rules in urgent cases (e.g., critical fixes).
-
-We don’t document formal guidelines for these rare actions; they’re done case by case. If you see a forced override, log it in the relevant GitHub Issue or PR for transparency.
-
----
-
-## Labels & Final Merges
-### Labels for Major/Minor/Patch
-The main CI doc covers how to label PRs. Generally:
-- “major” = big changes  
-- “minor” = moderate addition  
-- “patch” = bug fix
-
-### Merging Experiment → `develop`
-Once an experiment is ready for prime time:
-1. **Open a PR** from `experiment/<shortName>` (or its `rc` branch) to `develop`.  
-2. **Steering Committee** decides if it’s major/minor/patch for the next release.  
-3. Maintainers just ensure the right label is set, then merge.
-
-*(For partial merges, see below.)*
-
----
-
-## Partial Merges
-If only a portion of the experiment is viable:
-
-1. **Create a Sub-Branch**  
-   - For instance, `experiment/<shortName>-partial`, cherry-picking or selecting commits that are stable.  
-2. **Open a PR** from that sub-branch into `develop`.  
-3. **Continue** other incomplete features in the main experiment branch if it’s still ongoing.
-
----
-
-## Archiving or Deleting an Experiment
-If an experiment is **complete** or **abandoned**:
-
-- **Complete**: Merge to `develop`, then delete or rename the branch to `archived/<shortName>`.  
-- **Abandoned**: If scanning fails repeatedly or scope changes drastically, you can delete or archive it.  
-- Document the reason in the original GitHub Issue.
-
----
-
-## Best Practices & Tips
-1. **Frequent Merges from `develop`**  
-   - Minimizes massive conflicts. At least once every couple of weeks if `develop` is active.
-2. **Early “approve-experiment”**  
-   - If you trust the scanning results quickly, enabling `.vip` distribution sooner can help gather feedback from collaborators.
-3. **Communicate with the Steering Committee**  
-   - Keep them informed of major changes, alpha/beta milestones, or partial merges.  
-4. **Log BDFL Overrides**  
-   - If an override happens, mention it in the PR or Issue to maintain transparency.
-
----
-
-## See Also
-- [EXPERIMENTS.md](../experiments.md)  
-- [TROUBLESHOOTING_EXPERIMENTS.md](./troubleshooting-experiments.md)  
-- GOVERNANCE.md (in progress)
-
----
+- Repository governance is described in [GOVERNANCE.md](../../../GOVERNANCE.md).
+- Action-specific documentation is available in this directory's other guides.

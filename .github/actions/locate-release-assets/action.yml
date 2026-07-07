@@ -1,0 +1,45 @@
+name: "Locate Release Assets"
+description: "Locates VIP and release notes files for release uploads"
+inputs:
+  vip_dir:
+    description: "Directory to search for .vip files"
+    required: true
+  notes_dir:
+    description: "Directory to search for release_notes_*.md files"
+    required: true
+outputs:
+  vip_path:
+    description: "Full path to the .vip file"
+    value: ${{ steps.locate.outputs.vip_path }}
+  vip_name:
+    description: "Name of the .vip file"
+    value: ${{ steps.locate.outputs.vip_name }}
+  notes_path:
+    description: "Full path to the release notes file"
+    value: ${{ steps.locate.outputs.notes_path }}
+  notes_name:
+    description: "Name of the release notes file"
+    value: ${{ steps.locate.outputs.notes_name }}
+runs:
+  using: "composite"
+  steps:
+    - name: Locate assets
+      id: locate
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $vipDir = "${{ inputs.vip_dir }}"
+        $notesDir = "${{ inputs.notes_dir }}"
+        
+        $vip = Get-ChildItem -Path $vipDir -Filter *.vip -File -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if (-not $vip) { Write-Error "No .vip file found in $vipDir"; exit 1 }
+
+        $notes = Get-ChildItem -Path $notesDir -Filter "release_notes_*.md" -File -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        if (-not $notes) { Write-Error "No release_notes_*.md found in $notesDir"; exit 1 }
+
+        "vip_path=$($vip.FullName)"     | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+        "vip_name=$($vip.Name)"         | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+        "notes_path=$($notes.FullName)" | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+        "notes_name=$($notes.Name)"     | Out-File -FilePath $Env:GITHUB_OUTPUT -Append
+
+

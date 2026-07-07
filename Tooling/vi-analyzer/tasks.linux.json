@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "labview-icon-editor",
+      "config_path": "lv_icon_editor.viancfg"
+    }
+  ]
+}

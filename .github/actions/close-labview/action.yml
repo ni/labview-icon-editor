@@ -1,0 +1,36 @@
+name: "Close LabVIEW"
+description: "Runs Close_LabVIEW.ps1 to gracefully shut down a LabVIEW instance."
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        clean: false
+
+    - name: Run Close_LabVIEW.ps1
+      shell: pwsh
+      run: |
+        $lvVersion = "${{ inputs.labview_version }}"
+        if ([string]::IsNullOrWhiteSpace($lvVersion)) {
+          throw "labview_version is required."
+        }
+
+        & "${{ github.action_path }}/Close_LabVIEW.ps1" `
+          -MinimumSupportedLVVersion $lvVersion `
+          -SupportedBitness ${{ inputs.supported_bitness }} `
+          -TimeoutSeconds ${{ inputs.timeout_seconds }}
+inputs:
+  labview_version:
+    description: 'LabVIEW version to close (year or numeric).'
+    required: true
+  supported_bitness:
+    description: '32 or 64'
+    required: true
+  timeout_seconds:
+    description: 'How long to wait for LabVIEW to exit before failing'
+    required: false
+    default: 120
+
+

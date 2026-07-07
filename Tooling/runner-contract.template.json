@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "runner_root": "C:\\actions-runner",
+  "work_root": "C:\\actions-runner\\_work",
+  "worktree_root": "C:\\actions-runner\\_work\\lvie\\w",
+  "artifact_root": "C:\\actions-runner\\_work\\lvie\\artifacts",
+  "lock_root": "C:\\actions-runner\\_work\\lvie\\locks",
+  "log_root": "C:\\actions-runner\\_work\\lvie\\logs",
+  "runner_label": "self-hosted-windows-lv",
+  "runner_labels": [
+    "self-hosted-windows-lv",
+    "self-hosted-windows-lv-ie"
+  ],
+  "canonical_runner_label": "self-hosted-windows-lv",
+  "updated_at_utc": "0001-01-01T00:00:00Z",
+  "created_at_utc": "0001-01-01T00:00:00Z"
+}

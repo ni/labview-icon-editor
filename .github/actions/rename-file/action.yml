@@ -1,0 +1,26 @@
+name: "Rename File"
+description: "Runs Rename-file.ps1 to rename a file on disk."
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        clean: false
+
+    - name: Run Rename-file.ps1
+      shell: pwsh
+      run: |
+        & "${{ github.action_path }}/Rename-file.ps1" `
+          -CurrentFilename "${{ inputs.current_filename }}" `
+          -NewFilename "${{ inputs.new_filename }}"
+inputs:
+  current_filename:
+    description: 'Existing file path'
+    required: true
+  new_filename:
+    description: 'New file name or path'
+    required: true
+
+

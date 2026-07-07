@@ -1,0 +1,312 @@
+name: Pylavi CI
+
+description: Deterministic pylavi validation without runner-cli dependency.
+
+inputs:
+  validate_args:
+    description: Arguments passed to vi_validate.
+    required: false
+    default: --gt 19 --lt 21 --no-suspend-on-run --breakpoints --no-code --no-absolute-path
+  label:
+    description: Label to use in emitted report artifacts.
+    required: false
+    default: linux-container
+  report_only:
+    description: Do not fail the step when vi_validate reports findings.
+    required: false
+    default: 'true'
+  expected_reason:
+    description: Expected offender reason text to assert in pylavi results.
+    required: false
+    default: ''
+  expected_vi_path:
+    description: Expected offender VI path to assert in pylavi results.
+    required: false
+    default: ''
+  fail_if_expected_missing:
+    description: Fail the step when expected_reason/expected_vi_path does not appear in offender list.
+    required: false
+    default: 'false'
+  absolute_roots:
+    description: Semicolon-delimited absolute roots for visibility in summary metadata.
+    required: false
+    default: ''
+
+outputs:
+  status:
+    description: pass, warn, or fail status for the pylavi run.
+    value: ${{ steps.run.outputs.status }}
+  exit_code:
+    description: vi_validate exit code.
+    value: ${{ steps.run.outputs.exit_code }}
+  log_path:
+    description: Absolute path to vi_validate log file.
+    value: ${{ steps.run.outputs.log_path }}
+  offenders_path:
+    description: Absolute path to offenders JSON file.
+    value: ${{ steps.run.outputs.offenders_path }}
+  summary_path:
+    description: Absolute path to summary JSON file.
+    value: ${{ steps.run.outputs.summary_path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install pylavi
+      shell: pwsh
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install pylavi
+
+    - id: run
+      name: Run pylavi validation
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+
+        function Test-Enabled {
+          param([string]$Value)
+          if ([string]::IsNullOrWhiteSpace($Value)) { return $false }
+          $normalized = $Value.Trim().ToLowerInvariant()
+          return $normalized -in @('1', 'true', 'yes')
+        }
+
+        function Parse-OffenderLine {
+          param([string]$Line)
+
+          $content = [string]$Line
+          if ($content.StartsWith('FAIL:')) {
+            $content = $content.Substring(5).Trim()
+          }
+
+          $reason = $content
+          $viPath = ''
+          $separatorIndex = $content.LastIndexOf(': ')
+          if ($separatorIndex -gt 0) {
+            $candidatePath = $content.Substring($separatorIndex + 2).Trim()
+            if (
+              $candidatePath -match '^[A-Za-z]:\\' -or
+              $candidatePath -match '^\./' -or
+              $candidatePath -match '^\.\./' -or
+              $candidatePath -match '[\\/].+\.vi$' -or
+              $candidatePath -match '\.vi$'
+            ) {
+              $viPath = $candidatePath
+              $reason = $content.Substring(0, $separatorIndex).Trim()
+            }
+          }
+
+          [pscustomobject]@{
+            raw_line = [string]$Line
+            reason = [string]$reason
+            vi_path = [string]$viPath
+          }
+        }
+
+        $repoRoot = $env:GITHUB_WORKSPACE
+        $label = [string]'${{ inputs.label }}'
+        if ([string]::IsNullOrWhiteSpace($label)) {
+          $label = 'linux-container'
+        }
+
+        $validateArgsRaw = [string]'${{ inputs.validate_args }}'
+        if ([string]::IsNullOrWhiteSpace($validateArgsRaw)) {
+          $validateArgsRaw = '--gt 19 --lt 21 --no-suspend-on-run --breakpoints --no-code --no-absolute-path'
+        }
+
+        $validateArgs = @($validateArgsRaw -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        if ($validateArgs.Count -eq 0) {
+          throw 'validate_args resolved to an empty argument list.'
+        }
+
+        $runRoot = Join-Path $env:RUNNER_TEMP ("pylavi-{0}" -f $label)
+        New-Item -Path $runRoot -ItemType Directory -Force | Out-Null
+
+        $logPath = Join-Path $runRoot 'vi_validate.log'
+        $offendersPath = Join-Path $runRoot 'pylavi-offenders.json'
+        $summaryPath = Join-Path $runRoot 'pylavi-summary.json'
+
+        $statusRoot = Join-Path $repoRoot 'builds/status'
+        New-Item -Path $statusRoot -ItemType Directory -Force | Out-Null
+        $statusSummaryPath = Join-Path $statusRoot ("pylavi-summary.{0}.json" -f $label)
+
+        $commandOutput = & vi_validate @validateArgs 2>&1
+        $exitCode = $LASTEXITCODE
+        $outputLines = @($commandOutput | ForEach-Object { $_.ToString() })
+        $outputLines | Set-Content -Path $logPath -Encoding utf8
+
+        $failLines = @($outputLines | Where-Object { $_ -like 'FAIL:*' })
+        $offenders = @()
+        for ($index = 0; $index -lt $failLines.Count; $index++) {
+          $parsed = Parse-OffenderLine -Line ([string]$failLines[$index])
+          $offenders += [pscustomobject]@{
+            id = $index + 1
+            line = [string]$failLines[$index]
+            reason = [string]$parsed.reason
+            vi_path = [string]$parsed.vi_path
+          }
+        }
+
+        $offendersReport = [ordered]@{
+          generated_utc = (Get-Date).ToUniversalTime().ToString('o')
+          label = $label
+          command = "vi_validate $validateArgsRaw"
+          offender_count = $offenders.Count
+          offenders = $offenders
+        }
+        $offendersReport | ConvertTo-Json -Depth 8 | Set-Content -Path $offendersPath -Encoding utf8
+
+        $reportOnly = Test-Enabled '${{ inputs.report_only }}'
+        $expectedReason = [string]'${{ inputs.expected_reason }}'
+        $expectedViPath = [string]'${{ inputs.expected_vi_path }}'
+        $failIfExpectedMissing = Test-Enabled '${{ inputs.fail_if_expected_missing }}'
+        $absoluteRoots = @([string]'${{ inputs.absolute_roots }}' -split ';' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+
+        $status = 'pass'
+        if ($exitCode -ne 0) {
+          if ($reportOnly) {
+            $status = 'warn'
+          } else {
+            $status = 'fail'
+          }
+        }
+
+        $expectedRuleConfigured = -not [string]::IsNullOrWhiteSpace($expectedReason) -or -not [string]::IsNullOrWhiteSpace($expectedViPath)
+        $expectedFailureObserved = $false
+        $unexpectedOffenders = @()
+        if ($expectedRuleConfigured) {
+          foreach ($offender in $offenders) {
+            $reasonMatches = [string]::IsNullOrWhiteSpace($expectedReason) -or ([string]$offender.reason -eq $expectedReason)
+            $viMatches = [string]::IsNullOrWhiteSpace($expectedViPath) -or ([string]$offender.vi_path -eq $expectedViPath)
+            if ($reasonMatches -and $viMatches) {
+              $expectedFailureObserved = $true
+            } else {
+              $unexpectedOffenders += $offender
+            }
+          }
+        }
+
+        if ($failIfExpectedMissing -and $expectedRuleConfigured -and -not $expectedFailureObserved) {
+          $status = 'fail'
+        }
+
+        # In strict mode, allow the known expected-failure signature to pass when it is the only offender.
+        if (
+          -not $reportOnly -and
+          $exitCode -ne 0 -and
+          $failIfExpectedMissing -and
+          $expectedRuleConfigured -and
+          $expectedFailureObserved -and
+          $unexpectedOffenders.Count -eq 0
+        ) {
+          $status = 'pass'
+        }
+
+        $summary = [ordered]@{
+          generated_utc = (Get-Date).ToUniversalTime().ToString('o')
+          status = $status
+          exit_code = $exitCode
+          label = $label
+          command = "vi_validate $validateArgsRaw"
+          report_only = $reportOnly
+          absolute_roots = $absoluteRoots
+          offender_count = $offenders.Count
+          expected_failure = [ordered]@{
+            configured = $expectedRuleConfigured
+            fail_if_expected_missing = $failIfExpectedMissing
+            reason = $expectedReason
+            vi_path = $expectedViPath
+            observed = $expectedFailureObserved
+            unexpected_offender_count = $unexpectedOffenders.Count
+          }
+          first_offender_reason = if ($offenders.Count -gt 0) { [string]$offenders[0].reason } else { '' }
+          first_offender_vi_path = if ($offenders.Count -gt 0) { [string]$offenders[0].vi_path } else { '' }
+          offenders_path = $offendersPath
+          log_path = $logPath
+        }
+
+        $summary | ConvertTo-Json -Depth 8 | Set-Content -Path $summaryPath -Encoding utf8
+        $summary | ConvertTo-Json -Depth 8 | Set-Content -Path $statusSummaryPath -Encoding utf8
+
+        "status=$status" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        "exit_code=$exitCode" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        "log_path=$logPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        "offenders_path=$offendersPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        "summary_path=$summaryPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        "expected_failure_observed=$expectedFailureObserved" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+        if ($offenders.Count -gt 0) {
+          Write-Host ("pylavi offenders detected: {0}" -f $offenders.Count)
+          foreach ($offender in $offenders) {
+            $viDisplay = if ([string]::IsNullOrWhiteSpace($offender.vi_path)) { '(unknown)' } else { [string]$offender.vi_path }
+            $reasonDisplay = if ([string]::IsNullOrWhiteSpace($offender.reason)) { [string]$offender.line } else { [string]$offender.reason }
+            Write-Host (" - VI: {0}" -f $viDisplay)
+            Write-Host ("   Reason: {0}" -f $reasonDisplay)
+
+            if ([string]::IsNullOrWhiteSpace($offender.vi_path)) {
+              Write-Host ("::error title=pylavi::{0}" -f $reasonDisplay)
+            } else {
+              Write-Host ("::error file={0},title=pylavi::{1}" -f $offender.vi_path, $reasonDisplay)
+            }
+          }
+        }
+
+        if ($expectedRuleConfigured) {
+          Write-Host ("pylavi expected failure signature configured: reason='{0}' vi='{1}' observed={2} unexpected_offenders={3}" -f $expectedReason, $expectedViPath, $expectedFailureObserved, $unexpectedOffenders.Count)
+          if ($failIfExpectedMissing -and -not $expectedFailureObserved) {
+            Write-Host ("::error title=pylavi::Expected failure signature was not observed (reason='{0}' vi='{1}')" -f $expectedReason, $expectedViPath)
+          }
+          if ($unexpectedOffenders.Count -gt 0) {
+            Write-Host ("::error title=pylavi::Unexpected pylavi offenders detected while enforcing expected signature (count={0})" -f $unexpectedOffenders.Count)
+          }
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY)) {
+          $summaryLines = @(
+            '### pylavi result',
+            '',
+            ('- Status: **{0}**' -f $status),
+            ('- Exit code: `{0}`' -f $exitCode),
+            ('- Command: `vi_validate {0}`' -f $validateArgsRaw),
+            ('- Offender count: `{0}`' -f $offenders.Count),
+            ''
+          )
+
+          if ($expectedRuleConfigured) {
+            $summaryLines += ('- Expected failure reason: `{0}`' -f $expectedReason)
+            $summaryLines += ('- Expected failure VI path: `{0}`' -f $expectedViPath)
+            $summaryLines += ('- Expected failure observed: `{0}`' -f $expectedFailureObserved)
+            $summaryLines += ('- Unexpected offender count: `{0}`' -f $unexpectedOffenders.Count)
+            $summaryLines += ''
+          }
+
+          if ($offenders.Count -gt 0) {
+            $summaryLines += '| VI | Reason |'
+            $summaryLines += '| --- | --- |'
+            foreach ($offender in $offenders) {
+              $viCell = if ([string]::IsNullOrWhiteSpace($offender.vi_path)) { '(unknown)' } else { [string]$offender.vi_path }
+              $reasonCell = if ([string]::IsNullOrWhiteSpace($offender.reason)) { [string]$offender.line } else { [string]$offender.reason }
+              $viCell = $viCell -replace '\|', '\\|'
+              $reasonCell = $reasonCell -replace '\|', '\\|'
+              $summaryLines += ("| `{0}` | {1} |" -f $viCell, $reasonCell)
+            }
+          }
+
+          $summaryLines -join [Environment]::NewLine | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+        }
+
+        if ($status -eq 'warn') {
+          Write-Warning "pylavi reported findings in report-only mode for label '$label'."
+        }
+
+        if ($status -eq 'fail') {
+          throw "pylavi composite gate failed for label '$label'."
+        }
+
+        # Ensure the composite step exits successfully in report-only mode.
+        $global:LASTEXITCODE = 0

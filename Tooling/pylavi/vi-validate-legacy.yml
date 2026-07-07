@@ -1,0 +1,14 @@
+legacy:
+  path:
+    - ../../resource/plugins
+    - ../../vi.lib
+    - ../../Test
+  skip:
+    - ../../resource/plugins/NIIconEditor/User Dialogs/*
+    - ../../resource/plugins/NIIconEditor/INI/*
+    - ../../resource/plugins/lv_icon*.lvlibp
+  no_suspend_on_run: true
+  breakpoints: true
+  no_code: true
+  no_absolute_path: true
+  path_length: 260

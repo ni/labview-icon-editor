@@ -1,0 +1,54 @@
+name: "Full Build"
+description: "Runs Build.ps1 to orchestrate the full build and packaging process."
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Run Build.ps1
+      shell: pwsh
+      run: |
+        & "${{ github.action_path }}/Build.ps1" `
+          -RepoRoot "${{ inputs.repo_root }}" `
+          -Major ${{ inputs.major }} `
+          -Minor ${{ inputs.minor }} `
+          -Patch ${{ inputs.patch }} `
+          -Build ${{ inputs.build }} `
+          -Commit "${{ inputs.commit }}" `
+          -LabVIEWMinorRevision ${{ inputs.labview_minor_revision }} `
+          -CompanyName "${{ inputs.company_name }}" `
+          -AuthorName "${{ inputs.author_name }}"
+inputs:
+  repo_root:
+    description: 'Workspace root path'
+    required: true
+  major:
+    description: 'Major version'
+    required: true
+  minor:
+    description: 'Minor version'
+    required: true
+  patch:
+    description: 'Patch version'
+    required: true
+  build:
+    description: 'Build number'
+    required: true
+  commit:
+    description: 'Commit identifier'
+    required: true
+  labview_minor_revision:
+    description: 'LabVIEW minor revision (0 for 21.0)'
+    required: false
+    default: '0'
+  company_name:
+    description: 'Company name for metadata'
+    required: true
+  author_name:
+    description: 'Author name for metadata'
+    required: true
+
+

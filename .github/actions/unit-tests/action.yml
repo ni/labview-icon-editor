@@ -1,0 +1,21 @@
+name: "Unit Tests Wrapper"
+description: "Runs unit_tests.ps1 to prepare and execute LabVIEW unit tests."
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Run unit_tests.ps1
+      shell: pwsh
+      run: |
+        & "${{ github.action_path }}/unit_tests.ps1" \
+          -RepoRoot "${{ inputs.repo_root }}"
+inputs:
+  repo_root:
+    description: 'Workspace root path'
+    required: true
+
+

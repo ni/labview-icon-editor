@@ -1,0 +1,75 @@
+name: "Modify VIPB Display Info"
+description: "Runs ModifyVIPBDisplayInfo.ps1 to update display information in a VIPB file."
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        clean: false
+
+    - name: Run ModifyVIPBDisplayInfo.ps1
+      shell: pwsh
+      env:
+        DISPLAY_INFORMATION_JSON: |
+          ${{ inputs.display_information_json }}
+      run: |
+        $lvVersion = "${{ inputs.labview_version }}"
+        if ([string]::IsNullOrWhiteSpace($lvVersion)) {
+          throw "labview_version is required."
+        }
+        $displayInformationJson = $Env:DISPLAY_INFORMATION_JSON
+        & "${{ github.action_path }}/ModifyVIPBDisplayInfo.ps1" `
+          -SupportedBitness ${{ inputs.supported_bitness }} `
+          -RepoRoot "${{ inputs.repo_root }}" `
+          -VIPBPath "${{ inputs.vipb_path }}" `
+          -MinimumSupportedLVVersion $lvVersion `
+          -LabVIEWMinorRevision ${{ inputs.labview_minor_revision }} `
+          -Major ${{ inputs.major }} `
+          -Minor ${{ inputs.minor }} `
+          -Patch ${{ inputs.patch }} `
+          -Build ${{ inputs.build }} `
+          -Commit "${{ inputs.commit }}" `
+          -ReleaseNotesFile "${{ inputs.release_notes_file }}" `
+          -DisplayInformationJSON $displayInformationJson
+inputs:
+  labview_version:
+    description: 'LabVIEW version to target (year or numeric).'
+    required: true
+  supported_bitness:
+    description: '32 or 64'
+    required: true
+  repo_root:
+    description: 'Workspace root path'
+    required: true
+  vipb_path:
+    description: 'Path to the VIPB file (relative to workspace)'
+    required: true
+  labview_minor_revision:
+    description: 'LabVIEW minor revision (e.g., 0 for 21.0)'
+    required: false
+    default: '0'
+  major:
+    description: 'Major version component'
+    required: true
+  minor:
+    description: 'Minor version component'
+    required: true
+  patch:
+    description: 'Patch version component'
+    required: true
+  build:
+    description: 'Build number'
+    required: true
+  commit:
+    description: 'Commit identifier'
+    required: true
+  release_notes_file:
+    description: 'Path to release notes file'
+    required: true
+  display_information_json:
+    description: 'DisplayInformation JSON string'
+    required: true
+
+

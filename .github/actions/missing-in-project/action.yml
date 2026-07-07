@@ -1,0 +1,127 @@
+name: "Missing In Project"
+description: >
+  Executes MissinInProjectCLI.vi (bundled with this action) via g‑cli,
+  pointing at a user‑supplied *.lvproj* (default: lv_icon.lvproj in repo root).
+  Fails instantly on any missing file and exports:
+    • passed        (Boolean)  
+    • missing-files (String)
+
+branding:
+  icon: check-circle
+  color: purple
+
+inputs:
+  lv-ver:
+    description: "LabVIEW version (year or numeric)."
+    required: true
+  arch:
+    description: "Bitness (32 or 64)."
+    required: true
+  repo-root:
+    description: "Repository root path (absolute)."
+    required: true
+  project-file:
+    description: >
+      Path to the .lvproj to inspect.
+      Defaults to `lv_icon_editor.lvproj` in the repository root.
+    required: false
+    default: lv_icon_editor.lvproj
+
+outputs:
+  passed:
+    description: "True if VI reported success."
+    value: ${{ steps.run_vi.outputs.passed }}
+  missing-files:
+    description: "Comma‑separated list of missing files."
+    value: ${{ steps.run_vi.outputs.missing-files }}
+
+runs:
+  using: composite
+  steps:
+
+    - name: Resolve project file path
+      id: resolve
+      shell: pwsh
+      run: |
+        $repoRoot = '${{ inputs.repo-root }}'
+        if ([string]::IsNullOrWhiteSpace($repoRoot)) {
+          throw "repo-root is required."
+        }
+        if (-not (Test-Path $repoRoot)) {
+          throw "repo-root does not exist: $repoRoot"
+        }
+        $repoRoot = (Resolve-Path -Path $repoRoot).Path
+
+        $pf = '${{ inputs.project-file }}'
+        if (-not [System.IO.Path]::IsPathRooted($pf)) {
+          $pf = Join-Path $repoRoot $pf
+        }
+        if (-not (Test-Path $pf)) {
+          throw "Project file not found: $pf"
+        }
+        echo "projFile=$pf" >> $Env:GITHUB_OUTPUT
+        Write-Host "ℹ️  Using project file: $pf"
+
+    - name: Preflight – ensure NI Icon Editor resources exist
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $lvVer   = '${{ inputs.lv-ver }}'
+        $arch    = '${{ inputs.arch }}'
+        $bitness = if ($arch -eq '64') { '64' } else { '32' }
+
+        # Probe path: a known VI that PrepareIESource deploys
+        $niDir = "C:\Program Files\National Instruments\LabVIEW $lvVer"
+        $probe = Join-Path $niDir 'resource\plugins\NIIconEditor\Miscellaneous\Classes Initialization.vi'
+
+        if (Test-Path $probe) {
+          Write-Host "✅  NI Icon Editor resources already present ($probe)"
+          return
+        }
+
+        Write-Host "⚠️  NI Icon Editor resources missing – preparing source …"
+
+        # Wait for any existing g-cli / LabVIEW processes to finish (do NOT kill them)
+        $maxWait = 300  # seconds
+        $elapsed = 0
+        $interval = 10
+        while ($elapsed -lt $maxWait) {
+          $gcli = Get-Process -Name 'g-cli' -ErrorAction SilentlyContinue
+          $lv   = Get-Process -Name 'LabVIEW' -ErrorAction SilentlyContinue
+          if (-not $gcli -and -not $lv) { break }
+          Write-Host "⏳  g-cli/LabVIEW running – waiting ($elapsed s / $maxWait s) …"
+          Start-Sleep -Seconds $interval
+          $elapsed += $interval
+        }
+
+        if ($elapsed -ge $maxWait) {
+          Write-Host "⚠️  Timed out waiting for g-cli/LabVIEW to exit – skipping preflight preparation."
+          Write-Host "    The Missing-In-Project check may fail if resources are still missing."
+          return
+        }
+
+        $prepareScript = Join-Path $Env:GITHUB_WORKSPACE '.github\actions\prepare-labview-source\Prepare_LabVIEW_source.ps1'
+        & $prepareScript `
+          -MinimumSupportedLVVersion $lvVer `
+          -SupportedBitness          $bitness `
+          -RelativePath              $Env:GITHUB_WORKSPACE `
+          -LabVIEW_Project           'lv_icon_editor' `
+          -Build_Spec                'Editor Packed Library'
+
+        if (Test-Path $probe) {
+          Write-Host "✅  NI Icon Editor resources deployed successfully."
+        } else {
+          Write-Host "⚠️  PrepareIESource completed but probe file still missing."
+          Write-Host "    The Missing-In-Project check may report failures."
+        }
+
+    - name: Invoke PS1 wrapper
+      id: run_vi
+      shell: pwsh
+      run: |
+        & "$Env:GITHUB_ACTION_PATH\Invoke-MissingInProjectCLI.ps1" `
+          -LVVersion   "${{ inputs.lv-ver }}" `
+          -Arch        "${{ inputs.arch }}" `
+          -ProjectFile "${{ steps.resolve.outputs.projFile }}"
+
+

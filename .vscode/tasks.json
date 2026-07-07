@@ -1,0 +1,354 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Tooling: Verify IE Paths (g-cli)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Tooling\\Invoke-MissingIEFilesFromLVInstall.ps1",
+        "-MinimumSupportedLVVersion",
+        "2021",
+        "-SupportedBitness",
+        "${input:lvBitness}",
+        "-ConnectTimeoutMs",
+        "${input:lvConnectTimeoutMs}",
+        "-EnableDevModeNoLabVIEW",
+        "-AutoWorktree"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "LVIE_WORKTREE_NAME_PREFIX": "w",
+          "LVIE_WORKTREE_NO_REPO_PREFIX": "1"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Tooling: Set Dev Mode (no LabVIEW)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Tooling\\Invoke-InWorktree.ps1",
+        "-ScriptPath",
+        ".github\\actions\\set-development-mode\\Set_Development_Mode.ps1",
+        "-ScriptArguments",
+        "-MinimumSupportedLVVersion",
+        "2021",
+        "-SupportedBitness",
+        "${input:lvBitness}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "LVIE_WORKTREE_NAME_PREFIX": "w",
+          "LVIE_WORKTREE_NO_REPO_PREFIX": "1"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Tooling: Revert Dev Mode (no LabVIEW)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Tooling\\Invoke-InWorktree.ps1",
+        "-ScriptPath",
+        ".github\\actions\\revert-development-mode\\RevertDevelopmentMode.ps1",
+        "-ScriptArguments",
+        "-MinimumSupportedLVVersion",
+        "2021",
+        "-SupportedBitness",
+        "${input:lvBitness}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "LVIE_WORKTREE_NAME_PREFIX": "w",
+          "LVIE_WORKTREE_NO_REPO_PREFIX": "1"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Tooling: Set Dev Mode (LabVIEW)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Tooling\\Invoke-InWorktree.ps1",
+        "-ScriptPath",
+        ".github\\actions\\set-development-mode\\Set_Development_Mode.ps1",
+        "-ScriptArguments",
+        "-MinimumSupportedLVVersion",
+        "2021",
+        "-SupportedBitness",
+        "${input:lvBitness}",
+        "-UseLabVIEW"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "LVIE_WORKTREE_NAME_PREFIX": "w",
+          "LVIE_WORKTREE_NO_REPO_PREFIX": "1"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Tooling: Revert Dev Mode (LabVIEW)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Tooling\\Invoke-InWorktree.ps1",
+        "-ScriptPath",
+        ".github\\actions\\revert-development-mode\\RevertDevelopmentMode.ps1",
+        "-ScriptArguments",
+        "-MinimumSupportedLVVersion",
+        "2021",
+        "-SupportedBitness",
+        "${input:lvBitness}",
+        "-UseLabVIEW"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "LVIE_WORKTREE_NAME_PREFIX": "w",
+          "LVIE_WORKTREE_NO_REPO_PREFIX": "1"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Tooling: Dev Mode LabVIEW Path Check",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Tooling: Set Dev Mode (LabVIEW)",
+        "Tooling: Revert Dev Mode (LabVIEW)"
+      ],
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Pester: Dev Mode Integration (LV2021 64-bit)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Test\\Pester\\Run-Pester.ps1",
+        "-LabVIEWVersion",
+        "2021",
+        "-LabVIEWBitness",
+        "64",
+        "-RunDevModeTests",
+        "-AutoWorktree"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "LVIE_WORKTREE_NAME_PREFIX": "w",
+          "LVIE_WORKTREE_NO_REPO_PREFIX": "1"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Pester: Dev Mode Integration (LV2021 32-bit)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Test\\Pester\\Run-Pester.ps1",
+        "-LabVIEWVersion",
+        "2021",
+        "-LabVIEWBitness",
+        "32",
+        "-RunDevModeTests",
+        "-AutoWorktree"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "LVIE_WORKTREE_NAME_PREFIX": "w",
+          "LVIE_WORKTREE_NO_REPO_PREFIX": "1"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "CI: Worktree + Parity (Clean Only)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\Tooling\\Invoke-CIParity-WorktreeClean.ps1",
+        "-LabVIEWBitness",
+        "${input:ciLabVIEWBitness}",
+        "-WorktreeRoot",
+        "C:\\dev",
+        "-EnsureCleanState"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Worktrees: List",
+      "type": "shell",
+      "command": "git",
+      "args": [
+        "worktree",
+        "list"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Worktrees: Prune",
+      "type": "shell",
+      "command": "git",
+      "args": [
+        "worktree",
+        "prune"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Worktrees: Remove (Prompt Path)",
+      "type": "shell",
+      "command": "git",
+      "args": [
+        "worktree",
+        "remove",
+        "${input:ciWorktreeRemovePath}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "lvBitness",
+      "type": "pickString",
+      "description": "LabVIEW bitness",
+      "options": [
+        "32",
+        "64"
+      ],
+      "default": "64"
+    },
+    {
+      "id": "lvConnectTimeoutMs",
+      "type": "promptString",
+      "description": "g-cli connect timeout (ms)",
+      "default": "120000"
+    },
+    {
+      "id": "ciLabVIEWBitness",
+      "type": "pickString",
+      "description": "Parity bitness mode",
+      "options": [
+        "both",
+        "installed",
+        "64",
+        "32"
+      ],
+      "default": "both"
+    },
+    {
+      "id": "ciWorktreeRemovePath",
+      "type": "promptString",
+      "description": "Worktree path to remove (must be a worktree dir)",
+      "default": "C:\\dev\\<worktree-folder>"
+    }
+  ]
+}

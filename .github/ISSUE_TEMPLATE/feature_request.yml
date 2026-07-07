@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        **IMPORTANT:** Before creating an issue, start the discussion about a possible new feature on our [Discord Server](https://discord.gg/q4d3ggrFVA).
+        **IMPORTANT:** Start the discussion on our Discord channel [#icon-editor-dev](https://discord.gg/q4d3ggrFVA) or create a [GitHub Discussion]https://github.com/ni/labview-icon-editor/discussions/new/choose **only** if you are requesting changes to the shipping version of the Icon Editor.
 
   - type: textarea
     attributes:

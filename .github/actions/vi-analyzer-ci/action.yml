@@ -1,0 +1,206 @@
+name: VI Analyzer CI
+
+description: Deterministic VI Analyzer Linux container execution.
+
+inputs:
+  container_tag:
+    description: Container tag to pull from image_repository.
+    required: false
+    default: 2026q1-linux
+  image_repository:
+    description: Container repository for LabVIEW Linux image.
+    required: false
+    default: nationalinstruments/labview
+  tasks_path:
+    description: VI Analyzer task registry relative to repository root.
+    required: false
+    default: Tooling/vi-analyzer/tasks.linux.json
+  labview_year:
+    description: LabVIEW year forwarded to Linux worker runtime.
+    required: false
+    default: '2026'
+  reports_root:
+    description: Output directory for VI Analyzer reports relative to repository root.
+    required: false
+    default: builds/vi-analyzer
+  logs_root:
+    description: Output directory for VI Analyzer logs relative to repository root.
+    required: false
+    default: TestResults/container-parity/linux/vi-analyzer/logs
+  status_path:
+    description: Output status report path relative to repository root.
+    required: false
+    default: builds/status/vi-analyzer-summary.parity.json
+
+outputs:
+  status:
+    description: pass or fail status for the VI Analyzer run.
+    value: ${{ steps.run.outputs.status }}
+  container_image:
+    description: Fully qualified image reference used for execution.
+    value: ${{ steps.run.outputs.container_image }}
+  status_path:
+    description: Absolute path to status report.
+    value: ${{ steps.run.outputs.status_path }}
+  reports_root:
+    description: Absolute path to reports directory.
+    value: ${{ steps.run.outputs.reports_root }}
+  logs_root:
+    description: Absolute path to logs directory.
+    value: ${{ steps.run.outputs.logs_root }}
+
+runs:
+  using: composite
+  steps:
+    - id: run
+      name: Execute VI Analyzer worker
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = 'Stop'
+
+        $repoRoot = $env:GITHUB_WORKSPACE
+        $tasksRelativePath = [string]'${{ inputs.tasks_path }}'
+        $reportsRelativeRoot = [string]'${{ inputs.reports_root }}'
+        $logsRelativeRoot = [string]'${{ inputs.logs_root }}'
+        $statusRelativePath = [string]'${{ inputs.status_path }}'
+        $containerImage = "${{ inputs.image_repository }}:${{ inputs.container_tag }}"
+        $labviewYear = [string]'${{ inputs.labview_year }}'
+
+        $workerScriptPath = Join-Path $repoRoot 'Tooling/container-parity/run-vi-analyzer-linux.sh'
+        $tasksPath = Join-Path $repoRoot $tasksRelativePath
+        $reportsRootPath = Join-Path $repoRoot $reportsRelativeRoot
+        $logsRootPath = Join-Path $repoRoot $logsRelativeRoot
+        $statusPath = Join-Path $repoRoot $statusRelativePath
+        $statusDir = Split-Path -Path $statusPath -Parent
+        $sourceSyncManifestRelativePath = 'builds/status/source-sync-manifest-vi-analyzer-linux.json'
+        $sourceSyncManifestPath = Join-Path $repoRoot $sourceSyncManifestRelativePath
+        $containerWorkspaceRoot = '/workspace/labview-icon-editor'
+
+        foreach ($requiredPath in @($workerScriptPath, $tasksPath)) {
+          if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
+            throw "Required VI Analyzer input was not found: $requiredPath"
+          }
+        }
+
+        try {
+          $taskRegistry = Get-Content -LiteralPath $tasksPath -Raw | ConvertFrom-Json -Depth 32
+        } catch {
+          throw "Failed to parse VI Analyzer task registry '$tasksRelativePath': $($_.Exception.Message)"
+        }
+
+        $taskConfigEvidence = @()
+        foreach ($taskEntry in @($taskRegistry.tasks)) {
+          if ($null -eq $taskEntry) {
+            continue
+          }
+
+          $taskId = [string]$taskEntry.id
+          $configRelativePath = [string]$taskEntry.config_path
+          if ([string]::IsNullOrWhiteSpace($taskId) -or [string]::IsNullOrWhiteSpace($configRelativePath)) {
+            continue
+          }
+
+          $resolvedHostConfigPath = [System.IO.Path]::GetFullPath((Join-Path $repoRoot $configRelativePath))
+          $resolvedContainerConfigPath = $containerWorkspaceRoot + '/' + ($configRelativePath -replace '\\', '/')
+          $taskConfigEvidence += [ordered]@{
+            task_id = $taskId
+            config_path = $configRelativePath
+            resolved_config_path_host = $resolvedHostConfigPath
+            resolved_config_path_container = $resolvedContainerConfigPath
+            config_exists_host = (Test-Path -LiteralPath $resolvedHostConfigPath -PathType Leaf)
+          }
+        }
+
+        Write-Host 'Resolved VI Analyzer task configuration entries:'
+        foreach ($taskConfig in $taskConfigEvidence) {
+          Write-Host ("- [{0}] {1}" -f $taskConfig.task_id, $taskConfig.resolved_config_path_container)
+        }
+
+        New-Item -Path $reportsRootPath -ItemType Directory -Force | Out-Null
+        New-Item -Path $logsRootPath -ItemType Directory -Force | Out-Null
+        New-Item -Path $statusDir -ItemType Directory -Force | Out-Null
+        New-Item -Path (Split-Path -Path $sourceSyncManifestPath -Parent) -ItemType Directory -Force | Out-Null
+
+        & docker pull $containerImage
+        if ($LASTEXITCODE -ne 0) {
+          throw "docker pull failed for image '$containerImage'."
+        }
+
+        $tasksPathInContainer = $containerWorkspaceRoot + '/' + ($tasksRelativePath -replace '\\', '/')
+        $reportsPathInContainer = $containerWorkspaceRoot + '/' + ($reportsRelativeRoot -replace '\\', '/')
+        $logsPathInContainer = $containerWorkspaceRoot + '/' + ($logsRelativeRoot -replace '\\', '/')
+        $sourceSyncManifestInContainer = $containerWorkspaceRoot + '/' + ($sourceSyncManifestRelativePath -replace '\\', '/')
+
+        $dockerArgs = @(
+          'run', '--rm',
+          '-v', "${repoRoot}:$containerWorkspaceRoot",
+          '-e', "LVIE_REPO_ROOT=$containerWorkspaceRoot",
+          '-e', "WORKSPACE_ROOT=$containerWorkspaceRoot",
+          '-e', "REPO_ROOT=$containerWorkspaceRoot",
+          '-e', 'LVIE_VI_ANALYZER_SYNC_TO_INSTALL=false',
+          '-e', 'LVIE_VI_ANALYZER_ENABLE_MASSCOMPILE=false',
+          '-e', "LVIE_VI_ANALYZER_LABVIEW_YEAR=$labviewYear",
+          '-e', "LVIE_VI_ANALYZER_TASKS_PATH=$tasksPathInContainer",
+          '-e', "LVIE_VI_ANALYZER_REPORTS_ROOT=$reportsPathInContainer",
+          '-e', "LVIE_VI_ANALYZER_LOG_ROOT=$logsPathInContainer",
+          '-e', "LVIE_SOURCE_SYNC_MANIFEST_PATH=$sourceSyncManifestInContainer",
+          $containerImage,
+          'bash',
+          '-lc',
+          "sed -i 's/\r$//' $containerWorkspaceRoot/Tooling/container-parity/run-vi-analyzer-linux.sh && chmod +x $containerWorkspaceRoot/Tooling/container-parity/run-vi-analyzer-linux.sh && bash $containerWorkspaceRoot/Tooling/container-parity/run-vi-analyzer-linux.sh"
+        )
+
+        & docker @dockerArgs
+        $viAnalyzerExitCode = $LASTEXITCODE
+
+        if (Get-Command -Name sudo -ErrorAction SilentlyContinue) {
+          $uid = (& bash -lc 'id -u').Trim()
+          $gid = (& bash -lc 'id -g').Trim()
+          $repoEscaped = $repoRoot -replace "'", "'\\''"
+          & bash -lc "sudo chown -R ${uid}:${gid} '${repoEscaped}/builds' '${repoEscaped}/TestResults/container-parity/linux/vi-analyzer' 2>/dev/null || true"
+        }
+
+        $reportFiles = @()
+        if (Test-Path -LiteralPath $reportsRootPath -PathType Container) {
+          $reportFiles = @(
+            Get-ChildItem -Path $reportsRootPath -Filter 'vi-analyzer-*.txt' -File -Recurse -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty FullName
+          )
+        }
+
+        $status = if ($viAnalyzerExitCode -eq 0) { 'pass' } else { 'fail' }
+        if ($status -eq 'pass' -and $reportFiles.Count -eq 0) {
+          $status = 'fail'
+        }
+
+        $statusDocument = [ordered]@{
+          generated_utc = (Get-Date).ToUniversalTime().ToString('o')
+          status = $status
+          exit_code = $viAnalyzerExitCode
+          container_image = $containerImage
+          tasks_path = $tasksRelativePath
+          reports_root = $reportsRelativeRoot
+          logs_root = $logsRelativeRoot
+          status_path = $statusRelativePath
+          source_sync_manifest_path = $sourceSyncManifestRelativePath
+          report_count = $reportFiles.Count
+          report_files = $reportFiles
+          vi_analyzer_tasks = $taskConfigEvidence
+        }
+
+        $statusDocument | ConvertTo-Json -Depth 8 | Set-Content -Path $statusPath -Encoding utf8
+
+        Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value "### VI Analyzer Task Config Evidence"
+        foreach ($taskConfig in $taskConfigEvidence) {
+          Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ("- {0} -> {1}" -f $taskConfig.task_id, $taskConfig.resolved_config_path_container)
+        }
+
+        "status=$status" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        "container_image=$containerImage" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        "status_path=$statusPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        "reports_root=$reportsRootPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        "logs_root=$logsRootPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+        if ($status -eq 'fail') {
+          throw "VI Analyzer composite gate failed (exit=$viAnalyzerExitCode)."
+        }

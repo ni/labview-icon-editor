@@ -10,9 +10,26 @@
 # Metadata
 *.aliases
 *.lvlps
+*.UserState
 .cache/
 .vs/
 
 # Build output
-/resource/plugins/lv_icon.lvlibp
+*.lvlibp
 *.xml
+builds/
+TestResults/
+.worktrees/
+Tooling/deployment/release_notes.md
+missing_files.txt
+
+# VerifyIEPaths status output
+missing_IE_paths.txt
+
+# Local machine tooling snapshot
+TOOLING.md
+
+# .NET build artifacts
+Tooling/runner-cli/**/bin/
+Tooling/runner-cli/**/obj/
+Tooling/runner-cli/**/publish/

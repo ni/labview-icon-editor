@@ -6,7 +6,7 @@ body:
 - type: markdown
   attributes: 
     value: |
-      * IMPORTANT: Before creating an issue, start the discussion about a possible bug on our [Discord Server](https://discord.gg/q4d3ggrFVA)
+      * IMPORTANT: Specify the release number you are reporting the bug against (e.g. v0.2.0-build590). Join our [#icon-editor-dev](https://discord.gg/q4d3ggrFVA) if you have any problems or questions.
 
 - type: dropdown
   id: version
