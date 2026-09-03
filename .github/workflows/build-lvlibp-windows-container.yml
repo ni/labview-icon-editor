@@ -45,7 +45,7 @@ jobs:
             $quarter = [int]$Matches[2]
             Write-Host "Parsed: Year=$year, Quarter=$quarter"
           } else {
-            throw "Invalid LabVIEW version format: $lvVersion. Expected format: YYYYq1 or YYYYq3 (e.g., 2026q1, 2026q3)"
+            throw "Invalid LabVIEW version format: $lvVersion. Expected format: YYYYq1 or YYYYq3 (e.g., 2026q1, 2026q1)"
           }
           
           # Minimum version for Windows Docker: 2026q1
@@ -61,7 +61,7 @@ jobs:
           Minimum supported version: 2026q1
           
           Please either:
-          1. Use LabVIEW 2026q1 or later (e.g., 2026q1, 2026q3)
+          1. Use LabVIEW 2026q1 or later (e.g., 2026q1, 2026q1)
           2. Use GitHub-hosted runners instead of Docker (see build-lvlibp-windows-github-hosted.yml)
           
           Available Docker images: https://hub.docker.com/r/nationalinstruments/labview
@@ -153,6 +153,109 @@ jobs:
           image_tag: '${{ env.LV_VERSION }}-windows'
           log_level: 'INFO'
 
+      - name: Generate SBOM (vipm sbom in container)
+        if: success()
+        shell: pwsh
+        run: |
+          # vipm sbom needs a real LabVIEW install to resolve .lvproj paths, so this
+          # runs inside the same LabVIEW container image, not on the runner host.
+          $containerScript = @'
+          $ErrorActionPreference = "Stop"
+          $env:VIPM_NONINTERACTIVE = "1"
+          $env:VIPM_COMMUNITY_EDITION = "1"
+
+          # Git is not preinstalled in the Windows LabVIEW container image. Install
+          # portable MinGit (no installer, just unzip) and prepend it to PATH.
+          $gitCmd = Get-Command git -ErrorAction SilentlyContinue
+          if (-not $gitCmd) {
+            Write-Host "Git not found; installing portable MinGit..."
+            $ProgressPreference = "SilentlyContinue"
+            $gitZip = "$env:TEMP\mingit.zip"
+            $gitDir = "C:\mingit"
+            Invoke-WebRequest -Uri "https://github.com/git-for-windows/git/releases/download/v2.47.1.windows.1/MinGit-2.47.1-64-bit.zip" -OutFile $gitZip
+            Expand-Archive -Path $gitZip -DestinationPath $gitDir -Force
+            Remove-Item $gitZip -Force
+            $env:PATH = "$gitDir\cmd;$env:PATH"
+          } else {
+            Write-Host "Git already installed at: $($gitCmd.Source)"
+          }
+
+          Write-Host "Verifying Git..."
+          git --version
+
+          # VIPM is not preinstalled in the Windows LabVIEW container image, and vipm.exe
+          # is not added to PATH by the installer, so discover it directly under Program Files.
+          $vipmExe = Get-ChildItem -Path "$env:ProgramFiles", "${env:ProgramFiles(x86)}" -Filter vipm.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+
+          if (-not $vipmExe) {
+            Write-Host "Downloading VIPM CLI installer..."
+            $ProgressPreference = "SilentlyContinue"
+            Invoke-WebRequest -Uri "https://traffic.libsyn.com/secure/jkinc/vipm-26.3.4025-windows-setup.exe" -OutFile "$env:TEMP\vipm-setup.exe"
+
+            Write-Host "Installing VIPM CLI silently..."
+            Start-Process -Wait -FilePath "$env:TEMP\vipm-setup.exe" -ArgumentList "/exenoui /qn"
+            Remove-Item "$env:TEMP\vipm-setup.exe" -Force
+
+            $vipmExe = Get-ChildItem -Path "$env:ProgramFiles", "${env:ProgramFiles(x86)}" -Filter vipm.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+            if (-not $vipmExe) {
+              throw "vipm.exe was not found under Program Files after installation."
+            }
+          } else {
+            Write-Host "VIPM already installed; skipping installation."
+          }
+
+          Write-Host "Using VIPM CLI at: $vipmExe"
+          Write-Host "Verifying VIPM CLI..."
+          & $vipmExe --version
+
+          # Root cause of the SBOM failure: running "vipm sbom" cold fails with
+          # "LabVIEW VI Server is not available ... on port 3363". Launch LabVIEW in the
+          # background (non-blocking) and poll VI Server until it accepts connections,
+          # instead of relying on a foreground call that could hang or a fixed sleep.
+          Write-Host "Launching LabVIEW in the background to warm up VI Server..."
+          Start-Process -FilePath "LabVIEWCLI" -ArgumentList "-OperationName","GetVersion","-Headless" | Out-Null
+
+          $viServerPort = 3363
+          $deadline = (Get-Date).AddSeconds(120)
+          $ready = $false
+          while ((Get-Date) -lt $deadline) {
+            try {
+              $client = New-Object System.Net.Sockets.TcpClient
+              $client.Connect("localhost", $viServerPort)
+              if ($client.Connected) { $client.Close(); $ready = $true; break }
+            } catch {
+              Start-Sleep -Seconds 3
+            }
+          }
+          if (-not $ready) {
+            throw "LabVIEW VI Server did not become available on port $viServerPort within the timeout."
+          }
+          Write-Host "LabVIEW VI Server is available on port $viServerPort."
+
+          Write-Host "Generating SBOM..."
+          & $vipmExe sbom C:\workspace\lv_icon_editor.lvproj --format cyclonedx --schema-version 1.5 --labview-version 2026 --labview-bitness 64 --lvproj-build-spec "Editor Packed Library" --lvproj-target "My Computer" --product-name "Icon Editor Packed Library" --product-version "$env:PRODUCT_VERSION" --output C:\workspace\builds\lv_icon-windows-x64.cdx.sbom.json
+          '@
+
+          docker run --rm `
+            --volume "${{ github.workspace }}:C:\workspace" `
+            --env "PRODUCT_VERSION=${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}.${{ steps.version.outputs.build }}" `
+            'nationalinstruments/labview:${{ env.LV_VERSION }}-windows' `
+            powershell -NoProfile -ExecutionPolicy Bypass -Command $containerScript
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "SBOM generation inside the LabVIEW container failed with exit code $LASTEXITCODE"
+          }
+
+      - name: Verify SBOM exists
+        if: success()
+        shell: pwsh
+        run: |
+          $sbomFiles = Get-ChildItem -Path '.\builds' -Recurse -Include '*sbom*.json' -ErrorAction SilentlyContinue
+          if (-not $sbomFiles) {
+            throw "No SBOM file found in builds\. Ensure the 'Generate SBOM' step completed successfully."
+          }
+          $sbomFiles | ForEach-Object { Write-Host "SBOM verified: $($_.FullName)" }
+
       - name: Upload Built PPL
         uses: actions/upload-artifact@v6
         if: success()
@@ -160,6 +263,15 @@ jobs:
           name: lv_icon_x64_v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}.${{ steps.version.outputs.build }}_${{ env.LV_VERSION }}-windows
           path: builds/*.lvlibp
           retention-days: 7
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v6
+        if: success()
+        with:
+          name: sbom_x64_v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}.${{ steps.version.outputs.build }}_${{ env.LV_VERSION }}-windows
+          path: builds/*sbom*.json
+          retention-days: 90
+          if-no-files-found: error
 
       - name: Upload Build Logs
         uses: actions/upload-artifact@v6

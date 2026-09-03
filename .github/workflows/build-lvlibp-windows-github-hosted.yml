@@ -220,6 +220,71 @@ jobs:
           commit: ${{ github.sha }}
           log_level: 'INFO'
 
+      - name: Install VIPM CLI
+        shell: pwsh
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest -Uri "https://traffic.libsyn.com/secure/jkinc/vipm-26.3.4025-windows-setup.exe" -OutFile "$env:TEMP\vipm-setup.exe"
+          Start-Process -Wait -FilePath "$env:TEMP\vipm-setup.exe" -ArgumentList "/exenoui /qn"
+          Remove-Item "$env:TEMP\vipm-setup.exe" -Force
+
+          # vipm.exe is not added to PATH by the installer; discover it and expose for later steps.
+          $vipmExe = Get-ChildItem -Path "$env:ProgramFiles", "${env:ProgramFiles(x86)}" -Filter vipm.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $vipmExe) {
+            throw "vipm.exe was not found under Program Files after installation."
+          }
+          Write-Host "Using VIPM CLI at: $vipmExe"
+          & $vipmExe --version
+          "VIPM_EXE=$vipmExe" >> $env:GITHUB_ENV
+
+      - name: Generate SBOM (vipm sbom)
+        if: success()
+        shell: pwsh
+        run: |
+          # Running "vipm sbom" cold fails with "LabVIEW VI Server is not available ... on port 3363".
+          # Launch LabVIEW in the background (non-blocking) and poll VI Server until it accepts
+          # connections before invoking vipm sbom.
+          Write-Host "Launching LabVIEW in the background to warm up VI Server..."
+          Start-Process -FilePath "LabVIEWCLI" -ArgumentList "-OperationName","GetVersion","-Headless" | Out-Null
+
+          $viServerPort = 3363
+          $deadline = (Get-Date).AddSeconds(120)
+          $ready = $false
+          while ((Get-Date) -lt $deadline) {
+            try {
+              $client = New-Object System.Net.Sockets.TcpClient
+              $client.Connect("localhost", $viServerPort)
+              if ($client.Connected) { $client.Close(); $ready = $true; break }
+            } catch {
+              Start-Sleep -Seconds 3
+            }
+          }
+          if (-not $ready) {
+            throw "LabVIEW VI Server did not become available on port $viServerPort within the timeout."
+          }
+          Write-Host "LabVIEW VI Server is available on port $viServerPort."
+
+          & $env:VIPM_EXE sbom "lv_icon_editor.lvproj" `
+            --format cyclonedx `
+            --schema-version 1.5 `
+            --labview-version ${{ env.LV_YEAR }} `
+            --labview-bitness ${{ env.BITNESS }} `
+            --lvproj-build-spec "Editor Packed Library" `
+            --lvproj-target "My Computer" `
+            --product-name "labview-icon-editor" `
+            --product-version "${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}.${{ steps.version.outputs.build }}" `
+            --output "builds/lv_icon_editor_Editor Packed Library.cdx.sbom.json"
+
+      - name: Verify SBOM exists
+        if: success()
+        shell: pwsh
+        run: |
+          $sbomFiles = Get-ChildItem -Path '.\builds' -Recurse -Include '*sbom*.json' -ErrorAction SilentlyContinue
+          if (-not $sbomFiles) {
+            throw "No SBOM file found in builds\. Ensure the 'Generate SBOM (vipm sbom)' step completed successfully."
+          }
+          $sbomFiles | ForEach-Object { Write-Host "SBOM verified: $($_.FullName)" }
+
       - name: Upload Built PPL
         uses: actions/upload-artifact@v6
         if: success()
@@ -227,6 +292,15 @@ jobs:
           name: lv_icon_${{ env.ARCH }}_v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}.${{ steps.version.outputs.build }}_${{ env.LV_VERSION }}-windows-gh
           path: builds/*.lvlibp
           retention-days: 7
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v6
+        if: success()
+        with:
+          name: sbom_${{ env.ARCH }}_v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}.${{ steps.version.outputs.build }}_${{ env.LV_VERSION }}
+          path: builds/*sbom*.json
+          retention-days: 90
+          if-no-files-found: error
 
       - name: Upload Build Logs
         uses: actions/upload-artifact@v6

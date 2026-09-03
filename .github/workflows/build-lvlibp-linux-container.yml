@@ -152,6 +152,44 @@ jobs:
           docker_image: 'nationalinstruments/labview'
           image_tag: '${{ env.LV_VERSION }}-linux'
 
+      - name: Generate SBOM (vipm sbom in container)
+        if: success()
+        shell: pwsh
+        run: |
+          # vipm sbom needs a real LabVIEW install to resolve .lvproj paths, so this
+          # runs inside the same LabVIEW container image, not on the runner host.
+          # Mirrors the sequence validated manually on nationalinstruments/labview:2026q1-linux.
+          $containerScript = @'
+          set -e
+          apt-get update && apt-get install -y wget
+          wget --no-check-certificate -O /tmp/vipm.deb https://traffic.libsyn.com/secure/jkinc/vipm_26.3.1-4025_amd64.deb
+          dpkg -i /tmp/vipm.deb
+          vipm --version
+          # vipm sbom needs a display; the container has no X server, so run it under xvfb-run.
+          # timeout 300 hardening so any future hang fails fast instead of stalling the runner.
+          timeout 300 xvfb-run -a vipm sbom /workspace/lv_icon_editor.lvproj --format cyclonedx --schema-version 1.5 --labview-version 2026 --labview-bitness 64 --lvproj-build-spec "Editor Packed Library" --lvproj-target "My Computer" --product-name "Icon Editor Packed Library" --product-version "$PRODUCT_VERSION" --output /workspace/builds/lv_icon-linux-x64.cdx.sbom.json
+          '@
+
+          docker run --rm `
+            --volume "${{ github.workspace }}:/workspace" `
+            --env "PRODUCT_VERSION=${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}.${{ steps.version.outputs.build }}" `
+            'nationalinstruments/labview:${{ env.LV_VERSION }}-linux' `
+            bash -c $containerScript
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "SBOM generation inside the LabVIEW container failed with exit code $LASTEXITCODE"
+          }
+
+      - name: Verify SBOM exists
+        if: success()
+        shell: pwsh
+        run: |
+          $sbomFiles = Get-ChildItem -Path '.\builds' -Recurse -Include '*sbom*.json' -ErrorAction SilentlyContinue
+          if (-not $sbomFiles) {
+            throw "No SBOM file found in builds\. Ensure the 'Generate SBOM' step completed successfully."
+          }
+          $sbomFiles | ForEach-Object { Write-Host "SBOM verified: $($_.FullName)" }
+
       - name: Upload Built PPL
         uses: actions/upload-artifact@v6
         if: success()
@@ -159,6 +197,15 @@ jobs:
           name: lv_icon_x64_v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}.${{ steps.version.outputs.build }}_${{ env.LV_VERSION }}-linux
           path: builds/*.lvlibp
           retention-days: 7
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v6
+        if: success()
+        with:
+          name: sbom_x64_v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}.${{ steps.version.outputs.build }}_${{ env.LV_VERSION }}-linux
+          path: builds/*sbom*.json
+          retention-days: 90
+          if-no-files-found: error
 
       - name: Upload Build Logs
         uses: actions/upload-artifact@v6
