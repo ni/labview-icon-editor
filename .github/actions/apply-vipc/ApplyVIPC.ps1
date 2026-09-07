@@ -1,10 +1,22 @@
 <#
 .SYNOPSIS
-    Applies a .vipc file to a given LabVIEW version/bitness.
-    This version includes additional debug/verbose output.
+    Installs runner dependencies for a given LabVIEW version/bitness from a
+    vipm.toml manifest using the VIPM command line.
+
+.DESCRIPTION
+    Proof-of-concept replacement for the previous `g-cli vipc` flow. Instead of
+    applying a binary .vipc file, this script:
+      1. Resolves the vipm.toml manifest under the repo.
+      2. Generates/refreshes the VIPM lock file via `vipm lock` (the lock is
+         produced by VIPM, never hand-authored).
+      3. Installs the locked dependency set via `vipm install`.
+
+    LabVIEW version selection and 32-/64-bit support are preserved: the manifest
+    is installed into each resolved LabVIEW year/bitness target, exactly as the
+    prior VIPC flow did.
 
 .EXAMPLE
-    .\applyvipc.ps1 -LabVIEWVersion "2021" -SupportedBitness "64" -RepoRoot "C:\release\labview-icon-editor-fork" -VIPCPath "Tooling\deployment\runner_dependencies.vipc" -VIP_LVVersion "2021" -Verbose
+    .\ApplyVIPC.ps1 -LabVIEWVersion "2021" -SupportedBitness "64" -RepoRoot "C:\labview-icon-editor" -VipmTomlPath ".github/actions/apply-vipc/vipm.toml" -Verbose
 #>
 
 [CmdletBinding()]  # Enables -Verbose and other common parameters
@@ -19,7 +31,18 @@ Param (
     [ValidateSet('32', '64')]
     [string]$SupportedBitness,
     [string]$RepoRoot,
-    [string]$VIPCPath,
+    # Path (relative to repo) to the vipm.toml manifest.
+    [string]$VipmTomlPath = '.github/actions/apply-vipc/vipm.toml',
+    # Legacy .vipc path. Accepted for backward compatibility but ignored.
+    [Alias('VIPCPath')]
+    [string]$LegacyVIPCPath,
+    # VIPM command-line executable (override for non-PATH installs).
+    [string]$VipmExe = 'vipm',
+    # Global --timeout in seconds passed to vipm; -1 waits indefinitely.
+    [ValidateRange(-1, 3600)]
+    [int]$VipmTimeoutSeconds = 900,
+    # Force regeneration of vipm.lock even when it already matches vipm.toml.
+    [switch]$UpdateLock,
     [string]$WorktreeRoot,
     [switch]$SkipWorktreeRootCheck
 )
@@ -29,8 +52,8 @@ Write-Verbose "Parameters provided:"
 Write-Verbose " - LabVIEWVersion:            $LabVIEWVersion"
 Write-Verbose " - VIP_LVVersion:             $VIP_LVVersion"
 Write-Verbose " - SupportedBitness:          $SupportedBitness"
-Write-Verbose " - RepoRoot:              $RepoRoot"
-Write-Verbose " - VIPCPath:                  $VIPCPath"
+Write-Verbose " - RepoRoot:                  $RepoRoot"
+Write-Verbose " - VipmTomlPath:              $VipmTomlPath"
 
 # -------------------------
 # 1) Resolve Paths & Validate
@@ -60,27 +83,24 @@ try {
         $ResolvedRepoRoot = $preflight.RepoRoot
     }
 
-    Write-Verbose "Building full path for the .vipc file..."
-    $ResolvedVIPCPath = Join-Path -Path $ResolvedRepoRoot -ChildPath $VIPCPath -ErrorAction Stop
-    Write-Verbose "ResolvedVIPCPath:     $ResolvedVIPCPath"
+    Write-Verbose "Building full path for the vipm.toml manifest..."
+    $ResolvedTomlPath = Join-Path -Path $ResolvedRepoRoot -ChildPath $VipmTomlPath -ErrorAction Stop
+    Write-Verbose "ResolvedTomlPath:     $ResolvedTomlPath"
 
-    # Verify that the .vipc file actually exists
-    Write-Verbose "Checking if the .vipc file exists at the resolved path..."
-    if (-not (Test-Path $ResolvedVIPCPath)) {
-        Write-Error "The .vipc file does not exist at '$ResolvedVIPCPath'."
+    Write-Verbose "Checking if the vipm.toml manifest exists at the resolved path..."
+    if (-not (Test-Path $ResolvedTomlPath)) {
+        Write-Error "The vipm.toml manifest does not exist at '$ResolvedTomlPath'."
         exit 1
     }
-    Write-Verbose "The .vipc file was found successfully."
+    Write-Verbose "The vipm.toml manifest was found successfully."
 
-    # Ensure parent directory exists (idempotent if already present)
-    $vipcDir = Split-Path -Parent $ResolvedVIPCPath
-    if (-not (Test-Path $vipcDir)) {
-        Write-Verbose "Creating VIPC parent directory: $vipcDir"
-        New-Item -ItemType Directory -Path $vipcDir -Force | Out-Null
-    }
+    $tomlDir = Split-Path -Parent $ResolvedTomlPath
+    $ResolvedLockPath = Join-Path -Path $tomlDir -ChildPath 'vipm.lock'
+    Write-Output "ResolvedTomlPath: $ResolvedTomlPath"
+    Write-Output "ResolvedLockPath: $ResolvedLockPath"
 }
 catch {
-    Write-Error "Error resolving paths. Ensure RepoRoot and VIPCPath are valid. Details: $($_.Exception.Message)"
+    Write-Error "Error resolving paths. Ensure RepoRoot and VipmTomlPath are valid. Details: $($_.Exception.Message)"
     exit 1
 }
 
@@ -88,18 +108,6 @@ catch {
 # 2) Build LabVIEW Version Strings
 # -------------------------
 Write-Verbose "Determining LabVIEW version strings..."
-
-function Get-VipmVersionString {
-    param(
-        [string]$NumericVersion,
-        [string]$Bitness
-    )
-
-    if ($Bitness -eq '64') {
-        return "$NumericVersion (64-bit)"
-    }
-    return $NumericVersion
-}
 
 $versionHelper = Join-Path -Path $ResolvedRepoRoot -ChildPath 'Tooling\support\LabVIEWVersion.ps1'
 if (-not (Test-Path -Path $versionHelper)) {
@@ -110,63 +118,123 @@ if (-not (Test-Path -Path $versionHelper)) {
 $minInfo = Get-LabVIEWVersionInfo -VersionInput $LabVIEWVersion -RepoRoot $ResolvedRepoRoot
 $vipInfo = Get-LabVIEWVersionInfo -VersionInput $VIP_LVVersion -RepoRoot $ResolvedRepoRoot
 
-$VIP_LVVersion_B = Get-VipmVersionString -NumericVersion $minInfo.NumericVersion -Bitness $SupportedBitness
-$VIP_LVVersion_A = Get-VipmVersionString -NumericVersion $vipInfo.NumericVersion -Bitness $SupportedBitness
+Write-Output "Installing dependencies for LabVIEW $($minInfo.NumericVersion) ($SupportedBitness-bit)..."
 
-Write-Output "Applying dependencies for LabVIEW $VIP_LVVersion_B..."
-Write-Verbose "VIP_LVVersion_A (for primary LVVersion): $VIP_LVVersion_A"
-Write-Verbose "VIP_LVVersion_B (for minimum LVVersion): $VIP_LVVersion_B"
-
-# -------------------------
-# 3) Construct the Commands to Execute
-# -------------------------
-Write-Verbose "Constructing g-cli vipc command list..."
-$vipVersions = @($VIP_LVVersion_B)
+# Preserve prior VIPC behavior: install into the minimum-supported LabVIEW year,
+# and additionally into the VIP LabVIEW year when the two differ.
+$targetYears = @($minInfo.Year)
 if ($vipInfo.NumericVersion -ne $minInfo.NumericVersion -or $vipInfo.Year -ne $minInfo.Year) {
-    Write-Verbose "VIP_LVVersion and LabVIEWVersion differ; adding commands for $VIP_LVVersion_A..."
-    $vipVersions += $VIP_LVVersion_A
+    Write-Verbose "VIP_LVVersion and LabVIEWVersion differ; adding target year $($vipInfo.Year)..."
+    $targetYears += $vipInfo.Year
 }
 
 # -------------------------
-# 4) Execute the Commands & Handle Errors
+# 3) Minimal vipm.toml reader (for logging/validation only)
 # -------------------------
+function Get-VipmDependencies {
+    param([string]$Path)
+
+    $deps = [ordered]@{}
+    $inDependencies = $false
+    foreach ($line in (Get-Content -Path $Path)) {
+        $trimmed = $line.Trim()
+        if ($trimmed -eq '' -or $trimmed.StartsWith('#')) { continue }
+        if ($trimmed -match '^\[(.+)\]$') {
+            $inDependencies = ($Matches[1] -eq 'dependencies')
+            continue
+        }
+        if ($inDependencies -and $trimmed -match '^"?(?<name>[^"=]+?)"?\s*=\s*"(?<version>[^"]*)"') {
+            $deps[$Matches['name'].Trim()] = $Matches['version'].Trim()
+        }
+    }
+    return $deps
+}
+
+$dependencies = Get-VipmDependencies -Path $ResolvedTomlPath
+if ($dependencies.Count -eq 0) {
+    Write-Error "No [dependencies] found in $ResolvedTomlPath."
+    exit 1
+}
+Write-Verbose ("Manifest declares {0} package(s):" -f $dependencies.Count)
+foreach ($name in $dependencies.Keys) {
+    Write-Verbose (" - {0} = {1}" -f $name, $dependencies[$name])
+}
+
+# -------------------------
+# 4) Generate the lock (via VIPM) and install
+# -------------------------
+function Invoke-Vipm {
+    param(
+        [Parameter(Mandatory)][string[]]$Arguments,
+        [Parameter(Mandatory)][string]$FailureMessage
+    )
+
+    Write-Output ("Executing: {0} {1}" -f $VipmExe, ($Arguments -join ' '))
+    $output = & $VipmExe @Arguments 2>&1
+    $exitCode = $LASTEXITCODE
+    if ($output) {
+        $output | ForEach-Object { Write-Host $_ }
+    }
+    if ($exitCode -ne 0) {
+        throw ("{0} (exit code {1})." -f $FailureMessage, $exitCode)
+    }
+}
+
 try {
-    foreach ($vipVersion in $vipVersions) {
-        $targetLvVer = if ($vipVersion -eq $VIP_LVVersion_A) { $vipInfo.Year } else { $minInfo.Year }
-        $vipcArgs = @(
-            '--lv-ver', $targetLvVer,
-            '--arch', $SupportedBitness,
-            'vipc', '--',
-            '-t', '3000',
-            '-v', $vipVersion,
-            $ResolvedVIPCPath
-        )
+    # Run vipm from the manifest directory so `vipm lock`/`vipm install`
+    # discover this vipm.toml (both search upward from the working directory).
+    Push-Location -Path $tomlDir
+    # Suppress interactive prompts for CI.
+    $env:VIPM_NONINTERACTIVE = '1'
+    try {
+        # Regenerate vipm.lock from vipm.toml when missing or when explicitly
+        # requested. `vipm lock` is the only command that creates the lock; it
+        # is produced by VIPM and never edited by hand.
+        if ($UpdateLock -or -not (Test-Path -Path $ResolvedLockPath)) {
+            Write-Output "Generating vipm.lock from vipm.toml via 'vipm lock'..."
+            $lockArgs = @('lock', '--timeout', $VipmTimeoutSeconds)
+            Invoke-Vipm -Arguments $lockArgs -FailureMessage 'vipm lock failed'
 
-        Write-Output ("Executing: g-cli {0}" -f ($vipcArgs -join ' '))
-        $output = & g-cli @vipcArgs 2>&1
-        $exitCode = $LASTEXITCODE
-        if ($output) {
-            $output | ForEach-Object { Write-Host $_ }
+            if (-not (Test-Path -Path $ResolvedLockPath)) {
+                throw "vipm lock succeeded, but vipm.lock was not found at the expected path '$ResolvedLockPath'."
+            }
+
+            Write-Output "vipm.lock found at: $ResolvedLockPath"
+        }
+        else {
+            Write-Output "vipm.lock found at: $ResolvedLockPath"
+            Write-Verbose "vipm.lock already present; reusing it. Pass -UpdateLock to regenerate."
         }
 
-        if ($exitCode -ne 0) {
-            throw "g-cli vipc failed with exit code $exitCode."
-        }
+        foreach ($year in ($targetYears | Select-Object -Unique)) {
+            Write-Output ("Installing dependencies into LabVIEW {0} ({1}-bit)..." -f $year, $SupportedBitness)
+            # `vipm install` reads vipm.lock when in sync, else vipm.toml;
+            # --labview-version (YYYY) / --labview-bitness override the target.
+            $installArgs = @(
+                'install',
+                '--labview-version', $year,
+                '--labview-bitness', $SupportedBitness,
+                '--timeout', $VipmTimeoutSeconds
+            )
+            Invoke-Vipm -Arguments $installArgs -FailureMessage ("vipm install failed for LabVIEW {0} ({1}-bit)" -f $year, $SupportedBitness)
 
-        try {
-            Write-Output ("Closing LabVIEW {0} ({1}-bit) after VIPC apply..." -f $targetLvVer, $SupportedBitness)
-            & g-cli --lv-ver $targetLvVer --arch $SupportedBitness QuitLabVIEW | Out-Null
+            try {
+                Write-Output ("Closing LabVIEW {0} ({1}-bit) after install..." -f $year, $SupportedBitness)
+                & g-cli --lv-ver $year --arch $SupportedBitness QuitLabVIEW | Out-Null
+            }
+            catch {
+                Write-Warning ("Failed to close LabVIEW {0} ({1}-bit): {2}" -f $year, $SupportedBitness, $_.Exception.Message)
+            }
         }
-        catch {
-            Write-Warning ("Failed to close LabVIEW {0} ({1}-bit): {2}" -f $targetLvVer, $SupportedBitness, $_.Exception.Message)
-        }
+    }
+    finally {
+        Pop-Location
     }
 
     $global:LASTEXITCODE = 0
-    Write-Host "Successfully applied dependencies to LabVIEW: $VIP_LVVersion_B" `
-        " (and potentially $VIP_LVVersion_A if switched)."
+    Write-Host ("Successfully installed dependencies for LabVIEW {0} ({1}-bit)." -f $minInfo.NumericVersion, $SupportedBitness)
 }
 catch {
-    Write-Error "An error occurred while applying the .vipc dependencies. Details: $($_.Exception.Message)"
+    Write-Error "An error occurred while installing the vipm.toml dependencies. Details: $($_.Exception.Message)"
     exit 1
 }

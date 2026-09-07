@@ -164,7 +164,7 @@ param(
     [string]$CloseLabVIEWMode = 'if-running',
 
     [Parameter(Mandatory = $false)]
-    [string]$VipcPath = '.github/actions/apply-vipc/runner_dependencies.vipc',
+    [string]$VipcPath = '.github/actions/apply-vipc/vipm.toml',
 
     [Parameter(Mandatory = $false)]
     [string]$VipbPath = 'Tooling/deployment/NI Icon editor.vipb',
@@ -1114,7 +1114,7 @@ try {
                     -VIP_LVVersion $LabVIEWVersion `
                     -SupportedBitness $bitness `
                     -RepoRoot $repoRoot `
-                    -VIPCPath $VipcPath
+                    -VipmTomlPath $VipcPath
             }
         }
 

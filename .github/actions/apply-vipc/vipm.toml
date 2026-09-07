@@ -1,0 +1,43 @@
+# VIPM project dependency manifest (proof-of-concept)
+#
+# Migrated from .github/actions/apply-vipc/runner_dependencies.vipc
+# Source VIPC target: LabVIEW 20.0 (64-bit)
+#
+# This file is the single source of truth for the CI runner dependencies.
+# ApplyVIPC.ps1 reads this manifest and installs the listed packages via the
+# VIPM command line (`vipm install`). The labview-version / labview-bitness
+# under [project] are the defaults; ApplyVIPC.ps1 overrides them at install
+# time with the global --labview-version / --labview-bitness options to
+# preserve multi-version, 32-bit, and 64-bit support.
+#
+# Schema per https://docs.vipm.io/preview/vipm-toml/getting-started/
+
+[project]
+name = "labview-icon-editor-runner-dependencies"
+version = "0.1.0"
+description = "CI runner dependencies for the LabVIEW Icon Editor."
+# Default LabVIEW target (4-digit year + integer bitness). Migrated from the
+# VIPC target "20.0 (64-bit)". Overridden per-invocation by ApplyVIPC.ps1.
+labview-version = "2020"
+labview-bitness = 64
+
+# Exact package versions carried over verbatim from runner_dependencies.vipc.
+# Keys are VIPM package IDs; values are the exact pinned versions.
+[dependencies]
+astemes_lib_lunit = "1.12.5.6"
+wiresmith_technology_lib_g_cli = "3.0.1.98"
+hse_lib_git_api = "2.3.4.176"
+jki_lib_serialization = "1.0.1.14"
+jki_lib_state_machine = "2024.0.3.23"
+jki_lib_unicode = "1.0.0.7"
+jki_rsc_toolkits_palette = "1.1-1"
+sas_workshops_lib_lunit_for_g_cli = "1.1.1.54"
+oglib_array = "6.0.1.20"
+oglib_error = "6.0.0.26"
+oglib_file = "6.0.2.28"
+oglib_lvzip = "5.0.9-1"
+oglib_lvdata = "6.0.0.45"
+jki_lib_vipm_api = "2020.0.3.80"
+sas_workshops_lib_vipb_builder_for_g_cli = "1.1.6.46"
+sas_workshops_lib_lvbuildspec_for_g_cli = "1.2.1.104"
+sas_workshops_lib_vipc_applier_for_g_cli = "1.0.5.38"

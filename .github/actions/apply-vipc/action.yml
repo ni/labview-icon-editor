@@ -21,7 +21,40 @@ runs:
           -VIP_LVVersion ${{ inputs.vip_lv_version }} `
           -SupportedBitness ${{ inputs.supported_bitness }} `
           -RepoRoot "${{ inputs.repo_root }}" `
-          -VIPCPath "${{ inputs.vipc_path }}"
+          -VipmTomlPath "${{ inputs.vipm_toml_path }}"
+
+    - name: Debug VIPM lock paths
+      id: debug-vipm-lock
+      if: always()
+      shell: pwsh
+      run: |
+        $repoRoot = "${{ inputs.repo_root }}"
+        $vipmTomlPath = "${{ inputs.vipm_toml_path }}"
+        $tomlPath = Join-Path $repoRoot $vipmTomlPath
+        $lockPath = Join-Path (Split-Path -Parent $tomlPath) "vipm.lock"
+
+        Write-Host "repo_root: $repoRoot"
+        Write-Host "vipm_toml_path: $vipmTomlPath"
+        Write-Host "Expected vipm.lock path: $lockPath"
+
+        $matches = @(Get-ChildItem -Path $repoRoot -Filter "vipm.lock" -File -Recurse -ErrorAction SilentlyContinue)
+        if ($matches.Count -eq 0) {
+          Write-Host "No vipm.lock files found under repo_root."
+        }
+        else {
+          Write-Host "vipm.lock files found under repo_root:"
+          $matches | ForEach-Object { Write-Host $_.FullName }
+        }
+
+        "lock_path=$lockPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+    - name: Upload VIPM lock
+      if: always()
+      uses: actions/upload-artifact@v6
+      with:
+        name: vipm-lock
+        path: ${{ steps.debug-vipm-lock.outputs.lock_path }}
+        if-no-files-found: warn
 inputs:
   labview_version:
     description: 'LabVIEW version to target (year or numeric).'
@@ -35,8 +68,8 @@ inputs:
   repo_root:
     description: 'Workspace root path'
     required: true
-  vipc_path:
-    description: 'Path under repo for the .vipc file (relative to workspace)'
+  vipm_toml_path:
+    description: 'Path under repo for the vipm.toml manifest (relative to workspace)'
     required: true
 
 
