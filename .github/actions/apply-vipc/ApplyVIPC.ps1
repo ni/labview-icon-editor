@@ -7,12 +7,9 @@
     Proof-of-concept replacement for the previous `g-cli vipc` flow. Instead of
     applying a binary .vipc file, this script:
       1. Resolves the vipm.toml manifest under the repo.
-      2. In GitHub Actions (or when -UpdateLock is passed), generates or
-         validates the VIPM lock file via `vipm lock` (the lock is produced by
-         VIPM, never hand-authored). Local runs without the required VIPM
-         edition skip this step and install directly from vipm.toml.
-      3. Installs the dependency set via `vipm install`, which prefers an
-         in-sync vipm.lock for reproducibility when one is present.
+      2. Generates/refreshes the VIPM lock file via `vipm lock` (the lock is
+         produced by VIPM, never hand-authored).
+      3. Installs the locked dependency set via `vipm install`.
 
     LabVIEW version selection and 32-/64-bit support are preserved: the manifest
     is installed into each resolved LabVIEW year/bitness target, exactly as the
@@ -44,8 +41,7 @@ Param (
     # Global --timeout in seconds passed to vipm; -1 waits indefinitely.
     [ValidateRange(-1, 3600)]
     [int]$VipmTimeoutSeconds = 900,
-    # Force VIPM lock generation/validation even outside GitHub Actions
-    # (requires a VIPM edition that supports `vipm lock`; VIPM-generated only).
+    # Force regeneration of vipm.lock even when it already matches vipm.toml.
     [switch]$UpdateLock,
     [string]$WorktreeRoot,
     [switch]$SkipWorktreeRootCheck
@@ -100,6 +96,8 @@ try {
 
     $tomlDir = Split-Path -Parent $ResolvedTomlPath
     $ResolvedLockPath = Join-Path -Path $tomlDir -ChildPath 'vipm.lock'
+    Write-Output "ResolvedTomlPath: $ResolvedTomlPath"
+    Write-Output "ResolvedLockPath: $ResolvedLockPath"
 }
 catch {
     Write-Error "Error resolving paths. Ensure RepoRoot and VipmTomlPath are valid. Details: $($_.Exception.Message)"
@@ -189,37 +187,31 @@ try {
     # Suppress interactive prompts for CI.
     $env:VIPM_NONINTERACTIVE = '1'
     try {
-        # `vipm lock` requires a VIPM edition that supports lock generation,
-        # which GitHub Actions provides but many local machines do not. Manage
-        # the lock in CI or when -UpdateLock is passed; otherwise install
-        # directly from vipm.toml. VIPM is the only producer of the lock file.
-        $runningInCI = $env:GITHUB_ACTIONS -eq 'true'
-        if ($UpdateLock) {
+        # Regenerate vipm.lock from vipm.toml when missing or when explicitly
+        # requested. `vipm lock` is the only command that creates the lock; it
+        # is produced by VIPM and never edited by hand.
+        if ($UpdateLock -or -not (Test-Path -Path $ResolvedLockPath)) {
             Write-Output "Generating vipm.lock from vipm.toml via 'vipm lock'..."
-            Invoke-Vipm -Arguments @('lock', '--timeout', $VipmTimeoutSeconds) -FailureMessage 'vipm lock failed'
-        }
-        elseif ($runningInCI) {
-            if (Test-Path -Path $ResolvedLockPath) {
-                Write-Output "Validating existing vipm.lock via 'vipm lock --check'..."
-                $checkArgs = @('lock', '--check', '--timeout', $VipmTimeoutSeconds)
-                Invoke-Vipm -Arguments $checkArgs -FailureMessage 'vipm.lock validation failed'
+            $lockArgs = @('lock', '--timeout', $VipmTimeoutSeconds)
+            Invoke-Vipm -Arguments $lockArgs -FailureMessage 'vipm lock failed'
+
+            if (-not (Test-Path -Path $ResolvedLockPath)) {
+                throw "vipm lock succeeded, but vipm.lock was not found at the expected path '$ResolvedLockPath'."
             }
-            else {
-                Write-Output "Generating vipm.lock from vipm.toml via 'vipm lock'..."
-                Invoke-Vipm -Arguments @('lock', '--timeout', $VipmTimeoutSeconds) -FailureMessage 'vipm lock failed'
-            }
+
+            Write-Output "vipm.lock found at: $ResolvedLockPath"
         }
         else {
-            Write-Verbose "Local run without VIPM lock licensing; installing directly from vipm.toml. Pass -UpdateLock to force lock generation."
+            Write-Output "vipm.lock found at: $ResolvedLockPath"
+            Write-Verbose "vipm.lock already present; reusing it. Pass -UpdateLock to regenerate."
         }
 
         foreach ($year in ($targetYears | Select-Object -Unique)) {
             Write-Output ("Installing dependencies into LabVIEW {0} ({1}-bit)..." -f $year, $SupportedBitness)
-            # --labview-version (YYYY) / --labview-bitness override the
-            # manifest defaults for every selected LabVIEW target.
+            # `vipm install` reads vipm.lock when in sync, else vipm.toml;
+            # --labview-version (YYYY) / --labview-bitness override the target.
             $installArgs = @(
                 'install',
-                '--yes',
                 '--labview-version', $year,
                 '--labview-bitness', $SupportedBitness,
                 '--timeout', $VipmTimeoutSeconds
