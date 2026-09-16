@@ -1,0 +1,39 @@
+# runner_dependencies.toml
+#
+# CI-only dependency manifest (VIPM CLI `vipm.toml` format). This is the first step of the
+# TOML migration described in the dependency-flow investigation: it exists purely so a
+# lock file can be generated/validated in CI. It does NOT replace runner_dependencies.vipc,
+# which remains the local/developer-facing dependency source
+# (see .github/actions/apply-vipc/runner_dependencies.vipc and ApplyVIPC.ps1).
+#
+# Package list mirrors runner_dependencies.vipc exactly (17 packages) so both manifests
+# describe the same dependency set until an automated sync/update step exists.
+
+[project]
+name = "lv-icon-editor-runner-dependencies"
+version = "0.1.0"
+# LabVIEW year available in the CI container images (nationalinstruments/labview:2026q1-*).
+# This intentionally differs from the local .vipc target (LabVIEW 20.0) because CI and local
+# dev use different LabVIEW installs; the two manifests are not expected to share a version.
+labview-version = "2026"
+labview-bitness = 64
+
+[dependencies]
+
+astemes_lib_lunit = "1.12.5.6"
+hse_lib_git_api = "2.3.4.176"
+jki_lib_serialization = "1.0.1.14"
+jki_lib_state_machine = "2024.0.3.23"
+jki_lib_unicode = "1.0.0.7"
+jki_lib_vipm_api = "2020.0.3.80"
+jki_rsc_toolkits_palette = "1.1-1"
+oglib_array = "6.0.1.20"
+oglib_error = "6.0.0.26"
+oglib_file = "6.0.2.28"
+oglib_lvdata = "6.0.0.45"
+oglib_lvzip = "5.0.9-1"
+sas_workshops_lib_lunit_for_g_cli = "1.1.1.54"
+sas_workshops_lib_lvbuildspec_for_g_cli = "1.2.1.104"
+sas_workshops_lib_vipb_builder_for_g_cli = "1.1.6.46"
+sas_workshops_lib_vipc_applier_for_g_cli = "1.0.5.38"
+wiresmith_technology_lib_g_cli = "3.0.1.98"
