@@ -169,6 +169,102 @@ jobs:
           path: ${{ steps.vi.outputs.status_path }}
           if-no-files-found: error
   
+  # TOML dependency migration: validates runner_dependencies.toml and generates/uploads
+  # runner_dependencies.lock. Does not install packages into LabVIEW, so it needs no
+  # container - it only needs the CLI itself, which requires VIPM Pro activation to be
+  # fully usable (Community/Free tiers only partially support the new CLI). Intentionally
+  # NOT part of pipeline-contract's required-results gate yet, since this is a new,
+  # network-dependent job (packages.jki.net + VIPM activation) and should prove stable
+  # before it can block the rest of the pipeline.
+  vipm-lock:
+    name: VIPM Dependency Lock
+    needs: [run-metadata]
+    runs-on: ubuntu-latest
+    env:
+      TOML_PATH: .github/actions/apply-vipc/runner_dependencies.toml
+      LOCK_PATH: .github/actions/apply-vipc/runner_dependencies.lock
+      # Explicit non-interactive mode (CI is normally auto-detected, but this makes the
+      # behavior deterministic instead of relying on auto-detection).
+      VIPM_NONINTERACTIVE: '1'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      # Fails fast with a clear, per-secret message instead of letting `vipm activate`
+      # fail later with a generic/opaque error. Never prints secret values, only whether
+      # each one is set, so this is safe to leave in the log for debugging.
+      - name: Verify required secrets are configured
+        env:
+          VIPM_SERIAL_NUMBER: ${{ secrets.VIPM_SERIAL_NUMBER }}
+          VIPM_FULL_NAME: ${{ secrets.VIPM_FULL_NAME }}
+          VIPM_EMAIL: ${{ secrets.VIPM_EMAIL }}
+        run: |
+          missing=()
+          for name in VIPM_SERIAL_NUMBER VIPM_FULL_NAME VIPM_EMAIL; do
+            if [ -z "${!name}" ]; then
+              missing+=("$name")
+              echo "::error::Secret '$name' is not set (repo Settings > Secrets and variables > Actions)."
+            else
+              echo "Secret '$name' is set."
+            fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing required secret(s) for vipm-lock job: ${missing[*]}. Add them under Settings > Secrets and variables > Actions, then re-run this workflow."
+            exit 1
+          fi
+          echo "All required VIPM secrets are configured."
+
+      # VIPM CLI ships with VIPM Desktop; it is not preinstalled on GitHub-hosted runners.
+      # `apt-get install` (not bare `dpkg -i`) is used so apt resolves and installs the
+      # .deb's runtime dependencies automatically instead of leaving the install broken.
+      - name: Install VIPM CLI
+        run: |
+          wget -q -O /tmp/vipm.deb https://packages.jki.net/vipm/preview/vipm_latest_preview_amd64.deb
+          sudo apt-get update
+          sudo apt-get install -y /tmp/vipm.deb
+          rm -f /tmp/vipm.deb
+          vipm version
+
+      # The new CLI is only fully supported under VIPM Pro (Community/Free are partial per
+      # docs.vipm.io/preview/vipm-editions-comparison); activate before any other vipm call
+      # so lock/list/refresh don't hit entitlement errors in this non-interactive CI run.
+      - name: Activate VIPM Pro
+        run: |
+          vipm activate \
+            --serial-number "${{ secrets.VIPM_SERIAL_NUMBER }}" \
+            --name "${{ secrets.VIPM_FULL_NAME }}" \
+            --email "${{ secrets.VIPM_EMAIL }}"
+
+      # Pulls the latest package catalog so version resolution below has current data.
+      - name: Refresh VIPM package sources
+        run: vipm refresh
+
+      # `vipm list <file>` parses the manifest and prints its declared packages without
+      # writing anything - this is the validation step: a malformed runner_dependencies.toml
+      # fails here before any lock is generated.
+      - name: Validate runner_dependencies.toml
+        run: vipm list "$TOML_PATH"
+
+      # `vipm lock` is the only command that creates/regenerates runner_dependencies.lock.
+      # It resolves the full dependency graph (including transitive deps) declared in the
+      # TOML and writes the lock next to it. Safe to run every time: if nothing changed,
+      # vipm leaves the existing lock file untouched, so this also covers "regenerate when
+      # dependencies change".
+      - name: Generate/regenerate lock file
+        run: vipm lock "$TOML_PATH"
+
+      # Confirms the lock we just wrote is actually in sync with the TOML (defensive
+      # check; also documents the command used for future drift checks in other jobs).
+      - name: Verify lock is in sync
+        run: vipm lock --check "$TOML_PATH"
+
+      - name: Upload runner_dependencies.lock
+        uses: actions/upload-artifact@v6
+        with:
+          name: runner_dependencies-lock
+          path: ${{ env.LOCK_PATH }}
+          if-no-files-found: error
+
   build-lvlibp-linux-container:
     name: Build lv_icon PPL using 2026q1 LabVIEW x64 (Linux Container)
     needs: [run-metadata, version-gate]
