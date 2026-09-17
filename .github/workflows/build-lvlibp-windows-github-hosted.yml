@@ -1,0 +1,237 @@
+name: Build LVLIBP with Github Runner (Windows)
+
+on:
+  workflow_dispatch:
+    inputs:
+      labview_version:
+        description: 'LabVIEW version'
+        required: false
+        type: string
+      bitness:
+        description: 'Build bitness (32 or 64)'
+        required: false
+        default: '32'
+        type: choice
+        options:
+          - '32'
+          - '64'
+  workflow_call:
+    inputs:
+      labview_version:
+        description: 'LabVIEW version'
+        required: false
+        default: ''
+        type: string
+      bitness:
+        description: 'Build bitness (32 or 64)'
+        required: false
+        default: '32'
+        type: string
+    secrets:
+      LABVIEW_SERIAL_NUMBER:
+        required: true
+
+jobs:
+  build-lvlibp-win:
+    name: Build LabVIEW Packed Library (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      
+      - name: Resolve LabVIEW Version and ISO URL
+        id: resolve
+        shell: pwsh
+        run: |
+          # Read ISO map
+          $isoMapFile = Join-Path $PWD '.lv-iso-map.json'
+          if (-not (Test-Path $isoMapFile)) {
+            throw ".lv-iso-map.json file not found"
+          }
+          
+          $isoMap = Get-Content $isoMapFile -Raw | ConvertFrom-Json
+          
+          # Determine version
+          $lvVersion = '${{ inputs.labview_version }}'
+          if ([string]::IsNullOrWhiteSpace($lvVersion)) {
+            $lvVersion = $isoMap.default
+            Write-Host "Using default version from .lv-iso-map.json: $lvVersion"
+          } else {
+            Write-Host "Using workflow input version: $lvVersion"
+          }
+          
+          # Validate version exists in map
+          if (-not $isoMap.versions.PSObject.Properties[$lvVersion]) {
+            $available = ($isoMap.versions.PSObject.Properties.Name -join ', ')
+            throw "Version $lvVersion not found in .lv-iso-map.json. Available: $available"
+          }
+
+          # Extract year for LabVIEW configuration (e.g., "2025q3" -> "2025")
+          if ($lvVersion -match '^(\d{4})q[13]$') {
+            $lvYear = $Matches[1]
+          } else {
+            throw "Invalid version format: $lvVersion"
+          }
+
+          # Determine bitness
+          $bitness = '${{ inputs.bitness }}'
+          if ([string]::IsNullOrWhiteSpace($bitness)) {
+            $bitness = '32'
+            Write-Host "Using default bitness: $bitness"
+          } else {
+            Write-Host "Using workflow input bitness: $bitness"
+          }
+          
+          # Map bitness to architecture string
+          $arch = if ($bitness -eq '32') { 'x86' } else { 'x64' }
+          
+          # Get platform and bitness-specific ISO URL
+          $platform = 'windows'
+          
+          $platformData = $isoMap.versions.$lvVersion.$platform
+          if (-not $platformData) {
+            throw "No $platform configuration found for version $lvVersion"
+          }
+
+          $isoUrl = $platformData.$arch
+          if ([string]::IsNullOrWhiteSpace($isoUrl)) {
+            $availableArch = ($platformData.PSObject.Properties.Name -join ', ')
+            throw "No $arch ISO URL found for version $lvVersion on $platform. Available architectures: $availableArch"
+          }
+
+          $packageId = $platformData.package_id
+          if ([string]::IsNullOrWhiteSpace($packageId)) {
+            throw "No package_id found for version $lvVersion on $platform in .lv-iso-map.json"
+          }
+
+          Write-Host "Resolved ISO URL ($platform/$arch): $isoUrl"
+          Write-Host "Package ID: $packageId"
+          Write-Host "Build bitness: $bitness"
+
+          "LV_VERSION=$lvVersion" >> $env:GITHUB_ENV
+          "LV_YEAR=$lvYear" >> $env:GITHUB_ENV
+          "ISO_URL=$isoUrl" >> $env:GITHUB_ENV
+          "PACKAGE_ID=$packageId" >> $env:GITHUB_ENV
+          "BITNESS=$bitness" >> $env:GITHUB_ENV
+          "ARCH=$arch" >> $env:GITHUB_ENV
+
+          if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY)) {
+            @(
+              '### Build LVLIBP — Windows GitHub-Hosted',
+              '',
+              ('- LabVIEW version: `{0}`' -f $lvVersion),
+              ('- LabVIEW year: `{0}`' -f $lvYear),
+              ('- Package ID: `{0}`' -f $packageId),
+              '- Platform: `windows`',
+              ('- Bitness: `{0}` (`{1}`)' -f $bitness, $arch),
+              ('- ISO URL: `{0}`' -f $isoUrl)
+            ) -join [Environment]::NewLine | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+      
+      - name: Setup NI Package Manager
+        uses: ni/open-source/setup-nipm@actions
+        with:
+          log_level: 'DEBUG'
+      
+      - name: Setup LabVIEW
+        uses: ni/open-source/setup-labview@actions
+        with:
+          labview_iso_url: ${{ env.ISO_URL }}
+          timeout_seconds: 1800
+          serial_number: ${{ secrets.LABVIEW_SERIAL_NUMBER }}
+          package_id: ${{ env.PACKAGE_ID }}
+          log_level: 'DEBUG'
+
+      - name: Configure LabVIEW
+        uses: ni/open-source/configure-labview@actions
+        with:
+          labview_version: ${{ env.LV_YEAR }}
+          log_level: 'DEBUG'
+
+      - name: Get Version from Git
+        id: version
+        shell: pwsh
+        run: |
+          git fetch --tags
+          $allTags = git tag -l "v*.*.*" --sort=-version:refname 2>$null
+          $tag = if ($allTags) { $allTags | Select-Object -First 1 } else { $null }
+          
+          Write-Host "Latest tag in repository: '$tag'"
+          
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            Write-Host "No version tag found. Using fallback version 0.0.0.0"
+            $major = 0
+            $minor = 0
+            $patch = 0
+            $build = 0
+          } else {
+            # Strip pre-release suffix (e.g., v2.0.0-rc -> v2.0.0)
+            $cleanTag = $tag -replace '-.*$', ''
+            Write-Host "Cleaned tag: '$cleanTag'"
+            
+            if ($cleanTag -match '^v?(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?$') {
+              $major = $Matches[1]
+              $minor = $Matches[2]
+              $patch = $Matches[3]
+              $build = if ($Matches[4]) { $Matches[4] } else { 0 }
+              Write-Host "Parsed version from tag '$tag': $major.$minor.$patch.$build"
+            } else {
+              Write-Warning "Tag '$tag' (cleaned: '$cleanTag') does not match pattern v{major}.{minor}.{patch}[.{build}]. Using fallback 0.0.0.0"
+              $major = 0
+              $minor = 0
+              $patch = 0
+              $build = 0
+            }
+          }
+
+          Write-Host "Version: $major.$minor.$patch.$build"
+          
+          echo "major=$major" >> $env:GITHUB_OUTPUT
+          echo "minor=$minor" >> $env:GITHUB_OUTPUT
+          echo "patch=$patch" >> $env:GITHUB_OUTPUT
+          echo "build=$build" >> $env:GITHUB_OUTPUT
+
+          if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY)) {
+            @(
+              '',
+              '#### Version',
+              '',
+              ('- Source tag: `{0}`' -f $tag),
+              ('- Resolved: `{0}.{1}.{2}.{3}`' -f $major, $minor, $patch, $build)
+            ) -join [Environment]::NewLine | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+
+      - name: Build PPL
+        uses: ni/open-source/build-spec-github-hosted-windows@actions
+        with:
+          minimum_supported_lv_version: ${{ env.LV_YEAR }}
+          supported_bitness: ${{ env.BITNESS }}
+          project_path: 'lv_icon_editor.lvproj'
+          target_name: 'My Computer'
+          build_spec_name: 'Editor Packed Library'
+          major: ${{ steps.version.outputs.major }}
+          minor: ${{ steps.version.outputs.minor }}
+          patch: ${{ steps.version.outputs.patch }}
+          build: ${{ steps.version.outputs.build }}
+          commit: ${{ github.sha }}
+          log_level: 'INFO'
+
+      - name: Upload Built PPL
+        uses: actions/upload-artifact@v6
+        if: success()
+        with:
+          name: lv_icon_${{ env.ARCH }}_v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}.${{ steps.version.outputs.build }}_${{ env.LV_VERSION }}-windows-gh
+          path: builds/*.lvlibp
+          retention-days: 7
+
+      - name: Upload Build Logs
+        uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: build-logs-${{ env.ARCH }}_${{ env.LV_VERSION }}-windows-gh
+          path: build-logs/*.log
+          retention-days: 3
