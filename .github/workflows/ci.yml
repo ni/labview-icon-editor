@@ -17,14 +17,14 @@ on:
     branches:
       - main
       - develop
-      - release/*
+      - releases/*
       - feature/*
       - hotfix/*
   pull_request:
     branches:
       - main
       - develop
-      - release/*
+      - releases/*
       - feature/*
       - hotfix/*
     types:
