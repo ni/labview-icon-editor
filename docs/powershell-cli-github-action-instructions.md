@@ -1,6 +1,6 @@
 # CI Workflow (Multi-Channel Release Support)
 
-This guide explains how to automate build, test, and distribution steps for the **LabVIEW Icon Editor** using GitHub Actions—**with multiple pre-release channels** (Alpha, Beta, RC), optional hotfix branches, and a toggleable **Development Mode** feature. It is designed to align with **Gitflow** practices, allowing you to enforce a hands-off approach where merges flow naturally from `develop` → `release-alpha` → `release-beta` → `release-rc` → `main`, while also ensuring forks can reuse the same build scripts.
+This guide explains how to automate build, test, and distribution steps for the **LabVIEW Icon Editor** using GitHub Actions—**with multiple pre-release channels** (Alpha, Beta, RC), optional hotfix branches, and a toggleable **Development Mode** feature. It is designed to align with **Gitflow** practices, allowing you to enforce a hands-off approach where merges flow naturally from `main` → `release-alpha` → `release-beta` → `release-rc` → `main`, with per-release `releases/<YYYY>Q<N>` branches used for final validation, patches, and hotfixes, while also ensuring forks can reuse the same build scripts.
 
 > [!NOTE]
 > For **troubleshooting** and a more extensive **FAQ**, see [`troubleshooting-faq.md`](ci/troubleshooting-faq.md). For more detailed runner setup instructions, see [`runner-setup-guide.md`](ci/actions/runner-setup-guide.md).
@@ -38,7 +38,7 @@ This guide explains how to automate build, test, and distribution steps for the 
 
 Automating your LabVIEW Icon Editor builds and releases offers several benefits:
 
-- **Gitflow alignment**: merges flow from feature → develop → (alpha/beta/rc) → main without manual toggles.  
+- **Gitflow alignment**: merges flow from feature → main → (alpha/beta/rc) → main, with `releases/<YYYY>Q<N>` branches cut for final release validation, without manual toggles.
 - **Label-based semantic versioning** (`major`, `minor`, `patch`).  
 - **Multiple pre-release channels** (Alpha/Beta/RC) via dedicated branch names.  
 - **Commit-based build number** appended as `-build<commitCount>`.  
@@ -64,13 +64,12 @@ This workflow ensures that all **forks** of the repository can sync the latest b
    - Apply at most one of `major`, `minor`, or `patch` to request a version bump. If no label is present, the workflow defaults to a patch bump. The workflow fails only if multiple release labels are applied. See [`compute-version`](../.github/actions/compute-version/action.yml) for details.
 
 4. **Merge to the Appropriate Branch**
-   - In Gitflow, typical merges go from **feature** → **develop**, then eventually to:
-     - **`release-alpha/*`** for early testing (`-alpha.<N>`),  
-     - **`release-beta/*`** for later testing (`-beta.<N>`),  
-     - **`release-rc/*`** for near-final (`-rc.<N>`),  
+   - In Gitflow, typical merges go from **feature** → **main**, then eventually to:
+     - **`release-alpha/*`** for early testing (`-alpha.<N>`),
+     - **`release-beta/*`** for later testing (`-beta.<N>`),
+     - **`release-rc/*`** for near-final (`-rc.<N>`),
      - and finally **main** for a final release (no suffix).  
-   - Alternatively, **`hotfix/*`** merges can go directly to **main** for quick patches.
-
+   - Alternatively, **`hotfix/*`** merges can go directly to **main** for quick patches, and patches for a release that has already shipped target its `releases/<YYYY>Q<N>` branch (e.g. `releases/2027Q1`) instead.
 5. **Check Build Artifacts**
    - The `.vip` file is generated and uploaded as a build artifact.
    - If you want to publish a GitHub Release, create one manually and upload the artifact.
@@ -78,7 +77,7 @@ This workflow ensures that all **forks** of the repository can sync the latest b
 6. **Optionally Enable Development Mode**
    - If you need LabVIEW to reference local source directly, run the **Development Mode Toggle** workflow (see [Development Mode](#31-development-mode)). Usually, you **disable** it for standard builds/tests.
 
-For a visual reference, you may consult a **Gitflow diagram** that includes alpha/beta/rc branches as an extension of the typical `release/` branch. This helps illustrate how merges flow between `develop` and `main`.
+For a visual reference, you may consult a **Gitflow diagram** that includes alpha/beta/rc branches as an extension of the typical `release/` branch. This helps illustrate how merges flow between `main` and its `releases/<YYYY>Q<N>` branches.
 
 ---
 
@@ -243,7 +242,7 @@ All dev-mode logic resides in two PowerShell scripts:
     - **Multi-Channel** detection for `release-alpha/*`, `release-beta/*`, `release-rc/*`.
     - **Upload Artifact**: Builds the `.vip` file and uploads it as a workflow artifact (no automatic GitHub Release attachment).
 - **Events**: Typically triggered on:
-  - Push or PR to `main`, `develop`, `release-alpha/*`, `release-beta/*`, `release-rc/*`, `feature/*`, `hotfix/*`, or `issue-*`.
+  - Push or PR to `main`, `releases/*`, `release-alpha/*`, `release-beta/*`, `release-rc/*`, `feature/*`, `hotfix/*`, or `issue-*`.
     The workflow explicitly lists these pre-release patterns and does **not** use a generic `release/*` trigger.
   - Might also be triggered manually (`workflow_dispatch`) if needed.
 
@@ -256,13 +255,13 @@ All dev-mode logic resides in two PowerShell scripts:
 ### 5.1 Branching Overview
 
 **Gitflow** typically involves:
-- **`develop`**: main integration branch for ongoing development.  
-- **`feature/*`**: branches off `develop` for individual features.  
-- **`release/*`**: branched off `develop` when nearing release.  
-- **`hotfix/*`**: branched off `main` for urgent fixes.  
+- **`main`**: the default branch and year-round integration branch for ongoing development. Approved features and experiments are merged here, and it is the source branch for release branches.
+- **`feature/*`**: branches off `main` for individual features.
+- **`releases/<YYYY>Q<N>`**: per-release branch (e.g. `releases/2027Q1`) cut from `main` during a release window, used for final release validation and for patches/hotfixes after the release ships. Built without alpha, beta, or RC suffixes.
+- **`hotfix/*`**: branched off `main` (or the applicable `releases/<YYYY>Q<N>` branch) for urgent fixes.
 
 In this repo, we extend the concept of `release/*` into **`release-alpha/*`, `release-beta/*`, and `release-rc/*`** to differentiate pre-release stages. The CI workflow mirrors this by triggering on these exact patterns. Merges flow as:
-- **feature** → **develop** → **release-alpha/X.Y** → **release-beta/X.Y** → **release-rc/X.Y** → **main**.
+- **feature** → **main** → **release-alpha/X.Y** → **release-beta/X.Y** → **release-rc/X.Y** → **main**.
 
 <a name="52-multi-channel-pre-releases"></a>
 ### 5.2 Multi-Channel Pre-Releases
@@ -278,16 +277,16 @@ Merging into these branches (or pushing directly to them) triggers a **pre-relea
 ### 5.3 Hotfix Branches
 
 - **`hotfix/*`** merges produce a **final** release (no `-rc`, `-alpha`, or `-beta`).  
-- Typically, you merge hotfix branches directly into **main** and then back into **develop** to keep them in sync.
+- Typically, you merge hotfix branches directly into **main**, or into the applicable `releases/<YYYY>Q<N>` branch if the fix is a patch for an already-shipped release.
 
 <a name="54-version-bumps-via-labels"></a>
 ### 5.4 Version Bumps via Labels
 
-When you open a **Pull Request** into `develop`, `release-alpha/*`, or `release-beta/*` (or even `main`/`hotfix/*`):
+When you open a **Pull Request** into `main`, `release-alpha/*`, or `release-beta/*` (or even a `releases/<YYYY>Q<N>`/`hotfix/*` branch):
 - Apply at most one of the labels `major`, `minor`, or `patch` to increment the corresponding version segment (e.g., `1.2.3` → `2.0.0` if `major`, etc.).
 - If multiple release labels are applied, the workflow fails. When no release label is present, it defaults to a patch bump. See [`compute-version`](../.github/actions/compute-version/action.yml) for implementation details.
 
-> **Note**: This means you can version-bump **incrementally** while merging into `develop` (to reflect that new features are in development), or you can wait until you merge to a pre-release branch. Each time the build runs, the resulting `.vip` has an updated version (with a new build number, plus any alpha/beta/rc suffix if applicable).
+> **Note**: This means you can version-bump **incrementally** while merging into `main` (to reflect that new features are in development), or you can wait until you merge to a pre-release branch. Each time the build runs, the resulting `.vip` has an updated version (with a new build number, plus any alpha/beta/rc suffix if applicable).
 
 <a name="55-build-number"></a>
 ### 5.5 Build Number
@@ -303,10 +302,10 @@ When you open a **Pull Request** into `develop`, `release-alpha/*`, or `release-
 
 In order to **enforce** the Gitflow approach “hands-off”:
 1. **Enable Branch Protection Rules**:  
-   - For example, protect `main`, `release-alpha/*`, `release-beta/*`, and `release-rc/*` so that only approved Pull Requests can be merged, preventing direct pushes.  
+   - For example, protect `main`, `releases/*`, `release-alpha/*`, `release-beta/*`, and `release-rc/*` so that only approved Pull Requests can be merged, preventing direct pushes.
    - Require the **Build VI Package** job from the CI Pipeline (Composite) workflow to pass before merging.
 2. **Refer to `CONTRIBUTING.md`**:  
-   - Document your team’s policies on how merges flow from feature → develop → alpha/beta/rc → main.  
+   - Document your team’s policies on how merges flow from feature → main → alpha/beta/rc → releases/<YYYY>Q<N>.
    - Outline any required approvals or code reviews.  
 
 > **Only the original (upstream) repo** typically **enforces** these rules. Forks may choose to adopt them but are not forced to. However, if you submit a PR **upstream**, you’ll need to comply with the branch protections in place there.

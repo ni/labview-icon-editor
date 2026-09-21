@@ -49,8 +49,7 @@ Automating your Icon Editor builds and tests:
    Use the main CI workflow (`ci-composite.yml`) to confirm your environment is valid.
    - The workflow triggers on pushes to or pull requests targeting:
      - `main`
-     - `develop`
-     - release branches: `release-alpha/*`, `release-beta/*`, `release-rc/*`
+     - release branches: `releases/<YYYY>Q<N>` (e.g. `releases/2027Q1`)
      - feature branches: `feature/*`
      - hotfix branches: `hotfix/*`
      - issue branches: `issue-*`
@@ -190,7 +189,7 @@ Although GitHub Actions primarily run on GitHub-hosted or self-hosted agents, yo
    - Assign `major`, `minor`, or `patch` to control the version bump.
    - The CI validates your code without creating tags or releases.
 
-4. **Merge the PR** into `develop` (or `main`):
+4. **Merge the PR** into `main` (or the applicable `releases/<YYYY>Q<N>` branch for a patch):
      - The **Build VI Package** workflow builds and uploads the `.vip` artifact.
      - **Inside** that `.vip`, the **“Company Name”** and **“Author Name (Person or Company)”** fields are filled automatically using `github.repository_owner` and `github.event.repository.name`. Modify the “Generate display information JSON” step in `.github/workflows/ci-composite.yml` to override them.
 

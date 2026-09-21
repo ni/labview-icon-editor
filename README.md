@@ -91,17 +91,17 @@ For detailed contribution guidelines (branching strategy, coding style, etc.), p
 **NOTE:** You will be able to run the lv_icon.vi from the project, but it will not be the active icon editor in the IDE. It is recommended to build the PPL and VI Package and install the package to test in the IDE.
 4. **Implement & Test** – Develop your changes using LabVIEW. Test the editor manually in LabVIEW to ensure your changes work. Run any available unit tests.
 5. **Submit a Pull Request** – Open a PR linking to the issue. Our CI will automatically run and **build a `.vip` package** with your changes for testing. Maintainers and others can install this pre-release package to test your contribution. Iterate on any review feedback.
-6. **Merge & Release** – Once your contribution is approved, it will be merged into the `develop` branch. During the next release cycle, `develop` is merged into `main` and a new official Icon Editor version is released. At that point, your contribution is on track to ship with the next LabVIEW release.
+6. **Merge & Release** – Once your contribution is approved, it will be merged into the `main` branch. During the next release window, a `releases/<YYYY>Q<N>` branch (e.g. `releases/2027Q1`) is cut from `main` for final validation, and a new official Icon Editor version is released. At that point, your contribution is on track to ship with the next LabVIEW release. Patches for an already-shipped release target its release branch (e.g. `releases/2027Q1`) rather than `main`.
 
 **Experimental Feature Workflow:**
 
 For very large or long-term contributions, NI may use an `experiment/<feature-name>` branch:
 
-- The experiment branch lives in the main repository (so CI can run on it) and allows multiple collaborators to work in parallel on the feature. Regular `develop` branch merges into the experiment keep it up-to-date with ongoing changes.
+- The experiment branch lives in the main repository (so CI can run on it) and allows multiple collaborators to work in parallel on the feature. Regular `main` branch merges into the experiment keep it up-to-date with ongoing changes.
 - **Automated code scanning** (e.g. Docker-based VI Analyzer and GitHub CodeQL) runs on every commit/PR to the experiment branch, catching issues early.
 - **Manual approval for builds** – By default, publishing a build from an experiment branch is disabled. An NI maintainer must manually trigger an “approve-experiment” workflow to generate a distributable `.vip` for testing. This ensures experimental builds aren’t widely released without review.
 - **Optional sub-branches** – The team can create sub-branches like `alpha`, `beta`, or `rc` under the experiment branch for staged testing releases (e.g. `experiment/feature/alpha`). These follow a multichannel release approach for gradual testing.
-- **Integration** – When the feature is complete, the experiment branch is reviewed and then merged into `develop` (and later into `main`) following Steering Committee approval. If an experiment is aborted or partially finished, it may be archived or selectively merged as appropriate.
+- **Integration** – When the feature is complete, the experiment branch is reviewed and then merged into `main` following Steering Committee approval. If an experiment is aborted or partially finished, it may be archived or selectively merged as appropriate.
 
 *(See [EXPERIMENTS.md](docs/ci/experiments.md) for full guidelines on experimental branches.)*
 

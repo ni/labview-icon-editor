@@ -11,8 +11,8 @@ current.
 
 - **Issue Triage** – Label new issues, confirm reproduction steps, and mark
   items that are ready for community contribution.
-- **Branch Hygiene** – Delete merged branches, keep `develop` rebased on
-  `main`, and close stale pull requests after consultation with the author.
+- **Branch Hygiene** – Delete merged branches, keep `main` in a releasable
+  state, and close stale pull requests after consultation with the author.
 - **CI Upkeep** – Periodically review workflow runs and update GitHub Actions
   versions or build scripts when they go out of support.
 - **Community Support** – Respond to discussion threads and provide direction
@@ -21,7 +21,7 @@ current.
 ## Feature Branch Workflow
 
 1. Confirm the related GitHub issue is approved for work.
-2. Create a branch from `develop` named `issue-<number>-<short-description>`
+2. Create a branch from `main` named `issue-<number>-<short-description>`
    (for example, `issue-123-fix-toolbar`). Branch names **must** include
    `issue-<number>`.
 3. Set the linked issue's **Status** field to **In Progress**. The
@@ -29,7 +29,7 @@ current.
    enforces the branch naming and status requirements, skipping most jobs when
    either condition is not met.
 4. Push the branch to the main repository and open a pull request targeting
-   `develop` (or another appropriate branch).
+   `main` (or another appropriate branch).
 5. Run unit tests or scripted checks locally whenever possible.
 6. Ensure CI passes and obtain at least one maintainer approval before merging.
 7. After merging, delete the source branch to keep the repository tidy.
@@ -40,13 +40,15 @@ current.
   artifacts (VIPs), run the `approve-experiment` workflow in GitHub Actions.
   Coordinate with the NI Open-Source Program Manager (OSPM) before execution.
 - **Finalize experiment merges** – Prior to merging an experiment branch into
-  `develop`, apply an appropriate version label (major/minor/patch) and remove
+  `main`, apply an appropriate version label (major/minor/patch) and remove
   any temporary settings or `NoCI` labels. A `NoCI` label causes the CI
   workflow to skip all jobs, so clear it before running final tests. The OSPM
   or designated NI staff typically gives the final approval.
 - **Hotfix branches** – For critical fixes on an official release, create or
-  approve a `hotfix/*` branch targeting `main`. After merging into `main`, merge
-  the changes back into `develop` to keep branches synchronized.
+  approve a `hotfix/*` branch targeting the release's `releases/<YYYY>Q<N>`
+  branch (for example, `releases/2027Q1`). Prepare the patch release by
+  branching from the target release branch, applying the fix, and merging the
+  `hotfix/*` branch back into that same `releases/<YYYY>Q<N>` branch.
 - **Documentation updates** – When workflows change, update related
   documentation in the `/docs` directory as part of the same pull request.
 
@@ -59,12 +61,12 @@ current.
 
 ## Release Preparation
 
-Maintainers ensure that `develop` remains in a releasable state:
+Maintainers ensure that `main` remains in a releasable state:
 
 1. Verify version labels and changelog entries reflect upcoming changes.
-2. Confirm that CI is green on `develop` and `main`.
-3. Coordinate with release engineers or the OSPM to merge into `main` and
-   publish packages when a release is planned.
+2. Confirm that CI is green on `main`.
+3. Coordinate with release engineers or the OSPM to cut a `releases/<YYYY>Q<N>`
+   branch from `main` and publish packages when a release is planned.
 
 ## Additional Resources
 

@@ -50,7 +50,7 @@ You don't need to write code to make a meaningful contribution. Here are all the
 
 ## 🚀 Getting Started
 
-1. **Explore the repo** — Browse the [README](https://github.com/ni/labview-icon-editor#readme) and [docs](https://github.com/ni/labview-icon-editor/tree/develop/docs) to understand the project
+1. **Explore the repo** — Browse the [README](https://github.com/ni/labview-icon-editor#readme) and [docs](https://github.com/ni/labview-icon-editor/tree/main/docs) to understand the project
 2. **Check open issues** — Look for issues labeled [`Workflow: Open to Contribution`](https://github.com/ni/labview-icon-editor/issues?q=is%3Aissue+state%3Aopen+label%3A%22Workflow%3A+Open+to+contribution%22) or [`Good first issue`](https://github.com/ni/labview-icon-editor/labels/good%20first%20issue)
 3. **Join the conversation** — Introduce yourself on [Discord](https://discord.gg/q4d3ggrFVA) or [GitHub Discussions](https://github.com/ni/labview-icon-editor/discussions)
 
@@ -128,7 +128,7 @@ External contributors must sign NI's Contributor License Agreement **once per Gi
 
 > **Note:** You can run `lv_icon.vi` from the project for testing, but it won't be the active icon editor in the IDE. To test in the IDE, build the PPL and VI Package, then install the package.
 
-For detailed setup instructions, see [manual-instructions.md](https://github.com/ni/labview-icon-editor/blob/develop/docs/manual-instructions.md) or the script-driven [automated-setup.md](https://github.com/ni/labview-icon-editor/blob/develop/docs/automated-setup.md).
+For detailed setup instructions, see [manual-instructions.md](https://github.com/ni/labview-icon-editor/blob/main/docs/manual-instructions.md) or the script-driven [automated-setup.md](https://github.com/ni/labview-icon-editor/blob/main/docs/automated-setup.md).
 
 ### Branching Strategy
 
@@ -141,15 +141,12 @@ The repository uses a multi-tier branching model aligned with the LabVIEW releas
   your-branch ──► PR ──►           feature/<issue#>-<description>
                                       │
                                       ▼
-                                    develop  (accepts contributions year-round)
+                                    main  (accepts approved features and experiments year-round)
                                       │
-                                      │  March & September
+                                      │  release window
                                       │  (~ 3 months before LabVIEW release)
                                       ▼
-                                   release-rc  (pre-release validation)
-                                      │
-                                      ▼
-                                    main  (release-ready, final artifacts built here)
+                                   releases/<YYYY>Q<N>  (final release validation)
                                       │
                                       ▼
                                    LabVIEW Release
@@ -157,22 +154,25 @@ The repository uses a multi-tier branching model aligned with the LabVIEW releas
 
 | Branch | Purpose | Who Merges |
 |---|---|---|
-| **`main`** | Release branch — final `.vip` packages are built from here. Only updated during release windows. | Repo Owners / NI |
-| **`release-rc`** | Pre-release validation branch — release candidates are tested here before promotion to `main`. | Repo Owners |
-| **`develop`** | Integration branch — accepts community contributions year-round. This is where approved features land. | Repo Owners |
+| **`main`** | The default branch and year-round integration branch. Approved features and experiments are merged here, and it is the source branch for release branches. | Repo Owners / NI |
+| **`releases/<YYYY>Q<N>`** | Per-release branch (e.g. `releases/2027Q1`) — created from `main` during a release window. Used for final release validation, and for patches and hotfixes after the release ships. Built without alpha, beta, or RC suffixes. | Repo Owners |
 | **`feature/<issue#>-<desc>`** | Feature branches — created by repo owners for approved issues. Your PRs target these. | Contributors |
 | **`experiment/<name>`** | Long-running experimental branches for major features (see [below](#experimental-feature-workflow)). | Repo Owners + Contributors |
 
 #### Release Integration Schedule
 
-Changes from `develop` are promoted through `release-rc` to `main` **twice a year**, approximately three months before each LabVIEW release:
+Release branches are cut from `main` **twice a year**, approximately three months before each LabVIEW release:
 
 | Integration Window | LabVIEW Release | What Happens |
 |---|---|---|
-| **March** | Q3 release (June/July) | Feature freeze on `develop`; approved changes flow through `release-rc` to `main`; final artifacts built and validated |
-| **September** | Q1 release (next year) | Feature freeze on `develop`; approved changes flow through `release-rc` to `main`; final artifacts built and validated |
+| **March** | Q3 release (June/July) | `releases/<YYYY>Q3` is cut from `main`; final artifacts built and validated |
+| **September** | Q1 release (next year) | `releases/<YYYY>Q1` is cut from `main`; final artifacts built and validated |
 
-> **What this means for contributors:** You can submit PRs to feature branches at any time. Your changes will be reviewed, merged into `develop`, and then included in the next integration window.
+> **What this means for contributors:** You can submit PRs to feature branches at any time. Your changes will be reviewed and merged into `main`, and then included in the next release branch cut.
+
+### Patches & Hotfixes
+
+If a bug needs to be fixed in a release that has already shipped, target the corresponding release branch (e.g. `releases/2027Q1`) directly instead of `main`. Apply the `patch` release label to the PR.
 
 ### Standard Feature Workflow
 
@@ -207,8 +207,8 @@ Changes from `develop` are promoted through `release-rc` to `main` **twice a yea
    - Respond to review feedback and push updates
 
 7. **Merge & release**
-   - After approval, your PR is merged into `develop`
-   - During the next integration window, `develop` flows through `release-rc` to `main`
+   - After approval, your PR is merged into `main`
+   - During the next integration window, a `releases/<YYYY>Q<N>` branch is cut from `main`
    - Your contribution ships in the corresponding LabVIEW release
 
 ### Experimental Feature Workflow
@@ -217,13 +217,13 @@ For very large or long-term contributions, NI may use an `experiment/<feature-na
 
 - The experiment branch lives in the **main repository** (not a fork) so CI can run on it
 - Multiple collaborators can work in parallel on the feature
-- Regular merges from `develop` keep the experiment branch up-to-date
+- Regular merges from `main` keep the experiment branch up-to-date
 - **Automated code scanning** (Docker-based VI Analyzer, GitHub CodeQL) runs on every commit/PR
 - **Manual approval for builds** — publishing a `.vip` from an experiment branch requires an NI repo owner to manually trigger the `approve-experiment` workflow
 - **Optional sub-branches** — teams can create `alpha`, `beta`, or `rc` sub-branches for staged testing
-- When complete, the experiment branch is reviewed and merged into `develop` following Steering Committee approval
+- When complete, the experiment branch is reviewed and merged into `main` following Steering Committee approval
 
-See [EXPERIMENTS.md](https://github.com/ni/labview-icon-editor/blob/develop/docs/ci/experiments.md) for full guidelines.
+See [EXPERIMENTS.md](https://github.com/ni/labview-icon-editor/blob/main/docs/ci/experiments.md) for full guidelines.
 
 ### Pull Request Guidelines
 
@@ -327,7 +327,7 @@ The repository uses GitHub Actions for continuous integration. CI is orchestrate
 
 > Your PR must pass **all CI checks** before it can be reviewed and merged.
 
-For detailed CI documentation, see [CI Workflows](https://github.com/ni/labview-icon-editor/blob/develop/docs/ci-workflows.md) and [Composite Actions](https://github.com/ni/labview-icon-editor/blob/develop/docs/ci/actions/README.md).
+For detailed CI documentation, see [CI Workflows](https://github.com/ni/labview-icon-editor/blob/main/docs/ci-workflows.md) and [Composite Actions](https://github.com/ni/labview-icon-editor/blob/main/docs/ci/actions/README.md).
 
 ---
 
@@ -376,9 +376,9 @@ The Icon Editor is maintained under an open-governance model:
 - **Repo Owners** — Handle code review, CI validation, merge approvals, and release tagging
 - **NI** retains final decision authority for major direction and architecture changes
 
-For full details, see [GOVERNANCE.md](https://github.com/ni/labview-icon-editor/blob/develop/GOVERNANCE.md).
+For full details, see [GOVERNANCE.md](https://github.com/ni/labview-icon-editor/blob/main/GOVERNANCE.md).
 
-All participants must follow the [Code of Conduct](https://github.com/ni/labview-icon-editor/blob/develop/CODE_OF_CONDUCT.md).
+All participants must follow the [Code of Conduct](https://github.com/ni/labview-icon-editor/blob/main/CODE_OF_CONDUCT.md).
 
 ---
 
@@ -395,4 +395,4 @@ All participants must follow the [Code of Conduct](https://github.com/ni/labview
 
 ## License
 
-The LabVIEW Icon Editor is licensed under the [MIT License](https://github.com/ni/labview-icon-editor/blob/develop/LICENSE). By contributing, you agree that your contributions can be distributed under the same MIT license and included in official LabVIEW releases.
+The LabVIEW Icon Editor is licensed under the [MIT License](https://github.com/ni/labview-icon-editor/blob/main/LICENSE). By contributing, you agree that your contributions can be distributed under the same MIT license and included in official LabVIEW releases.
