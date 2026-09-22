@@ -109,8 +109,8 @@ Our contribution process is designed to be as simple as possible while ensuring 
 2. The contributor submits a pull request.
 3. Continuous integration (CI) runs automated tests and build workflows on the PR.
 4. Maintainers review the PR. They may ask for changes or approve it.
-5. Once the PR is approved (and CI is passing), a maintainer merges it into the `develop` branch (or appropriate branch as per project workflow).
-6. Changes in `develop` will be included in the next release. At release time, maintainers merge `develop` into `main` (after bumping version numbers, etc.), and create a tagged release.
+5. Once the PR is approved (and CI is passing), a maintainer merges it into the `main` branch (or appropriate branch as per project workflow).
+6. Changes in `main` will be included in the next release. At release time, maintainers create a `releases/<YYYY>Q<N>` branch from `main` (after bumping version numbers, etc.) and create a tagged release. Patches for a release that has already shipped target its corresponding release branch (e.g. `releases/2027Q1`) instead of `main`.
 
 Contributors should ensure they sign the CLA (if external) and sign off their commits (DCO) as described in CONTRIBUTING.md. All code contributions are assumed to be under the project’s license (MIT, unless otherwise specified).
 

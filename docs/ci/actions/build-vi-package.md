@@ -94,7 +94,7 @@ It eliminates confusion around versioning, keeps everything in one pipeline, and
 
 ### 3.1 How the Action Is Triggered
 The `build-vi-package` directory defines a **composite action**. It does not listen for events on its own; instead, the CI workflow in [`ci-composite.yml`](../../../.github/workflows/ci-composite.yml) invokes it.
-That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. The `issue-status` and `changes` jobs run on GitHub-hosted `ubuntu-latest`. Subsequent jobs that require LabVIEW—`apply-deps`, `version`, `test`, `build-ppl`, and `build-vi-package`—execute on a self-hosted Windows runner (`self-hosted-windows-lv-ie`). Only Windows-specific jobs (e.g., `test`, `build-ppl`, `build-vi-package`) require the self-hosted runner. Linux support is considered a future or custom expansion: you would need to extend the matrix and provide a corresponding runner label (for example, `self-hosted-linux-lv`). Pushes are limited to `main`, `develop`, `release-alpha/*`, `release-beta/*`, `release-rc/*`, `feature/*`, `hotfix/*`, and `issue-*` branches, and pull requests must target one of those branches. However, `build-vi-package` executes only if the `issue-status` job allows the pipeline to continue: the source branch name must contain `issue-<number>` (for example, `issue-123` or `feature/issue-123`) and the linked issue's Status must be **In Progress**. For pull requests, the `issue-status` gate evaluates the PR’s head branch before running the `version` and `build-ppl` jobs, which depend on this gate.
+That workflow runs on `push`, `pull_request`, and `workflow_dispatch` events. The `issue-status` and `changes` jobs run on GitHub-hosted `ubuntu-latest`. Subsequent jobs that require LabVIEW—`apply-deps`, `version`, `test`, `build-ppl`, and `build-vi-package`—execute on a self-hosted Windows runner (`self-hosted-windows-lv-ie`). Only Windows-specific jobs (e.g., `test`, `build-ppl`, `build-vi-package`) require the self-hosted runner. Linux support is considered a future or custom expansion: you would need to extend the matrix and provide a corresponding runner label (for example, `self-hosted-linux-lv`). Pushes are limited to `main`, `releases/<YYYY>Q<N>`, `release-alpha/*`, `release-beta/*`, `release-rc/*`, `feature/*`, `hotfix/*`, and `issue-*` branches, and pull requests must target one of those branches. However, `build-vi-package` executes only if the `issue-status` job allows the pipeline to continue: the source branch name must contain `issue-<number>` (for example, `issue-123` or `feature/issue-123`) and the linked issue's Status must be **In Progress**. For pull requests, the `issue-status` gate evaluates the PR’s head branch before running the `version` and `build-ppl` jobs, which depend on this gate.
 
 ### 3.2 Configurable Inputs / Parameters
 `ci-composite.yml` calls this action and provides all required inputs automatically. When invoking
@@ -225,7 +225,7 @@ components remain unchanged and only the build number increases.
 ## 7. **Usage & Examples**
 
 ### 7.1 Pull Requests with Labels
-- **Scenario**: You create a PR from a feature branch into `develop`.
+- **Scenario**: You create a PR from a feature branch into `main`.
 - **Action**: Add a label like `major` or `minor`.
 - **Result**: Upon merging, the workflow updates that version field (major/minor/patch) and applies a commit-based build number. If the PR has no version label, the patch version is bumped by default. The `.vip` artifact is uploaded; any tagging or release must be handled separately.
 
@@ -235,15 +235,15 @@ components remain unchanged and only the build number increases.
    - New version on merge: `v1.3.0-build46`
    - If it’s `release-rc/*`, might become `v1.3.0-rc.46-build46` (`release-alpha/*` and `release-beta/*` yield `-alpha.<commitCount>` and `-beta.<commitCount>`).
 
-### 7.2 Direct Push to Main or Develop
-- **Scenario**: You quickly push a fix to `develop` without opening a PR.
+### 7.2 Direct Push to Main or a Release Branch
+- **Scenario**: You quickly push a fix to `main` (or a `releases/<YYYY>Q<N>` branch for a patch) without opening a PR.
 - **Action**: With no pull request labels available, major/minor/patch remain unchanged while the build number increments automatically.
 - **Result**: The version might progress from `v1.2.3-build46` to `v1.2.3-build47`.
 
 ### 7.3 Working on a Release Branch
-- **Scenario**: You branch off `release-rc/1.2`.
-- **Action**: The workflow appends `-rc.<commitCount>` each time you commit to that pre-release branch, e.g. `v1.2.0-rc.50-build50`. Branches named `release-alpha/1.2` or `release-beta/1.2` would similarly append `-alpha.<commitCount>` or `-beta.<commitCount>`; these patterns correspond to the `release-alpha/*`, `release-beta/*`, and `release-rc/*` rules in `ci-composite.yml`.
-- **Result**: Merging `release-rc/1.2` back to `main` finalizes `v1.2.0-build51`.
+- **Scenario**: You branch off `releases/2027Q1` to test or patch a shipped release.
+- **Action**: The workflow builds a final version with no alpha/beta/rc suffix, incrementing only the build number per commit.
+- **Result**: A `.vip` artifact is produced for the patched release without disturbing `main`.
 
 ### 7.4 Manually Triggering (workflow_dispatch)
 - **Scenario**: A maintainer manually runs the workflow from the Actions tab (if enabled).
@@ -263,7 +263,7 @@ components remain unchanged and only the build number increases.
 4. **Check Artifacts**: Ensure a `.vip` file is built and uploaded as an artifact for your run.
 
 ### 8.2 Main Repo Testing
-1. Merge a labeled PR (e.g., `patch`) into `develop`.  
+1. Merge a labeled PR (e.g., `patch`) into `main`.
 2. Observe the workflow’s console output: the version should increment patch by 1, and the build number increments from commit count.  
 3. Verify that the `.vip` artifact is available. If you run a separate release workflow, confirm that the release was created.
 
@@ -302,8 +302,8 @@ components remain unchanged and only the build number increases.
 
 ## 10. **FAQ**
 
-**Q:** *How do I force a “patch” bump if I push directly to develop?*
-**A:** Use a pull request with the `patch` label. Direct pushes without PR labels always use the previous version numbers.
+**Q:** *How do I force a “patch” bump if I push directly to `main` or a release branch?*
+**A:** Use a pull request with the `patch` label. Direct pushes without PR labels always use the previous version numbers. Patches to a shipped release should target its `releases/<YYYY>Q<N>` branch (e.g. `releases/2027Q1`) rather than `main`.
 
 **Q:** How do I override the build number?
 **A:** By default, we rely on `git rev-list --count HEAD`. You can change it by passing a custom environment variable or adjusting the version logic in your workflow.
