@@ -1,0 +1,170 @@
+name: Build LVLIBP with Docker (Windows)
+
+on:
+  workflow_dispatch:
+    inputs:
+      labview_version:
+        description: 'LabVIEW version'
+        required: false
+        default: '2026q1'
+        type: string
+  workflow_call:
+    inputs:
+      labview_version:
+        description: 'LabVIEW version'
+        required: false
+        default: '2026q1'
+        type: string
+
+jobs:
+  build-lvlibp:
+    name: Build LabVIEW Packed Library (Windows)
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Validate LabVIEW Version for Docker
+        shell: pwsh
+        run: |
+          $lvVersion = if ('${{ inputs.labview_version }}') { 
+            '${{ inputs.labview_version }}' 
+          } else { 
+            '2026q1' 
+          }
+          
+          Write-Host "Requested LabVIEW version: $lvVersion"
+          
+          # Parse version (e.g., 2026q1 -> year=2026, quarter=1)
+          if ($lvVersion -match '^(\d{4})q([13])$') {
+            $year = [int]$Matches[1]
+            $quarter = [int]$Matches[2]
+            Write-Host "Parsed: Year=$year, Quarter=$quarter"
+          } else {
+            throw "Invalid LabVIEW version format: $lvVersion. Expected format: YYYYq1 or YYYYq3 (e.g., 2026q1, 2026q3)"
+          }
+          
+          # Minimum version for Windows Docker: 2026q1
+          $minYear = 2026
+          $minQuarter = 1
+          
+          $isValid = ($year -gt $minYear) -or (($year -eq $minYear) -and ($quarter -ge $minQuarter))
+          
+          if (-not $isValid) {
+            Write-Error @"
+          LabVIEW version $lvVersion is not available in Docker for Windows.
+          
+          Minimum supported version: 2026q1
+          
+          Please either:
+          1. Use LabVIEW 2026q1 or later (e.g., 2026q1, 2026q3)
+          2. Use GitHub-hosted runners instead of Docker (see build-lvlibp-windows-github-hosted.yml)
+          
+          Available Docker images: https://hub.docker.com/r/nationalinstruments/labview
+          "@
+            exit 1
+          }
+          
+          Write-Host "LabVIEW version $lvVersion is supported for Windows Docker builds"
+          echo "LV_VERSION=$lvVersion" >> $env:GITHUB_ENV
+
+          if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY)) {
+            @(
+              '### Build LVLIBP — Windows Docker',
+              '',
+              ('- LabVIEW version: `{0}`' -f $lvVersion),
+              '- Platform: `windows`',
+              '- Bitness: `64`',
+              ('- Docker image: `nationalinstruments/labview:{0}-windows`' -f $lvVersion)
+            ) -join [Environment]::NewLine | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+
+      - name: Get Version from Git
+        id: version
+        shell: pwsh
+        run: |
+          git fetch --tags
+          $allTags = git tag -l "v*.*.*" --sort=-version:refname 2>$null
+          $tag = if ($allTags) { $allTags | Select-Object -First 1 } else { $null }
+          
+          Write-Host "Latest tag in repository: '$tag'"
+          
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            Write-Host "No version tag found. Using fallback version 0.0.0.0"
+            $major = 0
+            $minor = 0
+            $patch = 0
+            $build = 0
+          } else {
+            # Strip pre-release suffix (e.g., v2.0.0-rc -> v2.0.0)
+            $cleanTag = $tag -replace '-.*$', ''
+            Write-Host "Cleaned tag: '$cleanTag'"
+            
+            if ($cleanTag -match '^v?(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?$') {
+              $major = $Matches[1]
+              $minor = $Matches[2]
+              $patch = $Matches[3]
+              $build = if ($Matches[4]) { $Matches[4] } else { 0 }
+              Write-Host "Parsed version from tag '$tag': $major.$minor.$patch.$build"
+            } else {
+              Write-Warning "Tag '$tag' (cleaned: '$cleanTag') does not match pattern v{major}.{minor}.{patch}[.{build}]. Using fallback 0.0.0.0"
+              $major = 0
+              $minor = 0
+              $patch = 0
+              $build = 0
+            }
+          }
+
+          Write-Host "Version: $major.$minor.$patch.$build"
+          
+          echo "major=$major" >> $env:GITHUB_OUTPUT
+          echo "minor=$minor" >> $env:GITHUB_OUTPUT
+          echo "patch=$patch" >> $env:GITHUB_OUTPUT
+          echo "build=$build" >> $env:GITHUB_OUTPUT
+
+          if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY)) {
+            @(
+              '',
+              '#### Version',
+              '',
+              ('- Source tag: `{0}`' -f $tag),
+              ('- Resolved: `{0}.{1}.{2}.{3}`' -f $major, $minor, $patch, $build)
+            ) -join [Environment]::NewLine | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+
+      - name: Build PPL with Windows Docker
+        uses: ni/open-source/build-spec-docker-windows@actions
+        with:
+          minimum_supported_lv_version: '2026'
+          supported_bitness: '64'
+          project_path: 'lv_icon_editor.lvproj'
+          target_name: 'My Computer'
+          build_spec_name: 'Editor Packed Library'
+          major: ${{ steps.version.outputs.major }}
+          minor: ${{ steps.version.outputs.minor }}
+          patch: ${{ steps.version.outputs.patch }}
+          build: ${{ steps.version.outputs.build }}
+          commit: ${{ github.sha }}
+          docker_image: 'nationalinstruments/labview'
+          image_tag: '${{ env.LV_VERSION }}-windows'
+          log_level: 'INFO'
+
+      - name: Upload Built PPL
+        uses: actions/upload-artifact@v6
+        if: success()
+        with:
+          name: lv_icon_x64_v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}.${{ steps.version.outputs.build }}_${{ env.LV_VERSION }}-windows
+          path: builds/*.lvlibp
+          retention-days: 7
+
+      - name: Upload Build Logs
+        uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: build-logs-windows-${{ env.LV_VERSION }}-windows
+          path: build-logs/*.log
+          retention-days: 3

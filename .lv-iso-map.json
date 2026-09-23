@@ -1,0 +1,17 @@
+{
+  "default": "2025q3",
+  "versions": {
+    "2025q3": {
+      "windows": {
+        "x86": "https://download.ni.com/support/softlib/labview/labview_development_system/2025_Q3/ni-labview-2025-community-x86_25.3.3_offline.iso",
+        "package_id": "LabVIEW_COM_PKG 25.0300"
+      }
+    },
+    "2026q1": {
+      "windows": {
+        "x86": "https://download.ni.com/support/softlib/labview/labview_development_system/2026_Q1/ni-labview-2026-community-x86_26.1.0_offline.iso",
+        "package_id": "LabVIEW_COM_PKG 26.0100"
+      }
+    }
+  }
+}
