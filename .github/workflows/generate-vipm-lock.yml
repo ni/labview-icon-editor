@@ -2,6 +2,10 @@ name: Generate Initial VIPM Lock File
 
 on:
   workflow_dispatch:
+  # TEMPORARY: remove before merging
+  push:
+    branches:
+      - users/amrutha/dependancy-update
 
 permissions:
   contents: read
@@ -12,25 +16,29 @@ env:
 
 jobs:
   generate-lock:
-    runs-on: self-hosted-windows-lv
+    runs-on: ubuntu-latest
+    container:
+      image: nationalinstruments/labview:2026q1-linux
     defaults:
       run:
-        shell: pwsh
+        shell: bash
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Verify manifest and VIPM CLI
         run: |
-          if (-not (Test-Path $env:MANIFEST_PATH)) { throw "$env:MANIFEST_PATH not found." }
-          if (-not (Get-Command vipm -ErrorAction SilentlyContinue)) { throw 'vipm CLI not found on PATH.' }
+          set -euo pipefail
+          test -f "$MANIFEST_PATH" || { echo "$MANIFEST_PATH not found."; exit 1; }
+          command -v vipm >/dev/null || { echo "vipm CLI not found on PATH in container."; exit 1; }
           vipm --version
 
       # vipm expects the manifest to be named vipm.toml
       - name: Stage manifest as vipm.toml
         run: |
-          New-Item -ItemType Directory -Force -Path $env:VIPM_WORK_DIR | Out-Null
-          Copy-Item $env:MANIFEST_PATH (Join-Path $env:VIPM_WORK_DIR 'vipm.toml') -Force
+          set -euo pipefail
+          mkdir -p "$VIPM_WORK_DIR"
+          cp "$MANIFEST_PATH" "$VIPM_WORK_DIR/vipm.toml"
 
       - name: Activate VIPM
         env:
@@ -38,22 +46,20 @@ jobs:
           VIPM_FULL_NAME: ${{ secrets.VIPM_FULL_NAME }}
           VIPM_EMAIL: ${{ secrets.VIPM_EMAIL }}
         run: |
-          vipm activate --serial-number "$env:VIPM_SERIAL_NUMBER" --name "$env:VIPM_FULL_NAME" --email "$env:VIPM_EMAIL"
-          if ($LASTEXITCODE -ne 0) { throw "vipm activate failed ($LASTEXITCODE)" }
+          set -euo pipefail
+          vipm activate --serial-number "$VIPM_SERIAL_NUMBER" --name "$VIPM_FULL_NAME" --email "$VIPM_EMAIL"
 
       - name: vipm refresh
         working-directory: ${{ env.VIPM_WORK_DIR }}
-        run: |
-          vipm refresh
-          if ($LASTEXITCODE -ne 0) { throw "vipm refresh failed ($LASTEXITCODE)" }
+        run: vipm refresh
 
       - name: vipm lock
         working-directory: ${{ env.VIPM_WORK_DIR }}
         run: |
+          set -euo pipefail
           vipm lock
-          if ($LASTEXITCODE -ne 0) { throw "vipm lock failed ($LASTEXITCODE)" }
-          if (-not (Test-Path 'vipm.lock')) { throw 'vipm.lock was not generated.' }
-          Get-Content 'vipm.lock'
+          test -f vipm.lock || { echo "vipm.lock was not generated."; exit 1; }
+          cat vipm.lock
 
       - name: Upload lock file
         uses: actions/upload-artifact@v4
