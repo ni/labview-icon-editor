@@ -1,4 +1,4 @@
-name: Generate Initial VIPM Lock File
+name: Bootstrap Runner Dependency Lock
 
 on:
   workflow_dispatch:
@@ -10,60 +10,82 @@ on:
 permissions:
   contents: read
 
-env:
-  MANIFEST_PATH: .github/actions/apply-vipc/runner_dependencies.toml
-  VIPM_WORK_DIR: vipm-lock-work
-
 jobs:
   generate-lock:
+    name: Generate runner dependency lock
     runs-on: ubuntu-latest
     container:
-      image: nationalinstruments/labview:2026q1-linux
+      image: nationalinstruments/labview:2026q1patch2-linux
+
     defaults:
       run:
         shell: bash
+
+    env:
+      LABVIEW_VERSION_YEAR: "2026"
+      MANIFEST_PATH: .github/actions/apply-vipc/runner_dependencies.toml
+      VIPM_SERIAL_NUMBER: ${{ secrets.VIPM_SERIAL_NUMBER }}
+      VIPM_FULL_NAME: ${{ secrets.VIPM_FULL_NAME }}
+      VIPM_EMAIL: ${{ secrets.VIPM_EMAIL }}
+
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Verify manifest and VIPM CLI
+      - name: Install VIPM
         run: |
-          set -euo pipefail
-          test -f "$MANIFEST_PATH" || { echo "$MANIFEST_PATH not found."; exit 1; }
-          command -v vipm >/dev/null || { echo "vipm CLI not found on PATH in container."; exit 1; }
+          apt-get update
+          apt-get install -y wget ca-certificates xvfb
+          if ! command -v vipm >/dev/null 2>&1; then
+            wget -O /tmp/vipm.deb https://packages.jki.net/vipm/preview/vipm_latest_preview_amd64.deb
+            apt-get install -y /tmp/vipm.deb
+          fi
+
+      - name: Start display and activate VIPM
+        run: |
+          export DISPLAY=:99
+          export VIPM_TIMEOUT=500
+          Xvfb "$DISPLAY" -screen 0 1280x720x24 -ac +extension GLX +render -noreset >/tmp/xvfb.log 2>&1 &
+          # Without this marker file the LabVIEW Runtime Engine may not start properly.
+          mkdir -p /tmp/natinst && echo "1" > /tmp/natinst/LVContainer.txt
           vipm --version
+          vipm activate \
+            --serial-number "$VIPM_SERIAL_NUMBER" \
+            --name "$VIPM_FULL_NAME" \
+            --email "$VIPM_EMAIL"
 
-      # vipm expects the manifest to be named vipm.toml
-      - name: Stage manifest as vipm.toml
+      - name: Stage dependency manifest
         run: |
-          set -euo pipefail
-          mkdir -p "$VIPM_WORK_DIR"
-          cp "$MANIFEST_PATH" "$VIPM_WORK_DIR/vipm.toml"
+          project_dir="$GITHUB_WORKSPACE/.vipm-lock-project"
+          mkdir -p "$project_dir"
+          cp "$MANIFEST_PATH" "$project_dir/vipm.toml"
+          echo "VIPM_PROJECT_DIR=$project_dir" >> "$GITHUB_ENV"
 
-      - name: Activate VIPM
-        env:
-          VIPM_SERIAL_NUMBER: ${{ secrets.VIPM_SERIAL_NUMBER }}
-          VIPM_FULL_NAME: ${{ secrets.VIPM_FULL_NAME }}
-          VIPM_EMAIL: ${{ secrets.VIPM_EMAIL }}
+      - name: Refresh package sources
         run: |
-          set -euo pipefail
-          vipm activate --serial-number "$VIPM_SERIAL_NUMBER" --name "$VIPM_FULL_NAME" --email "$VIPM_EMAIL"
+          export DISPLAY=:99
+          cd "$VIPM_PROJECT_DIR"
+          # Clean runner has no repository cache; populate it for this
+          # project's LabVIEW target before lock resolution.
+          vipm refresh --labview-version "$LABVIEW_VERSION_YEAR" --labview-bitness 64
 
-      - name: vipm refresh
-        working-directory: ${{ env.VIPM_WORK_DIR }}
-        run: vipm refresh
-
-      - name: vipm lock
-        working-directory: ${{ env.VIPM_WORK_DIR }}
+      - name: Generate runner dependency lock
         run: |
-          set -euo pipefail
+          export DISPLAY=:99
+          cd "$VIPM_PROJECT_DIR"
           vipm lock
-          test -f vipm.lock || { echo "vipm.lock was not generated."; exit 1; }
-          cat vipm.lock
 
-      - name: Upload lock file
+      - name: Collect generated lock
+        if: always()
+        run: |
+          mkdir -p runner-dependency-lock-artifact
+          cp "$VIPM_PROJECT_DIR/vipm.lock" runner-dependency-lock-artifact/runner_dependencies.lock
+
+      - name: Upload generated lock
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: vipm-lock-lv2020-64bit
-          path: ${{ env.VIPM_WORK_DIR }}/vipm.lock
+          name: runner-dependency-lock
+          path: runner-dependency-lock-artifact/runner_dependencies.lock
           if-no-files-found: error
+          retention-days: 7
