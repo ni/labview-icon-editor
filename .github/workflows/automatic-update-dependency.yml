@@ -4,9 +4,6 @@ on:
   schedule:
     - cron: '0 9 * * 6'
   workflow_dispatch:
-  push:
-    branches:
-      - users/amrutha/dependancy-update
 
 permissions:
   contents: write
@@ -22,7 +19,7 @@ jobs:
       include_dev_dependencies: false
       labview_version: "2020"
       labview_bitness: "64"
-      base_branch: users/amrutha/dependancy-update
+      base_branch: main
       pr_branch: automation/vipm-dependency-update
     secrets:
       VIPM_SERIAL_NUMBER: ${{ secrets.VIPM_SERIAL_NUMBER }}
