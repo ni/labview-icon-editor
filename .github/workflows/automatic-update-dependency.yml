@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   update-dependencies:
-    uses: ni/open-source/.github/workflows/reusable-vipm-update.yml@users/amrutha/vipm-custom-manifest-support
+    uses: ni/open-source/.github/workflows/reusable-vipm-update.yml@actions
     with:
       working_directory: .github/actions/apply-vipc
       manifest_filename: runner_dependencies.toml
