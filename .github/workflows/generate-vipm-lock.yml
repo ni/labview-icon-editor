@@ -24,6 +24,8 @@ jobs:
     env:
       LABVIEW_VERSION_YEAR: "2026"
       MANIFEST_PATH: .github/actions/apply-vipc/runner_dependencies.toml
+      VIPM_NONINTERACTIVE: "1"
+      NO_COLOR: "1"
       VIPM_SERIAL_NUMBER: ${{ secrets.VIPM_SERIAL_NUMBER }}
       VIPM_FULL_NAME: ${{ secrets.VIPM_FULL_NAME }}
       VIPM_EMAIL: ${{ secrets.VIPM_EMAIL }}
@@ -34,10 +36,11 @@ jobs:
 
       - name: Install VIPM
         run: |
+          export DEBIAN_FRONTEND=noninteractive
           apt-get update
           apt-get install -y wget ca-certificates xvfb
           if ! command -v vipm >/dev/null 2>&1; then
-            wget -O /tmp/vipm.deb https://packages.jki.net/vipm/preview/vipm_latest_preview_amd64.deb
+            wget -q https://traffic.libsyn.com/secure/jkinc/vipm_26.3.1-4025_amd64.deb -O /tmp/vipm.deb
             apt-get install -y /tmp/vipm.deb
           fi
 
