@@ -1,6 +1,6 @@
 [project]
 name = "labview-icon-editor"
-labview_version = "2020"
+labview-version = "2020"
 labview_bitness = "64"
 
 [dependencies]
