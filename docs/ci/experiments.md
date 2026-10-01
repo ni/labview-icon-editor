@@ -12,8 +12,8 @@
    - [Step 2: Create `experiment/<shortName>`](#step-2-create-experimentshortname)  
    - [Step 3: Automated Scans and Manual Approval](#step-3-automated-scans-and-manual-approval)  
    - [Step 4: (Optional) Alpha/Beta/RC Sub-Branches](#step-4-optional-alphabetarc-sub-branches)  
-   - [Step 5: Merge Frequency from `develop`](#step-5-merge-frequency-from-develop)  
-   - [Step 6: Final Merge to `develop`](#step-6-final-merge-to-develop)  
+   - [Step 5: Merge Frequency from `main`](#step-5-merge-frequency-from-main)
+   - [Step 6: Final Merge to `main`](#step-6-final-merge-to-main)
    - [Step 7: Partial or Abandoned Experiments](#step-7-partial-or-abandoned-experiments)  
 6. [Conclusion and Best Practices](#conclusion-and-best-practices)  
 7. [See Also](#see-also)
@@ -25,11 +25,11 @@ Long-lived **experimental branches** (`experiment/<shortName>`) allow you to dev
 
 - **Multi-collaborator**: Multiple contributors can push or PR into the experiment.  
 - **Length**: Typically 6–8 weeks or up to 1–1.5 years.  
-- **Goal**: Eventually merge these experiments into `develop` if deemed successful.
+- **Goal**: Eventually merge these experiments into `main` if deemed successful.
 
 **Why This Model?**  
-- Reduce disruption to day-to-day merges in `develop`.  
-- Provide a “pseudo-develop” for features needing alpha/beta/rc staging.  
+- Reduce disruption to day-to-day merges in `main`.
+- Provide a “pseudo-main” for features needing alpha/beta/rc staging.
 - Enforce code scanning and manual approval for distributing `.vip` artifacts, ensuring security.
 
 ---
@@ -45,7 +45,7 @@ Long-lived **experimental branches** (`experiment/<shortName>`) allow you to dev
 4. **Alpha/Beta/RC**  
    - Optional sub-branches under `experiment/<shortName>` if the team wants mini-stages of development.  
 5. **Big-Bang Merge**  
-   - Ultimately, `experiment/<shortName>` merges into `develop` with a final Steering Committee review and version label (major/minor/patch).
+   - Ultimately, `experiment/<shortName>` merges into `main` with a final Steering Committee review and version label (major/minor/patch).
 
 ---
 
@@ -63,7 +63,7 @@ NI’s primary goal is to make **collaboration** on significant, **long-running*
 
 3. **Coordinated Merges and Oversight**  
    - Hosting experimental branches in the main repo facilitates **oversight** by the Steering Committee, enabling them to guide or course-correct large features.  
-   - It also simplifies final merges: everything is already in one place, so merging an experiment into `develop` doesn’t involve cross-repo synchronization.
+   - It also simplifies final merges: everything is already in one place, so merging an experiment into `main` doesn’t involve cross-repo synchronization.
 
 4. **Security and Quality**  
    - Experiment branches remain subject to **automatic code scanning** (Docker VI Analyzer + CodeQL).  
@@ -78,15 +78,15 @@ NI’s primary goal is to make **collaboration** on significant, **long-running*
 
 1. **Proposal and Scope**  
    - A contributor—internal or external—proposes a **significant** feature via a GitHub Issue, detailing high-level goals and an expected timeline (ranging from ~6–8 weeks up to 1+ year).  
-   - The Steering Committee weighs strategic impact, checking if the feature aligns with the roadmap and is worth integrating into `develop` eventually.
+   - The Steering Committee weighs strategic impact, checking if the feature aligns with the roadmap and is worth integrating into `main` eventually.
 
 2. **Steering Committee Decision**  
-   - If deemed valuable, NI (with the Steering Committee) will create `experiment/<shortName>` from `develop`.  
+   - If deemed valuable, NI (with the Steering Committee) will create `experiment/<shortName>` from `main`.
    - All code scanning (Docker VI Analyzer, CodeQL) applies automatically, but artifact publishing remains gated to protect the broader user base from incomplete or unverified changes.
 
-3. **Experiment Branch as a Pseudo-Develop**  
+3. **Experiment Branch as a Pseudo-Main**
    - The experiment branch acts like a **“mini development”** line. Multiple collaborators can open sub-branches, do alpha/beta testing, or run partial merges—**all within** the experiment.  
-   - Merges or updates from `develop` can happen periodically to reduce future conflicts.
+   - Merges or updates from `main` can happen periodically to reduce future conflicts.
 
 4. **Security and Manual Approval**  
    - NI uses a manual “approve-experiment” workflow to **activate** `.vip` distribution for that experiment. This ensures large-scale distributions only happen once scans show no critical issues and maintainers are confident in its safety.
@@ -95,16 +95,16 @@ NI’s primary goal is to make **collaboration** on significant, **long-running*
    - If the feature is especially big or has distinct phases, sub-branches (`alpha`, `beta`, `rc`) can help test certain milestones or gather feedback from a smaller or broader group.
 
 6. **Frequent Synchronization**  
-   - Since the experiment might run **months**, merging `develop` changes into it periodically prevents a massive final conflict resolution stage.
+   - Since the experiment might run **months**, merging `main` changes into it periodically prevents a massive final conflict resolution stage.
 
 7. **Integration Path**  
-   - Eventually, the experiment lead or Steering Committee opens a PR from `experiment/<shortName>` to `develop`. The Steering Committee:  
+   - Eventually, the experiment lead or Steering Committee opens a PR from `experiment/<shortName>` to `main`. The Steering Committee:
      - Chooses a final version bump label (major/minor/patch).  
      - Merges if everything passes final checks.  
    - Unsuccessful or partial features can be archived, or selectively merged in smaller pieces if only part of the work is viable.
 
 8. **Abandonment or Partial Merges**  
-   - Some experiments may fail or lose relevance. NI can archive or delete the branch if so. If only part of the experiment is useful, cherry-picking or partial merges into `develop` are possible.
+   - Some experiments may fail or lose relevance. NI can archive or delete the branch if so. If only part of the experiment is useful, cherry-picking or partial merges into `main` are possible.
 
 ---
 
@@ -115,7 +115,7 @@ NI’s primary goal is to make **collaboration** on significant, **long-running*
 - **Steering Committee**: The committee reviews and either approves or rejects the idea, considering if the feature should live in an `experiment/<shortName>` branch on NI’s repo.
 
 ### Step 2: Create `experiment/<shortName>`
-- **Branch Creation**: An NI maintainer (or admin) creates the new experiment branch from `develop` once the Steering Committee gives approval.  
+- **Branch Creation**: An NI maintainer (or admin) creates the new experiment branch from `main` once the Steering Committee gives approval.
 - **Notification**: The contributor is notified when the branch is ready. Permissions are set so collaborators can push to this branch.
 
 ### Step 3: Automated Scans and Manual Approval
@@ -126,13 +126,13 @@ NI’s primary goal is to make **collaboration** on significant, **long-running*
 - **Sub-Branch Strategy**: For very large efforts, the team can create sub-branches like `experiment/<shortName>/alpha` (then beta, then rc) to stage progressive testing.  
 - **Merge Progression**: Work is merged upward (alpha → beta → rc → main experiment branch) to ensure each stage is cumulative and nothing is missed. This is only needed if the team explicitly wants phased releases.
 
-### Step 5: Merge Frequency from `develop`
-- **Stay Up to Date**: The experiment owner periodically merges changes from `develop` into the experiment branch (or rebases) to minimize divergence.  
-- **Conflict Resolution**: Regular syncs reduce the risk of merge conflicts when the experiment reintegrates into `develop`.
+### Step 5: Merge Frequency from `main`
+- **Stay Up to Date**: The experiment owner periodically merges changes from `main` into the experiment branch (or rebases) to minimize divergence.
+- **Conflict Resolution**: Regular syncs reduce the risk of merge conflicts when the experiment reintegrates into `main`.
 
-### Step 6: Final Merge to `develop`
-- **Review and Label**: When the experiment is complete, a final PR to merge `experiment/<shortName>` back into `develop` is opened. The Steering Committee reviews the full changeset. They assign a release label (major/minor/patch) reflecting the impact of the feature.  
-- **Approval**: Once tests pass and any final feedback is addressed, the Steering Committee (and NI’s Open-Source Program Manager, if required) approve and merge the experiment into `develop`. This effectively promotes the feature to be part of the next official release cycle.
+### Step 6: Final Merge to `main`
+- **Review and Label**: When the experiment is complete, a final PR to merge `experiment/<shortName>` back into `main` is opened. The Steering Committee reviews the full changeset. They assign a release label (major/minor/patch) reflecting the impact of the feature.
+- **Approval**: Once tests pass and any final feedback is addressed, the Steering Committee (and NI’s Open-Source Program Manager, if required) approve and merge the experiment into `main`. This effectively promotes the feature to be part of the next official release cycle.
 
 ### Step 7: Partial or Abandoned Experiments
 - **Partial Merge**: If only some parts of the experiment are ready or valuable, maintainers might choose to merge those selectively (e.g., via cherry-pick or separate PRs) instead of the entire branch.  
@@ -146,8 +146,8 @@ NI’s primary goal is to make **collaboration** on significant, **long-running*
 - **Communication** – Keep the Steering Committee and collaborators informed through GitHub issues and PR updates.  
 - **Security and Approval** – Automated code scans, plus manual gating for artifact distribution, safeguard the community from half-baked or risky releases.  
 - **Sub-Branches** – Use alpha/beta/rc sub-branches to manage internal staging if needed, but keep merges flowing in one direction (up toward the main experiment branch).  
-- **Frequent Sync** – Merging from `develop` regularly saves time on final conflict resolution.  
-- **Endgame** – Merge the experiment into `develop` in one final PR when ready. If only part of the work is successful, merge that portion and document or archive the rest.
+- **Frequent Sync** – Merging from `main` regularly saves time on final conflict resolution.
+- **Endgame** – Merge the experiment into `main` in one final PR when ready. If only part of the work is successful, merge that portion and document or archive the rest.
 
 ---
 

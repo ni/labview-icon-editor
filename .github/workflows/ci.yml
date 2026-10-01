@@ -16,14 +16,12 @@ on:
   push:
     branches:
       - main
-      - develop
       - releases/*
       - feature/*
       - hotfix/*
   pull_request:
     branches:
       - main
-      - develop
       - releases/*
       - feature/*
       - hotfix/*

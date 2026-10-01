@@ -63,10 +63,10 @@ By adopting these patterns, maintainers can run alpha, beta, and RC pipelines in
   - Branch pattern: `release-rc/*`.
   - Produces `vX.Y.Z-rc.<commitCount>-build<commitCount>`.
 4. **Other Branches**
-  - `main`, `develop`, `hotfix/*` produce final releases with no alpha/beta/rc suffix.
+  - `main`, `releases/<YYYY>Q<N>`, `hotfix/*` produce final releases with no alpha/beta/rc suffix. `releases/<YYYY>Q<N>` branches (e.g. `releases/2027Q1`) are created from `main` during a release window for final release validation, and are also used for patches and hotfixes after the release ships.
   - No label => major/minor/patch remain unchanged; build increments only.
 
-The accompanying GitHub Actions workflow (`ci-composite.yml`) lists `release-alpha/*`, `release-beta/*`, and `release-rc/*` in its trigger patterns so commits or pull requests to these branches automatically run this pipeline.
+The accompanying GitHub Actions workflow (`ci-composite.yml`) lists `release-alpha/*`, `release-beta/*`, `release-rc/*`, and `releases/*` in its trigger patterns so commits or pull requests to these branches automatically run this pipeline.
 
 To enable these pre-release branches, ensure the workflow's `on.push.branches` and `on.pull_request.branches` sections include the patterns:
 
@@ -75,7 +75,7 @@ on:
   push:
     branches:
       - main
-      - develop
+      - releases/*
       - release-alpha/*
       - release-beta/*
       - release-rc/*
@@ -85,7 +85,7 @@ on:
   pull_request:
     branches:
       - main
-      - develop
+      - releases/*
       - release-alpha/*
       - release-beta/*
       - release-rc/*
@@ -183,7 +183,7 @@ Any commit to these branches triggers an alpha/beta/rc suffix. Merging to `main`
    - Merging to main ends the RC, resulting in `v2.1.0-buildXX`.
 
 4. **No Pre-Release**  
-   - If on `develop` or `main` directly, no suffix is appended, e.g. `v1.2.3-build22`.
+   - If on `main` directly, no suffix is appended, e.g. `v1.2.3-build22`. Committing to a `releases/<YYYY>Q<N>` branch to prepare or patch a shipped release similarly produces no suffix.
 
 
 <a name="troubleshooting--tips"></a>
@@ -218,7 +218,7 @@ Any commit to these branches triggers an alpha/beta/rc suffix. Merging to `main`
 **A3**: Not automatically. We set `prerelease: true` if `$preSuffix` is non-empty. This ensures the release is marked pre-release in GitHub’s UI.
 
 **Q4**: *How do I integrate these channels with tagging older versions or skipping certain channels?*  
-**A4**: You can skip alpha or beta if you like, or go from `develop` → `release-alpha/*` → `release-rc/*` → `main`. The workflow logic is flexible.
+**A4**: You can skip alpha or beta if you like, or go from `main` → `release-alpha/*` → `release-rc/*` → `main`. Patches for a shipped release go directly against its `releases/<YYYY>Q<N>` branch instead. The workflow logic is flexible.
 
 
 <a name="conclusion"></a>
