@@ -29,7 +29,7 @@ This document provides a collection of common **troubleshooting** scenarios (wit
    2. [Q2: How Do I Create a Release?](#q2-how-do-i-create-a-release)
    3. [Q3: Can I Have More Than Alpha, Beta, or RC Channels?](#q3-can-i-have-more-than-alpha-beta-or-rc-channels)
    4. [Q4: How Can I Attach Multiple `.vip` Files to a Release?](#q4-how-can-i-attach-multiple-vip-files-to-a-release)
-   5. [Q5: Do I Need To Merge Hotfixes Into `develop`?](#q5-do-i-need-to-merge-hotfixes-into-develop)
+   5. [Q5: Do I Need To Merge Hotfixes Into `main`?](#q5-do-i-need-to-merge-hotfixes-into-main)
    6. [Q6: What About Draft Releases?](#q6-what-about-draft-releases)
    7. [Q7: Can I Use This Workflow Without Gitflow?](#q7-can-i-use-this-workflow-without-gitflow)
    8. [Q8: Why Is My Dev Mode Toggle Not Working Locally?](#q8-why-is-my-dev-mode-toggle-not-working-locally)
@@ -320,10 +320,10 @@ Modify the artifact collection or upload steps to match multiple `.vip` patterns
 
 ---
 
-### Q5: Do I Need To Merge Hotfixes Into `develop`?
+### Q5: Do I Need To Merge Hotfixes Into `main`?
 
 **Answer**:  
-Yes. In standard Gitflow, after merging a `hotfix/*` into `main`, you also merge it back into `develop` so that your fix is reflected in ongoing development. Otherwise, you risk reintroducing the bug in future releases.
+It depends on what shipped. If the fix targets the currently released version, target its `releases/<YYYY>Q<N>` branch (e.g. `releases/2027Q1`) directly rather than `main`. If the fix should also apply going forward, open a separate PR against `main`. There is no automatic merge-back from a release branch into `main`.
 
 ---
 
