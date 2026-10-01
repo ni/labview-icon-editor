@@ -1,0 +1,27 @@
+name: Automatic update dependencies
+
+on:
+  schedule:
+    - cron: '0 9 * * 6'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-dependencies:
+    uses: ni/open-source/.github/workflows/reusable-vipm-update.yml@actions
+    with:
+      working_directory: .github/actions/apply-vipc
+      manifest_filename: runner_dependencies.toml
+      lock_filename: runner_dependencies.lock
+      include_dev_dependencies: false
+      labview_version: "2020"
+      labview_bitness: "64"
+      base_branch: main
+      pr_branch: automation/vipm-dependency-update
+    secrets:
+      VIPM_SERIAL_NUMBER: ${{ secrets.VIPM_SERIAL_NUMBER }}
+      VIPM_FULL_NAME: ${{ secrets.VIPM_FULL_NAME }}
+      VIPM_EMAIL: ${{ secrets.VIPM_EMAIL }}
