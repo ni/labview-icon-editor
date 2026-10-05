@@ -3,7 +3,7 @@
 
 version = 2
 revision = 0
-updated-at = "2026-10-01T07:10:10.526112345Z"
+updated-at = "2026-10-05T11:41:48.036570974Z"
 requires-labview = "2020"
 
 [[vipm.repo]]
@@ -12,13 +12,13 @@ uri = "http://www.jkisoft.com/packages"
 
 [[package]]
 name = "astemes_lib_lunit"
-version = "1.12.5.6"
+version = "2.0.13.6"
 manager = "vipm"
 resolution-source = "repo"
 
 [[package.source]]
 repo = "VIPM Community"
-checksum = "md5:4bab4568ff5a785ea358af97a0fe5357"
+checksum = "md5:57bc42bcfdfcf898ef5e00651992a015"
 
 [[package]]
 name = "hse_lib_git_api"
@@ -138,7 +138,7 @@ checksum = "md5:777dcc49eebb8062cd69eb0db806df1a"
 
 [[package]]
 name = "sas_workshops_lib_lunit_for_g_cli"
-version = "1.1.1.54"
+version = "1.2.1.85"
 manager = "vipm"
 dependencies = [
     "astemes_lib_lunit",
@@ -148,7 +148,7 @@ resolution-source = "repo"
 
 [[package.source]]
 repo = "VIPM Community"
-checksum = "md5:58fa03e58052b1813d209fc92a748640"
+checksum = "md5:c207b10fbd29d739292a672bc097c4b0"
 
 [[package]]
 name = "sas_workshops_lib_lvbuildspec_for_g_cli"
