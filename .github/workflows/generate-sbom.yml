@@ -4,8 +4,8 @@ permissions:
   contents: read
 
 on:
-  push:
-  pull_request:
+  schedule:
+    - cron: '0 10 * * 6'
 
 jobs:
   version:
@@ -29,8 +29,7 @@ jobs:
   sbom:
     name: Generate SBOM
     needs: version
-    # TODO: pin to a release tag once ni/open-source#42 merges
-    uses: ni/open-source/.github/workflows/reusable-generate-sbom.yml@users/amrutha/sbom-generation-action
+    uses: ni/open-source/.github/workflows/reusable-generate-sbom.yml@actions
     with:
       lvproj_path: lv_icon_editor.lvproj
       labview_version: '2026q1'
