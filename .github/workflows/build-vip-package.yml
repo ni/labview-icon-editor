@@ -1,0 +1,406 @@
+name: Build VI Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      labview_version:
+        description: 'LabVIEW version (must exist in .lv-iso-map.json and as a Windows Docker image)'
+        required: false
+        default: '2026q1'
+        type: string
+  workflow_call:
+    inputs:
+      labview_version:
+        description: 'LabVIEW version (must exist in .lv-iso-map.json and as a Windows Docker image)'
+        required: false
+        default: '2026q1'
+        type: string
+    secrets:
+      LABVIEW_SERIAL_NUMBER:
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  VIPB_PATH: Tooling/deployment/NI Icon editor.vipb
+  RELEASE_NOTES_PATH: Tooling/deployment/release_notes.md
+  VIPM_INSTALLER_URL: ${{ vars.LVIE_VIPM_INSTALLER_URL || 'https://packages.jki.net/vipm/preview/vipm-setup-latest-preview.exe' }}
+
+jobs:
+  version:
+    name: Resolve package version
+    runs-on: ubuntu-latest
+    outputs:
+      lv_version: ${{ steps.version.outputs.lv_version }}
+      lv_year: ${{ steps.version.outputs.lv_year }}
+      major: ${{ steps.version.outputs.major }}
+      minor: ${{ steps.version.outputs.minor }}
+      patch: ${{ steps.version.outputs.patch }}
+      build: ${{ steps.version.outputs.build }}
+      full: ${{ steps.version.outputs.full }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Resolve version
+        id: version
+        shell: pwsh
+        run: |
+          $lvVersion = '${{ inputs.labview_version }}'
+          if ([string]::IsNullOrWhiteSpace($lvVersion)) { $lvVersion = '2026q1' }
+          if ($lvVersion -notmatch '^(\d{4})q[13]$') {
+            throw "Invalid LabVIEW version '$lvVersion'. Expected YYYYq1 or YYYYq3."
+          }
+          $lvYear = $Matches[1]
+
+          $tag = git tag -l 'v*.*.*' --sort=-version:refname | Select-Object -First 1
+          if ($tag -and (($tag -replace '-.*$', '') -match '^v?(\d+)\.(\d+)\.(\d+)')) {
+            $major, $minor, $patch = $Matches[1], $Matches[2], $Matches[3]
+            Write-Host "Version base from tag '$tag'."
+          } else {
+            [xml]$vipb = Get-Content -LiteralPath $env:VIPB_PATH -Raw
+            $parts = ([string]$vipb.VI_Package_Builder_Settings.Library_General_Settings.Library_Version).Split('.')
+            $major, $minor, $patch = $parts[0], $parts[1], $parts[2]
+            Write-Host 'No version tag found; using the VIPB Library_Version as the base.'
+          }
+          $build = '${{ github.run_number }}'
+          $full = "$major.$minor.$patch.$build"
+          Write-Host "Package version: $full (LabVIEW $lvVersion)"
+
+          @(
+            "lv_version=$lvVersion"
+            "lv_year=$lvYear"
+            "major=$major"
+            "minor=$minor"
+            "patch=$patch"
+            "build=$build"
+            "full=$full"
+          ) | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+  ppl-x64:
+    name: Build x64 PPL (Windows Docker)
+    needs: version
+    runs-on: windows-2022
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Build PPL with Windows Docker
+        uses: ni/open-source/build-spec-docker-windows@actions
+        with:
+          minimum_supported_lv_version: ${{ needs.version.outputs.lv_year }}
+          supported_bitness: '64'
+          project_path: 'lv_icon_editor.lvproj'
+          target_name: 'My Computer'
+          build_spec_name: 'Editor Packed Library'
+          major: ${{ needs.version.outputs.major }}
+          minor: ${{ needs.version.outputs.minor }}
+          patch: ${{ needs.version.outputs.patch }}
+          build: ${{ needs.version.outputs.build }}
+          commit: ${{ github.sha }}
+          docker_image: 'nationalinstruments/labview'
+          image_tag: '${{ needs.version.outputs.lv_version }}-windows'
+          log_level: 'INFO'
+
+      - name: Stage x64 PPL
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:GITHUB_WORKSPACE 'builds/lv_icon.lvlibp'
+          if (-not (Test-Path -LiteralPath $source)) {
+            throw "Expected PPL not found at $source"
+          }
+          Rename-Item -LiteralPath $source -NewName 'lv_icon_x64.lvlibp'
+
+      - name: Upload x64 PPL
+        uses: actions/upload-artifact@v6
+        with:
+          name: vip-input-lv_icon_x64-${{ needs.version.outputs.full }}
+          path: builds/lv_icon_x64.lvlibp
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload Docker build logs
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: vip-ppl-x64-build-logs-${{ needs.version.outputs.full }}
+          path: build-logs/*.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  vip:
+    name: Build x86 PPL and VI Package (Windows GitHub-hosted)
+    needs: [version, ppl-x64]
+    runs-on: windows-latest
+    timeout-minutes: 150
+    env:
+      LV_VERSION: ${{ needs.version.outputs.lv_version }}
+      LV_YEAR: ${{ needs.version.outputs.lv_year }}
+      PKG_VERSION: ${{ needs.version.outputs.full }}
+      # Repo tooling preflight: hosted runners have no worktree root or runner-cli.
+      LVIE_WORKTREE_ROOT: ${{ github.workspace }}
+      LVIE_SKIP_WORKTREE_ROOT_CHECK: '1'
+      LVIE_RUNNER_CLI_SKIP_BUILD: '1'
+      LVIE_RUNNER_CLI_SKIP_DOWNLOAD: '1'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Resolve LabVIEW x86 installer
+        shell: pwsh
+        run: |
+          $isoMap = Get-Content -LiteralPath '.lv-iso-map.json' -Raw | ConvertFrom-Json
+          $platform = $isoMap.versions.$env:LV_VERSION.windows
+          if (-not $platform -or [string]::IsNullOrWhiteSpace($platform.x86)) {
+            throw "No Windows x86 ISO for LabVIEW $env:LV_VERSION in .lv-iso-map.json."
+          }
+          # Keeps tool logs and status files out of builds/, which the VIPB packages.
+          $artifactRoot = Join-Path $env:RUNNER_TEMP 'lvie-artifacts'
+          New-Item -ItemType Directory -Path $artifactRoot -Force | Out-Null
+          @(
+            "ISO_URL=$($platform.x86)"
+            "PACKAGE_ID=$($platform.package_id)"
+            "LVIE_ARTIFACT_ROOT=$artifactRoot"
+          ) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Setup NI Package Manager
+        uses: ni/open-source/setup-nipm@actions
+        with:
+          log_level: 'INFO'
+
+      - name: Setup LabVIEW
+        uses: ni/open-source/setup-labview@actions
+        with:
+          labview_iso_url: ${{ env.ISO_URL }}
+          timeout_seconds: 1800
+          serial_number: ${{ secrets.LABVIEW_SERIAL_NUMBER }}
+          package_id: ${{ env.PACKAGE_ID }}
+          log_level: 'INFO'
+
+      - name: Configure LabVIEW
+        uses: ni/open-source/configure-labview@actions
+        with:
+          labview_version: ${{ env.LV_YEAR }}
+          log_level: 'INFO'
+
+      - name: Build x86 PPL
+        uses: ni/open-source/build-spec-github-hosted-windows@actions
+        with:
+          minimum_supported_lv_version: ${{ env.LV_YEAR }}
+          supported_bitness: '32'
+          project_path: 'lv_icon_editor.lvproj'
+          target_name: 'My Computer'
+          build_spec_name: 'Editor Packed Library'
+          major: ${{ needs.version.outputs.major }}
+          minor: ${{ needs.version.outputs.minor }}
+          patch: ${{ needs.version.outputs.patch }}
+          build: ${{ needs.version.outputs.build }}
+          commit: ${{ github.sha }}
+          log_level: 'INFO'
+
+      - name: Stage x86 PPL
+        shell: pwsh
+        run: |
+          $source = Join-Path $env:GITHUB_WORKSPACE 'builds/lv_icon.lvlibp'
+          if (-not (Test-Path -LiteralPath $source)) {
+            throw "Expected PPL not found at $source"
+          }
+          Rename-Item -LiteralPath $source -NewName 'lv_icon_x86.lvlibp'
+
+      - name: Download x64 PPL
+        uses: actions/download-artifact@v6
+        with:
+          name: vip-input-lv_icon_x64-${{ needs.version.outputs.full }}
+          path: builds
+
+      - name: Close LabVIEW
+        shell: pwsh
+        run: |
+          # A leftover headless session would block the IDE session that VIPM and g-cli need.
+          Get-Process -Name LabVIEW, LabVIEWCLI -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 5
+
+      - name: Install VIPM, G-CLI and VIPB builder
+        shell: pwsh
+        run: |
+          $vipm = 'C:\Program Files\JKI\VI Package Manager\support\vipm.exe'
+          if (-not (Test-Path -LiteralPath $vipm)) {
+            $installer = Join-Path $env:RUNNER_TEMP 'vipm-setup.exe'
+            Invoke-WebRequest -Uri $env:VIPM_INSTALLER_URL -OutFile $installer
+            $process = Start-Process -FilePath $installer -ArgumentList '/quiet', '/norestart' -Wait -PassThru
+            if ($process.ExitCode -ne 0) { throw "VIPM installer failed with exit code $($process.ExitCode)." }
+            if (-not (Test-Path -LiteralPath $vipm)) { throw "vipm.exe not found at $vipm after install." }
+          }
+
+          & $vipm package-list-refresh
+          if ($LASTEXITCODE -ne 0) { throw "vipm package-list-refresh failed ($LASTEXITCODE)." }
+          # VIPM keeps refreshing in the background after the command returns.
+          Start-Sleep -Seconds 30
+
+          foreach ($package in @('wiresmith_technology_lib_g_cli', 'sas_workshops_lib_vipb_builder_for_g_cli')) {
+            Write-Host "Installing $package for LabVIEW $env:LV_YEAR (32-bit)..."
+            & $vipm install $package --labview-version $env:LV_YEAR --labview-bitness 32
+            if ($LASTEXITCODE -ne 0) { throw "vipm install $package failed ($LASTEXITCODE)." }
+          }
+
+          $gcli = (Get-Command g-cli -ErrorAction SilentlyContinue).Source
+          if (-not $gcli) {
+            $gcli = @("$env:ProgramFiles\G-CLI\g-cli.exe", "${env:ProgramFiles(x86)}\G-CLI\g-cli.exe") |
+              Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          }
+          if (-not $gcli) {
+            $gcli = Get-ChildItem -Path $env:ProgramFiles, ${env:ProgramFiles(x86)} -Filter 'g-cli.exe' -Recurse -Depth 3 -ErrorAction SilentlyContinue |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $gcli) { throw 'g-cli.exe not found after installing the G-CLI package.' }
+          Write-Host "g-cli: $gcli"
+          Split-Path -Parent $gcli | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Generate release notes
+        shell: pwsh
+        run: |
+          & ./.github/actions/generate-release-notes/GenerateReleaseNotes.ps1 -OutputPath $env:RELEASE_NOTES_PATH
+
+      - name: Prepare VIPB inputs
+        shell: pwsh
+        run: |
+          $builds = Join-Path $env:GITHUB_WORKSPACE 'builds'
+          $required = @('lv_icon_x64.lvlibp', 'lv_icon_x86.lvlibp')
+          foreach ($name in $required) {
+            if (-not (Test-Path -LiteralPath (Join-Path $builds $name))) { throw "Missing VIPB input builds/$name" }
+          }
+          # The VIPB packages everything under builds/ except 'VI Package'.
+          Get-ChildItem -LiteralPath $builds -Force | Where-Object { $_.Name -notin $required } |
+            Remove-Item -Recurse -Force
+
+          $vipbPath = Join-Path $env:GITHUB_WORKSPACE $env:VIPB_PATH
+          [xml]$vipb = Get-Content -LiteralPath $vipbPath -Raw
+          $vipcNode = $vipb.VI_Package_Builder_Settings.Advanced_Settings.SelectSingleNode('VI_Package_Configuration_File')
+          if ($vipcNode -and -not [string]::IsNullOrWhiteSpace($vipcNode.InnerText)) {
+            $vipcPath = Join-Path (Split-Path -Parent $vipbPath) $vipcNode.InnerText
+            if (-not (Test-Path -LiteralPath $vipcPath)) {
+              Write-Warning "VIPB references missing '$($vipcNode.InnerText)'; clearing the reference for this build."
+              $vipcNode.InnerText = ''
+              $vipb.Save($vipbPath)
+            }
+          }
+
+      - name: Update VIPB display information
+        shell: pwsh
+        run: |
+          $vipbPath = Join-Path $env:GITHUB_WORKSPACE $env:VIPB_PATH
+          [xml]$vipb = Get-Content -LiteralPath $vipbPath -Raw
+          $general = $vipb.VI_Package_Builder_Settings.Library_General_Settings
+          $packager = [string]$vipb.VI_Package_Builder_Settings.Advanced_Settings.Description.Packager
+          $company = [string]$general.Company_Name
+          $summary = 'LabVIEW Icon Editor'
+
+          $displayInfo = [ordered]@{
+            'Package Version'                 = [ordered]@{
+              major = [int]'${{ needs.version.outputs.major }}'
+              minor = [int]'${{ needs.version.outputs.minor }}'
+              patch = [int]'${{ needs.version.outputs.patch }}'
+              build = [int]'${{ needs.version.outputs.build }}'
+            }
+            'Product Name'                    = [string]$general.Product_Name
+            'Company Name'                    = $company
+            'Author Name (Person or Company)' = if ($packager) { $packager } else { $company }
+            'Product Homepage (URL)'          = "https://github.com/$env:GITHUB_REPOSITORY"
+            'Legal Copyright'                 = "Copyright (c) $(Get-Date -Format yyyy), $company"
+            'Product Description Summary'     = $summary
+            'Product Description'             = $summary
+            'Release Notes - Change Log'      = Get-Content -LiteralPath $env:RELEASE_NOTES_PATH -Raw
+          } | ConvertTo-Json -Depth 5 -Compress
+
+          $displayInfoPath = Join-Path $env:RUNNER_TEMP 'vipb-display-info.json'
+          Set-Content -LiteralPath $displayInfoPath -Value $displayInfo -Encoding utf8
+          "DISPLAY_INFO_PATH=$displayInfoPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+          & ./.github/actions/modify-vipb-display-info/ModifyVIPBDisplayInfo.ps1 `
+            -SupportedBitness 32 `
+            -RepoRoot $env:GITHUB_WORKSPACE `
+            -VIPBPath $env:VIPB_PATH `
+            -LabVIEWVersion ([int]$env:LV_YEAR) `
+            -LabVIEWMinorRevision 0 `
+            -Major ([int]'${{ needs.version.outputs.major }}') `
+            -Minor ([int]'${{ needs.version.outputs.minor }}') `
+            -Patch ([int]'${{ needs.version.outputs.patch }}') `
+            -Build ([int]'${{ needs.version.outputs.build }}') `
+            -Commit $env:GITHUB_SHA `
+            -ReleaseNotesFile (Join-Path $env:GITHUB_WORKSPACE $env:RELEASE_NOTES_PATH) `
+            -DisplayInformationJSON $displayInfo
+          if ($LASTEXITCODE -ne 0) { throw "ModifyVIPBDisplayInfo.ps1 failed ($LASTEXITCODE)." }
+
+      - name: Build VI Package
+        shell: pwsh
+        run: |
+          # 32-bit build keeps the package installable on both LabVIEW bitnesses.
+          & ./Tooling/Invoke-VipBuild.ps1 `
+            -SupportedBitness 32 `
+            -RepoRoot $env:GITHUB_WORKSPACE `
+            -VIPBPath $env:VIPB_PATH `
+            -LabVIEWVersion ([int]$env:LV_YEAR) `
+            -LabVIEWMinorRevision 0 `
+            -Major ([int]'${{ needs.version.outputs.major }}') `
+            -Minor ([int]'${{ needs.version.outputs.minor }}') `
+            -Patch ([int]'${{ needs.version.outputs.patch }}') `
+            -Build ([int]'${{ needs.version.outputs.build }}') `
+            -Commit $env:GITHUB_SHA `
+            -ReleaseNotesFile (Join-Path $env:GITHUB_WORKSPACE $env:RELEASE_NOTES_PATH) `
+            -DisplayInformationJSON (Get-Content -LiteralPath $env:DISPLAY_INFO_PATH -Raw) `
+            -VipmTimeoutSeconds 900
+
+      - name: Locate VI Package
+        id: locate-vip
+        shell: pwsh
+        run: |
+          $roots = @(
+            (Join-Path $env:GITHUB_WORKSPACE 'builds/VI Package'),
+            (Join-Path $env:LVIE_ARTIFACT_ROOT 'builds/VI Package')
+          ) | Where-Object { Test-Path -LiteralPath $_ }
+          $vip = $roots | ForEach-Object { Get-ChildItem -LiteralPath $_ -Filter '*.vip' -File } |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $vip) { throw 'No .vip was produced.' }
+          Write-Host "VI Package: $($vip.FullName)"
+          "vip_path=$($vip.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          if ($env:GITHUB_STEP_SUMMARY) {
+            "### VI Package`n`n- File: ``$($vip.Name)```n- Version: ``$env:PKG_VERSION```n- LabVIEW: ``$env:LV_VERSION`` or newer" |
+              Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+
+      - name: Upload VI Package
+        uses: actions/upload-artifact@v6
+        with:
+          name: ni-icon-editor-vip-${{ env.PKG_VERSION }}-lv${{ env.LV_VERSION }}
+          path: ${{ steps.locate-vip.outputs.vip_path }}
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Upload VIPB and release notes
+        uses: actions/upload-artifact@v6
+        with:
+          name: ni-icon-editor-vipb-${{ env.PKG_VERSION }}-lv${{ env.LV_VERSION }}
+          path: |
+            ${{ env.VIPB_PATH }}
+            ${{ env.RELEASE_NOTES_PATH }}
+          if-no-files-found: error
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ni-icon-editor-vip-logs-${{ env.PKG_VERSION }}
+          path: |
+            ${{ runner.temp }}/lvie-artifacts/**
+            build-logs/**
+          if-no-files-found: ignore
+          retention-days: 7

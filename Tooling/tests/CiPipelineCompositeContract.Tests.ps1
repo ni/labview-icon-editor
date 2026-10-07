@@ -38,7 +38,8 @@ Describe 'CI pipeline composite contract' {
             './.github/actions/vi-analyzer-ci',
             './.github/workflows/build-lvlibp-linux-container.yml',
             './.github/workflows/build-lvlibp-windows-container.yml',
-            './.github/workflows/build-lvlibp-windows-github-hosted.yml'
+            './.github/workflows/build-lvlibp-windows-github-hosted.yml',
+            './.github/workflows/build-vip-package.yml'
         )
 
         $usesMatches = [regex]::Matches($script:content, '(?m)^\s*(?:-\s*)?uses:\s*(?<value>.+?)\s*$')
@@ -57,6 +58,7 @@ Describe 'CI pipeline composite contract' {
         $usesValues | Should -Contain './.github/workflows/build-lvlibp-linux-container.yml'
         $usesValues | Should -Contain './.github/workflows/build-lvlibp-windows-container.yml'
         $usesValues | Should -Contain './.github/workflows/build-lvlibp-windows-github-hosted.yml'
+        $usesValues | Should -Contain './.github/workflows/build-vip-package.yml'
     }
 
     It 'build jobs depend on run-metadata and version-gate' {

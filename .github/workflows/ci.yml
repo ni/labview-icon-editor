@@ -194,10 +194,20 @@ jobs:
     secrets:
       LABVIEW_SERIAL_NUMBER: ${{ secrets.LABVIEW_SERIAL_NUMBER }}
 
+  build-vip-package:
+    name: Build VI Package (LabVIEW 2026q1)
+    if: github.event_name != 'pull_request'
+    needs: [run-metadata, version-gate]
+    uses: ./.github/workflows/build-vip-package.yml
+    with:
+      labview_version: '2026q1'
+    secrets:
+      LABVIEW_SERIAL_NUMBER: ${{ secrets.LABVIEW_SERIAL_NUMBER }}
+
   pipeline-contract:
     name: Pipeline Contract
     if: always()
-    needs: [run-metadata, version-gate, pylavi-linux, vi-analyzer-linux, build-lvlibp-linux-container, build-lvlibp-windows-container, build-lvlibp-windows-github-hosted]
+    needs: [run-metadata, version-gate, pylavi-linux, vi-analyzer-linux, build-lvlibp-linux-container, build-lvlibp-windows-container, build-lvlibp-windows-github-hosted, build-vip-package]
     runs-on: ubuntu-latest
     env:
       RUN_METADATA_RESULT: ${{ needs.run-metadata.result }}
@@ -207,6 +217,7 @@ jobs:
       BUILD_PPL_LINUX_CONTAINER_RESULT: ${{ needs.build-lvlibp-linux-container.result }}
       BUILD_PPL_WINDOWS_CONTAINER_RESULT: ${{ needs.build-lvlibp-windows-container.result }}
       BUILD_PPL_WINDOWS_GITHUB_HOSTED_RESULT: ${{ needs.build-lvlibp-windows-github-hosted.result }}
+      BUILD_VIP_PACKAGE_RESULT: ${{ needs.build-vip-package.result }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -227,6 +238,11 @@ jobs:
           $ghHostedResult = $env:BUILD_PPL_WINDOWS_GITHUB_HOSTED_RESULT
           if ($ghHostedResult -notin @('success', 'skipped')) {
             $results['build-lvlibp-windows-github-hosted'] = $ghHostedResult
+          }
+
+          $vipResult = $env:BUILD_VIP_PACKAGE_RESULT
+          if ($vipResult -notin @('success', 'skipped')) {
+            $results['build-vip-package'] = $vipResult
           }
 
           $failed = @($results.GetEnumerator() | Where-Object { [string]$_.Value -ne 'success' })
