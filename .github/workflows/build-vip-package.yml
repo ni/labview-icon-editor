@@ -1,6 +1,9 @@
 name: Build VI Package
 
 on:
+  push:
+    branches:
+      - users/amrutha/vip-package-generation
   workflow_dispatch:
     inputs:
       labview_version:
