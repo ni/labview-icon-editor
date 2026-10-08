@@ -242,10 +242,25 @@ jobs:
             $process = Start-Process -FilePath $installer -ArgumentList '/quiet', '/norestart' -Wait -PassThru
             if ($process.ExitCode -ne 0) { throw "VIPM installer failed with exit code $($process.ExitCode)." }
             if (-not (Test-Path -LiteralPath $vipm)) { throw "vipm.exe not found at $vipm after install." }
+            Start-Sleep -Seconds 10
           }
 
-          & $vipm package-list-refresh
-          if ($LASTEXITCODE -ne 0) { throw "vipm package-list-refresh failed ($LASTEXITCODE)." }
+          # A silent install does not create Settings.ini, and the VIPM CLI fails without it.
+          $vipmSettings = Join-Path $env:ProgramData 'JKI\VIPM\Settings.ini'
+          if (-not (Test-Path -LiteralPath $vipmSettings)) {
+            New-Item -ItemType Directory -Path (Split-Path -Parent $vipmSettings) -Force | Out-Null
+            New-Item -ItemType File -Path $vipmSettings -Force | Out-Null
+            Write-Host "Created empty $vipmSettings"
+          }
+
+          $refreshed = $false
+          foreach ($attempt in 1..3) {
+            & $vipm package-list-refresh
+            if ($LASTEXITCODE -eq 0) { $refreshed = $true; break }
+            Write-Warning "vipm package-list-refresh attempt $attempt failed ($LASTEXITCODE)."
+            Start-Sleep -Seconds (15 * $attempt)
+          }
+          if (-not $refreshed) { throw 'vipm package-list-refresh failed after 3 attempts.' }
           # VIPM keeps refreshing in the background after the command returns.
           Start-Sleep -Seconds 30
 
