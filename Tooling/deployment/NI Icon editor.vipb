@@ -119,12 +119,6 @@
         <Additional_Destination>true</Additional_Destination>
         <Additional_Destination_Index>0</Additional_Destination_Index>
       </Destination_Overrides>
-      <Destination_Overrides>
-        <Path>builds/lv_icon_x86.lvlibp</Path>
-        <Destination>0</Destination>
-        <Additional_Destination>true</Additional_Destination>
-        <Additional_Destination_Index>0</Additional_Destination_Index>
-      </Destination_Overrides>
       <Password_Overrides>
         <Path>.</Path>
         <Password/>
@@ -283,7 +277,7 @@
       <Windows_8>true</Windows_8>
       <OS_32-Bit>true</OS_32-Bit>
       <OS_64-Bit>true</OS_64-Bit>
-      <LV_32-Bit>true</LV_32-Bit>
+      <LV_32-Bit>false</LV_32-Bit>
       <LV_64-Bit>true</LV_64-Bit>
     </Install_Requirements>
     <LabVIEW>

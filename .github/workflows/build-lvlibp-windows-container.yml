@@ -157,7 +157,7 @@ jobs:
         uses: actions/upload-artifact@v6
         if: success()
         with:
-          name: lv_icon_x64_v${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }}.${{ steps.version.outputs.patch }}.${{ steps.version.outputs.build }}_${{ env.LV_VERSION }}-windows
+          name: ci-lv-icon-x64-${{ github.run_id }}-${{ github.run_attempt }}
           path: builds/*.lvlibp
           retention-days: 7
 

@@ -197,10 +197,11 @@ jobs:
   build-vip-package:
     name: Build VI Package (LabVIEW 2026q1)
     if: github.event_name != 'pull_request'
-    needs: [run-metadata, version-gate]
+    needs: [run-metadata, version-gate, build-lvlibp-windows-container]
     uses: ./.github/workflows/build-vip-package.yml
     with:
       labview_version: '2026q1'
+      ppl_artifact_name: ci-lv-icon-x64-${{ github.run_id }}-${{ github.run_attempt }}
     secrets:
       LABVIEW_SERIAL_NUMBER: ${{ secrets.LABVIEW_SERIAL_NUMBER }}
 

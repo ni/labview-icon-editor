@@ -40,5 +40,6 @@ Describe 'Build LVLIBP Windows Container workflow contract' {
     It 'uploads built PPL artifact on success' {
         $script:content | Should -Match 'upload-artifact'
         $script:content | Should -Match '\.lvlibp'
+        $script:content | Should -Match 'ci-lv-icon-x64-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}'
     }
 }

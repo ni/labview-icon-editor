@@ -67,6 +67,26 @@ Describe 'CI pipeline composite contract' {
         $script:content | Should -Match 'build-lvlibp-windows-github-hosted'
     }
 
+    It 'passes the Windows x64 PPL artifact to the VIP workflow' {
+        $vipBlock = [regex]::Match($script:content, '(?s)build-vip-package:.*?(?=\n  \w|\z)').Value
+        $vipBlock | Should -Match 'needs: \[run-metadata, version-gate, build-lvlibp-windows-container\]'
+        $vipBlock | Should -Match 'ppl_artifact_name: ci-lv-icon-x64-\$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}'
+    }
+
+    It 'packages only the downloaded x64 PPL and declares 64-bit LabVIEW support' {
+        $repoRoot = (Resolve-Path -Path (Join-Path $PSScriptRoot '..\..')).Path
+        $vipWorkflow = Get-Content -LiteralPath (Join-Path $repoRoot '.github/workflows/build-vip-package.yml') -Raw
+        $vipb = Get-Content -LiteralPath (Join-Path $repoRoot 'Tooling/deployment/NI Icon editor.vipb') -Raw
+
+        $vipWorkflow | Should -Match 'actions/download-artifact@v6'
+        $vipWorkflow | Should -Match '--labview-bitness 64'
+        $vipWorkflow | Should -Match '-SupportedBitness 64'
+        $vipWorkflow | Should -Not -Match 'lv_icon_x86\.lvlibp|SupportedBitness 32|labview-bitness 32'
+        $vipb | Should -Match '<LV_32-Bit>false</LV_32-Bit>'
+        $vipb | Should -Match '<LV_64-Bit>true</LV_64-Bit>'
+        $vipb | Should -Not -Match 'lv_icon_x86\.lvlibp'
+    }
+
     It 'pipeline-contract waits for all build jobs' {
         $script:content | Should -Match 'build-lvlibp-linux-container'
         $script:content | Should -Match 'build-lvlibp-windows-container'

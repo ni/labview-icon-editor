@@ -11,12 +11,20 @@ on:
         required: false
         default: '2026q1'
         type: string
+      ppl_artifact_name:
+        description: 'Name of the x64 PPL artifact to package (optional)'
+        required: false
+        type: string
   workflow_call:
     inputs:
       labview_version:
         description: 'LabVIEW version (must exist in .lv-iso-map.json and as a Windows Docker image)'
         required: false
         default: '2026q1'
+        type: string
+      ppl_artifact_name:
+        description: 'Name of the x64 PPL artifact to package (optional)'
+        required: false
         type: string
     secrets:
       LABVIEW_SERIAL_NUMBER:
@@ -85,7 +93,8 @@ jobs:
           ) | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
   ppl-x64:
-    name: Build x64 PPL (Windows Docker)
+    name: Build x64 PPL fallback (Windows Docker)
+    if: ${{ inputs.ppl_artifact_name == '' }}
     needs: version
     runs-on: windows-2022
     steps:
@@ -138,8 +147,9 @@ jobs:
           retention-days: 7
 
   vip:
-    name: Build x86 PPL and VI Package (Windows GitHub-hosted)
+    name: Build x64 VI Package (Windows GitHub-hosted)
     needs: [version, ppl-x64]
+    if: ${{ always() && needs.version.result == 'success' && (inputs.ppl_artifact_name != '' || needs.ppl-x64.result == 'success') }}
     runs-on: windows-latest
     timeout-minutes: 150
     env:
@@ -158,19 +168,40 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Resolve LabVIEW x86 installer
+      - name: Download x64 PPL
+        uses: actions/download-artifact@v6
+        with:
+          name: ${{ inputs.ppl_artifact_name || format('vip-input-lv_icon_x64-{0}', needs.version.outputs.full) }}
+          path: ${{ runner.temp }}/vip-ppl-input
+
+      - name: Stage x64 PPL
+        shell: pwsh
+        run: |
+          $inputRoot = Join-Path $env:RUNNER_TEMP 'vip-ppl-input'
+          $source = Join-Path $inputRoot 'lv_icon.lvlibp'
+          if (-not (Test-Path -LiteralPath $source)) {
+            $source = Join-Path $inputRoot 'lv_icon_x64.lvlibp'
+          }
+          if (-not (Test-Path -LiteralPath $source)) {
+            throw "Expected x64 PPL not found in downloaded artifact at $inputRoot"
+          }
+          $builds = Join-Path $env:GITHUB_WORKSPACE 'builds'
+          New-Item -ItemType Directory -Path $builds -Force | Out-Null
+          Move-Item -LiteralPath $source -Destination (Join-Path $builds 'lv_icon_x64.lvlibp') -Force
+
+      - name: Resolve LabVIEW x64 installer
         shell: pwsh
         run: |
           $isoMap = Get-Content -LiteralPath '.lv-iso-map.json' -Raw | ConvertFrom-Json
           $platform = $isoMap.versions.$env:LV_VERSION.windows
-          if (-not $platform -or [string]::IsNullOrWhiteSpace($platform.x86)) {
-            throw "No Windows x86 ISO for LabVIEW $env:LV_VERSION in .lv-iso-map.json."
+          if (-not $platform -or [string]::IsNullOrWhiteSpace($platform.x64)) {
+            throw "No Windows x64 ISO for LabVIEW $env:LV_VERSION in .lv-iso-map.json."
           }
           # Keeps tool logs and status files out of builds/, which the VIPB packages.
           $artifactRoot = Join-Path $env:RUNNER_TEMP 'lvie-artifacts'
           New-Item -ItemType Directory -Path $artifactRoot -Force | Out-Null
           @(
-            "ISO_URL=$($platform.x86)"
+            "ISO_URL=$($platform.x64)"
             "PACKAGE_ID=$($platform.package_id)"
             "LVIE_ARTIFACT_ROOT=$artifactRoot"
           ) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
@@ -194,36 +225,6 @@ jobs:
         with:
           labview_version: ${{ env.LV_YEAR }}
           log_level: 'INFO'
-
-      - name: Build x86 PPL
-        uses: ni/open-source/build-spec-github-hosted-windows@actions
-        with:
-          minimum_supported_lv_version: ${{ env.LV_YEAR }}
-          supported_bitness: '32'
-          project_path: 'lv_icon_editor.lvproj'
-          target_name: 'My Computer'
-          build_spec_name: 'Editor Packed Library'
-          major: ${{ needs.version.outputs.major }}
-          minor: ${{ needs.version.outputs.minor }}
-          patch: ${{ needs.version.outputs.patch }}
-          build: ${{ needs.version.outputs.build }}
-          commit: ${{ github.sha }}
-          log_level: 'INFO'
-
-      - name: Stage x86 PPL
-        shell: pwsh
-        run: |
-          $source = Join-Path $env:GITHUB_WORKSPACE 'builds/lv_icon.lvlibp'
-          if (-not (Test-Path -LiteralPath $source)) {
-            throw "Expected PPL not found at $source"
-          }
-          Rename-Item -LiteralPath $source -NewName 'lv_icon_x86.lvlibp'
-
-      - name: Download x64 PPL
-        uses: actions/download-artifact@v6
-        with:
-          name: vip-input-lv_icon_x64-${{ needs.version.outputs.full }}
-          path: builds
 
       - name: Close LabVIEW
         shell: pwsh
@@ -265,8 +266,8 @@ jobs:
           Start-Sleep -Seconds 30
 
           foreach ($package in @('wiresmith_technology_lib_g_cli', 'sas_workshops_lib_vipb_builder_for_g_cli')) {
-            Write-Host "Installing $package for LabVIEW $env:LV_YEAR (32-bit)..."
-            & $vipm install $package --labview-version $env:LV_YEAR --labview-bitness 32
+            Write-Host "Installing $package for LabVIEW $env:LV_YEAR (64-bit)..."
+            & $vipm install $package --labview-version $env:LV_YEAR --labview-bitness 64
             if ($LASTEXITCODE -ne 0) { throw "vipm install $package failed ($LASTEXITCODE)." }
           }
 
@@ -292,7 +293,7 @@ jobs:
         shell: pwsh
         run: |
           $builds = Join-Path $env:GITHUB_WORKSPACE 'builds'
-          $required = @('lv_icon_x64.lvlibp', 'lv_icon_x86.lvlibp')
+          $required = @('lv_icon_x64.lvlibp')
           foreach ($name in $required) {
             if (-not (Test-Path -LiteralPath (Join-Path $builds $name))) { throw "Missing VIPB input builds/$name" }
           }
@@ -320,7 +321,7 @@ jobs:
           $general = $vipb.VI_Package_Builder_Settings.Library_General_Settings
           $packager = [string]$vipb.VI_Package_Builder_Settings.Advanced_Settings.Description.Packager
           $company = [string]$general.Company_Name
-          $summary = 'LabVIEW Icon Editor'
+          $summary = 'LabVIEW Icon Editor for 64-bit LabVIEW'
 
           $displayInfo = [ordered]@{
             'Package Version'                 = [ordered]@{
@@ -344,7 +345,7 @@ jobs:
           "DISPLAY_INFO_PATH=$displayInfoPath" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
           & ./.github/actions/modify-vipb-display-info/ModifyVIPBDisplayInfo.ps1 `
-            -SupportedBitness 32 `
+            -SupportedBitness 64 `
             -RepoRoot $env:GITHUB_WORKSPACE `
             -VIPBPath $env:VIPB_PATH `
             -LabVIEWVersion ([int]$env:LV_YEAR) `
@@ -361,9 +362,8 @@ jobs:
       - name: Build VI Package
         shell: pwsh
         run: |
-          # 32-bit build keeps the package installable on both LabVIEW bitnesses.
           & ./Tooling/Invoke-VipBuild.ps1 `
-            -SupportedBitness 32 `
+            -SupportedBitness 64 `
             -RepoRoot $env:GITHUB_WORKSPACE `
             -VIPBPath $env:VIPB_PATH `
             -LabVIEWVersion ([int]$env:LV_YEAR) `
@@ -391,7 +391,7 @@ jobs:
           Write-Host "VI Package: $($vip.FullName)"
           "vip_path=$($vip.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           if ($env:GITHUB_STEP_SUMMARY) {
-            "### VI Package`n`n- File: ``$($vip.Name)```n- Version: ``$env:PKG_VERSION```n- LabVIEW: ``$env:LV_VERSION`` or newer" |
+            "### VI Package`n`n- File: ``$($vip.Name)```n- Version: ``$env:PKG_VERSION```n- Compatibility: 64-bit LabVIEW $env:LV_VERSION or newer" |
               Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           }
 
