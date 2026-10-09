@@ -71,6 +71,8 @@ param (
     [string]$DisplayInformationJSON,
     [string]$DisplayInformationJsonPath,
 
+    [switch]$SkipPreflight,
+
     [ValidateRange(60, 3600)]
     [int]$VipmTimeoutSeconds = 300
 )
@@ -92,7 +94,7 @@ catch {
 
 # 1a) Worktree preflight (optional for local runs)
 $preflightScript = Join-Path -Path $ResolvedRepoRoot -ChildPath 'Tooling\Invoke-Preflight.ps1'
-if (Test-Path -Path $preflightScript) {
+if (-not $SkipPreflight -and (Test-Path -Path $preflightScript)) {
     . $preflightScript
     $scriptArgs = Convert-BoundParametersToArgumentList -BoundParameters $PSBoundParameters
     $relativeScript = if ($PSCommandPath) { Get-RepoRelativePath -RepoRoot $ResolvedRepoRoot -Path $PSCommandPath } else { $null }

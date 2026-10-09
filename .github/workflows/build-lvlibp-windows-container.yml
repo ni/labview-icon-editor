@@ -15,11 +15,17 @@ on:
         required: false
         default: '2026q1'
         type: string
+    outputs:
+      ppl_artifact_name:
+        description: 'Artifact containing the Windows x64 PPL'
+        value: ${{ jobs.build-lvlibp.outputs.ppl_artifact_name }}
 
 jobs:
   build-lvlibp:
     name: Build LabVIEW Packed Library (Windows)
     runs-on: windows-2022
+    outputs:
+      ppl_artifact_name: ${{ steps.version.outputs.ppl_artifact_name }}
 
     steps:
       - name: Checkout code
@@ -125,6 +131,8 @@ jobs:
           echo "minor=$minor" >> $env:GITHUB_OUTPUT
           echo "patch=$patch" >> $env:GITHUB_OUTPUT
           echo "build=$build" >> $env:GITHUB_OUTPUT
+          $pplArtifactName = 'lv_icon_x64_v{0}.{1}.{2}.{3}_{4}-windows' -f $major, $minor, $patch, $build, $env:LV_VERSION
+          "ppl_artifact_name=$pplArtifactName" >> $env:GITHUB_OUTPUT
 
           if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY)) {
             @(
