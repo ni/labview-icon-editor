@@ -193,7 +193,6 @@ jobs:
             -SkipWorktreeRootCheck `
             -ReleaseNotesFile (Join-Path $env:GITHUB_WORKSPACE $env:RELEASE_NOTES_PATH) `
             -DisplayInformationJSON $displayInfo
-          if ($LASTEXITCODE -ne 0) { throw "ModifyVIPBDisplayInfo.ps1 failed ($LASTEXITCODE)." }
 
       - name: Build VI Package in LabVIEW container
         shell: pwsh

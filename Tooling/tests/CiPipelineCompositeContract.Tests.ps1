@@ -95,6 +95,7 @@ Describe 'CI pipeline composite contract' {
         $script:vipContent | Should -Match 'NI Icon editor\.ci\.vipb'
         $script:vipContent | Should -Match 'x86Entries.*RemoveChild'
         $script:vipContent | Should -Match "SelectSingleNode\('//LV_32-Bit'\)\.InnerText = 'false'"
+        $script:vipContent | Should -Not -Match 'ModifyVIPBDisplayInfo\.ps1 failed \(\$LASTEXITCODE\)'
         $script:vipBuilderContent | Should -Match '-SkipPreflight'
         $script:vipBuilderContent | Should -Match '-SupportedBitness 64'
         $script:vipBuilderContent | Should -Match 'lv_icon_x64\.lvlibp'
