@@ -19,7 +19,7 @@ on:
       - releases/*
       - feature/*
       - hotfix/*
-        - users/amrutha/vip-build
+      - users/amrutha/vip-build
   pull_request:
     branches:
       - main
