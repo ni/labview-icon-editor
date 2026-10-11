@@ -190,6 +190,10 @@ jobs:
     with:
       labview_version: '2026q1'
       ppl_artifact_name: ${{ needs.build-lvlibp-windows-container.outputs.ppl_artifact_name }}
+    secrets:
+      VIPM_SERIAL_NUMBER: ${{ secrets.VIPM_SERIAL_NUMBER }}
+      VIPM_FULL_NAME: ${{ secrets.VIPM_FULL_NAME }}
+      VIPM_EMAIL: ${{ secrets.VIPM_EMAIL }}
 
   build-lvlibp-windows-github-hosted:
     name: Build lv_icon PPL using 2026q1 LabVIEW x32 (Windows GitHub-Hosted)

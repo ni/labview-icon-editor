@@ -24,6 +24,14 @@ on:
         required: true
         type: string
 
+    secrets:
+      VIPM_SERIAL_NUMBER:
+        required: true
+      VIPM_FULL_NAME:
+        required: true
+      VIPM_EMAIL:
+        required: true
+
 permissions:
   contents: read
 
@@ -196,6 +204,10 @@ jobs:
 
       - name: Build VI Package in LabVIEW container
         shell: pwsh
+        env:
+          VIPM_SERIAL_NUMBER: ${{ secrets.VIPM_SERIAL_NUMBER }}
+          VIPM_FULL_NAME: ${{ secrets.VIPM_FULL_NAME }}
+          VIPM_EMAIL: ${{ secrets.VIPM_EMAIL }}
         run: |
           $displayInfoPath = Join-Path $env:LVIE_ARTIFACT_ROOT 'vipb-display-info.json'
           Copy-Item -LiteralPath $env:DISPLAY_INFO_PATH -Destination $displayInfoPath -Force
@@ -204,6 +216,10 @@ jobs:
             '--volume', "${env:GITHUB_WORKSPACE}:C:\workspace",
             '--volume', "${env:LVIE_ARTIFACT_ROOT}:C:\artifacts",
             '--env', 'LVIE_ARTIFACT_ROOT=C:\artifacts',
+            '--env', 'VIPM_SERIAL_NUMBER',
+            '--env', 'VIPM_FULL_NAME',
+            '--env', 'VIPM_EMAIL',
+            '--env', 'VIPM_NONINTERACTIVE=1',
             '--env', "VIPM_INSTALLER_URL=$env:VIPM_INSTALLER_URL",
             "nationalinstruments/labview:$($env:LV_VERSION)-windows",
             'powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass',
