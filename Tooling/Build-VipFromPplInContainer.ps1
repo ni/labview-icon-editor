@@ -54,7 +54,7 @@ if (-not (Test-Path -LiteralPath $vipmSettings)) {
 
 $refreshed = $false
 foreach ($attempt in 1..3) {
-    & $vipmPath package-list-refresh
+    & $vipmPath refresh
     if ($LASTEXITCODE -eq 0) {
         $refreshed = $true
         break
@@ -63,7 +63,7 @@ foreach ($attempt in 1..3) {
     Start-Sleep -Seconds (15 * $attempt)
 }
 if (-not $refreshed) {
-    throw 'vipm package-list-refresh failed after 3 attempts.'
+    throw 'vipm refresh failed after 3 attempts.'
 }
 Start-Sleep -Seconds 30
 

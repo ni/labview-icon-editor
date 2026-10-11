@@ -99,6 +99,8 @@ Describe 'CI pipeline composite contract' {
         $script:vipBuilderContent | Should -Match '-SkipPreflight'
         $script:vipBuilderContent | Should -Match '-SupportedBitness 64'
         $script:vipBuilderContent | Should -Match 'lv_icon_x64\.lvlibp'
+        $script:vipBuilderContent | Should -Match '\$vipmPath refresh'
+        $script:vipBuilderContent | Should -Not -Match 'package-list-refresh'
     }
 
     It 'pipeline-contract waits for all build jobs' {
