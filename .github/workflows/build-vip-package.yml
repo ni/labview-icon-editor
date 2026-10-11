@@ -146,7 +146,7 @@ jobs:
         shell: pwsh
         run: |
           $sourceVipb = Join-Path $env:GITHUB_WORKSPACE $env:VIPB_PATH
-          $temporaryVipb = Join-Path $env:GITHUB_WORKSPACE 'NI Icon editor.ci.vipb'
+          $temporaryVipb = Join-Path (Split-Path -Parent $sourceVipb) 'NI Icon editor.ci.vipb'
           Copy-Item -LiteralPath $sourceVipb -Destination $temporaryVipb -Force
           [xml]$vipb = Get-Content -LiteralPath $temporaryVipb -Raw
           $x86Entries = @($vipb.SelectNodes('//Source_Files/Destination_Overrides[Path="builds/lv_icon_x86.lvlibp"]'))
@@ -161,7 +161,7 @@ jobs:
       - name: Update temporary VIPB display information
         shell: pwsh
         run: |
-          $vipbPath = 'NI Icon editor.ci.vipb'
+          $vipbPath = 'Tooling/deployment/NI Icon editor.ci.vipb'
           [xml]$vipb = Get-Content -LiteralPath $vipbPath -Raw
           $general = $vipb.VI_Package_Builder_Settings.Library_General_Settings
           $packager = [string]$vipb.VI_Package_Builder_Settings.Advanced_Settings.Description.Packager
@@ -209,6 +209,11 @@ jobs:
           VIPM_FULL_NAME: ${{ secrets.VIPM_FULL_NAME }}
           VIPM_EMAIL: ${{ secrets.VIPM_EMAIL }}
         run: |
+          foreach ($setting in @('VIPM_SERIAL_NUMBER', 'VIPM_FULL_NAME', 'VIPM_EMAIL')) {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($setting))) {
+              throw "Required GitHub Actions secret '$setting' is unavailable; Docker has not been started."
+            }
+          }
           $displayInfoPath = Join-Path $env:LVIE_ARTIFACT_ROOT 'vipb-display-info.json'
           Copy-Item -LiteralPath $env:DISPLAY_INFO_PATH -Destination $displayInfoPath -Force
           $dockerArgs = @(
@@ -232,8 +237,10 @@ jobs:
             '-Commit', $env:GITHUB_SHA,
             '-DisplayInformationJsonPath', 'C:\artifacts\vipb-display-info.json'
           )
-          & docker @dockerArgs
-          if ($LASTEXITCODE -ne 0) { throw "VI Package container build failed ($LASTEXITCODE)." }
+          $dockerLog = Join-Path $env:LVIE_ARTIFACT_ROOT 'docker-vip-build.log'
+          & docker @dockerArgs 2>&1 | Tee-Object -FilePath $dockerLog
+          $dockerExitCode = $LASTEXITCODE
+          if ($dockerExitCode -ne 0) { throw "VI Package container build failed ($dockerExitCode). See docker-vip-build.log in the VIP logs artifact and the preceding output." }
 
       - name: Locate VI Package
         id: locate-vip
@@ -265,7 +272,7 @@ jobs:
         with:
           name: ni-icon-editor-vipb-${{ env.PKG_VERSION }}-lv${{ env.LV_VERSION }}
           path: |
-            NI Icon editor.ci.vipb
+            Tooling/deployment/NI Icon editor.ci.vipb
             ${{ env.RELEASE_NOTES_PATH }}
           if-no-files-found: error
 

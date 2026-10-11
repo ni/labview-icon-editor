@@ -30,6 +30,14 @@ $vipmPath = Join-Path $env:ProgramFiles 'JKI\VI Package Manager\support\vipm.exe
 if (-not (Test-Path -LiteralPath $pplPath)) {
     throw "The downloaded x64 PPL is missing at $pplPath."
 }
+$vipbPath = 'Tooling/deployment/NI Icon editor.ci.vipb'
+$buildVipScript = Join-Path $repoRoot '.github\actions\build-vip\build_vip.ps1'
+$releaseNotes = Join-Path $repoRoot 'Tooling\deployment\release_notes.md'
+foreach ($path in @($buildVipScript, $releaseNotes, (Join-Path $repoRoot $vipbPath), $DisplayInformationJsonPath)) {
+    if (-not (Test-Path -LiteralPath $path)) {
+        throw "Required VIP build input is missing: $path"
+    }
+}
 if (-not (Test-Path -LiteralPath $vipmPath)) {
     if ([string]::IsNullOrWhiteSpace($env:VIPM_INSTALLER_URL)) {
         throw 'VIPM_INSTALLER_URL is not set.'
@@ -98,15 +106,6 @@ if (-not $gcli) {
     throw 'g-cli.exe was not found after installing the G-CLI VIPM package.'
 }
 $env:Path = "$(Split-Path -Parent $gcli);$env:Path"
-
-$buildVipScript = Join-Path $repoRoot '.github\actions\build-vip\build_vip.ps1'
-$releaseNotes = Join-Path $repoRoot 'Tooling\deployment\release_notes.md'
-$vipbPath = 'NI Icon editor.ci.vipb'
-foreach ($path in @($buildVipScript, $releaseNotes, (Join-Path $repoRoot $vipbPath), $DisplayInformationJsonPath)) {
-    if (-not (Test-Path -LiteralPath $path)) {
-        throw "Required VIP build input is missing: $path"
-    }
-}
 
 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $buildVipScript `
     -SkipPreflight `

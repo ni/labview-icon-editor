@@ -93,6 +93,8 @@ Describe 'CI pipeline composite contract' {
         $script:vipContent | Should -Match 'nationalinstruments/labview:.*-windows'
         $script:vipContent | Should -Not -Match 'supported_bitness: ''32''|setup-labview@actions|setup-nipm@actions'
         $script:vipContent | Should -Match 'NI Icon editor\.ci\.vipb'
+        $script:vipContent | Should -Match 'Join-Path \(Split-Path -Parent \$sourceVipb\)'
+        $script:vipBuilderContent | Should -Match 'Tooling/deployment/NI Icon editor\.ci\.vipb'
         $script:vipContent | Should -Match 'x86Entries.*RemoveChild'
         $script:vipContent | Should -Match "SelectSingleNode\('//LV_32-Bit'\)\.InnerText = 'false'"
         $script:vipContent | Should -Not -Match 'ModifyVIPBDisplayInfo\.ps1 failed \(\$LASTEXITCODE\)'
