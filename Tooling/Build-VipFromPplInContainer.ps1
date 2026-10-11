@@ -52,6 +52,19 @@ if (-not (Test-Path -LiteralPath $vipmSettings)) {
     New-Item -ItemType File -Path $vipmSettings -Force | Out-Null
 }
 
+foreach ($setting in @('VIPM_SERIAL_NUMBER', 'VIPM_FULL_NAME', 'VIPM_EMAIL')) {
+    if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($setting))) {
+        throw "Required VIPM activation setting '$setting' is missing. Configure it as a GitHub Actions secret or local environment variable."
+    }
+}
+
+Write-Host 'Activating VIPM in the container...'
+& $vipmPath activate --serial-number $env:VIPM_SERIAL_NUMBER --name $env:VIPM_FULL_NAME --email $env:VIPM_EMAIL *> $null
+if ($LASTEXITCODE -ne 0) {
+    throw "VIPM activation failed (exit code $LASTEXITCODE). Verify the license and its registered name/email; activation output is suppressed to protect credentials."
+}
+Remove-Item Env:VIPM_SERIAL_NUMBER, Env:VIPM_FULL_NAME, Env:VIPM_EMAIL
+
 $refreshed = $false
 foreach ($attempt in 1..3) {
     & $vipmPath refresh
@@ -59,7 +72,7 @@ foreach ($attempt in 1..3) {
         $refreshed = $true
         break
     }
-    Write-Warning "VIPM package-list-refresh attempt $attempt failed ($LASTEXITCODE)."
+    Write-Warning "VIPM refresh attempt $attempt failed ($LASTEXITCODE)."
     Start-Sleep -Seconds (15 * $attempt)
 }
 if (-not $refreshed) {

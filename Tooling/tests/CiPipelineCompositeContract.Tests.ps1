@@ -103,6 +103,16 @@ Describe 'CI pipeline composite contract' {
         $script:vipBuilderContent | Should -Not -Match 'package-list-refresh'
     }
 
+    It 'activates VIPM before refreshing without embedding credentials in Docker arguments' {
+        foreach ($secretName in @('VIPM_SERIAL_NUMBER', 'VIPM_FULL_NAME', 'VIPM_EMAIL')) {
+            $script:content | Should -Match "$secretName`:"
+            $script:vipContent | Should -Match "'--env', '$secretName'"
+        }
+        $script:vipBuilderContent | Should -Match 'activate --serial-number .*--name .*--email'
+        $script:vipBuilderContent.IndexOf('$vipmPath activate') | Should -BeLessThan $script:vipBuilderContent.IndexOf('$vipmPath refresh')
+        $script:vipContent | Should -Match 'VIPM_NONINTERACTIVE=1'
+    }
+
     It 'pipeline-contract waits for all build jobs' {
         $script:content | Should -Match 'build-lvlibp-linux-container'
         $script:content | Should -Match 'build-lvlibp-windows-container'
