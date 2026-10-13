@@ -103,7 +103,7 @@ jobs:
           log_level: DEBUG
 
       - name: Setup VIPM
-        uses: ni/open-source/setup-lunit@v1
+        uses: ni/open-source/setup-lunit@actions
         with:
           lv_version: ${{ env.LV_YEAR }}
           lv_bitness: '64'
