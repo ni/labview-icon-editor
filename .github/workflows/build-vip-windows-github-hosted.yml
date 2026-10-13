@@ -1,6 +1,9 @@
 name: Build VIP on GitHub-hosted Windows
 
 on:
+  push:
+    branches:
+      - users/amrutha/vip-hosted-windows
   workflow_dispatch:
     inputs:
       labview_version:
@@ -36,9 +39,9 @@ jobs:
         id: resolve
         shell: pwsh
         env:
-          LABVIEW_VERSION_INPUT: ${{ inputs.labview_version }}
-          LABVIEW_ISO_URL_INPUT: ${{ inputs.labview_iso_url }}
-          PACKAGE_ID_INPUT: ${{ inputs.package_id }}
+          LABVIEW_VERSION_INPUT: ${{ inputs.labview_version || vars.LABVIEW_VERSION || '2026q1' }}
+          LABVIEW_ISO_URL_INPUT: ${{ inputs.labview_iso_url || vars.LABVIEW_64_ISO_URL }}
+          PACKAGE_ID_INPUT: ${{ inputs.package_id || vars.LABVIEW_64_PACKAGE_ID }}
         run: |
           $ErrorActionPreference = 'Stop'
           if ($env:LABVIEW_VERSION_INPUT -notmatch '^(?<year>\d{4})q(?<quarter>[13])$') {
@@ -87,8 +90,8 @@ jobs:
       - name: Setup LabVIEW
         uses: ni/open-source/setup-labview@actions
         with:
-          labview_iso_url: ${{ inputs.labview_iso_url }}
-          package_id: ${{ inputs.package_id }}
+          labview_iso_url: ${{ env.ISO_URL }}
+          package_id: ${{ env.PACKAGE_ID }}
           serial_number: ${{ secrets.LABVIEW_SERIAL_NUMBER }}
           timeout_seconds: 3600
           log_level: DEBUG
