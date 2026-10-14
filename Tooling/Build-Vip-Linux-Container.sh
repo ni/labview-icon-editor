@@ -167,12 +167,26 @@ if [[ ! -f "$manifest" ]]; then
     echo "Dependency manifest not found: $manifest" >&2
     exit 1
 fi
-# TOML lets VIPM target 2026 despite the legacy 2020 requirement embedded in the VIPC.
-if ! run_logged vipm-dependencies 1800 vipm install "$manifest" --labview-version "$LV_YEAR" --labview-bitness 64 --verbose; then
+linux_manifest="$LOG_DIR/runner_dependencies.linux.toml"
+optional_log="$LOG_DIR/vipm-optional-dependencies.log"
+: > "$optional_log"
+# Direct vipm build does not use the G-CLI VIPB/VIPC plugins or their VIPM API dependency.
+for package in jki_lib_vipm_api sas_workshops_lib_vipb_builder_for_g_cli sas_workshops_lib_vipc_applier_for_g_cli; do
+    if grep -Eq "^${package}[[:space:]]*=" "$manifest"; then
+        printf 'WARNING: Skipping %s in the Linux POC; it is not needed by direct vipm build.\n' "$package" | tee -a "$optional_log"
+    fi
+done
+awk '
+    /^(jki_lib_vipm_api|sas_workshops_lib_vipb_builder_for_g_cli|sas_workshops_lib_vipc_applier_for_g_cli)[[:space:]]*=/ { next }
+    { print }
+' "$manifest" > "$linux_manifest"
+
+# TOML lets VIPM target 2026 despite the legacy 2020 minimum and failing VIPC route.
+if ! run_logged vipm-dependencies 1800 vipm install "$linux_manifest" --labview-version "$LV_YEAR" --labview-bitness 64 --verbose; then
     echo 'Dependency install failed or timed out. Capturing diagnostics, then retrying once.' >&2
     collect_diagnostics 'dependency-install-first-attempt'
     sleep 30
-    run_logged vipm-dependencies-retry 1800 vipm install "$manifest" --labview-version "$LV_YEAR" --labview-bitness 64 --verbose
+    run_logged vipm-dependencies-retry 1800 vipm install "$linux_manifest" --labview-version "$LV_YEAR" --labview-bitness 64 --verbose
 fi
 
 vipb_source="$WORKSPACE/Tooling/deployment/NI Icon editor.vipb"
