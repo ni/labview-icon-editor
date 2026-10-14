@@ -1,0 +1,135 @@
+name: Build VIP with NI LabVIEW Linux Container
+
+on:
+  push:
+    branches:
+      - users/amrutha/linux-vipm-ci
+  workflow_dispatch:
+    inputs:
+      labview_version:
+        description: LabVIEW Docker image version
+        required: true
+        default: 2026q1
+        type: string
+  workflow_call:
+    inputs:
+      labview_version:
+        description: LabVIEW Docker image version
+        required: false
+        default: 2026q1
+        type: string
+    secrets:
+      VIPM_SERIAL_NUMBER:
+        required: true
+      VIPM_FULL_NAME:
+        required: true
+      VIPM_EMAIL:
+        required: true
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  # Reuse the existing PPL builder; VIP packaging consumes its artifact and version outputs.
+  build-ppl:
+    name: Build PPL with existing Linux workflow
+    uses: ./.github/workflows/build-lvlibp-linux-container.yml
+    with:
+      labview_version: ${{ inputs.labview_version || '2026q1' }}
+
+  build-vip:
+    name: Build VIP in NI LabVIEW Linux container
+    needs: build-ppl
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Download PPL artifact from this run
+        uses: actions/download-artifact@v6
+        with:
+          pattern: lv_icon_x64_v${{ needs.build-ppl.outputs.major }}.${{ needs.build-ppl.outputs.minor }}.${{ needs.build-ppl.outputs.patch }}.${{ needs.build-ppl.outputs.build }}_${{ needs.build-ppl.outputs.labview_version }}-linux
+          path: ${{ runner.temp }}/ppl-artifact
+          merge-multiple: true
+
+      - name: Stage x64 PPL for VIPB
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $pplRoot = Join-Path $env:RUNNER_TEMP 'ppl-artifact'
+          $pplFiles = @(Get-ChildItem -Path $pplRoot -Filter '*.lvlibp' -File -Recurse)
+          if ($pplFiles.Count -ne 1) {
+            throw "Expected one PPL from the existing Linux build; found $($pplFiles.Count)."
+          }
+
+          $buildDirectory = Join-Path $env:GITHUB_WORKSPACE 'builds'
+          New-Item -ItemType Directory -Path $buildDirectory -Force | Out-Null
+          Copy-Item -LiteralPath $pplFiles[0].FullName -Destination (Join-Path $buildDirectory 'lv_icon_x64.lvlibp') -Force
+
+      - name: Build VIP in the NI container
+        shell: bash
+        env:
+          LABVIEW_VERSION: ${{ needs.build-ppl.outputs.labview_version }}
+          PACKAGE_MAJOR: ${{ needs.build-ppl.outputs.major }}
+          PACKAGE_MINOR: ${{ needs.build-ppl.outputs.minor }}
+          PACKAGE_PATCH: ${{ needs.build-ppl.outputs.patch }}
+          PACKAGE_BUILD: ${{ needs.build-ppl.outputs.build }}
+          VIPM_SERIAL_NUMBER: ${{ secrets.VIPM_SERIAL_NUMBER }}
+          VIPM_FULL_NAME: ${{ secrets.VIPM_FULL_NAME }}
+          VIPM_EMAIL: ${{ secrets.VIPM_EMAIL }}
+        run: |
+          set -euo pipefail
+          image="nationalinstruments/labview:${LABVIEW_VERSION}-linux"
+          docker pull "$image"
+          docker run --rm \
+            --mount "type=bind,source=${GITHUB_WORKSPACE},target=/workspace" \
+            --workdir /workspace \
+            --env LABVIEW_VERSION \
+            --env PACKAGE_MAJOR \
+            --env PACKAGE_MINOR \
+            --env PACKAGE_PATCH \
+            --env PACKAGE_BUILD \
+            --env VIPM_SERIAL_NUMBER \
+            --env VIPM_FULL_NAME \
+            --env VIPM_EMAIL \
+            "$image" \
+            bash /workspace/Tooling/Build-Vip-Linux-Container.sh
+
+      - name: Upload built VIP
+        if: success()
+        uses: actions/upload-artifact@v6
+        with:
+          name: linux-vip-${{ needs.build-ppl.outputs.major }}.${{ needs.build-ppl.outputs.minor }}.${{ needs.build-ppl.outputs.patch }}.${{ needs.build-ppl.outputs.build }}
+          path: builds/VI Package/*.vip
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload dependency diagnostics
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: linux-vip-dependency-logs-${{ github.run_id }}
+          path: |
+            builds/logs/linux-vip/apt-*.log
+            builds/logs/linux-vip/vipm-*.log
+            builds/logs/linux-vip/xvfb.log
+            builds/logs/linux-vip/vipm-desktop-logs/**
+            builds/logs/linux-vip/diagnostics.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload VIP build logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: linux-vip-build-logs-${{ github.run_id }}
+          path: |
+            builds/logs/linux-vip/vipb-preparation.log
+            builds/logs/linux-vip/vipm-build.log
+          if-no-files-found: warn
+          retention-days: 14
