@@ -75,10 +75,6 @@ jobs:
         shell: bash
         env:
           LABVIEW_VERSION: ${{ needs.build-ppl.outputs.labview_version }}
-          PACKAGE_MAJOR: ${{ needs.build-ppl.outputs.major }}
-          PACKAGE_MINOR: ${{ needs.build-ppl.outputs.minor }}
-          PACKAGE_PATCH: ${{ needs.build-ppl.outputs.patch }}
-          PACKAGE_BUILD: ${{ needs.build-ppl.outputs.build }}
           VIPM_SERIAL_NUMBER: ${{ secrets.VIPM_SERIAL_NUMBER }}
           VIPM_FULL_NAME: ${{ secrets.VIPM_FULL_NAME }}
           VIPM_EMAIL: ${{ secrets.VIPM_EMAIL }}
@@ -90,21 +86,30 @@ jobs:
             --mount "type=bind,source=${GITHUB_WORKSPACE},target=/workspace" \
             --workdir /workspace \
             --env LABVIEW_VERSION \
-            --env PACKAGE_MAJOR \
-            --env PACKAGE_MINOR \
-            --env PACKAGE_PATCH \
-            --env PACKAGE_BUILD \
             --env VIPM_SERIAL_NUMBER \
             --env VIPM_FULL_NAME \
             --env VIPM_EMAIL \
             "$image" \
             bash /workspace/Tooling/Build-Vip-Linux-Container.sh
 
+      - name: Read version from prepared VIPB
+        id: vip-version
+        if: success()
+        shell: pwsh
+        run: |
+          $vipbPath = Join-Path $env:GITHUB_WORKSPACE 'Tooling/deployment/NI Icon editor.linux.ci.vipb'
+          [xml]$vipb = Get-Content -LiteralPath $vipbPath -Raw
+          $packageVersion = $vipb.SelectSingleNode('/VI_Package_Builder_Settings/Library_General_Settings/Library_Version').InnerText
+          if ($packageVersion -notmatch '^\d+\.\d+\.\d+\.\d+$') {
+            throw "Unexpected VIPB package version '$packageVersion'."
+          }
+          "package_version=$packageVersion" >> $env:GITHUB_OUTPUT
+
       - name: Upload built VIP
         if: success()
         uses: actions/upload-artifact@v6
         with:
-          name: linux-vip-${{ needs.build-ppl.outputs.major }}.${{ needs.build-ppl.outputs.minor }}.${{ needs.build-ppl.outputs.patch }}.${{ needs.build-ppl.outputs.build }}
+          name: linux-vip-${{ steps.vip-version.outputs.package_version }}
           path: builds/VI Package/*.vip
           if-no-files-found: error
           retention-days: 7

@@ -90,7 +90,7 @@ if [[ "$(id -u)" -ne 0 ]]; then
     echo 'The NI container helper must run as root to install VIPM.' >&2
     exit 1
 fi
-for name in LABVIEW_VERSION PACKAGE_MAJOR PACKAGE_MINOR PACKAGE_PATCH PACKAGE_BUILD VIPM_SERIAL_NUMBER VIPM_FULL_NAME VIPM_EMAIL; do
+for name in LABVIEW_VERSION VIPM_SERIAL_NUMBER VIPM_FULL_NAME VIPM_EMAIL; do
     if [[ -z "${!name:-}" ]]; then
         echo "Required environment variable $name is missing." >&2
         exit 1
@@ -157,37 +157,7 @@ if (( activation_status != 0 )); then
     exit "$activation_status"
 fi
 
-if ! run_logged vipm-refresh 900 vipm refresh --verbose; then
-    echo 'VIPM refresh failed; retrying once after a short delay.' >&2
-    sleep 30
-    run_logged vipm-refresh-retry 900 vipm refresh --verbose
-fi
-manifest="$WORKSPACE/.github/actions/apply-vipc/runner_dependencies.toml"
-if [[ ! -f "$manifest" ]]; then
-    echo "Dependency manifest not found: $manifest" >&2
-    exit 1
-fi
-linux_manifest="$LOG_DIR/runner_dependencies.linux.toml"
-optional_log="$LOG_DIR/vipm-optional-dependencies.log"
-: > "$optional_log"
-# Direct vipm build does not use the G-CLI VIPB/VIPC plugins or their VIPM API dependency.
-for package in jki_lib_vipm_api sas_workshops_lib_vipb_builder_for_g_cli sas_workshops_lib_vipc_applier_for_g_cli; do
-    if grep -Eq "^${package}[[:space:]]*=" "$manifest"; then
-        printf 'WARNING: Skipping %s in the Linux POC; it is not needed by direct vipm build.\n' "$package" | tee -a "$optional_log"
-    fi
-done
-awk '
-    /^(jki_lib_vipm_api|sas_workshops_lib_vipb_builder_for_g_cli|sas_workshops_lib_vipc_applier_for_g_cli)[[:space:]]*=/ { next }
-    { print }
-' "$manifest" > "$linux_manifest"
-
-# TOML lets VIPM target 2026 despite the legacy 2020 minimum and failing VIPC route.
-if ! run_logged vipm-dependencies 1800 vipm install "$linux_manifest" --labview-version "$LV_YEAR" --labview-bitness 64 --verbose; then
-    echo 'Dependency install failed or timed out. Capturing diagnostics, then retrying once.' >&2
-    collect_diagnostics 'dependency-install-first-attempt'
-    sleep 30
-    run_logged vipm-dependencies-retry 1800 vipm install "$linux_manifest" --labview-version "$LV_YEAR" --labview-bitness 64 --verbose
-fi
+# Dependency installation is temporarily bypassed to isolate VIPB packaging.
 
 vipb_source="$WORKSPACE/Tooling/deployment/NI Icon editor.vipb"
 ci_vipb="$WORKSPACE/Tooling/deployment/NI Icon editor.ci.vipb"
@@ -195,13 +165,13 @@ if [[ -f "$ci_vipb" ]]; then vipb_source="$ci_vipb"; fi
 vipb_output="$WORKSPACE/Tooling/deployment/NI Icon editor.linux.ci.vipb"
 # Prepare a temporary Linux VIPB so the tracked Windows package definition stays unchanged.
 vipb_log="$LOG_DIR/vipb-preparation.log"
-if ! python3 - "$vipb_source" "$vipb_output" "$WORKSPACE" "$LV_NUMERIC_VERSION" "$PACKAGE_MAJOR" "$PACKAGE_MINOR" "$PACKAGE_PATCH" "$PACKAGE_BUILD" > "$vipb_log" 2>&1 <<'PY'
+if ! python3 - "$vipb_source" "$vipb_output" "$WORKSPACE" "$LV_NUMERIC_VERSION" > "$vipb_log" 2>&1 <<'PY'
 import os
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-source, output, workspace, labview_version, major, minor, patch, build = sys.argv[1:]
+source, output, workspace, labview_version = sys.argv[1:]
 source = Path(source)
 output = Path(output)
 if not source.is_file():
@@ -219,7 +189,9 @@ def require_node(parent, path):
 general = require_node(root, "Library_General_Settings")
 require_node(general, "Library_Source_Folder").text = workspace
 require_node(general, "Library_Output_Folder").text = os.path.join(workspace, "builds", "VI Package")
-require_node(general, "Library_Version").text = ".".join((major, minor, patch, build))
+package_version = require_node(general, "Library_Version").text
+if not package_version:
+    raise ValueError("VIPB Library_Version is empty")
 require_node(general, "Package_LabVIEW_Version").text = f"{labview_version} (64-bit)"
 install_requirements = require_node(root, "Advanced_Settings/Install_Requirements")
 require_node(install_requirements, "LV_32-Bit").text = "false"
@@ -250,6 +222,7 @@ output.parent.mkdir(parents=True, exist_ok=True)
 ET.indent(tree, space="  ")
 tree.write(output, encoding="utf-8", xml_declaration=True)
 print(f"Prepared temporary VIPB: {output}")
+print(f"Package version from VIPB: {package_version}")
 print(f"LabVIEW target: {labview_version} (64-bit)")
 PY
 then
