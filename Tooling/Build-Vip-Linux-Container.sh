@@ -225,7 +225,7 @@ install_requirements = require_node(root, "Advanced_Settings/Install_Requirement
 require_node(install_requirements, "LV_32-Bit").text = "false"
 require_node(install_requirements, "LV_64-Bit").text = "true"
 
-source_files = root.find("Source_Files")
+source_files = root.find("Advanced_Settings/Source_Files")
 if source_files is None:
     raise ValueError("VIPB XML node is missing: Source_Files")
 selected_ppl = "builds/lv_icon_x64.lvlibp"
