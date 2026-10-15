@@ -1,0 +1,41 @@
+name: Generate SBOM
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: '0 10 * * 6'
+
+jobs:
+  version:
+    name: Resolve Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - id: version
+        name: Get version from latest tag
+        shell: pwsh
+        run: |
+          $tag = git tag -l "v*.*.*" --sort=-version:refname | Select-Object -First 1
+          $version = if ($tag) { ($tag -replace '^v', '') -replace '-.*$', '' } else { '0.0.0' }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+  sbom:
+    name: Generate SBOM
+    needs: version
+    uses: ni/open-source/.github/workflows/reusable-generate-sbom.yml@actions
+    with:
+      lvproj_path: lv_icon_editor.lvproj
+      labview_version: '2026q1'
+      labview_bitness: '64'
+      build_spec_name: Editor Packed Library
+      product_name: labview-icon-editor
+      product_version: ${{ needs.version.outputs.version }}
+      output_path: builds/sbom/labview-icon-editor.cdx.json
+      artifact_name: sbom
