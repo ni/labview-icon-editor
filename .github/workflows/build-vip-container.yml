@@ -1,0 +1,44 @@
+name: Build VIP with shared ni/open-source workflow
+
+on:
+  push:
+    branches:
+      - users/amrutha/linux-vip-shared-workflow
+  workflow_dispatch:
+    inputs:
+      labview_version:
+        description: LabVIEW Docker image version
+        required: true
+        default: 2026q1
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  build-ppl:
+    name: Build PPL with existing Linux workflow
+    uses: ./.github/workflows/build-lvlibp-linux-container.yml
+    with:
+      labview_version: ${{ inputs.labview_version || '2026q1' }}
+
+  build-vip:
+    name: Build VIP with shared workflow
+    needs: build-ppl
+    # TODO: switch to @actions once ni/open-source merges build-vip-docker-linux.
+    uses: ni/open-source/.github/workflows/reusable-build-vip-linux.yml@users/amrutha/build-vip-docker-linux
+    with:
+      labview_version: ${{ needs.build-ppl.outputs.labview_version }}
+      download_artifact_pattern: lv_icon_x64_v${{ needs.build-ppl.outputs.major }}.${{ needs.build-ppl.outputs.minor }}.${{ needs.build-ppl.outputs.patch }}.${{ needs.build-ppl.outputs.build }}_${{ needs.build-ppl.outputs.labview_version }}-linux
+      download_path: builds/ppl-artifact
+      pre_build_script: Tooling/Prepare-Vip-Container.sh
+      vipb_path: Tooling/deployment/NI Icon editor.linux.shared.vipb
+      output_directory: builds/VI Package
+      log_directory: builds/logs/linux-vip-shared
+      vip_artifact_name: linux-vip-shared-${{ github.run_id }}
+      logs_artifact_name: linux-vip-shared-logs-${{ github.run_id }}
+    secrets:
+      VIPM_SERIAL_NUMBER: ${{ secrets.VIPM_SERIAL_NUMBER }}
+      VIPM_FULL_NAME: ${{ secrets.VIPM_FULL_NAME }}
+      VIPM_EMAIL: ${{ secrets.VIPM_EMAIL }}
