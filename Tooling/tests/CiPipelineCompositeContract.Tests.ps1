@@ -38,7 +38,8 @@ Describe 'CI pipeline composite contract' {
             './.github/actions/vi-analyzer-ci',
             './.github/workflows/build-lvlibp-linux-container.yml',
             './.github/workflows/build-lvlibp-windows-container.yml',
-            './.github/workflows/build-lvlibp-windows-github-hosted.yml'
+            './.github/workflows/build-lvlibp-windows-github-hosted.yml',
+            './.github/workflows/generate-sbom.yml'
         )
 
         $usesMatches = [regex]::Matches($script:content, '(?m)^\s*(?:-\s*)?uses:\s*(?<value>.+?)\s*$')
@@ -57,6 +58,17 @@ Describe 'CI pipeline composite contract' {
         $usesValues | Should -Contain './.github/workflows/build-lvlibp-linux-container.yml'
         $usesValues | Should -Contain './.github/workflows/build-lvlibp-windows-container.yml'
         $usesValues | Should -Contain './.github/workflows/build-lvlibp-windows-github-hosted.yml'
+    }
+
+    It 'generates the SBOM as a required CI job' {
+        $sbomBlock = [regex]::Match($script:content, '(?ms)^  sbom:.*?(?=^  [\w-]+:|\z)').Value
+        $sbomBlock | Should -Match 'uses:\s*\./\.github/workflows/generate-sbom\.yml'
+        $sbomBlock | Should -Not -Match '(?m)^\s+if:'
+
+        $contractBlock = [regex]::Match($script:content, '(?ms)^  pipeline-contract:.*?(?=^  [\w-]+:|\z)').Value
+        $contractBlock | Should -Match 'needs:\s*\[[^\]]*\bsbom\b'
+        $contractBlock | Should -Match 'SBOM_RESULT:\s*\$\{\{ needs\.sbom\.result \}\}'
+        $contractBlock | Should -Match "'sbom' = \`$env:SBOM_RESULT"
     }
 
     It 'build jobs depend on run-metadata and version-gate' {
