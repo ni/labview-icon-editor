@@ -32,13 +32,23 @@ Describe 'CI pipeline composite contract' {
         $windowsContainerBlock | Should -Not -Match "github.event_name != 'pull_request'" -Because 'windows container job must run on PRs too'
     }
 
-    It 'uses only official actions, local composites, and local reusable workflows' {
+    It 'vip build job runs only on push (PR merge) after the Linux PPL build' {
+        $vipBlock = [regex]::Match($script:content, '(?s)build-vip-linux-container:.*?(?=\n  \w|\z)').Value
+
+        $vipBlock | Should -Match "if:\s*github.event_name == 'push'" -Because 'VIP build needs VIPM secrets, which only exist on merge runs'
+        $vipBlock | Should -Match 'needs:\s*build-lvlibp-linux-container'
+        $vipBlock | Should -Match 'uses:\s*ni/open-source/\.github/workflows/reusable-build-vip-linux\.yml@actions'
+        $script:content | Should -Match "vipResult -notin @\('success', 'skipped'\)"
+    }
+
+    It 'uses only official actions, local composites, and approved reusable workflows' {
         $allowedLocal = @(
             './.github/actions/pylavi-ci',
             './.github/actions/vi-analyzer-ci',
             './.github/workflows/build-lvlibp-linux-container.yml',
             './.github/workflows/build-lvlibp-windows-container.yml',
-            './.github/workflows/build-lvlibp-windows-github-hosted.yml'
+            './.github/workflows/build-lvlibp-windows-github-hosted.yml',
+            'ni/open-source/.github/workflows/reusable-build-vip-linux.yml@actions'
         )
 
         $usesMatches = [regex]::Matches($script:content, '(?m)^\s*(?:-\s*)?uses:\s*(?<value>.+?)\s*$')

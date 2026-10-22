@@ -15,11 +15,34 @@ on:
         required: false
         default: '2026q1'
         type: string
+    outputs:
+      labview_version:
+        description: Resolved LabVIEW release
+        value: ${{ jobs.build-lvlibp.outputs.labview_version }}
+      major:
+        description: Resolved package major version
+        value: ${{ jobs.build-lvlibp.outputs.major }}
+      minor:
+        description: Resolved package minor version
+        value: ${{ jobs.build-lvlibp.outputs.minor }}
+      patch:
+        description: Resolved package patch version
+        value: ${{ jobs.build-lvlibp.outputs.patch }}
+      build:
+        description: Resolved package build version
+        value: ${{ jobs.build-lvlibp.outputs.build }}
 
 jobs:
   build-lvlibp:
     name: Build LabVIEW Packed Library (Linux)
     runs-on: ubuntu-latest
+    # Export this job's existing resolution so downstream packaging does not recompute it.
+    outputs:
+      labview_version: ${{ steps.resolve.outputs.labview_version }}
+      major: ${{ steps.version.outputs.major }}
+      minor: ${{ steps.version.outputs.minor }}
+      patch: ${{ steps.version.outputs.patch }}
+      build: ${{ steps.version.outputs.build }}
 
     steps:
       - name: Checkout code
@@ -29,6 +52,7 @@ jobs:
           fetch-tags: true
 
       - name: Validate LabVIEW Version for Docker
+        id: resolve
         shell: pwsh
         run: |
           $lvVersion = if ('${{ inputs.labview_version }}') { 
@@ -71,6 +95,7 @@ jobs:
           
           Write-Host "LabVIEW version $lvVersion is supported for Linux Docker builds"
           echo "LV_VERSION=$lvVersion" >> $env:GITHUB_ENV
+          "labview_version=$lvVersion" >> $env:GITHUB_OUTPUT
 
           if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_STEP_SUMMARY)) {
             @(
