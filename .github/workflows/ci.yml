@@ -15,8 +15,6 @@ concurrency:
 on:
   push:
     branches:
-      # TEMP: remove before merge.
-      - users/amrutha/ci-vip-on-merge
       - main
       - releases/*
       - feature/*
