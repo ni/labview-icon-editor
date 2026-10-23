@@ -8,7 +8,7 @@ set -Eeuo pipefail
 ppl_dir="$WORKSPACE/builds/ppl-artifact"
 ppl_dest="$WORKSPACE/builds/lv_icon_x64.lvlibp"
 deploy_dir="$WORKSPACE/Tooling/deployment"
-out_vipb="$deploy_dir/NI Icon editor.linux.shared.vipb"
+out_vipb="$deploy_dir/icon_editor.vipb"
 
 if [[ ! -d "$ppl_dir" ]]; then
   echo "ERROR: PPL artifact directory not found: $ppl_dir" >&2

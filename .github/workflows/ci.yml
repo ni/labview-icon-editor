@@ -203,11 +203,11 @@ jobs:
       download_artifact_pattern: lv_icon_x64_v${{ needs.build-lvlibp-linux-container.outputs.major }}.${{ needs.build-lvlibp-linux-container.outputs.minor }}.${{ needs.build-lvlibp-linux-container.outputs.patch }}.${{ needs.build-lvlibp-linux-container.outputs.build }}_${{ needs.build-lvlibp-linux-container.outputs.labview_version }}-linux
       download_path: builds/ppl-artifact
       pre_build_script: Tooling/Prepare-Vip-Container.sh
-      vipb_path: Tooling/deployment/NI Icon editor.linux.shared.vipb
+      vipb_path: Tooling/deployment/icon_editor.vipb
       output_directory: builds/VI Package
       log_directory: builds/logs/vip-linux
-      vip_artifact_name: lv_icon_vip_linux-${{ github.run_id }}
-      logs_artifact_name: lv_icon_vip_linux-logs-${{ github.run_id }}
+      vip_artifact_name: icon_editor-${{ github.run_id }}
+      logs_artifact_name: icon_editor-logs-${{ github.run_id }}
     secrets:
       VIPM_SERIAL_NUMBER: ${{ secrets.VIPM_SERIAL_NUMBER }}
       VIPM_FULL_NAME: ${{ secrets.VIPM_FULL_NAME }}
