@@ -60,15 +60,18 @@ Describe 'CI pipeline composite contract' {
         $usesValues | Should -Contain './.github/workflows/build-lvlibp-windows-github-hosted.yml'
     }
 
-    It 'generates the SBOM as a required CI job' {
+    It 'generates the SBOM only after a PR is merged' {
         $sbomBlock = [regex]::Match($script:content, '(?ms)^  sbom:.*?(?=^  [\w-]+:|\z)').Value
         $sbomBlock | Should -Match 'uses:\s*\./\.github/workflows/generate-sbom\.yml'
-        $sbomBlock | Should -Not -Match '(?m)^\s+if:'
+        $mergeCondition = "github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true"
+        $sbomBlock | Should -Match ('(?m)^    if: ' + [regex]::Escape($mergeCondition) + '\s*$')
+        $script:content | Should -Match '(?m)^      - closed\s*$'
 
         $contractBlock = [regex]::Match($script:content, '(?ms)^  pipeline-contract:.*?(?=^  [\w-]+:|\z)').Value
         $contractBlock | Should -Match 'needs:\s*\[[^\]]*\bsbom\b'
         $contractBlock | Should -Match 'SBOM_RESULT:\s*\$\{\{ needs\.sbom\.result \}\}'
-        $contractBlock | Should -Match "'sbom' = \`$env:SBOM_RESULT"
+        $contractBlock | Should -Match ('SBOM_REQUIRED: \$\{\{ ' + [regex]::Escape($mergeCondition) + ' \}\}')
+        $contractBlock | Should -Match 'if \(\$env:SBOM_REQUIRED -eq ''true''\) \{\s*\$results\[''sbom''\] = \$env:SBOM_RESULT'
     }
 
     It 'build jobs depend on run-metadata and version-gate' {

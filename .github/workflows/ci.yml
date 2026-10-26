@@ -30,6 +30,7 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+        - closed
   workflow_dispatch:
 
 jobs:
@@ -95,6 +96,7 @@ jobs:
 
   sbom:
     name: Generate SBOM
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     uses: ./.github/workflows/generate-sbom.yml
 
   pylavi-linux:
@@ -203,6 +205,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SBOM_RESULT: ${{ needs.sbom.result }}
+      SBOM_REQUIRED: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true }}
       RUN_METADATA_RESULT: ${{ needs.run-metadata.result }}
       VERSION_GATE_RESULT: ${{ needs.version-gate.result }}
       PYLAVI_RESULT: ${{ needs.pylavi-linux.result }}
@@ -219,13 +222,16 @@ jobs:
         shell: pwsh
         run: |
           $results = [ordered]@{
-            'sbom' = $env:SBOM_RESULT
             'run-metadata' = $env:RUN_METADATA_RESULT
             'version-gate' = $env:VERSION_GATE_RESULT
             'pylavi-linux' = $env:PYLAVI_RESULT
             'vi-analyzer'  = $env:VI_ANALYZER_RESULT
             'build-lvlibp-linux-container' = $env:BUILD_PPL_LINUX_CONTAINER_RESULT
             'build-lvlibp-windows-container' = $env:BUILD_PPL_WINDOWS_CONTAINER_RESULT
+          }
+
+          if ($env:SBOM_REQUIRED -eq 'true') {
+            $results['sbom'] = $env:SBOM_RESULT
           }
 
           $ghHostedResult = $env:BUILD_PPL_WINDOWS_GITHUB_HOSTED_RESULT
