@@ -30,7 +30,7 @@ on:
       - synchronize
       - reopened
       - ready_for_review
-        - closed
+      - closed
   workflow_dispatch:
 
 jobs:
