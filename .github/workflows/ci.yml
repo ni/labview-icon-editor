@@ -30,6 +30,7 @@ on:
       - synchronize
       - reopened
       - ready_for_review
+      - closed
   workflow_dispatch:
 
 jobs:
@@ -92,6 +93,11 @@ jobs:
           "year=$($info.Year)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "minor=$($info.MinorRevision)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "numeric=$($info.NumericVersion)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+  sbom:
+    name: Generate SBOM
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+    uses: ./.github/workflows/generate-sbom.yml
 
   pylavi-linux:
     name: Pylavi Linux Container
@@ -195,9 +201,11 @@ jobs:
   pipeline-contract:
     name: Pipeline Contract
     if: always()
-    needs: [run-metadata, version-gate, pylavi-linux, vi-analyzer-linux, build-lvlibp-linux-container, build-lvlibp-windows-container, build-lvlibp-windows-github-hosted]
+    needs: [run-metadata, version-gate, sbom, pylavi-linux, vi-analyzer-linux, build-lvlibp-linux-container, build-lvlibp-windows-container, build-lvlibp-windows-github-hosted]
     runs-on: ubuntu-latest
     env:
+      SBOM_RESULT: ${{ needs.sbom.result }}
+      SBOM_REQUIRED: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true }}
       RUN_METADATA_RESULT: ${{ needs.run-metadata.result }}
       VERSION_GATE_RESULT: ${{ needs.version-gate.result }}
       PYLAVI_RESULT: ${{ needs.pylavi-linux.result }}
@@ -220,6 +228,10 @@ jobs:
             'vi-analyzer'  = $env:VI_ANALYZER_RESULT
             'build-lvlibp-linux-container' = $env:BUILD_PPL_LINUX_CONTAINER_RESULT
             'build-lvlibp-windows-container' = $env:BUILD_PPL_WINDOWS_CONTAINER_RESULT
+          }
+
+          if ($env:SBOM_REQUIRED -eq 'true') {
+            $results['sbom'] = $env:SBOM_RESULT
           }
 
           $ghHostedResult = $env:BUILD_PPL_WINDOWS_GITHUB_HOSTED_RESULT
