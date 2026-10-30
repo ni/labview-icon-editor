@@ -1,7 +1,7 @@
-<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2026-03-04 23:00:05" Creator="svelderr" Comments="" ID="5e84ae1567626dcfc753d4a47058ee34">
+<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2026-10-30 10:34:57" Creator="svelderr" Comments="" ID="e784bb2282988379eb736b9786aebdc1">
   <Library_General_Settings>
     <Package_File_Name>NI_Icon_editor</Package_File_Name>
-    <Library_Version>2.0.0.4</Library_Version>
+    <Library_Version>27.1.0.3</Library_Version>
     <Auto_Increment_Version>false</Auto_Increment_Version>
     <Library_Source_Folder>..\..</Library_Source_Folder>
     <Library_Output_Folder>..\..\builds\VI Package</Library_Output_Folder>
@@ -14,6 +14,8 @@
     <Product_Name>NI Icon editor</Product_Name>
     <Was_Built>true</Was_Built>
     <Target>LabVIEW</Target>
+    <Package_LabVIEW_Save_Version>false</Package_LabVIEW_Save_Version>
+    <LabVIEW_Save_Version/>
   </Library_General_Settings>
   <Advanced_Settings>
     <Package_Dependencies/>
