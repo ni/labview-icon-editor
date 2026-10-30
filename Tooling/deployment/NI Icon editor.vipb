@@ -1,7 +1,7 @@
-<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2026-10-30 10:34:57" Creator="svelderr" Comments="" ID="e784bb2282988379eb736b9786aebdc1">
+<VI_Package_Builder_Settings Version="2020.1" Created_Date="2024-11-13 13:58:09" Modified_Date="2026-10-30 11:18:13" Creator="svelderr" Comments="" ID="b9813a336c97d4bb4d87e8bcf19e23c1">
   <Library_General_Settings>
     <Package_File_Name>NI_Icon_editor</Package_File_Name>
-    <Library_Version>27.1.0.3</Library_Version>
+    <Library_Version>27.1.0.4</Library_Version>
     <Auto_Increment_Version>false</Auto_Increment_Version>
     <Library_Source_Folder>..\..</Library_Source_Folder>
     <Library_Output_Folder>..\..\builds\VI Package</Library_Output_Folder>
