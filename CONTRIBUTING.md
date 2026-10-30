@@ -315,12 +315,13 @@ The repository uses GitHub Actions for continuous integration. CI is orchestrate
 | `build-lvlibp-linux-container.yml` | Builds LVLIBP in a Linux LabVIEW Docker container |
 | `build-lvlibp-windows-container.yml` | Builds LVLIBP in a Windows container |
 | `build-lvlibp-windows-github-hosted.yml` | Builds LVLIBP on GitHub-hosted Windows runners |
+| `ni/open-source` `reusable-build-vip-linux.yml@actions` | Builds the `.vip` in a Linux LabVIEW container (called from `ci.yml`) |
 | `Delete Old Workflow Runs.yml` | Cleanup old CI runs |
 | `refresh-readme.yml` | Updates coding hours badge |
 
 **Key CI behaviors:**
 
-- CI builds a `.vip` artifact for every PR — download it to test changes
+- CI builds the `.vip` artifact only on push (after a PR is merged), since it needs VIPM secrets; PR runs show the VIP job as skipped
 - The **issue-status gate** checks that the linked issue is marked `In Progress` — CI jobs skip if this gate fails
 - PRs require exactly **one release label** (`major`, `minor`, or `patch`) — CI fails without it
 - External contributors **do not need** their own LabVIEW runner — CI handles building on NI's self-hosted runners
