@@ -120,7 +120,24 @@ Both `build-ppl` and `build-vi-package` run a `close-labview` step after their b
 
 The `build-ppl` job uses a matrix to produce both bitnesses rather than distinct jobs.
 
-*(The **Run Unit Tests** workflow has been consolidated into the main CI process.)*
+LUnit tests run in [`ci.yml`](../.github/workflows/ci.yml) as the required `lunit-windows-container` job, calling [`lunit-windows-container-tests.yml`](../.github/workflows/lunit-windows-container-tests.yml). The `windows-2022` job pulls a repository-owned GHCR dependency image tagged with a SHA-256 hash of the Dockerfile and build/setup scripts. On a cache miss it builds the image from `nationalinstruments/labview:2026q1-windows`. Successful builds on non-PR events are published for subsequent runs; PRs build locally if necessary but never publish. Make the GHCR package public for cross-fork reuse; the workflow uses only `GITHUB_TOKEN` for registry access, not VIPM activation secrets.
+
+[`Build-LUnitWindowsImage.ps1`](../Tooling/Build-LUnitWindowsImage.ps1) stages only the setup script and Dockerfile, never the checkout's `.git` or credentials. **VIPM is not used**: its installs repeatedly stalled or failed in Windows containers (refresh/lookup failures, "Not inside a Git repository" for local files, and `wait for VIPM startup` timeouts). Instead, [`lunit-windows.Dockerfile`](../Tooling/containers/lunit-windows.Dockerfile) runs the helper's `Setup` stage, which downloads the pinned public JKI packages (`astemes_lib_lunit` 2.0.13.6 and `astemes_lib_lunit_cli` 1.7.1.32) over HTTPS, checks ZIP signatures and publisher MD5 checksums, extracts them, and copies each package's `File Group 0\vi.lib\Astemes\<package>` tree into LabVIEW's `vi.lib\Astemes`. This is the method that executed all ten tests in a manually prepared container.
+
+This is a CLI-only deployment, not a full VIPM install: package post-install actions (palette menus, global LabVIEW CLI operation registration) are skipped, so the test stage passes `-AdditionalOperationDirectory` pointing at `vi.lib\Astemes\LUnit CLI`. Download, checksum, or missing-folder failures (including a missing `LUnitCLI\RunOperation.vi`) fail the image build. The dependency manifest records the install method, package names, versions, and checksums, plus the LabVIEW file version.
+
+The test container reads that manifest, opens `lv_icon_editor.lvproj`, and runs native `LabVIEWCLI -OperationName LUnit`. LabVIEWCLI can exit 0 even when a test fails, so the workflow validates the JUnit report: it must contain at least 10 non-skipped tests and no failures or errors. **Temporary exception:** `Library Icon Data::Test Write Read Library Icon Data.vi` is allowed to fail only when its single assertion failure is the `NI.Lib.VIIconTemplate` vs `NI_IconEditor` tag mismatch. In headless CLI runs, a plain `Library:Save` does not rename the tag. When this happens, the workflow emits a warning. Any other failure, including a different failure in that same test, still fails the job. Remove the exception once the save behaviour is resolved. Failing tests and their messages are written to the job summary; reports, manifest, and logs are uploaded as `lunit-windows-results-*`. An image build is not proof of passing tests; verify an actual workflow run.
+
+Local image build (Windows Docker engine required; CI builds it automatically):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\Tooling\Build-LUnitWindowsImage.ps1 `
+  -Image lvie-lunit-windows:local
+```
+
+If the local `nat` network cannot resolve public hosts, pass `-Network 'Default Switch'` only when that existing Docker network has been verified to work. No global Docker DNS settings are changed.
+
+The Windows workflow supports `workflow_dispatch` as well as `workflow_call`. Passing tests in the Windows desktop UI does not establish that they pass in a headless Windows container; verify the Windows workflow run before merging.
 
 ---
 

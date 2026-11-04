@@ -172,6 +172,14 @@ jobs:
           name: vi-analyzer-status
           path: ${{ steps.vi.outputs.status_path }}
           if-no-files-found: error
+
+  lunit-windows-container:
+    name: LUnit Tests (Windows Container)
+    needs: [run-metadata, version-gate]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/lunit-windows-container-tests.yml
   
   build-lvlibp-linux-container:
     name: Build lv_icon PPL using 2026q1 LabVIEW x64 (Linux Container)
@@ -222,7 +230,7 @@ jobs:
   pipeline-contract:
     name: Pipeline Contract
     if: always()
-    needs: [run-metadata, version-gate, sbom, pylavi-linux, vi-analyzer-linux, build-lvlibp-linux-container, build-lvlibp-windows-container, build-lvlibp-windows-github-hosted, build-vip-linux-container]
+    needs: [run-metadata, version-gate, sbom, pylavi-linux, vi-analyzer-linux, lunit-windows-container, build-lvlibp-linux-container, build-lvlibp-windows-container, build-lvlibp-windows-github-hosted, build-vip-linux-container]
     runs-on: ubuntu-latest
     env:
       SBOM_RESULT: ${{ needs.sbom.result }}
@@ -231,6 +239,7 @@ jobs:
       VERSION_GATE_RESULT: ${{ needs.version-gate.result }}
       PYLAVI_RESULT: ${{ needs.pylavi-linux.result }}
       VI_ANALYZER_RESULT: ${{ needs.vi-analyzer-linux.result }}
+      LUNIT_RESULT: ${{ needs.lunit-windows-container.result }}
       BUILD_PPL_LINUX_CONTAINER_RESULT: ${{ needs.build-lvlibp-linux-container.result }}
       BUILD_PPL_WINDOWS_CONTAINER_RESULT: ${{ needs.build-lvlibp-windows-container.result }}
       BUILD_PPL_WINDOWS_GITHUB_HOSTED_RESULT: ${{ needs.build-lvlibp-windows-github-hosted.result }}
@@ -248,6 +257,7 @@ jobs:
             'version-gate' = $env:VERSION_GATE_RESULT
             'pylavi-linux' = $env:PYLAVI_RESULT
             'vi-analyzer'  = $env:VI_ANALYZER_RESULT
+            'lunit-windows-container' = $env:LUNIT_RESULT
             'build-lvlibp-linux-container' = $env:BUILD_PPL_LINUX_CONTAINER_RESULT
             'build-lvlibp-windows-container' = $env:BUILD_PPL_WINDOWS_CONTAINER_RESULT
           }
@@ -283,6 +293,7 @@ jobs:
         run: |
           $testFiles = @(
             'Tooling/tests/CiPipelineCompositeContract.Tests.ps1',
+            'Tooling/tests/LUnitWindowsContainerContract.Tests.ps1',
             'Tooling/tests/PylaviCompositeContract.Tests.ps1',
             'Tooling/tests/ViAnalyzerCompositeContract.Tests.ps1',
             'Tooling/tests/BuildLvlibpLinuxContainerContract.Tests.ps1',
