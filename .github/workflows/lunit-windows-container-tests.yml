@@ -97,7 +97,7 @@ jobs:
         if: always() && env.LVIE_CONTAINER_CREATED == 'true'
         run: |
           $ErrorActionPreference = 'Stop'
-          $path = "$env:GITHUB_WORKSPACE\lunit-results\lunit.xml"
+          $path = Join-Path (Join-Path $env:GITHUB_WORKSPACE 'lunit-results') 'lunit.xml'
           '## LUnit Test Diagnostics' >> $env:GITHUB_STEP_SUMMARY
           if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
             'No JUnit report was produced. Download the LUnit reports and logs artifact and check Test.log and the LabVIEW logs.' >> $env:GITHUB_STEP_SUMMARY
@@ -131,7 +131,7 @@ jobs:
       - name: Validate JUnit report and test discovery
         run: |
           $ErrorActionPreference = 'Stop'
-          $path = "$env:GITHUB_WORKSPACE\lunit-results\lunit.xml"
+          $path = Join-Path (Join-Path $env:GITHUB_WORKSPACE 'lunit-results') 'lunit.xml'
           $settings = [System.Xml.XmlReaderSettings]::new()
           $settings.DtdProcessing = [System.Xml.DtdProcessing]::Prohibit
           $settings.XmlResolver = $null

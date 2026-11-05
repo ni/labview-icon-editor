@@ -8,12 +8,15 @@ Describe 'Windows LUnit container contract' {
         $match = [regex]::Match($script:workflow, '(?ms)      - name: Validate JUnit report and test discovery\s+run: \|\r?\n(?<code>.*?)(?=      - name:)')
         if (-not $match.Success) { throw 'JUnit validation step not found.' }
         $script:validate = [scriptblock]::Create(($match.Groups['code'].Value -replace '(?m)^          ', ''))
+        $match = [regex]::Match($script:workflow, '(?ms)      - name: Summarize unit test failures\s+if: [^\r\n]+\r?\n\s+run: \|\r?\n(?<code>.*?)(?=      - name:)')
+        if (-not $match.Success) { throw 'JUnit diagnostics step not found.' }
+        $script:summarize = [scriptblock]::Create(($match.Groups['code'].Value -replace '(?m)^          ', ''))
         $script:oldWorkspace = $env:GITHUB_WORKSPACE
         $script:oldSummary = $env:GITHUB_STEP_SUMMARY
         $env:GITHUB_WORKSPACE = $TestDrive
         $env:GITHUB_STEP_SUMMARY = Join-Path $TestDrive 'summary.txt'
         New-Item -ItemType Directory -Path (Join-Path $TestDrive 'lunit-results') -Force | Out-Null
-        $script:reportPath = Join-Path $TestDrive 'lunit-results\lunit.xml'
+        $script:reportPath = [System.IO.Path]::Combine($TestDrive, 'lunit-results', 'lunit.xml')
     }
 
     Describe 'LUnit package file deployment' {
@@ -100,6 +103,7 @@ Describe 'Windows LUnit container contract' {
     }
 
     BeforeEach {
+        Set-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value ''
         $cases = (1..10 | ForEach-Object { "<testcase name='test$_'/>" }) -join ''
         "<testsuites><testsuite tests='10' failures='0'>$cases</testsuite></testsuites>" |
             Set-Content -LiteralPath $script:reportPath
@@ -144,6 +148,22 @@ Describe 'Windows LUnit container contract' {
 
     It 'accepts ten passing tests' {
         { & $script:validate } | Should -Not -Throw
+    }
+
+    It 'reads the native report path when summarizing passing tests' {
+        { & $script:summarize } | Should -Not -Throw
+        Get-Content $env:GITHUB_STEP_SUMMARY -Raw |
+            Should -Match 'No failed test cases were recorded'
+    }
+
+    It 'reads and summarizes failure details from the native report path' {
+        (Get-Content $script:reportPath -Raw).Replace("<testcase name='test10'/>",
+            "<testcase name='test10'><failure message='Assertion mismatch'>Failure details</failure></testcase>") |
+            Set-Content $script:reportPath
+        { & $script:summarize } | Should -Not -Throw
+        $summary = Get-Content $env:GITHUB_STEP_SUMMARY -Raw
+        $summary | Should -Match 'Assertion mismatch'
+        $summary | Should -Match 'Failure details'
     }
 
     It 'rejects fewer than ten executed tests' {

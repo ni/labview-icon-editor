@@ -137,7 +137,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\Tooling\Build-LUnitWindows
 
 If the local `nat` network cannot resolve public hosts, pass `-Network 'Default Switch'` only when that existing Docker network has been verified to work. No global Docker DNS settings are changed.
 
-The Windows workflow supports `workflow_dispatch` as well as `workflow_call`. Passing tests in the Windows desktop UI does not establish that they pass in a headless Windows container; verify the Windows workflow run before merging.
+The Windows workflow supports `workflow_dispatch` as well as `workflow_call`. Its JUnit diagnostics and validation scripts use platform-native report paths because the composite contract tests also execute those scripts on the Linux pipeline-contract runner. Passing tests in the Windows desktop UI does not establish that they pass in a headless Windows container; verify the Windows workflow run before merging.
 
 ---
 
