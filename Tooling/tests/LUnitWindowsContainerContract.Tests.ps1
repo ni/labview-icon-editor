@@ -114,7 +114,7 @@ Describe 'Windows LUnit container contract' {
         $env:GITHUB_STEP_SUMMARY = $script:oldSummary
     }
 
-    It 'builds and reuses a VIPM-free Windows dependency image and native LUnit CLI' {
+    It 'builds a VIPM-free Windows dependency image on every run without a registry' {
         $script:workflow | Should -Match 'runs-on: windows-2022'
         $dockerfile = Get-Content (Join-Path $repoRoot 'Tooling\containers\lunit-windows.Dockerfile') -Raw
         $dockerfile | Should -Match 'FROM nationalinstruments/labview:2026q1-windows'
@@ -123,11 +123,11 @@ Describe 'Windows LUnit container contract' {
         $dockerfile | Should -Not -Match '(?i)vipm-setup|installers/|PUBLIC_REPOSITORY_URL|VIPM_SERIAL_NUMBER|activate'
         $build = Get-Content (Join-Path $repoRoot 'Tooling\Build-LUnitWindowsImage.ps1') -Raw
         $build | Should -Not -Match '(?i)vipm|mingit|PublicRepositoryUrl'
-        $script:workflow | Should -Match 'Get-FileHash'
+        $script:workflow | Should -Match 'LABVIEW_IMAGE: lvie-lunit-windows:'
+        $script:workflow | Should -Match '- name: Build required LUnit dependency image'
         $script:workflow | Should -Match 'Build-LUnitWindowsImage.ps1 -Image \$env:LABVIEW_IMAGE'
         $script:workflow | Should -Not -Match 'PublicRepositoryUrl'
-        $script:workflow | Should -Match 'docker push'
-        $script:workflow | Should -Match "github.event_name != 'pull_request'"
+        $script:workflow | Should -Not -Match 'ghcr\.io|github\.token|GH_TOKEN|packages:|docker (login|pull|push)|LVIE_IMAGE_BUILT'
         $script:workflow | Should -Not -Match 'secrets\.VIPM_|-Stage Setup'
         $script:workflow | Should -Match '-Stage Test'
         $helper = Get-Content (Join-Path $repoRoot 'Tooling\Run-LUnitWindowsContainer.ps1') -Raw

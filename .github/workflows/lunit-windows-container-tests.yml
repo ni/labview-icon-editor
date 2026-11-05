@@ -6,10 +6,10 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 env:
   LVIE_CONTAINER_NAME: lvie-lunit-windows-${{ github.run_id }}-${{ github.run_attempt }}
+  LABVIEW_IMAGE: lvie-lunit-windows:${{ github.run_id }}-${{ github.run_attempt }}
 
 jobs:
   lunit-tests:
@@ -24,29 +24,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Resolve dependency image
-        run: |
-          $inputs = @(
-            'Tooling\containers\lunit-windows.Dockerfile',
-            'Tooling\Build-LUnitWindowsImage.ps1',
-            'Tooling\Run-LUnitWindowsContainer.ps1'
-          )
-          $hashes = ($inputs | ForEach-Object { (Get-FileHash $_ -Algorithm SHA256).Hash }) -join ''
-          $sha = [System.Security.Cryptography.SHA256]::Create()
-          try {
-            $key = ([BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($hashes)))).Replace('-', '').ToLowerInvariant()
-          } finally { $sha.Dispose() }
-          $repository = '${{ github.repository }}'.ToLowerInvariant()
-          "LABVIEW_IMAGE=ghcr.io/$repository/lunit-windows:$key" >> $env:GITHUB_ENV
-
-      - name: Log in to dependency registry
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $env:GH_TOKEN | docker login ghcr.io --username '${{ github.actor }}' --password-stdin
-          if ($LASTEXITCODE -ne 0) { throw 'Failed to authenticate to dependency registry.' }
-
-      - name: Reuse or build required LUnit dependency image
+      - name: Build required LUnit dependency image
         timeout-minutes: 25
         run: |
           $ErrorActionPreference = 'Stop'
@@ -54,20 +32,7 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $os -ne 'windows') {
             throw 'A running Docker engine in Windows-container mode is required.'
           }
-          docker pull $env:LABVIEW_IMAGE
-          if ($LASTEXITCODE -eq 0) {
-            'LVIE_IMAGE_BUILT=false' >> $env:GITHUB_ENV
-          } else {
-            Write-Warning 'Dependency image could not be pulled. Building required dependencies locally; installation failures will fail this job.'
-            & .\Tooling\Build-LUnitWindowsImage.ps1 -Image $env:LABVIEW_IMAGE
-            'LVIE_IMAGE_BUILT=true' >> $env:GITHUB_ENV
-          }
-
-      - name: Publish verified dependency image
-        if: env.LVIE_IMAGE_BUILT == 'true' && github.event_name != 'pull_request'
-        run: |
-          docker push $env:LABVIEW_IMAGE
-          if ($LASTEXITCODE -ne 0) { throw 'Failed to publish LUnit dependency image.' }
+          & .\Tooling\Build-LUnitWindowsImage.ps1 -Image $env:LABVIEW_IMAGE
 
       - name: Start container
         run: |

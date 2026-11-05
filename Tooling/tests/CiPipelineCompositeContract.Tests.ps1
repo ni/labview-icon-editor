@@ -103,6 +103,7 @@ Describe 'CI pipeline composite contract' {
         $lunitBlock = [regex]::Match($script:content, '(?ms)^  lunit-windows-container:.*?(?=^  [\w-]+:|\z)').Value
         $lunitBlock | Should -Match 'uses:\s*\./\.github/workflows/lunit-windows-container-tests\.yml'
         $lunitBlock | Should -Match 'needs:\s*\[run-metadata, version-gate\]'
+        $lunitBlock | Should -Not -Match 'packages:|secrets:'
         $lunitBlock | Should -Not -Match '(?m)^    if:' -Because 'LUnit tests must run on every CI event, including PRs'
 
         $contractBlock = [regex]::Match($script:content, '(?ms)^  pipeline-contract:.*?(?=^  [\w-]+:|\z)').Value

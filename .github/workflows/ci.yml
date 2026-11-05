@@ -178,7 +178,6 @@ jobs:
     needs: [run-metadata, version-gate]
     permissions:
       contents: read
-      packages: write
     uses: ./.github/workflows/lunit-windows-container-tests.yml
   
   build-lvlibp-linux-container:
