@@ -51,7 +51,6 @@
 			<Item Name="Control Template.ctl" Type="VI" URL="../Test/Templates/Control Template.ctl"/>
 			<Item Name="Library Template.lvlib" Type="Library" URL="../Test/Templates/Library Template.lvlib"/>
 			<Item Name="Many Layers.vi" Type="VI" URL="../Test/Templates/Many Layers.vi"/>
-			<Item Name="Polymorphic Template.vi" Type="VI" URL="../Test/Templates/Polymorphic Template.vi"/>
 			<Item Name="Pyramid Icon Template.vi" Type="VI" URL="../Test/Templates/Pyramid Icon Template.vi"/>
 			<Item Name="Pyramid.png" Type="Document" URL="../Test/Templates/Pyramid.png"/>
 		</Item>
