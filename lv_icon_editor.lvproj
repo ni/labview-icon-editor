@@ -42,6 +42,7 @@
 			<Item Name="Editor Position.lvclass" Type="LVClass" URL="../Test/Unit Tests/Editor Position/Editor Position.lvclass"/>
 			<Item Name="History Tests.lvclass" Type="LVClass" URL="../Test/Unit Tests/History Tests/History Tests.lvclass"/>
 			<Item Name="INI Settings.lvclass" Type="LVClass" URL="../Test/Unit Tests/INI Settings/INI Settings.lvclass"/>
+			<Item Name="Library Icon Data.lvclass" Type="LVClass" URL="../Test/Unit Tests/Library Icon Data/Library Icon Data.lvclass"/>
 			<Item Name="Text-Based VI Icon Tests.lvclass" Type="LVClass" URL="../Test/Unit Tests/Text-Based VI Icon Tests/Text-Based VI Icon Tests.lvclass"/>
 		</Item>
 		<Item Name="Test Templates" Type="Folder">
