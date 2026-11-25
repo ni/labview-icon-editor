@@ -328,7 +328,6 @@
 				</Item>
 				<Item Name="lv_icon.lvlib" Type="Library" URL="../resource/plugins/lv_icon.lvlib"/>
 				<Item Name="lv_icon.vit" Type="VI" URL="../resource/plugins/lv_icon.vit"/>
-				<Item Name="SAMPLE_lv_icon.vi" Type="VI" URL="../resource/plugins/SAMPLE_lv_icon.vi"/>
 				<Item Name="lv_icon_launcher.vi" Type="VI" URL="../resource/plugins/lv_icon_launcher.vi"/>
 			</Item>
 			<Item Name="vi.lib/LabVIEW Icon API" Type="Folder">
