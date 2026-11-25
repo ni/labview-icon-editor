@@ -27,6 +27,56 @@
 		<Item Name="Generate Border User Layer.vi" Type="VI" URL="../Support/Generate Border User Layer.vi"/>
 		<Item Name="Get Flattened Image.vi" Type="VI" URL="../Get Flattened Image.vi"/>
 	</Item>
+	<Item Name="lv_icon" Type="Folder">
+		<Item Name="Support" Type="Folder">
+			<Item Name="Read and Write Icon Data" Type="Folder">
+				<Item Name="Read Icon Data from Library.vi" Type="VI" URL="../lv_icon/Support/Read Icon Data from Library.vi"/>
+				<Item Name="Read Icon Data from VI.vi" Type="VI" URL="../lv_icon/Support/Read Icon Data from VI.vi"/>
+				<Item Name="Remove Icon Data from VI.vi" Type="VI" URL="../lv_icon/Support/Remove Icon Data from VI.vi"/>
+				<Item Name="Write Icon Data to Library.vi" Type="VI" URL="../lv_icon/Support/Write Icon Data to Library.vi"/>
+				<Item Name="Write Icon Data to VI.vi" Type="VI" URL="../lv_icon/Support/Write Icon Data to VI.vi"/>
+			</Item>
+			<Item Name="Adjust temporary rotate and flip rectangle.vi" Type="VI" URL="../lv_icon/Support/Adjust temporary rotate and flip rectangle.vi"/>
+			<Item Name="Apply Opacity.vi" Type="VI" URL="../lv_icon/Support/Apply Opacity.vi"/>
+			<Item Name="Apply Transparency Pixmap.vi" Type="VI" URL="../lv_icon/Support/Apply Transparency Pixmap.vi"/>
+			<Item Name="ApplyLVClassIconOverlayToVIIcon.vi" Type="VI" URL="../lv_icon/Support/ApplyLVClassIconOverlayToVIIcon.vi"/>
+			<Item Name="Average Grayscale of Line.vi" Type="VI" URL="../lv_icon/Support/Average Grayscale of Line.vi"/>
+			<Item Name="Calculate Body Text Position.vi" Type="VI" URL="../lv_icon/Support/Calculate Body Text Position.vi"/>
+			<Item Name="Check Color.vi" Type="VI" URL="../lv_icon/Support/Check Color.vi"/>
+			<Item Name="Create Color Array.vi" Type="VI" URL="../lv_icon/Support/Create Color Array.vi"/>
+			<Item Name="Create default Layer.vi" Type="VI" URL="../lv_icon/Support/Create default Layer.vi"/>
+			<Item Name="Create default LV Icon Data.vi" Type="VI" URL="../lv_icon/Support/Create default LV Icon Data.vi"/>
+			<Item Name="Create Layer from Image.vi" Type="VI" URL="../lv_icon/Support/Create Layer from Image.vi"/>
+			<Item Name="Deserialize Picture Control Data.vi" Type="VI" URL="../lv_icon/Support/Deserialize Picture Control Data.vi"/>
+			<Item Name="Draw Layers.vi" Type="VI" URL="../lv_icon/Support/Draw Layers.vi"/>
+			<Item Name="Draw Picture based on Origin.vi" Type="VI" URL="../lv_icon/Support/Draw Picture based on Origin.vi"/>
+			<Item Name="Extract Data.vi" Type="VI" URL="../lv_icon/Support/Extract Data.vi"/>
+			<Item Name="Fill.vi" Type="VI" URL="../lv_icon/Support/Fill.vi"/>
+			<Item Name="FilterEmptyLayerIcons.vi" Type="VI" URL="../lv_icon/Support/FilterEmptyLayerIcons.vi"/>
+			<Item Name="Find BG Color Peak.vi" Type="VI" URL="../lv_icon/Support/Find BG Color Peak.vi"/>
+			<Item Name="Find Neighbours.vi" Type="VI" URL="../lv_icon/Support/Find Neighbours.vi"/>
+			<Item Name="Find Start and Endpoint Body Text.vi" Type="VI" URL="../lv_icon/Support/Find Start and Endpoint Body Text.vi"/>
+			<Item Name="Flatten Load &amp; Unload.vi" Type="VI" URL="../lv_icon/Support/Flatten Load &amp; Unload.vi"/>
+			<Item Name="Flood Glyph.vi" Type="VI" URL="../lv_icon/Support/Flood Glyph.vi"/>
+			<Item Name="Get Grayscale Value.vi" Type="VI" URL="../lv_icon/Support/Get Grayscale Value.vi"/>
+			<Item Name="Get Image Data.vi" Type="VI" URL="../lv_icon/Support/Get Image Data.vi"/>
+			<Item Name="Get LV Glyph Path.vi" Type="VI" URL="../lv_icon/Support/Get LV Glyph Path.vi"/>
+			<Item Name="Get SubPicture Coordinate.vi" Type="VI" URL="../lv_icon/Support/Get SubPicture Coordinate.vi"/>
+			<Item Name="Get SubPicture Coordinates.vi" Type="VI" URL="../lv_icon/Support/Get SubPicture Coordinates.vi"/>
+			<Item Name="Get_VI_Icon.vi" Type="VI" URL="../lv_icon/Support/Get_VI_Icon.vi"/>
+			<Item Name="Join Layers.vi" Type="VI" URL="../lv_icon/Support/Join Layers.vi"/>
+			<Item Name="LabVIEW Fonts.vi" Type="VI" URL="../lv_icon/Support/LabVIEW Fonts.vi"/>
+			<Item Name="Magic Transparent Color Constant.vi" Type="VI" URL="../lv_icon/Support/Magic Transparent Color Constant.vi"/>
+			<Item Name="Remove Duplicates from Color Array.vi" Type="VI" URL="../lv_icon/Support/Remove Duplicates from Color Array.vi"/>
+			<Item Name="Replace Color.vi" Type="VI" URL="../lv_icon/Support/Replace Color.vi"/>
+			<Item Name="Restore original Coordinates.vi" Type="VI" URL="../lv_icon/Support/Restore original Coordinates.vi"/>
+			<Item Name="Return MutationCode Folder.vi" Type="VI" URL="../lv_icon/Support/Return MutationCode Folder.vi"/>
+			<Item Name="Rotate Flip Image.vi" Type="VI" URL="../lv_icon/Support/Rotate Flip Image.vi"/>
+			<Item Name="Serialize Icon Data.vi" Type="VI" URL="../lv_icon/Support/Serialize Icon Data.vi"/>
+			<Item Name="Text.vi" Type="VI" URL="../lv_icon/Support/Text.vi"/>
+			<Item Name="Unflatten Load &amp; Unload.vi" Type="VI" URL="../lv_icon/Support/Unflatten Load &amp; Unload.vi"/>
+		</Item>
+	</Item>
 	<Item Name="Support" Type="Folder">
 		<Property Name="NI.LibItem.Scope" Type="Int">1</Property>
 		<Item Name="Create Icon Framework.vi" Type="VI" URL="../Support/Create Icon Framework.vi"/>
